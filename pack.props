@@ -1,0 +1,20 @@
+<Project>
+	<Import Project="versions.props" />
+
+	<PropertyGroup>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<Authors>Elton Schivei Costa</Authors>
+		<Product>Mediator Package</Product>
+		<Description>Mediator alternative for MediatR.</Description>
+		<PackageTags>Mediator</PackageTags>
+		<DebugType>Full</DebugType>
+		<IsPackable>true</IsPackable>
+		<PackOnBuild>true</PackOnBuild>
+		<PackageVersion>$(Version)</PackageVersion>
+		<ReleaseVersion>$(Version)</ReleaseVersion>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<NoWarn>$(NoWarn);nullable</NoWarn>
+		<TargetFramework>net9.0</TargetFramework>
+	</PropertyGroup>
+</Project>

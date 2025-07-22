@@ -31,7 +31,7 @@ internal sealed class Configuration(Channel<object> channel) : IAsyncDisposable
     public bool TryGetHandlerTypeByMessageFilter<TMessage>(TMessage message, out Type? handlerType)
     {
         handlerType = null;
-        
+    
         if (_filters.TryGetValue(typeof(TMessage), out var filter))
         {
             handlerType = filter(message);

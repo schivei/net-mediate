@@ -6,13 +6,13 @@ using System.Threading.Channels;
 
 namespace NetMediate.Internals;
 
-public sealed class MediatorConfiguration
+internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
 {
     private readonly Configuration _configuration;
 
-    internal MediatorConfiguration(IServiceCollection services)
+    internal MediatorServiceBuilder(IServiceCollection services)
     {
-        _configuration = new Configuration(Channel.CreateUnboundedPrioritized<object>());
+        _configuration = new Configuration(Channel.CreateUnbounded<object>());
 
         Services = services;
 
@@ -23,13 +23,13 @@ public sealed class MediatorConfiguration
 
     public IServiceCollection Services { get; }
 
-    internal MediatorConfiguration MapAssembly<T>() =>
+    internal IMediatorServiceBuilder MapAssembly<T>() =>
         MapAssemblies(typeof(T).Assembly);
 
-    internal MediatorConfiguration MapAssemblies(params Assembly[] assemblies)
+    internal IMediatorServiceBuilder MapAssemblies(params Assembly[] assemblies)
     {
         if (assemblies.Length == 0)
-            assemblies = [Assembly.GetExecutingAssembly()];
+            assemblies = [.. AppDomain.CurrentDomain.GetAssemblies().Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))];
 
         var types = ExtractTypes(assemblies);
 
@@ -42,7 +42,7 @@ public sealed class MediatorConfiguration
         return this;
     }
 
-    public MediatorConfiguration IgnoreUnhandledMessages(bool ignore = true, bool log = true, LogLevel logLevel = LogLevel.Error)
+    public IMediatorServiceBuilder IgnoreUnhandledMessages(bool ignore = true, bool log = true, LogLevel logLevel = LogLevel.Error)
     {
         _configuration.IgnoreUnhandledMessages = ignore;
         _configuration.LogUnhandledMessages = log;
@@ -51,7 +51,7 @@ public sealed class MediatorConfiguration
         return this;
     }
 
-    public MediatorConfiguration FilterNotification<TMessage, THandler>(Func<TMessage, bool> filter)
+    public IMediatorServiceBuilder FilterNotification<TMessage, THandler>(Func<TMessage, bool> filter)
         where THandler : class, INotificationHandler<TMessage>
     {
         Register(typeof(INotificationHandler<TMessage>), typeof(THandler), false);
@@ -66,7 +66,7 @@ public sealed class MediatorConfiguration
         return this;
     }
 
-    public MediatorConfiguration FilterCommand<TMessage, THandler>(Func<TMessage, bool> filter)
+    public IMediatorServiceBuilder FilterCommand<TMessage, THandler>(Func<TMessage, bool> filter)
         where THandler : class, ICommandHandler<TMessage>
     {
         Register(typeof(INotificationHandler<TMessage>), typeof(THandler), false);
@@ -81,7 +81,7 @@ public sealed class MediatorConfiguration
         return this;
     }
 
-    public MediatorConfiguration FilterRequest<TMessage, THandler>(Func<TMessage, bool> filter)
+    public IMediatorServiceBuilder FilterRequest<TMessage, THandler>(Func<TMessage, bool> filter)
         where THandler : class, IRequestHandler<TMessage, object>
     {
         Register(typeof(IRequestHandler<TMessage, object>), typeof(THandler), false);
@@ -94,7 +94,7 @@ public sealed class MediatorConfiguration
         return this;
     }
 
-    public MediatorConfiguration FilterStream<TMessage, THandler>(Func<TMessage, bool> filter)
+    public IMediatorServiceBuilder FilterStream<TMessage, THandler>(Func<TMessage, bool> filter)
         where THandler : class, IStreamHandler<TMessage, object>
     {
         Register(typeof(IStreamHandler<TMessage, object>), typeof(THandler), false);
@@ -107,7 +107,7 @@ public sealed class MediatorConfiguration
         return this;
     }
 
-    public MediatorConfiguration InstantiateHandlerByMessageFilter<TMessage>(Func<TMessage, Type?> filter)
+    public IMediatorServiceBuilder InstantiateHandlerByMessageFilter<TMessage>(Func<TMessage, Type?> filter)
     {
         _configuration.InstantiateHandlerByMessageFilter(filter);
 
@@ -143,9 +143,6 @@ public sealed class MediatorConfiguration
     private void Register(Type interfaceType, Type handlerType, bool unique = true)
     {
         var keyed = handlerType.GetKey();
-
-        if (Services.Any(s => s.ServiceType == interfaceType && s.ImplementationType == handlerType && s.ServiceKey?.ToString() == keyed))
-            return;
 
         if (keyed is not null)
         {

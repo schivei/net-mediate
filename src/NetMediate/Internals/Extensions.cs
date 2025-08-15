@@ -5,9 +5,12 @@ namespace NetMediate.Internals;
 
 internal static class Extensions
 {
-    public static async ValueTask DrainAsync<T>(this ChannelReader<T> channel)
+    public static async ValueTask DrainAsync<T>(this Channel<T> channel)
     {
-        await foreach (var _ in channel.ReadAllAsync().ConfigureAwait(false)) ;
+        channel.Writer.TryComplete();
+
+        await foreach (var _ in channel.Reader.ReadAllAsync().ConfigureAwait(false))
+            /* ignore */;
     }
 
     public static string? GetKey(this Type type) =>

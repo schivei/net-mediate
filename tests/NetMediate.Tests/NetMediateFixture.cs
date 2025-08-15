@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.Tests;
 
-internal sealed class NetMediateFixture : IDisposable
+public sealed class NetMediateFixture : IDisposable
 {
     public IServiceProvider ServiceProvider { get; private set; }
     public CancellationTokenSource CancellationTokenSource { get; } = new CancellationTokenSource();

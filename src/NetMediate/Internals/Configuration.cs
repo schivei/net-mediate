@@ -14,9 +14,7 @@ internal sealed class Configuration(Channel<object> channel) : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        ChannelWriter.TryComplete();
-
-        await ChannelReader.DrainAsync();
+        await channel.DrainAsync();
 
         GC.SuppressFinalize(this);
     }

@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 
 namespace NetMediate.Internals;
 
-internal sealed class Mediator(ILogger<Mediator> logger, Configuration configuration, IServiceScopeFactory serviceScopeFactory) : IMediator, INotifiable
+internal class Mediator(ILogger<Mediator> logger, Configuration configuration, IServiceScopeFactory serviceScopeFactory) : IMediator, INotifiable
 {
 
     public async Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default)
@@ -24,6 +24,9 @@ internal sealed class Mediator(ILogger<Mediator> logger, Configuration configura
         if (configuration.LogUnhandledMessages && message is null)
             logger.Log(configuration.UnhandledMessagesLogLevel, "Received null message. This may indicate a misconfiguration or an error in the message pipeline.");
 
+        if (message is null)
+            return;
+
         if (message is IValidatable validatable)
         {
             var validationResult = await validatable.ValidateAsync();
@@ -31,7 +34,7 @@ internal sealed class Mediator(ILogger<Mediator> logger, Configuration configura
                 throw new MessageValidationException(validationResult.ErrorMessage);
         }
 
-        var handlers = Resolve<IValidationHandler<TMessage>>(message);
+        var handlers = Resolve<IValidationHandler<TMessage>>(message, true);
 
         if (handlers.Any())
         {
@@ -141,17 +144,35 @@ internal sealed class Mediator(ILogger<Mediator> logger, Configuration configura
             .ConfigureAwait(false);
     }
 
-    private IEnumerable<T> Resolve<T>(object message)
+    private IEnumerable<T> Resolve<T>(object message, bool ignore = false)
     {
+        if (message is null)
+            return [];
+
         var messageType = message.GetType();
 
         using var scope = serviceScopeFactory.CreateScope();
 
         var messageAttribute = messageType.GetCustomAttribute<KeyedMessageAttribute>(false);
 
-        var handlers = messageAttribute is not null ?
-            scope.ServiceProvider.GetKeyedServices<T>(messageAttribute.ServiceKey) :
-            scope.ServiceProvider.GetServices<T>();
+        IEnumerable<T> handlers = [];
+        try
+        {
+            handlers = messageAttribute is not null ?
+                scope.ServiceProvider.GetKeyedServices<T>(messageAttribute.ServiceKey) :
+                scope.ServiceProvider.GetServices<T>();
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (ignore)
+                return [];
+
+            if (!configuration.IgnoreUnhandledMessages)
+                throw new InvalidOperationException($"No handler found for message type {messageType.Name}", ex);
+
+            if (configuration.LogUnhandledMessages)
+                logger.Log(configuration.UnhandledMessagesLogLevel, "No handler found for message type {MessageType}. Message: {Message}", messageType.Name, message);
+        }
 
         if (configuration.TryGetHandlerTypeByMessageFilter(message, out var type))
             return [handlers.First(h => h.GetType() == type)];

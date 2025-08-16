@@ -2,8 +2,7 @@
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
 	<Suffix Condition="'$(SuffixVersionToVersionInAssembly)' == '-main'"></Suffix>
-	<Suffix Condition="'$(SuffixVersionToVersionInAssembly)' != '-main'">$([System.String]::Copy('$(SuffixVersionToVersionInAssembly)').Replace('/', '_'))</Suffix>
-    <Version>$([System.DateTime]::UtcNow.Year).$([System.Convert]::ToInt32($([MSBuild]::Divide($([MSBuild]::Add($([System.DateTime]::UtcNow.Month), 2)), 3)))).$([System.DateTime]::UtcNow.DayOfYear).$([System.DateTime]::UtcNow.Hour)$(Suffix)</Version>
+    <Version>$([System.DateTime]::UtcNow.ToString("yy.MM.dd")).$([System.DateTime]::UtcNow.Subtract($([System.DateTime]::UtcNow.Date)).TotalMilliseconds.ToString("N0"))$(Suffix)</Version>
     <NoWarn>nullable;NU5118;$(NoWarn)</NoWarn>
   </PropertyGroup>
 </Project>

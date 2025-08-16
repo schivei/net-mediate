@@ -7,7 +7,6 @@
 		<Product>Mediator Package</Product>
 		<Description>Mediator alternative for MediatR.</Description>
 		<PackageTags>Mediator</PackageTags>
-		<PackageIcon>icon.png</PackageIcon>
 		<DebugType>Full</DebugType>
 		<IsPackable>true</IsPackable>
 		<PackOnBuild>true</PackOnBuild>
@@ -17,23 +16,5 @@
 		<Nullable>enable</Nullable>
 		<NoWarn>$(NoWarn);nullable</NoWarn>
 		<TargetFramework>net9.0</TargetFramework>
-		
-		<!-- Package metadata -->
-		<PackageId>NetMediate</PackageId>
-		<Title>NetMediate</Title>
-		<PackageProjectUrl>https://github.com/schivei/net-mediate</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/schivei/net-mediate</RepositoryUrl>
-		<RepositoryType>git</RepositoryType>
-		<PackageLicenseFile>LICENSE</PackageLicenseFile>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
-		<PackageIcon>icon.png</PackageIcon>
-		<Copyright>Copyright © 2025 Elton Schivei Costa</Copyright>
-		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
 	</PropertyGroup>
-
-	<ItemGroup>
-		<None Include="../../LICENSE" Pack="true" PackagePath="\" />
-		<None Include="../../README.md" Pack="true" PackagePath="\" />
-		<None Include="../../icon.png" Pack="true" PackagePath="\" />
-	</ItemGroup>
 </Project>

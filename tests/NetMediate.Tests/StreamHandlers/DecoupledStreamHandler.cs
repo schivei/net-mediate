@@ -10,6 +10,7 @@ internal sealed class DecoupledStreamHandler : BaseHandler, IStreamHandler<Decou
         await Task.CompletedTask;
 
         while(!cancellationToken.IsCancellationRequested)
+        while (!cancellationToken.IsCancellationRequested)
         {
             yield return message.Name;
 

@@ -9,6 +9,7 @@ public sealed class StreamTests
     {
         using var fixture = new NetMediateFixture();
         DateTime.UtcNow.Subtract(DateTime.UtcNow.Date).TotalMilliseconds.ToString("N0")
+        using var fixture = new NetMediateFixture();
         // Act
         var response = await fixture.RunAsync(async (sp) =>
         {

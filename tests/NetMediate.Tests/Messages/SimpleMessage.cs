@@ -1,3 +1,3 @@
 ﻿namespace NetMediate.Tests.Messages;
 
-internal record SimpleMessage(string Name);
+internal record SimpleMessage(string Name) : BaseMessage;

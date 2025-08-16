@@ -2,4 +2,4 @@
 
 namespace NetMediate.Tests.Messages;
 
-internal record DecoupledValidatableMessage([Required] string Name);
+internal record DecoupledValidatableMessage([Required] string Name) : BaseMessage;

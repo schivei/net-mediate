@@ -23,7 +23,7 @@ public class MediatorTests
         _serviceScopeFactoryMock = new Mock<IServiceScopeFactory>();
         _serviceScopeMock = new Mock<IServiceScope>();
         _serviceProviderMock = new Mock<IServiceProvider>();
-        
+
         _channel = Channel.CreateUnbounded<object>();
         _configuration = new Configuration(_channel)
         {
@@ -31,11 +31,11 @@ public class MediatorTests
             LogUnhandledMessages = true,
             UnhandledMessagesLogLevel = LogLevel.Warning
         };
-        
+
         _serviceScopeFactoryMock.Setup(f => f.CreateScope()).Returns(_serviceScopeMock.Object);
         _serviceScopeMock.Setup(s => s.ServiceProvider).Returns(_serviceProviderMock.Object);
         _serviceScopeMock.Setup(s => s.Dispose());
-        
+
         _mediator = new Mediator(_loggerMock.Object, _configuration, _serviceScopeFactoryMock.Object);
     }
 
@@ -46,10 +46,10 @@ public class MediatorTests
     {
         // Arrange
         var message = new TestMessage { Content = "Test" };
-        
+
         // Act
         await _mediator.Notify(message);
-        
+
         // Assert
         Assert.True(_channel.Reader.TryRead(out var receivedMessage));
         Assert.Same(message, receivedMessage);
@@ -60,7 +60,7 @@ public class MediatorTests
     {
         // Arrange
         TestMessage? message = null;
-        
+
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(() => _mediator.Notify(message!));
     }
@@ -71,10 +71,10 @@ public class MediatorTests
         // Arrange
         TestMessage? message = null;
         _configuration.IgnoreUnhandledMessages = true;
-        
+
         // Act & Assert
         await _mediator.Notify(message!); // Should not throw
-        
+
         // Verify logging
         VerifyLoggerCalled(LogLevel.Warning, "Received null message");
     }
@@ -84,9 +84,9 @@ public class MediatorTests
     {
         // Arrange
         var message = new TestValidatableMessage { ShouldFail = true };
-        
+
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<MessageValidationException>(() => 
+        var exception = await Assert.ThrowsAsync<MessageValidationException>(() =>
             _mediator.Notify(message));
         Assert.Equal("Validation failed", exception.Message);
     }
@@ -100,11 +100,11 @@ public class MediatorTests
         validationHandler
             .Setup(h => h.ValidateAsync(message, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ValidationResult("External validation failed"));
-        
+
         SetupHandler(validationHandler.Object);
-        
+
         // Act & Assert
-        var exception = await Assert.ThrowsAsync<MessageValidationException>(() => 
+        var exception = await Assert.ThrowsAsync<MessageValidationException>(() =>
             _mediator.Notify(message));
         Assert.Equal("External validation failed", exception.Message);
     }
@@ -122,12 +122,12 @@ public class MediatorTests
         handler
             .Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        
+
         SetupHandler(handler.Object);
-        
+
         // Act
         await _mediator.Send(message);
-        
+
         // Assert
         handler.Verify(h => h.Handle(message, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -138,9 +138,9 @@ public class MediatorTests
         // Arrange
         var message = new TestMessage { Content = "Test" };
         SetupHandler<ICommandHandler<TestMessage>>([]);
-        
+
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _mediator.Send(message));
     }
 
@@ -151,12 +151,12 @@ public class MediatorTests
         var message = new TestMessage { Content = "Test" };
         _configuration.IgnoreUnhandledMessages = true;
         SetupHandler<ICommandHandler<TestMessage>>([]);
-        
+
         // Act
         await _mediator.Send(message);
-        
+
         // Assert
-        VerifyLoggerCalled(LogLevel.Warning, "No command handler found");
+        VerifyLoggerCalled(LogLevel.Warning, "No handler found");
     }
 
     #endregion
@@ -173,12 +173,12 @@ public class MediatorTests
         handler
             .Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
             .ReturnsAsync(response);
-        
+
         SetupHandler(handler.Object);
-        
+
         // Act
         var result = await _mediator.Request<TestRequest, TestResponse>(message);
-        
+
         // Assert
         Assert.Same(response, result);
         handler.Verify(h => h.Handle(message, It.IsAny<CancellationToken>()), Times.Once);
@@ -191,9 +191,9 @@ public class MediatorTests
         var message = new TestRequest { Id = 1 };
         SetupHandler<IRequestHandler<TestRequest, TestResponse>>(
             []);
-        
+
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _mediator.Request<TestRequest, TestResponse>(message));
     }
 
@@ -205,13 +205,13 @@ public class MediatorTests
         _configuration.IgnoreUnhandledMessages = true;
         SetupHandler<IRequestHandler<TestRequest, TestResponse>>(
             []);
-        
+
         // Act
         var result = await _mediator.Request<TestRequest, TestResponse>(message);
-        
+
         // Assert
         Assert.Null(result);
-        VerifyLoggerCalled(LogLevel.Warning, "No command handler found");
+        VerifyLoggerCalled(LogLevel.Warning, "No handler found");
     }
 
     #endregion
@@ -223,25 +223,25 @@ public class MediatorTests
     {
         // Arrange
         var message = new TestRequest { Id = 1 };
-        var responses = new[] { 
+        var responses = new[] {
             new TestResponse { Value = "Response1" },
             new TestResponse { Value = "Response2" }
         };
-        
+
         var handler = new Mock<IStreamHandler<TestRequest, TestResponse>>();
         handler
             .Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
             .Returns(GetAsyncEnumerable(responses));
-        
+
         SetupHandler(handler.Object);
-        
+
         // Act
         var results = new List<TestResponse>();
         await foreach (var item in _mediator.RequestStream<TestRequest, TestResponse>(message))
         {
             results.Add(item);
         }
-        
+
         // Assert
         Assert.Equal(2, results.Count);
         Assert.Equal("Response1", results[0].Value);
@@ -255,12 +255,13 @@ public class MediatorTests
         var message = new TestRequest { Id = 1 };
         SetupHandler<IStreamHandler<TestRequest, TestResponse>>(
             []);
-        
+
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () => {
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
             await foreach (var _ in _mediator.RequestStream<TestRequest, TestResponse>(message)) { }
         });
-        Assert.Contains("No command handler found", ex.Message);
+        Assert.Contains("No handler found", ex.Message);
     }
 
     [Fact]
@@ -271,17 +272,17 @@ public class MediatorTests
         _configuration.IgnoreUnhandledMessages = true;
         SetupHandler<IStreamHandler<TestRequest, TestResponse>>(
             []);
-        
+
         // Act
         var results = new List<TestResponse>();
         await foreach (var item in _mediator.RequestStream<TestRequest, TestResponse>(message))
         {
             results.Add(item);
         }
-        
+
         // Assert
         Assert.Empty(results);
-        VerifyLoggerCalled(LogLevel.Warning, "No command handler found");
+        VerifyLoggerCalled(LogLevel.Warning, "No handler found");
     }
 
     #endregion
@@ -295,17 +296,17 @@ public class MediatorTests
         var message = new TestMessage { Content = "Test" };
         var handler1 = new Mock<INotificationHandler<TestMessage>>();
         var handler2 = new Mock<INotificationHandler<TestMessage>>();
-        
+
         handler1.Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
         handler2.Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        
+
         SetupHandler<INotificationHandler<TestMessage>>([handler1.Object, handler2.Object]);
-        
+
         // Act
         await _mediator.Notifies(message);
-        
+
         // Assert
         handler1.Verify(h => h.Handle(message, It.IsAny<CancellationToken>()), Times.Once);
         handler2.Verify(h => h.Handle(message, It.IsAny<CancellationToken>()), Times.Once);
@@ -317,9 +318,9 @@ public class MediatorTests
         // Arrange
         var message = new TestMessage { Content = "Test" };
         SetupHandler<INotificationHandler<TestMessage>>([]);
-        
+
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => 
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
             _mediator.Notifies(message));
     }
 
@@ -330,12 +331,12 @@ public class MediatorTests
         var message = new TestMessage { Content = "Test" };
         _configuration.IgnoreUnhandledMessages = true;
         SetupHandler<INotificationHandler<TestMessage>>([]);
-        
+
         // Act
         await _mediator.Notifies(message);
-        
+
         // Assert
-        VerifyLoggerCalled(LogLevel.Warning, "No notification handlers found");
+        VerifyLoggerCalled(LogLevel.Warning, "No handler found");
     }
 
     #endregion

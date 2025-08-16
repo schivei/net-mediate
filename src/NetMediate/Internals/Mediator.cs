@@ -1,5 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
@@ -16,35 +18,24 @@ internal class Mediator(ILogger<Mediator> logger, Configuration configuration, I
             .ConfigureAwait(false);
     }
 
-    private async Task ValidateMessage<TMessage>(TMessage message, CancellationToken cancellationToken)
+    private async Task ValidateMessage<TMessage>(TMessage message, CancellationToken cancellationToken) =>
+        await configuration.ValidateMessageAsync(message, logger, Resolve<IValidationHandler<TMessage>>, cancellationToken);
+
+    private bool AssertHandler<TMessage>(TMessage message, object handlers)
     {
+        if (handlers is IEnumerable ien and not string && ien.Cast<object>().Any())
+            return true;
+
+        if (handlers is not null && (handlers is string or not IEnumerable))
+            return true;
+
         if (!configuration.IgnoreUnhandledMessages)
-            ArgumentNullException.ThrowIfNull(message);
+            throw new InvalidOperationException($"No handler found for message type {typeof(TMessage).Name}");
 
-        if (configuration.LogUnhandledMessages && message is null)
-            logger.Log(configuration.UnhandledMessagesLogLevel, "Received null message. This may indicate a misconfiguration or an error in the message pipeline.");
+        if (configuration.IgnoreUnhandledMessages && configuration.LogUnhandledMessages)
+            logger.Log(configuration.UnhandledMessagesLogLevel, "No handler found for message type {MessageType}. Message: {Message}", typeof(TMessage).Name, message);
 
-        if (message is null)
-            return;
-
-        if (message is IValidatable validatable)
-        {
-            var validationResult = await validatable.ValidateAsync();
-            if (validationResult.ErrorMessage is not null)
-                throw new MessageValidationException(validationResult.ErrorMessage);
-        }
-
-        var handlers = Resolve<IValidationHandler<TMessage>>(message, true);
-
-        if (handlers.Any())
-        {
-            foreach (var handler in handlers)
-            {
-                var validationResult = await handler.ValidateAsync(message, cancellationToken);
-                if (validationResult.ErrorMessage is not null)
-                    throw new MessageValidationException(validationResult.ErrorMessage);
-            }
-        }
+        return false;
     }
 
     public async Task Send<TMessage>(TMessage message, CancellationToken cancellationToken = default)
@@ -55,16 +46,8 @@ internal class Mediator(ILogger<Mediator> logger, Configuration configuration, I
 
         var handler = Resolve<ICommandHandler<TMessage>>(message).FirstOrDefault();
 
-        if (handler is null)
-        {
-            if (!configuration.IgnoreUnhandledMessages)
-                throw new InvalidOperationException($"No command handler found for message type {typeof(TMessage).Name}");
-
-            if (configuration.IgnoreUnhandledMessages && configuration.LogUnhandledMessages)
-                logger.Log(configuration.UnhandledMessagesLogLevel, "No command handler found for message type {MessageType}. Message: {Message}", typeof(TMessage).Name, message);
-
+        if (!AssertHandler(message, handler))
             return;
-        }
 
         await handler.Handle(message, cancellationToken).ConfigureAwait(true);
     }
@@ -77,16 +60,8 @@ internal class Mediator(ILogger<Mediator> logger, Configuration configuration, I
 
         var handler = Resolve<IRequestHandler<TMessage, TResponse>>(message).FirstOrDefault();
 
-        if (handler is null)
-        {
-            if (!configuration.IgnoreUnhandledMessages)
-                throw new InvalidOperationException($"No command handler found for message type {typeof(TMessage).Name}");
-
-            if (configuration.IgnoreUnhandledMessages && configuration.LogUnhandledMessages)
-                logger.Log(configuration.UnhandledMessagesLogLevel, "No command handler found for message type {MessageType}. Message: {Message}", typeof(TMessage).Name, message);
-
+        if (!AssertHandler(message, handler))
             return default!;
-        }
 
         return await handler.Handle(message, cancellationToken).ConfigureAwait(true);
     }
@@ -99,16 +74,8 @@ internal class Mediator(ILogger<Mediator> logger, Configuration configuration, I
 
         var handler = Resolve<IStreamHandler<TMessage, TResponse>>(message).FirstOrDefault();
 
-        if (handler is null)
-        {
-            if (!configuration.IgnoreUnhandledMessages)
-                throw new InvalidOperationException($"No command handler found for message type {typeof(TMessage).Name}");
-
-            if (configuration.IgnoreUnhandledMessages && configuration.LogUnhandledMessages)
-                logger.Log(configuration.UnhandledMessagesLogLevel, "No command handler found for message type {MessageType}. Message: {Message}", typeof(TMessage).Name, message);
-
+        if (!AssertHandler(message, handler))
             yield break;
-        }
 
         await foreach (var response in handler.Handle(message, cancellationToken).ConfigureAwait(true))
         {
@@ -129,16 +96,8 @@ internal class Mediator(ILogger<Mediator> logger, Configuration configuration, I
 
         var handlers = Resolve<INotificationHandler<TMessage>>(message);
 
-        if (!handlers.Any())
-        {
-            if (!configuration.IgnoreUnhandledMessages)
-                throw new InvalidOperationException($"No notification handlers found for message type {typeof(TMessage).Name}");
-
-            if (configuration.IgnoreUnhandledMessages && configuration.LogUnhandledMessages)
-                logger.Log(configuration.UnhandledMessagesLogLevel, "No notification handlers found for message type {MessageType}. Message: {Message}", typeof(TMessage).Name, message);
-
+        if (!AssertHandler(message, handlers))
             return;
-        }
 
         await Task.WhenAll(handlers.Select(handler => handler.Handle(message, cancellationToken)))
             .ConfigureAwait(false);
@@ -146,9 +105,6 @@ internal class Mediator(ILogger<Mediator> logger, Configuration configuration, I
 
     private IEnumerable<T> Resolve<T>(object message, bool ignore = false)
     {
-        if (message is null)
-            return [];
-
         var messageType = message.GetType();
 
         using var scope = serviceScopeFactory.CreateScope();
@@ -164,18 +120,32 @@ internal class Mediator(ILogger<Mediator> logger, Configuration configuration, I
         }
         catch (InvalidOperationException ex)
         {
-            if (ignore)
-                return [];
-
-            if (!configuration.IgnoreUnhandledMessages)
-                throw new InvalidOperationException($"No handler found for message type {messageType.Name}", ex);
-
-            if (configuration.LogUnhandledMessages)
-                logger.Log(configuration.UnhandledMessagesLogLevel, "No handler found for message type {MessageType}. Message: {Message}", messageType.Name, message);
+            handlers = ResolvesCatching(message, messageType, ex, ignore, handlers);
         }
 
+        return FilterResolves(message, handlers);
+    }
+
+    [ExcludeFromCodeCoverage]
+    private IEnumerable<T> FilterResolves<T>(object message, IEnumerable<T> handlers)
+    {
         if (configuration.TryGetHandlerTypeByMessageFilter(message, out var type))
             return [handlers.First(h => h.GetType() == type)];
+
+        return handlers;
+    }
+
+    [ExcludeFromCodeCoverage]
+    private IEnumerable<T> ResolvesCatching<T>(object message, Type messageType, Exception ex, bool ignore, IEnumerable<T> handlers)
+    {
+        if (ignore)
+            return [];
+
+        if (!configuration.IgnoreUnhandledMessages)
+            throw new InvalidOperationException($"No handler found for message type {messageType.Name}", ex);
+
+        if (configuration.LogUnhandledMessages)
+            logger.Log(configuration.UnhandledMessagesLogLevel, "No handler found for message type {MessageType}. Message: {Message}", messageType.Name, message);
 
         return handlers;
     }

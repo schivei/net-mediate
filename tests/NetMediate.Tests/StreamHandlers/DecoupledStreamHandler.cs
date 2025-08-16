@@ -1,10 +1,11 @@
 ﻿using NetMediate.Tests.Messages;
+using System.Runtime.CompilerServices;
 
 namespace NetMediate.Tests.StreamHandlers;
 
-internal sealed class DecoupledStreamHandler : IStreamHandler<DecoupledValidatableMessage, string>
+internal sealed class DecoupledStreamHandler : BaseHandler, IStreamHandler<DecoupledValidatableMessage, string>
 {
-    public async IAsyncEnumerable<string> Handle(DecoupledValidatableMessage message, CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<string> Handle(DecoupledValidatableMessage message, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
 
@@ -14,5 +15,7 @@ internal sealed class DecoupledStreamHandler : IStreamHandler<DecoupledValidatab
 
             yield break;
         }
+
+        Marks(message);
     }
 }

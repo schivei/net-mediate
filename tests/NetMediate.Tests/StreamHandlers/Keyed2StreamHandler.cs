@@ -1,11 +1,12 @@
 ﻿using NetMediate.Tests.Messages;
+using System.Runtime.CompilerServices;
 
 namespace NetMediate.Tests.StreamHandlers;
 
 [KeyedMessage("keyed2")]
-internal sealed class Keyed2StreamHandler : IStreamHandler<Keyed2Message, string>
+internal sealed class Keyed2StreamHandler : BaseHandler, IStreamHandler<Keyed2Message, string>
 {
-    public async IAsyncEnumerable<string> Handle(Keyed2Message message, CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<string> Handle(Keyed2Message message, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         await Task.CompletedTask;
 
@@ -15,5 +16,7 @@ internal sealed class Keyed2StreamHandler : IStreamHandler<Keyed2Message, string
 
             yield break;
         }
+
+        Marks(message);
     }
 }

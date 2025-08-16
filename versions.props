@@ -1,6 +1,5 @@
 <Project>
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
     <LangVersion>latest</LangVersion>
 	<Suffix Condition="'$(SuffixVersionToVersionInAssembly)' == '-main'"></Suffix>
 	<Suffix Condition="'$(SuffixVersionToVersionInAssembly)' != '-main'">$([System.String]::Copy('$(SuffixVersionToVersionInAssembly)').Replace('/', '_'))</Suffix>

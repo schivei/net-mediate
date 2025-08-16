@@ -1,6 +1,8 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using NetMediate.Internals.Workers;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Threading.Channels;
 
@@ -9,6 +11,7 @@ namespace NetMediate.Internals;
 internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
 {
     private readonly Configuration _configuration;
+    private readonly HashSet<int> _assemblyHashCodes = [];
 
     internal MediatorServiceBuilder(IServiceCollection services)
     {
@@ -16,20 +19,27 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
 
         Services = services;
 
-        Services.AddSingleton<IMediator, Mediator>();
-        Services.AddSingleton(_ => _configuration);
-        Services.AddHostedService<NotificationWorker>();
+        Services.TryAddSingleton<IMediator, Mediator>();
+        Services.TryAddSingleton<INotifiable>(sp => sp.GetRequiredService<IMediator>() as Mediator);
+        Services.TryAddSingleton(_ => _configuration);
+
+        if (!Services.Any(s => s.ServiceType == typeof(NotificationWorker)))
+        {
+            Services.TryAddSingleton<NotificationWorker>();
+            Services.AddHostedService(sp => sp.GetRequiredService<NotificationWorker>());
+        }
     }
 
     public IServiceCollection Services { get; }
 
-    internal IMediatorServiceBuilder MapAssembly<T>() =>
-        MapAssemblies(typeof(T).Assembly);
-
     internal IMediatorServiceBuilder MapAssemblies(params Assembly[] assemblies)
     {
-        if (assemblies.Length == 0)
-            assemblies = [.. AppDomain.CurrentDomain.GetAssemblies().Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))];
+        var assemblyHashCodes = assemblies.Where(a => !_assemblyHashCodes.Contains(a.GetHashCode())).ToArray();
+        if (assemblyHashCodes.Length == 0)
+            return this;
+
+        foreach (var assembly in assemblyHashCodes)
+            _assemblyHashCodes.Add(assembly.GetHashCode());
 
         var types = ExtractTypes(assemblies);
 
@@ -51,10 +61,9 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         return this;
     }
 
-    public IMediatorServiceBuilder FilterNotification<TMessage, THandler>(Func<TMessage, bool> filter)
-        where THandler : class, INotificationHandler<TMessage>
+    private MediatorServiceBuilder Filter<TMessage, THandler, TBase>(Func<TMessage, bool> filter, bool unique = true)
     {
-        Register(typeof(INotificationHandler<TMessage>), typeof(THandler), false);
+        Register(typeof(TBase), typeof(THandler), unique);
 
         _configuration.InstantiateHandlerByMessageFilter<TMessage>(message =>
         {
@@ -65,47 +74,22 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
 
         return this;
     }
+
+    public IMediatorServiceBuilder FilterNotification<TMessage, THandler>(Func<TMessage, bool> filter)
+        where THandler : class, INotificationHandler<TMessage> =>
+        Filter<TMessage, THandler, INotificationHandler<TMessage>>(filter, false);
 
     public IMediatorServiceBuilder FilterCommand<TMessage, THandler>(Func<TMessage, bool> filter)
-        where THandler : class, ICommandHandler<TMessage>
-    {
-        Register(typeof(INotificationHandler<TMessage>), typeof(THandler), false);
-
-        _configuration.InstantiateHandlerByMessageFilter<TMessage>(message =>
-        {
-            if (filter(message))
-                return typeof(THandler);
-            return null;
-        });
-
-        return this;
-    }
+        where THandler : class, ICommandHandler<TMessage> =>
+        Filter<TMessage, THandler, ICommandHandler<TMessage>>(filter);
 
     public IMediatorServiceBuilder FilterRequest<TMessage, THandler>(Func<TMessage, bool> filter)
-        where THandler : class, IRequestHandler<TMessage, object>
-    {
-        Register(typeof(IRequestHandler<TMessage, object>), typeof(THandler), false);
-        _configuration.InstantiateHandlerByMessageFilter<TMessage>(message =>
-        {
-            if (filter(message))
-                return typeof(THandler);
-            return null;
-        });
-        return this;
-    }
+        where THandler : class, IRequestHandler<TMessage, object> =>
+        Filter<TMessage, THandler, IRequestHandler<TMessage, object>>(filter);
 
     public IMediatorServiceBuilder FilterStream<TMessage, THandler>(Func<TMessage, bool> filter)
-        where THandler : class, IStreamHandler<TMessage, object>
-    {
-        Register(typeof(IStreamHandler<TMessage, object>), typeof(THandler), false);
-        _configuration.InstantiateHandlerByMessageFilter<TMessage>(message =>
-        {
-            if (filter(message))
-                return typeof(THandler);
-            return null;
-        });
-        return this;
-    }
+        where THandler : class, IStreamHandler<TMessage, object> =>
+        Filter<TMessage, THandler, IStreamHandler<TMessage, object>>(filter);
 
     public IMediatorServiceBuilder InstantiateHandlerByMessageFilter<TMessage>(Func<TMessage, Type?> filter)
     {
@@ -113,6 +97,14 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
 
         return this;
     }
+
+    private static readonly Type[] s_validInterface = [
+        typeof(IValidationHandler<>),
+        typeof(INotificationHandler<>),
+        typeof(IRequestHandler<,>),
+        typeof(ICommandHandler<>),
+        typeof(IStreamHandler<,>)
+    ];
 
     private void MapValidationHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
         Map(types, typeof(IValidationHandler<>), false);
@@ -142,26 +134,37 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
 
     private void Register(Type interfaceType, Type handlerType, bool unique = true)
     {
+        if (unique)
+            UniqueRegister(interfaceType, handlerType);
+        else
+            MultiRegister(interfaceType, handlerType);
+    }
+
+    private void UniqueRegister(Type interfaceType, Type handlerType)
+    {
         var keyed = handlerType.GetKey();
 
         if (keyed is not null)
-        {
-            if (unique && Services.Any(s => s.ServiceType == interfaceType && s.ServiceKey?.ToString() == keyed))
-                throw new InvalidOperationException($"Service {interfaceType.Name} with key '{keyed}' is already registered.");
-
-            Services.AddKeyedScoped(interfaceType, keyed, handlerType);
-            return;
-        }
-
-        if (unique && Services.Any(s => s.ServiceType == interfaceType))
-            throw new InvalidOperationException($"Service {interfaceType.Name} is already registered.");
-
-        Services.AddScoped(interfaceType, handlerType);
+            Services.TryAddKeyedScoped(interfaceType, keyed, handlerType);
+        else
+            Services.TryAddScoped(interfaceType, handlerType);
     }
 
+    private void MultiRegister(Type interfaceType, Type handlerType)
+    {
+        var keyed = handlerType.GetKey();
+        if (keyed is not null)
+            Services.AddKeyedTransient(interfaceType, keyed, handlerType);
+        else
+            Services.AddTransient(interfaceType, handlerType);
+    }
+
+    [ExcludeFromCodeCoverage]
     private static IEnumerable<(Type handlerType, Type[] interfaces)> ExtractTypes(Assembly[] assemblies) =>
         assemblies
-            .SelectMany(assembly => assembly.ExportedTypes)
-            .Where(type => type.IsClass && !type.IsAbstract && type.GetInterfaces().Length != 0)
-            .Select(type => (handlerType: type, interfaces: type.GetInterfaces()));
+            .SelectMany(assembly => assembly.GetTypes())
+            .Where(type => type.IsClass && !type.IsAbstract && type.GetInterfaces()
+                .Any(i => i.IsGenericType && s_validInterface.Contains(i.GetGenericTypeDefinition())))
+            .Select(type => (handlerType: type, interfaces: type.GetInterfaces()
+                .Where(i => i.IsGenericType && s_validInterface.Contains(i.GetGenericTypeDefinition())).ToArray()));
 }

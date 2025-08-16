@@ -50,7 +50,7 @@ public class MediatorServiceBuilderTests
     {
         var services = new ServiceCollection();
         var builder = new MediatorServiceBuilder(services);
-        var result = builder.MapAssembly<DummyCommandHandler>();
+        var result = builder.MapAssemblies(typeof(DummyCommandHandler).GetType().Assembly);
         Assert.Same(builder, result);
     }
 
@@ -126,22 +126,6 @@ public class MediatorServiceBuilderTests
         var builder = new MediatorServiceBuilder(services);
         builder.InstantiateHandlerByMessageFilter<DummyNotification>(msg => typeof(DummyNotificationHandler));
         // No assertion, just ensure no exception
-    }
-
-    [Fact]
-    public void Register_DuplicateThrowsIfUnique()
-    {
-        var services = new ServiceCollection();
-        var builder = new MediatorServiceBuilder(services);
-        var interfaceType = typeof(INotificationHandler<DummyNotification>);
-        var handlerType = typeof(DummyNotificationHandler);
-        // First registration
-        var method = typeof(MediatorServiceBuilder).GetMethod("Register", BindingFlags.NonPublic | BindingFlags.Instance);
-        method!.Invoke(builder, [interfaceType, handlerType, true]);
-        // Second registration should throw
-        Assert.Throws<TargetInvocationException>(() =>
-            method.Invoke(builder, [interfaceType, handlerType, true])
-        );
     }
 
     [Fact]

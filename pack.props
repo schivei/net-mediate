@@ -16,6 +16,5 @@
 		<Nullable>enable</Nullable>
 		<NoWarn>$(NoWarn);nullable</NoWarn>
 		<TargetFramework>net9.0</TargetFramework>
-		<TargetFrameworks>net8.0;net9.0</TargetFrameworks>
 	</PropertyGroup>
 </Project>

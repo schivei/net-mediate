@@ -2,8 +2,8 @@
 
 namespace NetMediate.Tests.CommandHandlers;
 
-internal sealed class SimpleCommandHandler : ICommandHandler<SimpleMessage>
+internal sealed class SimpleCommandHandler : BaseHandler, ICommandHandler<SimpleMessage>
 {
     public Task Handle(SimpleMessage message, CancellationToken cancellationToken = default) =>
-        Task.CompletedTask;
+        Task.Run(() => Marks(message), cancellationToken);
 }

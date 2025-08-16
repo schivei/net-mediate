@@ -2,8 +2,8 @@
 
 namespace NetMediate.Tests.NotificationHandlers;
 
-internal sealed class SimpleValidatableNotifyHandler : INotificationHandler<SimpleValidatableMessage>
+internal sealed class SimpleValidatableNotifyHandler : BaseHandler, INotificationHandler<SimpleValidatableMessage>
 {
     public Task Handle(SimpleValidatableMessage message, CancellationToken cancellationToken = default) =>
-        Task.CompletedTask;
+        Task.Run(() => Marks(message), cancellationToken);
 }

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<Import Project="..\..\pack.props" />
 	<ItemGroup>
 		<InternalsVisibleTo Include="NetMediate.Tests" />

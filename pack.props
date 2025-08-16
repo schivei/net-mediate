@@ -5,8 +5,9 @@
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<Authors>Elton Schivei Costa</Authors>
 		<Product>Mediator Package</Product>
-		<Description>A lightweight and efficient .NET implementation of the Mediator pattern, providing a clean alternative to MediatR for in-process messaging and communication between components.</Description>
-		<PackageTags>Mediator;MediatR;CQRS;MessageBus;DependencyInjection;Commands;Notifications;Requests;Streaming</PackageTags>
+		<Description>Mediator alternative for MediatR.</Description>
+		<PackageTags>Mediator</PackageTags>
+		<PackageIcon>icon.png</PackageIcon>
 		<DebugType>Full</DebugType>
 		<IsPackable>true</IsPackable>
 		<PackOnBuild>true</PackOnBuild>

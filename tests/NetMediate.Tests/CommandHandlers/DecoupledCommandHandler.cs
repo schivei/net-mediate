@@ -2,8 +2,12 @@
 
 namespace NetMediate.Tests.CommandHandlers;
 
-internal sealed class DecoupledCommandHandler : BaseHandler, ICommandHandler<DecoupledValidatableMessage>
+internal sealed class DecoupledCommandHandler
+    : BaseHandler,
+        ICommandHandler<DecoupledValidatableMessage>
 {
-    public Task Handle(DecoupledValidatableMessage message, CancellationToken cancellationToken = default) =>
-        Task.Run(() => Marks(message), cancellationToken);
+    public Task Handle(
+        DecoupledValidatableMessage message,
+        CancellationToken cancellationToken = default
+    ) => Task.Run(() => Marks(message), cancellationToken);
 }

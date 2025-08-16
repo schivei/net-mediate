@@ -1,8 +1,8 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NetMediate.Internals;
-using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
 
 [assembly: ExcludeFromCodeCoverage]
 
@@ -28,18 +28,20 @@ public sealed class NetMediateFixture : IDisposable
     public async Task RunAsync(Func<IServiceProvider, Task> runner)
     {
         _builder.Services.AddSingleton(new Runner(runner));
-        _builder.Services.AddSingleton(new Terminator(async () =>
-        {
-            try
+        _builder.Services.AddSingleton(
+            new Terminator(async () =>
             {
-                await (_app?.StopAsync(CancellationTokenSource.Token) ?? Task.CompletedTask);
-                CancellationTokenSource.Cancel(false);
-            }
-            catch
-            {
-                // ignore exceptions during shutdown
-            }
-        }));
+                try
+                {
+                    await (_app?.StopAsync(CancellationTokenSource.Token) ?? Task.CompletedTask);
+                    CancellationTokenSource.Cancel(false);
+                }
+                catch
+                {
+                    // ignore exceptions during shutdown
+                }
+            })
+        );
 
         _builder.Services.AddHostedService<RunnerBackgroundService>();
 
@@ -51,10 +53,12 @@ public sealed class NetMediateFixture : IDisposable
     public async Task<TResponse> RunAsync<TResponse>(Func<IServiceProvider, Task<TResponse>> runner)
     {
         TResponse? response = default;
-        await RunAsync(async (sp) =>
-        {
-            response = await runner(sp);
-        });
+        await RunAsync(
+            async (sp) =>
+            {
+                response = await runner(sp);
+            }
+        );
         await WaitAsync();
 
         return response!;
@@ -71,7 +75,11 @@ public sealed class NetMediateFixture : IDisposable
         _app?.Dispose();
     }
 
-    private class RunnerBackgroundService(IServiceProvider ServiceProvider, Runner runner, Terminator terminator) : BackgroundService
+    private class RunnerBackgroundService(
+        IServiceProvider ServiceProvider,
+        Runner runner,
+        Terminator terminator
+    ) : BackgroundService
     {
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {

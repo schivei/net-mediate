@@ -30,7 +30,8 @@ public class ConfigurationTests
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            _configuration.InstantiateHandlerByMessageFilter<TestMessage>(null!));
+            _configuration.InstantiateHandlerByMessageFilter<TestMessage>(null!)
+        );
     }
 
     [Fact]
@@ -38,7 +39,10 @@ public class ConfigurationTests
     {
         // Act
         _configuration.InstantiateHandlerByMessageFilter<TestMessage>(Filter);
-        var result = _configuration.TryGetHandlerTypeByMessageFilter(new TestMessage { Id = 1 }, out var handlerType);
+        var result = _configuration.TryGetHandlerTypeByMessageFilter(
+            new TestMessage { Id = 1 },
+            out var handlerType
+        );
 
         // Assert
         Assert.True(result);
@@ -51,7 +55,10 @@ public class ConfigurationTests
     public void TryGetHandlerTypeByMessageFilter_ReturnsFalse_WhenNoFilterExists()
     {
         // Act
-        var result = _configuration.TryGetHandlerTypeByMessageFilter(new TestMessage(), out var handlerType);
+        var result = _configuration.TryGetHandlerTypeByMessageFilter(
+            new TestMessage(),
+            out var handlerType
+        );
 
         // Assert
         Assert.False(result);
@@ -62,7 +69,9 @@ public class ConfigurationTests
     public void TryGetHandlerTypeByMessageFilter_ReturnsCorrectHandlerType_WhenFilterExists()
     {
         // Arrange
-        _configuration.InstantiateHandlerByMessageFilter<TestMessage>(m => m.Id > 0 ? typeof(TestHandler) : null);
+        _configuration.InstantiateHandlerByMessageFilter<TestMessage>(m =>
+            m.Id > 0 ? typeof(TestHandler) : null
+        );
         var message = new TestMessage { Id = 5 };
 
         // Act
@@ -77,7 +86,9 @@ public class ConfigurationTests
     public void TryGetHandlerTypeByMessageFilter_ReturnsNullHandlerType_WhenFilterReturnsNull()
     {
         // Arrange
-        _configuration.InstantiateHandlerByMessageFilter<TestMessage>(m => m.Id > 0 ? typeof(TestHandler) : null);
+        _configuration.InstantiateHandlerByMessageFilter<TestMessage>(m =>
+            m.Id > 0 ? typeof(TestHandler) : null
+        );
         var message = new TestMessage { Id = -5 };
 
         // Act

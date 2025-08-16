@@ -1,10 +1,10 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
+using System.Threading.Channels;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using NetMediate.Internals.Workers;
-using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
-using System.Threading.Channels;
 
 namespace NetMediate.Internals;
 
@@ -34,7 +34,9 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
 
     internal IMediatorServiceBuilder MapAssemblies(params Assembly[] assemblies)
     {
-        var assemblyHashCodes = assemblies.Where(a => !_assemblyHashCodes.Contains(a.GetHashCode())).ToArray();
+        var assemblyHashCodes = assemblies
+            .Where(a => !_assemblyHashCodes.Contains(a.GetHashCode()))
+            .ToArray();
         if (assemblyHashCodes.Length == 0)
             return this;
 
@@ -52,7 +54,11 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         return this;
     }
 
-    public IMediatorServiceBuilder IgnoreUnhandledMessages(bool ignore = true, bool log = true, LogLevel logLevel = LogLevel.Error)
+    public IMediatorServiceBuilder IgnoreUnhandledMessages(
+        bool ignore = true,
+        bool log = true,
+        LogLevel logLevel = LogLevel.Error
+    )
     {
         _configuration.IgnoreUnhandledMessages = ignore;
         _configuration.LogUnhandledMessages = log;
@@ -61,7 +67,10 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         return this;
     }
 
-    private MediatorServiceBuilder Filter<TMessage, THandler, TBase>(Func<TMessage, bool> filter, bool unique = true)
+    private MediatorServiceBuilder Filter<TMessage, THandler, TBase>(
+        Func<TMessage, bool> filter,
+        bool unique = true
+    )
     {
         Register(typeof(TBase), typeof(THandler), unique);
 
@@ -75,7 +84,9 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         return this;
     }
 
-    public IMediatorServiceBuilder FilterNotification<TMessage, THandler>(Func<TMessage, bool> filter)
+    public IMediatorServiceBuilder FilterNotification<TMessage, THandler>(
+        Func<TMessage, bool> filter
+    )
         where THandler : class, INotificationHandler<TMessage> =>
         Filter<TMessage, THandler, INotificationHandler<TMessage>>(filter, false);
 
@@ -91,26 +102,30 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         where THandler : class, IStreamHandler<TMessage, object> =>
         Filter<TMessage, THandler, IStreamHandler<TMessage, object>>(filter);
 
-    public IMediatorServiceBuilder InstantiateHandlerByMessageFilter<TMessage>(Func<TMessage, Type?> filter)
+    public IMediatorServiceBuilder InstantiateHandlerByMessageFilter<TMessage>(
+        Func<TMessage, Type?> filter
+    )
     {
         _configuration.InstantiateHandlerByMessageFilter(filter);
 
         return this;
     }
 
-    private static readonly Type[] s_validInterface = [
+    private static readonly Type[] s_validInterface =
+    [
         typeof(IValidationHandler<>),
         typeof(INotificationHandler<>),
         typeof(IRequestHandler<,>),
         typeof(ICommandHandler<>),
-        typeof(IStreamHandler<,>)
+        typeof(IStreamHandler<,>),
     ];
 
     private void MapValidationHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
         Map(types, typeof(IValidationHandler<>), false);
 
-    private void MapNotificationHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
-        Map(types, typeof(INotificationHandler<>), false);
+    private void MapNotificationHandlers(
+        IEnumerable<(Type handlerType, Type[] interfaces)> types
+    ) => Map(types, typeof(INotificationHandler<>), false);
 
     private void MapRequestHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
         Map(types, typeof(IRequestHandler<,>));
@@ -121,12 +136,27 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
     private void MapStreamHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
         Map(types, typeof(IStreamHandler<,>));
 
-    private void Map(IEnumerable<(Type handlerType, Type[] interfaces)> types, Type handlerInterface, bool unique = true)
+    private void Map(
+        IEnumerable<(Type handlerType, Type[] interfaces)> types,
+        Type handlerInterface,
+        bool unique = true
+    )
     {
         var handlerTypes = types
-                    .Where(type => type.interfaces.Any(i => i.IsGenericType && i.GetGenericTypeDefinition() == handlerInterface))
-                    .Select(type => (type.handlerType, interfaceType: type.interfaces.First(x => x.IsGenericType && x.GetGenericTypeDefinition() == handlerInterface)))
-                    .ToList();
+            .Where(type =>
+                type.interfaces.Any(i =>
+                    i.IsGenericType && i.GetGenericTypeDefinition() == handlerInterface
+                )
+            )
+            .Select(type =>
+                (
+                    type.handlerType,
+                    interfaceType: type.interfaces.First(x =>
+                        x.IsGenericType && x.GetGenericTypeDefinition() == handlerInterface
+                    )
+                )
+            )
+            .ToList();
 
         foreach (var (handlerType, interfaceType) in handlerTypes)
             Register(interfaceType, handlerType, unique);
@@ -160,11 +190,28 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
     }
 
     [ExcludeFromCodeCoverage]
-    private static IEnumerable<(Type handlerType, Type[] interfaces)> ExtractTypes(Assembly[] assemblies) =>
+    private static IEnumerable<(Type handlerType, Type[] interfaces)> ExtractTypes(
+        Assembly[] assemblies
+    ) =>
         assemblies
             .SelectMany(assembly => assembly.GetTypes())
-            .Where(type => type.IsClass && !type.IsAbstract && type.GetInterfaces()
-                .Any(i => i.IsGenericType && s_validInterface.Contains(i.GetGenericTypeDefinition())))
-            .Select(type => (handlerType: type, interfaces: type.GetInterfaces()
-                .Where(i => i.IsGenericType && s_validInterface.Contains(i.GetGenericTypeDefinition())).ToArray()));
+            .Where(type =>
+                type.IsClass
+                && !type.IsAbstract
+                && type.GetInterfaces()
+                    .Any(i =>
+                        i.IsGenericType && s_validInterface.Contains(i.GetGenericTypeDefinition())
+                    )
+            )
+            .Select(type =>
+                (
+                    handlerType: type,
+                    interfaces: type.GetInterfaces()
+                        .Where(i =>
+                            i.IsGenericType
+                            && s_validInterface.Contains(i.GetGenericTypeDefinition())
+                        )
+                        .ToArray()
+                )
+            );
 }

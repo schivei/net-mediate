@@ -17,5 +17,8 @@ public interface IValidationHandler<TMessage>
     /// A <see cref="ValueTask{ValidationResult}"/> representing the asynchronous validation operation.
     /// The result contains a <see cref="ValidationResult"/> indicating the outcome of the validation.
     /// </returns>
-    ValueTask<ValidationResult> ValidateAsync(TMessage message, CancellationToken cancellationToken = default);
+    ValueTask<ValidationResult> ValidateAsync(
+        TMessage message,
+        CancellationToken cancellationToken = default
+    );
 }

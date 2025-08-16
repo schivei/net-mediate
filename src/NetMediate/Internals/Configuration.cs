@@ -1,5 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
-using System.Threading.Channels;
+﻿using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
 
 namespace NetMediate.Internals;
 
@@ -29,7 +29,7 @@ internal sealed class Configuration(Channel<object> channel) : IAsyncDisposable
     public bool TryGetHandlerTypeByMessageFilter<TMessage>(TMessage message, out Type? handlerType)
     {
         handlerType = null;
-    
+
         if (_filters.TryGetValue(typeof(TMessage), out var filter))
         {
             handlerType = filter(message);

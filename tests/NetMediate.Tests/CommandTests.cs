@@ -5,14 +5,18 @@ namespace NetMediate.Tests;
 
 public sealed class CommandTests
 {
-    private static async Task CommandHandle<T>(T message, bool expected, bool required = true) where T : BaseMessage
+    private static async Task CommandHandle<T>(T message, bool expected, bool required = true)
+        where T : BaseMessage
     {
         using var fixture = new NetMediateFixture();
 
-        await fixture.RunAsync(async (sp) => {
-            var mediator = sp.GetRequiredService<IMediator>();
-            await mediator.Send(message, fixture.CancellationTokenSource.Token);
-        });
+        await fixture.RunAsync(
+            async (sp) =>
+            {
+                var mediator = sp.GetRequiredService<IMediator>();
+                await mediator.Send(message, fixture.CancellationTokenSource.Token);
+            }
+        );
 
         // Act
         await fixture.WaitAsync();
@@ -34,42 +38,56 @@ public sealed class CommandTests
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task DecoupledCommandHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        CommandHandle(new DecoupledValidatableMessage(name), expected, false);
+    public Task DecoupledCommandHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => CommandHandle(new DecoupledValidatableMessage(name), expected, false);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task Keyed1CommandHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        CommandHandle(new Keyed1ValidatableMessage(name), expected);
+    public Task Keyed1CommandHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => CommandHandle(new Keyed1ValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task Keyed1ValidatableCommandHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        CommandHandle(new Keyed1ValidatableMessage(name), expected);
+    public Task Keyed1ValidatableCommandHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => CommandHandle(new Keyed1ValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task Keyed2CommandHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        CommandHandle(new Keyed2ValidatableMessage(name), expected);
+    public Task Keyed2CommandHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => CommandHandle(new Keyed2ValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task Keyed2ValidatableCommandHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        CommandHandle(new Keyed2ValidatableMessage(name), expected);
+    public Task Keyed2ValidatableCommandHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => CommandHandle(new Keyed2ValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task SimpleCommandHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        CommandHandle(new SimpleValidatableMessage(name), expected);
+    public Task SimpleCommandHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => CommandHandle(new SimpleValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task SimpleValidatableCommandHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        CommandHandle(new SimpleValidatableMessage(name), expected);
+    public Task SimpleValidatableCommandHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => CommandHandle(new SimpleValidatableMessage(name), expected);
 }

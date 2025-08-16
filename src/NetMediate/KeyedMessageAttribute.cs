@@ -10,7 +10,11 @@
 /// <param name="serviceKey">
 /// The unique key associated with the message type.
 /// </param>
-[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited = false, AllowMultiple = false)]
+[AttributeUsage(
+    AttributeTargets.Class | AttributeTargets.Struct,
+    Inherited = false,
+    AllowMultiple = false
+)]
 public sealed class KeyedMessageAttribute(string serviceKey) : Attribute
 {
     /// <summary>

@@ -1,7 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using NetMediate.Internals;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
+using NetMediate.Internals;
 
 namespace NetMediate;
 
@@ -20,7 +20,14 @@ public static class NetMediateDI
     /// <param name="services">The service collection to add NetMediate services to.</param>
     /// <returns>A <see cref="IMediatorServiceBuilder"/> instance for additional configuration.</returns>
     public static IMediatorServiceBuilder AddNetMediate(this IServiceCollection services) =>
-        AddNetMediate(services, [.. AppDomain.CurrentDomain.GetAssemblies().Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))]);
+        AddNetMediate(
+            services,
+            [
+                .. AppDomain
+                    .CurrentDomain.GetAssemblies()
+                    .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location)),
+            ]
+        );
 
     /// <summary>
     /// Adds NetMediate services to the specified <see cref="IServiceCollection"/> and returns a <see cref="IMediatorServiceBuilder"/>
@@ -39,6 +46,11 @@ public static class NetMediateDI
     /// <param name="services">The service collection to add NetMediate services to.</param>
     /// <param name="assemblies">Assemblies to scan for handlers.</param>
     /// <returns>A <see cref="IMediatorServiceBuilder"/> instance for additional configuration.</returns>
-    public static IMediatorServiceBuilder AddNetMediate(this IServiceCollection services, params Assembly[] assemblies) =>
-        (_mediatorServiceBuilder ??= new MediatorServiceBuilder(services)).MapAssemblies(assemblies);
+    public static IMediatorServiceBuilder AddNetMediate(
+        this IServiceCollection services,
+        params Assembly[] assemblies
+    ) =>
+        (_mediatorServiceBuilder ??= new MediatorServiceBuilder(services)).MapAssemblies(
+            assemblies
+        );
 }

@@ -29,14 +29,18 @@ public class MediatorTests
         {
             IgnoreUnhandledMessages = false,
             LogUnhandledMessages = true,
-            UnhandledMessagesLogLevel = LogLevel.Warning
+            UnhandledMessagesLogLevel = LogLevel.Warning,
         };
 
         _serviceScopeFactoryMock.Setup(f => f.CreateScope()).Returns(_serviceScopeMock.Object);
         _serviceScopeMock.Setup(s => s.ServiceProvider).Returns(_serviceProviderMock.Object);
         _serviceScopeMock.Setup(s => s.Dispose());
 
-        _mediator = new Mediator(_loggerMock.Object, _configuration, _serviceScopeFactoryMock.Object);
+        _mediator = new Mediator(
+            _loggerMock.Object,
+            _configuration,
+            _serviceScopeFactoryMock.Object
+        );
     }
 
     #region Notify Tests
@@ -87,7 +91,8 @@ public class MediatorTests
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<MessageValidationException>(() =>
-            _mediator.Notify(message));
+            _mediator.Notify(message)
+        );
         Assert.Equal("Validation failed", exception.Message);
     }
 
@@ -105,7 +110,8 @@ public class MediatorTests
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<MessageValidationException>(() =>
-            _mediator.Notify(message));
+            _mediator.Notify(message)
+        );
         Assert.Equal("External validation failed", exception.Message);
     }
 
@@ -140,8 +146,7 @@ public class MediatorTests
         SetupHandler<ICommandHandler<TestMessage>>([]);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _mediator.Send(message));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _mediator.Send(message));
     }
 
     [Fact]
@@ -170,9 +175,7 @@ public class MediatorTests
         var message = new TestRequest { Id = 1 };
         var response = new TestResponse { Value = "Response" };
         var handler = new Mock<IRequestHandler<TestRequest, TestResponse>>();
-        handler
-            .Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(response);
+        handler.Setup(h => h.Handle(message, It.IsAny<CancellationToken>())).ReturnsAsync(response);
 
         SetupHandler(handler.Object);
 
@@ -189,12 +192,12 @@ public class MediatorTests
     {
         // Arrange
         var message = new TestRequest { Id = 1 };
-        SetupHandler<IRequestHandler<TestRequest, TestResponse>>(
-            []);
+        SetupHandler<IRequestHandler<TestRequest, TestResponse>>([]);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _mediator.Request<TestRequest, TestResponse>(message));
+            _mediator.Request<TestRequest, TestResponse>(message)
+        );
     }
 
     [Fact]
@@ -203,8 +206,7 @@ public class MediatorTests
         // Arrange
         var message = new TestRequest { Id = 1 };
         _configuration.IgnoreUnhandledMessages = true;
-        SetupHandler<IRequestHandler<TestRequest, TestResponse>>(
-            []);
+        SetupHandler<IRequestHandler<TestRequest, TestResponse>>([]);
 
         // Act
         var result = await _mediator.Request<TestRequest, TestResponse>(message);
@@ -223,9 +225,10 @@ public class MediatorTests
     {
         // Arrange
         var message = new TestRequest { Id = 1 };
-        var responses = new[] {
+        var responses = new[]
+        {
             new TestResponse { Value = "Response1" },
-            new TestResponse { Value = "Response2" }
+            new TestResponse { Value = "Response2" },
         };
 
         var handler = new Mock<IStreamHandler<TestRequest, TestResponse>>();
@@ -253,8 +256,7 @@ public class MediatorTests
     {
         // Arrange
         var message = new TestRequest { Id = 1 };
-        SetupHandler<IStreamHandler<TestRequest, TestResponse>>(
-            []);
+        SetupHandler<IStreamHandler<TestRequest, TestResponse>>([]);
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
@@ -270,8 +272,7 @@ public class MediatorTests
         // Arrange
         var message = new TestRequest { Id = 1 };
         _configuration.IgnoreUnhandledMessages = true;
-        SetupHandler<IStreamHandler<TestRequest, TestResponse>>(
-            []);
+        SetupHandler<IStreamHandler<TestRequest, TestResponse>>([]);
 
         // Act
         var results = new List<TestResponse>();
@@ -297,9 +298,11 @@ public class MediatorTests
         var handler1 = new Mock<INotificationHandler<TestMessage>>();
         var handler2 = new Mock<INotificationHandler<TestMessage>>();
 
-        handler1.Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
+        handler1
+            .Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        handler2.Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
+        handler2
+            .Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         SetupHandler<INotificationHandler<TestMessage>>([handler1.Object, handler2.Object]);
@@ -320,8 +323,7 @@ public class MediatorTests
         SetupHandler<INotificationHandler<TestMessage>>([]);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _mediator.Notifies(message));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _mediator.Notifies(message));
     }
 
     [Fact]
@@ -343,30 +345,33 @@ public class MediatorTests
 
     #region Helpers
 
-    private void SetupHandler<T>(T handler) where T : class
+    private void SetupHandler<T>(T handler)
+        where T : class
     {
         _serviceProviderMock
             .Setup(p => p.GetService(typeof(IEnumerable<T>)))
             .Returns(new[] { handler });
     }
 
-    private void SetupHandler<T>(IEnumerable<T> handlers) where T : class
+    private void SetupHandler<T>(IEnumerable<T> handlers)
+        where T : class
     {
-        _serviceProviderMock
-            .Setup(p => p.GetService(typeof(IEnumerable<T>)))
-            .Returns(handlers);
+        _serviceProviderMock.Setup(p => p.GetService(typeof(IEnumerable<T>))).Returns(handlers);
     }
 
     private void VerifyLoggerCalled(LogLevel level, string contains)
     {
         _loggerMock.Verify(
-            x => x.Log(
-                It.Is<LogLevel>(l => l == level),
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains(contains)),
-                It.IsAny<Exception?>(),
-                It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
-            Times.AtLeastOnce);
+            x =>
+                x.Log(
+                    It.Is<LogLevel>(l => l == level),
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains(contains)),
+                    It.IsAny<Exception?>(),
+                    It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)
+                ),
+            Times.AtLeastOnce
+        );
     }
 
     private static async IAsyncEnumerable<T> GetAsyncEnumerable<T>(IEnumerable<T> items)
@@ -402,9 +407,9 @@ public class MediatorTests
         public bool ShouldFail { get; set; }
 
         public Task<ValidationResult> ValidateAsync() =>
-            Task.FromResult(ShouldFail
-                ? new ValidationResult("Validation failed")
-                : ValidationResult.Success!);
+            Task.FromResult(
+                ShouldFail ? new ValidationResult("Validation failed") : ValidationResult.Success!
+            );
     }
 
     #endregion

@@ -13,5 +13,8 @@ public interface IStreamHandler<in TMessage, TResponse>
     /// <param name="query">The message to handle.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
     /// <returns>An <see cref="IAsyncEnumerable{TResponse}"/> representing the stream of responses.</returns>
-    IAsyncEnumerable<TResponse> Handle(TMessage query, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<TResponse> Handle(
+        TMessage query,
+        CancellationToken cancellationToken = default
+    );
 }

@@ -1,5 +1,4 @@
-﻿
-namespace NetMediate.Tests;
+﻿namespace NetMediate.Tests;
 
 public static class NetMediateFixtureExtensions
 {

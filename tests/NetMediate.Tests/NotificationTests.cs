@@ -5,16 +5,19 @@ namespace NetMediate.Tests;
 
 public sealed class NotificationTests
 {
-    private static async Task NotificationHandle<T>(T message, bool expected, bool required = true) where T : BaseMessage
+    private static async Task NotificationHandle<T>(T message, bool expected, bool required = true)
+        where T : BaseMessage
     {
         using var fixture = new NetMediateFixture();
 
-        await fixture.RunAsync(async (sp) =>
-        {
-            var mediator = sp.GetRequiredService<IMediator>();
-            await mediator.Notify(message, fixture.CancellationTokenSource.Token);
-            await Task.Delay(500);
-        });
+        await fixture.RunAsync(
+            async (sp) =>
+            {
+                var mediator = sp.GetRequiredService<IMediator>();
+                await mediator.Notify(message, fixture.CancellationTokenSource.Token);
+                await Task.Delay(500);
+            }
+        );
 
         // Act
         await fixture.WaitAsync();
@@ -36,42 +39,56 @@ public sealed class NotificationTests
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task DecoupledNotificationHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        NotificationHandle(new DecoupledValidatableMessage(name), expected, false);
+    public Task DecoupledNotificationHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => NotificationHandle(new DecoupledValidatableMessage(name), expected, false);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task Keyed1NotificationHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        NotificationHandle(new Keyed1ValidatableMessage(name), expected);
+    public Task Keyed1NotificationHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => NotificationHandle(new Keyed1ValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task Keyed1ValidatableNotificationHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        NotificationHandle(new Keyed1ValidatableMessage(name), expected);
+    public Task Keyed1ValidatableNotificationHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => NotificationHandle(new Keyed1ValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task Keyed2NotificationHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        NotificationHandle(new Keyed2ValidatableMessage(name), expected);
+    public Task Keyed2NotificationHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => NotificationHandle(new Keyed2ValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task Keyed2ValidatableNotificationHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        NotificationHandle(new Keyed2ValidatableMessage(name), expected);
+    public Task Keyed2ValidatableNotificationHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => NotificationHandle(new Keyed2ValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task SimpleNotificationHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        NotificationHandle(new SimpleValidatableMessage(name), expected);
+    public Task SimpleNotificationHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => NotificationHandle(new SimpleValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task SimpleValidatableNotificationHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        NotificationHandle(new SimpleValidatableMessage(name), expected);
+    public Task SimpleValidatableNotificationHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => NotificationHandle(new SimpleValidatableMessage(name), expected);
 }

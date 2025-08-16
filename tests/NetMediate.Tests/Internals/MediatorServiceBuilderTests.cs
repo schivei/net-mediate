@@ -1,38 +1,55 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using NetMediate.Internals;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NetMediate.Internals;
 
 namespace NetMediate.Tests.Internals;
 
 public class MediatorServiceBuilderTests
 {
-    public class DummyNotification { public bool Valid { get; set; } }
+    public class DummyNotification
+    {
+        public bool Valid { get; set; }
+    }
+
     public class DummyCommand { }
+
     public class DummyRequest { }
+
     public class DummyStream { }
+
     public class DummyValidation { }
 
     public class DummyNotificationHandler : INotificationHandler<DummyNotification>
     {
-        public Task Handle(DummyNotification notification, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task Handle(
+            DummyNotification notification,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
     }
 
     public class DummyCommandHandler : ICommandHandler<DummyCommand>
     {
-        public Task Handle(DummyCommand command, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task Handle(DummyCommand command, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     public class DummyRequestHandler : IRequestHandler<DummyRequest, object>
     {
-        public Task<object> Handle(DummyRequest query, CancellationToken cancellationToken = default) => Task.FromResult<object>(null!);
+        public Task<object> Handle(
+            DummyRequest query,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult<object>(null!);
     }
 
     public class DummyStreamHandler : IStreamHandler<DummyStream, object>
     {
-        public async IAsyncEnumerable<object> Handle(DummyStream query, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public async IAsyncEnumerable<object> Handle(
+            DummyStream query,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default
+        )
         {
             yield return new object();
             await Task.CompletedTask;
@@ -41,8 +58,10 @@ public class MediatorServiceBuilderTests
 
     public class DummyValidationHandler : IValidationHandler<DummyValidation>
     {
-        public ValueTask<ValidationResult> ValidateAsync(DummyValidation message, CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(new ValidationResult("Dummy validation result"));
+        public ValueTask<ValidationResult> ValidateAsync(
+            DummyValidation message,
+            CancellationToken cancellationToken = default
+        ) => ValueTask.FromResult(new ValidationResult("Dummy validation result"));
     }
 
     [Fact]
@@ -78,14 +97,28 @@ public class MediatorServiceBuilderTests
         var services = new ServiceCollection();
         var builder = new MediatorServiceBuilder(services);
         var called = false;
-        builder.FilterNotification<DummyNotification, DummyNotificationHandler>(msg => { called = true; return msg.Valid; });
-        Assert.Contains(services, s => s.ServiceType == typeof(INotificationHandler<DummyNotification>));
+        builder.FilterNotification<DummyNotification, DummyNotificationHandler>(msg =>
+        {
+            called = true;
+            return msg.Valid;
+        });
+        Assert.Contains(
+            services,
+            s => s.ServiceType == typeof(INotificationHandler<DummyNotification>)
+        );
         var configuration = services.BuildServiceProvider().GetRequiredService<Configuration>();
-        Assert.True(configuration.TryGetHandlerTypeByMessageFilter(new DummyNotification(), out var type));
+        Assert.True(
+            configuration.TryGetHandlerTypeByMessageFilter(new DummyNotification(), out var type)
+        );
         Assert.Null(type);
         Assert.True(called, "Filter should have been called");
         called = false;
-        Assert.True(configuration.TryGetHandlerTypeByMessageFilter(new DummyNotification { Valid = true }, out var handlerType));
+        Assert.True(
+            configuration.TryGetHandlerTypeByMessageFilter(
+                new DummyNotification { Valid = true },
+                out var handlerType
+            )
+        );
         Assert.True(called, "Filter should have been called");
         Assert.Equal(typeof(DummyNotificationHandler), handlerType);
     }
@@ -124,7 +157,9 @@ public class MediatorServiceBuilderTests
     {
         var services = new ServiceCollection();
         var builder = new MediatorServiceBuilder(services);
-        builder.InstantiateHandlerByMessageFilter<DummyNotification>(msg => typeof(DummyNotificationHandler));
+        builder.InstantiateHandlerByMessageFilter<DummyNotification>(msg =>
+            typeof(DummyNotificationHandler)
+        );
         // No assertion, just ensure no exception
     }
 
@@ -135,13 +170,19 @@ public class MediatorServiceBuilderTests
         var builder = new MediatorServiceBuilder(services);
         var types = new[]
         {
-            (typeof(DummyNotificationHandler), new[] { typeof(INotificationHandler<DummyNotification>) }),
+            (
+                typeof(DummyNotificationHandler),
+                new[] { typeof(INotificationHandler<DummyNotification>) }
+            ),
             (typeof(DummyCommandHandler), [typeof(ICommandHandler<DummyCommand>)]),
             (typeof(DummyRequestHandler), [typeof(IRequestHandler<DummyRequest, object>)]),
             (typeof(DummyStreamHandler), [typeof(IStreamHandler<DummyStream, object>)]),
-            (typeof(DummyValidationHandler), [typeof(IValidationHandler<DummyValidation>)])
+            (typeof(DummyValidationHandler), [typeof(IValidationHandler<DummyValidation>)]),
         };
-        var mapMethod = typeof(MediatorServiceBuilder).GetMethod("Map", BindingFlags.NonPublic | BindingFlags.Instance);
+        var mapMethod = typeof(MediatorServiceBuilder).GetMethod(
+            "Map",
+            BindingFlags.NonPublic | BindingFlags.Instance
+        );
         mapMethod!.Invoke(builder, [types, typeof(INotificationHandler<>), false]);
         Assert.Contains(services, s => s.ImplementationType == typeof(DummyNotificationHandler));
     }
@@ -150,9 +191,10 @@ public class MediatorServiceBuilderTests
     public void ExtractTypes_ReturnsExpectedTypes()
     {
         var assemblies = new[] { typeof(DummyNotificationHandler).Assembly };
-        var result = typeof(MediatorServiceBuilder)
-            .GetMethod("ExtractTypes", BindingFlags.NonPublic | BindingFlags.Static)!
-            .Invoke(null, [assemblies]) as IEnumerable<(Type, Type[])>;
+        var result =
+            typeof(MediatorServiceBuilder)
+                .GetMethod("ExtractTypes", BindingFlags.NonPublic | BindingFlags.Static)!
+                .Invoke(null, [assemblies]) as IEnumerable<(Type, Type[])>;
         Assert.Contains(result!, t => t.Item1 == typeof(DummyNotificationHandler));
     }
 }

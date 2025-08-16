@@ -1,10 +1,14 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using System.Threading.Channels;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.Threading.Channels;
 
 namespace NetMediate.Internals.Workers;
 
-internal sealed class NotificationWorker(INotifiable mediator, Configuration configuration, ILogger<NotificationWorker> logger) : BackgroundService
+internal sealed class NotificationWorker(
+    INotifiable mediator,
+    Configuration configuration,
+    ILogger<NotificationWorker> logger
+) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -30,7 +34,7 @@ internal sealed class NotificationWorker(INotifiable mediator, Configuration con
         {
             logger.LogDebug("System operation was canceled, stopping notification worker.");
         }
-        
+
         await configuration.DisposeAsync();
 
         logger.LogDebug("Notification worker stopped.");
@@ -45,16 +49,27 @@ internal sealed class NotificationWorker(INotifiable mediator, Configuration con
 
             try
             {
-                logger.LogDebug("Processing message of type {MessageType}: {Message}", message.GetType().Name, message);
+                logger.LogDebug(
+                    "Processing message of type {MessageType}: {Message}",
+                    message.GetType().Name,
+                    message
+                );
                 await mediator.Notifies(message, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException and not ChannelClosedException)
+            catch (Exception ex)
+                when (ex is not OperationCanceledException and not ChannelClosedException)
             {
                 if (!configuration.IgnoreUnhandledMessages)
                     throw;
 
                 if (configuration.LogUnhandledMessages)
-                    logger.Log(configuration.UnhandledMessagesLogLevel, ex, "Error processing message of type {MessageType}: {Message}", message.GetType().Name, message);
+                    logger.Log(
+                        configuration.UnhandledMessagesLogLevel,
+                        ex,
+                        "Error processing message of type {MessageType}: {Message}",
+                        message.GetType().Name,
+                        message
+                    );
             }
         }
     }

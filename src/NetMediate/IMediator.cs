@@ -31,7 +31,10 @@ public interface IMediator
     /// <param name="message">The request message to send.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation, containing the response.</returns>
-    Task<TResponse> Request<TMessage, TResponse>(TMessage message, CancellationToken cancellationToken = default);
+    Task<TResponse> Request<TMessage, TResponse>(
+        TMessage message,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Sends a request message to a handler and receives a stream of responses asynchronously.
@@ -41,5 +44,8 @@ public interface IMediator
     /// <param name="message">The request message to send.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the operation to complete.</param>
     /// <returns>An asynchronous stream of responses.</returns>
-    IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(TMessage message, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
+        TMessage message,
+        CancellationToken cancellationToken = default
+    );
 }

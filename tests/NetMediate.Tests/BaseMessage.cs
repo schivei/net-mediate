@@ -4,6 +4,5 @@ internal abstract record BaseMessage
 {
     public bool Runned { get; private set; }
 
-    public void Run() =>
-        Runned = true;
+    public void Run() => Runned = true;
 }

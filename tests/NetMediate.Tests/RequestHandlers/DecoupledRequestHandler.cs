@@ -2,8 +2,12 @@
 
 namespace NetMediate.Tests.RequestHandlers;
 
-internal sealed class DecoupledRequestHandler : BaseHandler, IRequestHandler<DecoupledValidatableMessage, string>
+internal sealed class DecoupledRequestHandler
+    : BaseHandler,
+        IRequestHandler<DecoupledValidatableMessage, string>
 {
-    public Task<string> Handle(DecoupledValidatableMessage message, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Marks(message).Name);
+    public Task<string> Handle(
+        DecoupledValidatableMessage message,
+        CancellationToken cancellationToken = default
+    ) => Task.FromResult(Marks(message).Name);
 }

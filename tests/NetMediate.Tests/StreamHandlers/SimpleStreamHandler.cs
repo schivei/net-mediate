@@ -1,11 +1,14 @@
-﻿using NetMediate.Tests.Messages;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
+using NetMediate.Tests.Messages;
 
 namespace NetMediate.Tests.StreamHandlers;
 
 internal sealed class SimpleStreamHandler : BaseHandler, IStreamHandler<SimpleMessage, string>
 {
-    public async IAsyncEnumerable<string> Handle(SimpleMessage message, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<string> Handle(
+        SimpleMessage message,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
         await Task.CompletedTask;
 

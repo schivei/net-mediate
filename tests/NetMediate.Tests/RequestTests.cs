@@ -5,16 +5,26 @@ namespace NetMediate.Tests;
 
 public sealed class RequestTests
 {
-    private static async Task RequestHandle<TMessage>(TMessage message, bool expected, bool required = true) where TMessage : BaseMessage
+    private static async Task RequestHandle<TMessage>(
+        TMessage message,
+        bool expected,
+        bool required = true
+    )
+        where TMessage : BaseMessage
     {
         using var fixture = new NetMediateFixture();
 
         // Act
-        var response = await fixture.RunAsync(async (sp) =>
-        {
-            var mediator = sp.GetRequiredService<IMediator>();
-            return await mediator.Request<TMessage, string>(message, fixture.CancellationTokenSource.Token);
-        });
+        var response = await fixture.RunAsync(
+            async (sp) =>
+            {
+                var mediator = sp.GetRequiredService<IMediator>();
+                return await mediator.Request<TMessage, string>(
+                    message,
+                    fixture.CancellationTokenSource.Token
+                );
+            }
+        );
 
         // Assert
         Assert.Equal(expected, message.Runned);
@@ -36,42 +46,56 @@ public sealed class RequestTests
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task DecoupledRequestHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        RequestHandle(new DecoupledValidatableMessage(name), expected, false);
+    public Task DecoupledRequestHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => RequestHandle(new DecoupledValidatableMessage(name), expected, false);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task Keyed1RequestHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        RequestHandle(new Keyed1ValidatableMessage(name), expected);
+    public Task Keyed1RequestHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => RequestHandle(new Keyed1ValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task Keyed1ValidatableRequestHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        RequestHandle(new Keyed1ValidatableMessage(name), expected);
+    public Task Keyed1ValidatableRequestHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => RequestHandle(new Keyed1ValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task Keyed2RequestHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        RequestHandle(new Keyed2ValidatableMessage(name), expected);
+    public Task Keyed2RequestHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => RequestHandle(new Keyed2ValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task Keyed2ValidatableRequestHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        RequestHandle(new Keyed2ValidatableMessage(name), expected);
+    public Task Keyed2ValidatableRequestHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => RequestHandle(new Keyed2ValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task SimpleRequestHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        RequestHandle(new SimpleValidatableMessage(name), expected);
+    public Task SimpleRequestHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => RequestHandle(new SimpleValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]
     [InlineData("wrong", false)]
-    public Task SimpleValidatableRequestHandler_Handle_ShouldCompleteSuccessfully(string name, bool expected) =>
-        RequestHandle(new SimpleValidatableMessage(name), expected);
+    public Task SimpleValidatableRequestHandler_Handle_ShouldCompleteSuccessfully(
+        string name,
+        bool expected
+    ) => RequestHandle(new SimpleValidatableMessage(name), expected);
 }

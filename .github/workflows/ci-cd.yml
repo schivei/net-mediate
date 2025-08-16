@@ -1,5 +1,9 @@
 name: CI/CD Pipeline
 
+permissions:
+  contents: read
+  pull-requests: write
+
 on:
   push:
     branches: [ main, develop, 'feature/*', 'hotfix/*', 'release/*' ]
@@ -14,9 +18,10 @@ env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
 
 jobs:
-  code-formatting:
+  format-check:
     name: Code Formatting Check
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     
     steps:
     - name: Checkout code
@@ -35,10 +40,121 @@ jobs:
     - name: Check code formatting with CSharpier
       run: dotnet csharpier check .
       continue-on-error: true
+      
+    - name: Comment on PR if formatting issues found
+      if: failure()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const comment = `## ❌ Code Formatting Check Failed
+          
+          The code formatting check failed. Please run the following command to fix formatting issues:
+          
+          \`\`\`bash
+          dotnet csharpier format .
+          \`\`\`
+          
+          Then commit and push the changes.`;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  documentation-check:
+    name: XML Documentation Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+        
+    - name: Setup .NET SDK 9.0.x
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+        
+    - name: Restore dependencies
+      run: dotnet restore src/NetMediate/NetMediate.csproj
+      
+    - name: Build with XML documentation enforcement
+      run: dotnet build src/NetMediate/NetMediate.csproj --no-restore --configuration Release --verbosity normal
+      
+    - name: Comment on PR if documentation issues found
+      if: failure()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const comment = `## ❌ XML Documentation Check Failed
+          
+          Missing XML documentation detected. All public types and their public members must have XML documentation comments.
+          
+          Please ensure that:
+          - All public classes, interfaces, enums, and structs have \`/// <summary>\` comments
+          - All public methods, properties, fields, and events have XML documentation
+          - All method parameters have \`/// <param>\` documentation
+          - All return values have \`/// <returns>\` documentation
+          
+          Example:
+          \`\`\`csharp
+          /// <summary>
+          /// Describes what this class does.
+          /// </summary>
+          public class MyClass
+          {
+              /// <summary>
+              /// Describes what this property represents.
+              /// </summary>
+              public string MyProperty { get; set; }
+              
+              /// <summary>
+              /// Describes what this method does.
+              /// </summary>
+              /// <param name="parameter">Describes the parameter.</param>
+              /// <returns>Describes what is returned.</returns>
+              public string MyMethod(string parameter)
+              {
+                  return parameter;
+              }
+          }
+          \`\`\``;
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      src: ${{ steps.changes.outputs.src }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+        
+    - name: Check for changes in src directory
+      uses: dorny/paths-filter@v3
+      id: changes
+      with:
+        filters: |
+          src:
+            - 'src/**'
 
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
+    needs: [format-check, documentation-check]
+    if: always() && (needs.format-check.result == 'success' || needs.format-check.result == 'skipped') && (needs.documentation-check.result == 'success' || needs.documentation-check.result == 'skipped')
     
     steps:
     - name: Checkout code
@@ -78,8 +194,8 @@ jobs:
   package:
     name: Package and Publish
     runs-on: ubuntu-latest
-    needs: [build-and-test, code-formatting]
-    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    needs: [format-check, build-and-test, changes]
+    if: (github.ref == 'refs/heads/main' && needs.changes.outputs.src == 'true') || startsWith(github.ref, 'refs/tags/v')
     
     steps:
     - name: Checkout code

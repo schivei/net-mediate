@@ -5,6 +5,22 @@
 
 A lightweight and efficient .NET implementation of the Mediator pattern, providing a clean alternative to MediatR for in-process messaging and communication between components.
 
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Usage Examples](#usage-examples)
+  - [Notifications](#notifications)
+  - [Commands](#commands)
+  - [Requests](#requests)
+  - [Streams](#streams)
+  - [Validations](#validations)
+  - [Advanced Configuration](#advanced-configuration)
+- [Framework Support](#framework-support)
+- [Contributing](#contributing)
+- [License](#license)
+
 ## Introduction
 
 NetMediate is a mediator pattern library for .NET that enables decoupled communication between components in your application. It provides a simple and flexible way to send commands, publish notifications, make requests, and handle streaming responses while maintaining clean architecture principles.
@@ -19,7 +35,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Dependency Injection**: Seamless integration with Microsoft.Extensions.DependencyInjection
 - **Keyed Services**: Support for keyed service registration and resolution
 - **Cancellation Support**: Full cancellation token support across all operations
-- **Multi-targeting**: Supports .NET 8.0, .NET 9.0, and .NET Standard 2.1
+- **Multi-targeting**: Supports .NET 9.0 (see [Framework Support](#framework-support) for details)
 
 ## Installation
 
@@ -37,6 +53,43 @@ dotnet add package NetMediate
 ```xml
 <PackageReference Include="NetMediate" Version="x.x.x" />
 ```
+
+## Quick Start
+
+Here's a minimal example to get you started with NetMediate:
+
+```csharp
+// 1. Install the package
+// dotnet add package NetMediate
+
+// 2. Register services
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using NetMediate;
+
+var builder = Host.CreateApplicationBuilder();
+builder.Services.AddNetMediate();
+
+// 3. Define a notification
+public record UserCreated(string UserId, string Email);
+
+// 4. Create a handler
+public class UserCreatedHandler : INotificationHandler<UserCreated>
+{
+    public Task Handle(UserCreated notification, CancellationToken cancellationToken = default)
+    {
+        Console.WriteLine($"User {notification.UserId} was created!");
+        return Task.CompletedTask;
+    }
+}
+
+// 5. Use the mediator
+var host = builder.Build();
+var mediator = host.Services.GetRequiredService<IMediator>();
+await mediator.Notify(new UserCreated("123", "user@example.com"));
+```
+
+For more detailed examples, see the [Usage Examples](#usage-examples) section below.
 
 ## Usage Examples
 
@@ -335,6 +388,33 @@ builder.Services.AddNetMediate()
     .InstantiateHandlerByMessageFilter<DynamicMessage>(msg => 
         msg.Type == "urgent" ? typeof(UrgentMessageHandler) : typeof(StandardMessageHandler));
 ```
+
+## Framework Support
+
+### Supported Frameworks
+
+NetMediate currently supports:
+
+- **.NET 9.0**: Full support with all features available
+
+### Unsupported Frameworks
+
+The following frameworks are **not currently supported**:
+
+- **.NET 8.0**: While previously mentioned, current builds target only .NET 9.0
+- **.NET Standard 2.1**: Not supported in current version
+- **.NET Framework**: No support planned
+- **.NET Core 3.1 and earlier**: End of life, not supported
+
+### Migration Notes
+
+If you're upgrading from a previous version that supported multiple target frameworks:
+
+1. **Update your project**: Ensure you're using .NET 9.0 or later
+2. **Review dependencies**: Make sure all your dependencies are compatible with .NET 9.0
+3. **Test thoroughly**: While the API remains the same, some behavior may differ
+
+For legacy framework support, consider staying on an earlier version of NetMediate that supported your target framework.
 
 ## Contributing
 

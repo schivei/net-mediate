@@ -1,9 +1,9 @@
+using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NetMediate.Internals;
 using NetMediate.Internals.Workers;
-using System.Runtime.CompilerServices;
-using System.Threading.Channels;
 
 namespace NetMediate.Tests.Internals.Workers;
 
@@ -27,7 +27,11 @@ public class NotificationWorkerTests
         _configuration2 = new Configuration(_channel2);
         _mediatorMock = new Mock<MediatorTest>() { CallBase = true };
         _worker = new NotificationWorker(_mediatorMock.Object, _configuration, _loggerMock.Object);
-        _worker2 = new NotificationWorker(_mediatorMock.Object, _configuration2, _loggerMock.Object);
+        _worker2 = new NotificationWorker(
+            _mediatorMock.Object,
+            _configuration2,
+            _loggerMock.Object
+        );
     }
 
     [Fact]
@@ -63,7 +67,10 @@ public class NotificationWorkerTests
         await _worker.StopAsync(cts.Token);
 
         // Assert
-        _mediatorMock.Verify(m => m.Notifies(It.IsAny<object>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mediatorMock.Verify(
+            m => m.Notifies(It.IsAny<object>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
     }
 
     [Fact]
@@ -71,7 +78,8 @@ public class NotificationWorkerTests
     {
         // Arrange
         var message = new TestMessage { Id = 1 };
-        _mediatorMock.Setup(m => m.Notifies(message, It.IsAny<CancellationToken>()))
+        _mediatorMock
+            .Setup(m => m.Notifies(message, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new OperationCanceledException());
         var cts = new CancellationTokenSource();
 
@@ -82,7 +90,10 @@ public class NotificationWorkerTests
         await Task.Delay(100); // Allow time for processing
 
         // Assert
-        VerifyDebugLog("System operation was canceled, stopping notification worker.", Times.Once());
+        VerifyDebugLog(
+            "System operation was canceled, stopping notification worker.",
+            Times.Once()
+        );
         await _worker.StopAsync(cts.Token);
     }
 
@@ -91,7 +102,8 @@ public class NotificationWorkerTests
     {
         // Arrange
         var message = new TestMessage { Id = 1 };
-        _mediatorMock.Setup(m => m.Notifies(message, It.IsAny<CancellationToken>()))
+        _mediatorMock
+            .Setup(m => m.Notifies(message, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new ChannelClosedException());
         var cts = new CancellationTokenSource();
 
@@ -118,7 +130,8 @@ public class NotificationWorkerTests
         _configuration.LogUnhandledMessages = true;
         _configuration.UnhandledMessagesLogLevel = LogLevel.Error;
 
-        _mediatorMock.Setup(m => m.Notifies(message, It.IsAny<CancellationToken>()))
+        _mediatorMock
+            .Setup(m => m.Notifies(message, It.IsAny<CancellationToken>()))
             .ThrowsAsync(exception);
 
         await _channel.Writer.WriteAsync(message);
@@ -143,7 +156,8 @@ public class NotificationWorkerTests
 
         _configuration.IgnoreUnhandledMessages = false;
 
-        _mediatorMock.Setup(m => m.Notifies(message, It.IsAny<CancellationToken>()))
+        _mediatorMock
+            .Setup(m => m.Notifies(message, It.IsAny<CancellationToken>()))
             .ThrowsAsync(exception);
 
         await _channel.Writer.WriteAsync(message);
@@ -178,25 +192,31 @@ public class NotificationWorkerTests
     private void VerifyDebugLog(string messageContains, Times times)
     {
         _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Debug,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains(messageContains)),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            times);
+            x =>
+                x.Log(
+                    LogLevel.Debug,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains(messageContains)),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
+                ),
+            times
+        );
     }
 
     private void VerifyLog(LogLevel level, string messageContains, Times times)
     {
         _loggerMock.Verify(
-            x => x.Log(
-                level,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains(messageContains)),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            times);
+            x =>
+                x.Log(
+                    level,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains(messageContains)),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
+                ),
+            times
+        );
     }
 
     public class TestMessage
@@ -206,23 +226,34 @@ public class NotificationWorkerTests
 
     public class MediatorTest : IMediator, INotifiable
     {
-        public virtual Task Notifies(object message, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public virtual Task Notifies(
+            object message,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
 
-        public virtual Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public virtual Task Notify<TMessage>(
+            TMessage message,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
 
-        public virtual Task<TResponse> Request<TMessage, TResponse>(TMessage message, CancellationToken cancellationToken = default) =>
-            Task.FromResult<TResponse>(default!);
+        public virtual Task<TResponse> Request<TMessage, TResponse>(
+            TMessage message,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult<TResponse>(default!);
 
-        public virtual async IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(TMessage message, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        public virtual async IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
+            TMessage message,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default
+        )
         {
             await Task.Yield();
 
             yield break;
         }
 
-        public virtual Task Send<TMessage>(TMessage message, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public virtual Task Send<TMessage>(
+            TMessage message,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
     }
 }

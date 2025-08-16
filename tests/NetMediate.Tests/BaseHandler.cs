@@ -2,7 +2,8 @@
 
 internal abstract class BaseHandler
 {
-    protected static T Marks<T>(T message) where T : BaseMessage
+    protected static T Marks<T>(T message)
+        where T : BaseMessage
     {
         message.Run();
         return message;

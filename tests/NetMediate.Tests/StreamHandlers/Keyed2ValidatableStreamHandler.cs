@@ -1,12 +1,17 @@
-﻿using NetMediate.Tests.Messages;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
+using NetMediate.Tests.Messages;
 
 namespace NetMediate.Tests.StreamHandlers;
 
 [KeyedMessage("vkeyed2")]
-internal sealed class Keyed2ValidatableStreamHandler : BaseHandler, IStreamHandler<Keyed2ValidatableMessage, string>
+internal sealed class Keyed2ValidatableStreamHandler
+    : BaseHandler,
+        IStreamHandler<Keyed2ValidatableMessage, string>
 {
-    public async IAsyncEnumerable<string> Handle(Keyed2ValidatableMessage message, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    public async IAsyncEnumerable<string> Handle(
+        Keyed2ValidatableMessage message,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
         await Task.CompletedTask;
 

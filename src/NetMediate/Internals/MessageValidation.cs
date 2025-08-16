@@ -4,7 +4,13 @@ namespace NetMediate.Internals;
 
 internal static class MessageValidation
 {
-    public static async Task ValidateMessageAsync<TMessage>(this Configuration configuration, TMessage message, ILogger logger, Func<object, bool, IEnumerable<IValidationHandler<TMessage>>> resolver, CancellationToken cancellationToken)
+    public static async Task ValidateMessageAsync<TMessage>(
+        this Configuration configuration,
+        TMessage message,
+        ILogger logger,
+        Func<object, bool, IEnumerable<IValidationHandler<TMessage>>> resolver,
+        CancellationToken cancellationToken
+    )
     {
         configuration.ThrowIfNull(message);
         configuration.LogIfNull(logger, message);
@@ -26,10 +32,17 @@ internal static class MessageValidation
             ThrowHelper.ThrowIfNull(message);
     }
 
-    private static void LogIfNull<TMessage>(this Configuration configuration, ILogger logger, TMessage message)
+    private static void LogIfNull<TMessage>(
+        this Configuration configuration,
+        ILogger logger,
+        TMessage message
+    )
     {
         if (configuration.LogUnhandledMessages && message is null)
-            logger.Log(configuration.UnhandledMessagesLogLevel, "Received null message. This may indicate a misconfiguration or an error in the message pipeline.");
+            logger.Log(
+                configuration.UnhandledMessagesLogLevel,
+                "Received null message. This may indicate a misconfiguration or an error in the message pipeline."
+            );
     }
 
     private static async Task ValidatableValidationAsync<TMessage>(this TMessage message)
@@ -42,7 +55,11 @@ internal static class MessageValidation
         }
     }
 
-    private static async Task ValidateMessageAsync<TMessage>(this IValidationHandler<TMessage> validator, TMessage message, CancellationToken cancellationToken)
+    private static async Task ValidateMessageAsync<TMessage>(
+        this IValidationHandler<TMessage> validator,
+        TMessage message,
+        CancellationToken cancellationToken
+    )
     {
         var validationResult = await validator.ValidateAsync(message, cancellationToken);
         if (validationResult?.ErrorMessage is not null)

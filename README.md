@@ -418,7 +418,17 @@ For legacy framework support, consider staying on an earlier version of NetMedia
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+Contributions are welcome! We appreciate your interest in making NetMediate better.
+
+Please read our [Contributing Guidelines](CONTRIBUTING.md) for detailed information about:
+- Development setup and prerequisites
+- Code style and formatting requirements
+- Testing guidelines and coverage requirements
+- Pull request process and expectations
+
+We also ask that all contributors follow our [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a welcoming and inclusive environment for everyone.
+
+For major changes, please open an issue first to discuss what you would like to change.
 
 ## License
 

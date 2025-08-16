@@ -38,11 +38,12 @@ jobs:
       run: dotnet tool restore
       
     - name: Check code formatting with CSharpier
+      id: format-check
       run: dotnet csharpier check .
       continue-on-error: true
       
     - name: Comment on PR if formatting issues found
-      if: failure()
+      if: steps.format-check.outcome == 'failure'
       uses: actions/github-script@v7
       with:
         script: |
@@ -62,6 +63,10 @@ jobs:
             repo: context.repo.repo,
             body: comment
           });
+          
+    - name: Fail job if formatting issues found
+      if: steps.format-check.outcome == 'failure'
+      run: exit 1
 
   documentation-check:
     name: XML Documentation Check

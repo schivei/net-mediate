@@ -5,7 +5,7 @@ namespace NetMediate.Internals;
 
 internal sealed class Configuration(Channel<object> channel) : IAsyncDisposable
 {
-    private readonly Dictionary<Type, Func<dynamic, Type?>> _filters = [];
+    private readonly Dictionary<Type, Func<object, Type?>> _filters = [];
     public ChannelWriter<object> ChannelWriter => channel.Writer;
     public ChannelReader<object> ChannelReader => channel.Reader;
     public bool IgnoreUnhandledMessages { get; set; }
@@ -21,9 +21,9 @@ internal sealed class Configuration(Channel<object> channel) : IAsyncDisposable
 
     public void InstantiateHandlerByMessageFilter<TMessage>(Func<TMessage, Type?> filter)
     {
-        ArgumentNullException.ThrowIfNull(filter);
+        ThrowHelper.ThrowIfNull(filter);
 
-        _filters[typeof(TMessage)] = message => filter(message);
+        _filters[typeof(TMessage)] = message => filter((TMessage)message);
     }
 
     public bool TryGetHandlerTypeByMessageFilter<TMessage>(TMessage message, out Type? handlerType)

@@ -1,6 +1,6 @@
 # NetMediate
 
-[![CI/CD Pipeline](https://github.com/schivei/net-mediate/actions/workflows/copilot-swe-agent/copilot/badge.svg)](https://github.com/schivei/net-mediate/actions/workflows/copilot-swe-agent/copilot)
+[![CI/CD Pipeline](https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml)
 
 A lightweight and efficient .NET implementation of the Mediator pattern, providing a clean alternative to MediatR for in-process messaging and communication between components.
 

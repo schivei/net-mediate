@@ -5,9 +5,15 @@
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 		<Authors>Elton Schivei Costa</Authors>
 		<Product>Mediator Package</Product>
+		<Title>NetMediate</Title>
 		<Description>Mediator alternative for MediatR.</Description>
 		<PackageTags>Mediator</PackageTags>
 		<PackageIcon>icon.png</PackageIcon>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageLicenseFile>LICENSE</PackageLicenseFile>
+		<PackageProjectUrl>https://github.com/schivei/net-mediate</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/schivei/net-mediate</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
 		<DebugType>Full</DebugType>
 		<IsPackable>true</IsPackable>
 		<PackOnBuild>true</PackOnBuild>

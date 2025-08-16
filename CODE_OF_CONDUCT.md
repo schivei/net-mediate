@@ -107,7 +107,7 @@ For questions about this Code of Conduct or to report violations, please contact
 
 ## Additional Resources
 
-- [Contributing Guidelines](.github/CONTRIBUTING.md)
+- [Contributing Guidelines](CONTRIBUTING.md)
 - [Project License](LICENSE)
 - [GitHub Community Guidelines](https://docs.github.com/en/site-policy/github-terms/github-community-guidelines)
 

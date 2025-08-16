@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Suffix></Suffix>
+    <Version>$([System.DateTime]::UtcNow.ToString("yy.MM.dd")).$([System.DateTime]::UtcNow.Subtract($([System.DateTime]::UtcNow.Date)).TotalMilliseconds.ToString("N0"))$(Suffix)</Version>
+    <NoWarn>nullable;NU5118;$(NoWarn)</NoWarn>
+  </PropertyGroup>
+</Project>

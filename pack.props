@@ -7,7 +7,7 @@
 		<Product>Mediator Package</Product>
 		<Description>Mediator alternative for MediatR.</Description>
 		<PackageTags>Mediator</PackageTags>
-    <PackageIcon>icon.png</PackageIcon>
+		<PackageIcon>icon.png</PackageIcon>
 		<DebugType>Full</DebugType>
 		<IsPackable>true</IsPackable>
 		<PackOnBuild>true</PackOnBuild>

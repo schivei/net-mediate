@@ -8,8 +8,6 @@ public sealed class StreamTests
     private static async Task StreamHandle<TMessage>(TMessage message, bool expected, bool required = true) where TMessage : BaseMessage
     {
         using var fixture = new NetMediateFixture();
-        DateTime.UtcNow.Subtract(DateTime.UtcNow.Date).TotalMilliseconds.ToString("N0")
-        using var fixture = new NetMediateFixture();
         // Act
         var response = await fixture.RunAsync(async (sp) =>
         {

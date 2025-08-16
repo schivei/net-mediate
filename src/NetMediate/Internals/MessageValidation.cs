@@ -23,7 +23,11 @@ internal static class MessageValidation
     private static void ThrowIfNull<TMessage>(this Configuration configuration, TMessage message)
     {
         if (!configuration.IgnoreUnhandledMessages)
+#if NETSTANDARD2_1
+            ArgumentNullExceptionCompat.ThrowIfNull(message, nameof(message));
+#else
             ArgumentNullException.ThrowIfNull(message);
+#endif
     }
 
     private static void LogIfNull<TMessage>(this Configuration configuration, ILogger logger, TMessage message)

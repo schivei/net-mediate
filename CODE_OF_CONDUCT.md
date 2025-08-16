@@ -61,7 +61,7 @@ The following behaviors are considered harassment and are unacceptable within ou
 ### Reporting
 Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the project maintainers at:
 
-**Primary Contact:** [schivei@gmail.com](mailto:schivei@gmail.com)
+**Primary Contact:** [schivei@icloud.com](mailto:schivei@icloud.com)
 
 All complaints will be reviewed and investigated promptly and fairly. The project team is obligated to maintain confidentiality with regard to the reporter of an incident.
 
@@ -102,7 +102,7 @@ This Code of Conduct applies both within project spaces and in public spaces whe
 For questions about this Code of Conduct or to report violations, please contact:
 
 **Project Maintainer:** Elton Schivei Costa  
-**Email:** [schivei@gmail.com](mailto:schivei@gmail.com)  
+**Email:** [schivei@icloud.com](mailto:schivei@icloud.com)  
 **GitHub:** [@schivei](https://github.com/schivei)
 
 ## Additional Resources

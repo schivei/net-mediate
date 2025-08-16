@@ -1,6 +1,7 @@
 # NetMediate
 
 [![CI/CD Pipeline](https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml)
+[![NuGet](https://img.shields.io/nuget/v/NetMediate?style=flat)](https://www.nuget.org/packages/NetMediate/)
 
 A lightweight and efficient .NET implementation of the Mediator pattern, providing a clean alternative to MediatR for in-process messaging and communication between components.
 

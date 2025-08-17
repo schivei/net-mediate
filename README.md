@@ -430,6 +430,10 @@ We also ask that all contributors follow our [Code of Conduct](CODE_OF_CONDUCT.m
 
 For major changes, please open an issue first to discuss what you would like to change.
 
+## Emergency Publishing
+
+For critical situations requiring immediate package publishing, see the [Emergency Publishing Guide](docs/EMERGENCY_PUBLISHING.md). This functionality is restricted to the repository owner and bypasses normal change detection mechanisms.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

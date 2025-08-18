@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 Documentation
+    url: https://github.com/schivei/net-mediate/blob/main/README.md
+    about: Read the documentation for usage examples and API reference
+  - name: 💬 Discussions
+    url: https://github.com/schivei/net-mediate/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 🛡️ Security Issues
+    url: https://github.com/schivei/net-mediate/security/advisories/new
+    about: Report security vulnerabilities privately

@@ -1,0 +1,128 @@
+name: Question
+description: Ask a question about NetMediate usage, best practices, or general help
+title: "[Question]: "
+labels: ["question", "needs-response"]
+projects: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your question! Please provide as much detail as possible to help us give you the best answer.
+        
+        **Before asking**: Please check the [README](https://github.com/schivei/net-mediate/blob/main/README.md), [documentation](https://github.com/schivei/net-mediate/tree/main/docs), and [existing issues](https://github.com/schivei/net-mediate/issues) to see if your question has already been answered.
+        
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What would you like to know about NetMediate?
+      placeholder: Please describe your question in detail...
+    validations:
+      required: true
+      
+  - type: textarea
+    id: context
+    attributes:
+      label: Context and Goal
+      description: What are you trying to achieve? What's the bigger picture?
+      placeholder: |
+        - What kind of application are you building?
+        - What problem are you trying to solve?
+        - What's your end goal?
+    validations:
+      required: true
+      
+  - type: textarea
+    id: current-approach
+    attributes:
+      label: What You've Tried
+      description: Have you tried anything already? What approaches have you considered?
+      placeholder: |
+        - Code you've written so far
+        - Documentation you've read
+        - Approaches you've tried
+        - Results you've gotten
+    validations:
+      required: false
+      
+  - type: textarea
+    id: code-example
+    attributes:
+      label: Code Example (if relevant)
+      description: If your question involves code, please provide a minimal example.
+      placeholder: |
+        ```csharp
+        // Your current code or what you're trying to achieve
+        public class MyMessage : IRequest<string>
+        {
+            public string Data { get; set; }
+        }
+        
+        public class MyHandler : IRequestHandler<MyMessage, string>
+        {
+            public Task<string> Handle(MyMessage request, CancellationToken cancellationToken)
+            {
+                // What should go here?
+                return Task.FromResult("response");
+            }
+        }
+        ```
+    validations:
+      required: false
+      
+  - type: dropdown
+    id: question-type
+    attributes:
+      label: Question Type
+      description: What category does your question fall into?
+      options:
+        - Usage - How to use a specific feature
+        - Best Practices - Recommended approaches
+        - Architecture - Design and pattern questions
+        - Performance - Optimization and efficiency
+        - Integration - Working with other libraries/frameworks
+        - Troubleshooting - Something isn't working as expected
+        - Migration - Moving from other libraries (e.g., MediatR)
+        - Other
+    validations:
+      required: true
+      
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment (if relevant)
+      description: If your question is environment-specific, please provide details.
+      placeholder: |
+        - .NET Version: [e.g., .NET 9.0]
+        - NetMediate Version: [e.g., 25.8.1]
+        - Project Type: [e.g., Web API, Console App, Background Service]
+        - Framework: [e.g., ASP.NET Core, MAUI, WPF]
+    validations:
+      required: false
+      
+  - type: textarea
+    id: expected-outcome
+    attributes:
+      label: Expected Outcome
+      description: What kind of answer or solution are you looking for?
+      placeholder: |
+        - Code example showing the solution
+        - Explanation of concepts
+        - Best practice recommendations
+        - Performance guidance
+    validations:
+      required: false
+      
+  - type: textarea
+    id: additional-info
+    attributes:
+      label: Additional Information
+      description: Any other details that might be helpful?
+      placeholder: |
+        - Links to related documentation
+        - Screenshots or diagrams
+        - Related questions or issues
+        - Specific constraints or requirements
+    validations:
+      required: false

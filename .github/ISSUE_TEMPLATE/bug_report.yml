@@ -1,0 +1,129 @@
+name: Bug Report
+description: Report a bug or unexpected behavior in NetMediate
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+projects: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this bug report! Please provide as much detail as possible to help us reproduce and fix the issue.
+        
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: Describe the bug you encountered...
+    validations:
+      required: true
+      
+  - type: textarea
+    id: sample-code
+    attributes:
+      label: Sample Code
+      description: Please provide the minimal code that reproduces the issue.
+      placeholder: |
+        ```csharp
+        // Your code here
+        public class ExampleCommand : IRequest<string>
+        {
+            public string Name { get; set; }
+        }
+        
+        public class ExampleHandler : IRequestHandler<ExampleCommand, string>
+        {
+            public Task<string> Handle(ExampleCommand request, CancellationToken cancellationToken)
+            {
+                // Code that demonstrates the issue
+                return Task.FromResult(request.Name);
+            }
+        }
+        ```
+    validations:
+      required: true
+      
+  - type: textarea
+    id: sample-data
+    attributes:
+      label: Sample Data
+      description: If applicable, provide sample data or input that triggers the bug.
+      placeholder: |
+        Example:
+        - Input parameters: { Name: "test", Value: 123 }
+        - Configuration settings: UseValidation = true
+        - Message content: { ... }
+    validations:
+      required: false
+      
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: A clear and concise description of what you expected to happen.
+      placeholder: What should have happened?
+    validations:
+      required: true
+      
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: A clear and concise description of what actually happened.
+      placeholder: What actually happened?
+    validations:
+      required: true
+      
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Set up NetMediate with '...'
+        2. Create a handler for '...'
+        3. Send the message '...'
+        4. See error
+    validations:
+      required: true
+      
+  - type: textarea
+    id: development-environment
+    attributes:
+      label: Development Environment
+      description: Please provide details about your development environment.
+      placeholder: |
+        - OS: [e.g., Windows 11, macOS 14, Ubuntu 22.04]
+        - .NET Version: [e.g., .NET 9.0, .NET 8.0]
+        - NetMediate Version: [e.g., 25.8.1]
+        - Project Type: [e.g., Console App, Web API, Background Service, Desktop App]
+        - IDE: [e.g., Visual Studio 2022, VS Code, Rider]
+        - Framework: [e.g., Minimal APIs, ASP.NET Core, MAUI, WPF, Console]
+    validations:
+      required: true
+      
+  - type: textarea
+    id: error-messages
+    attributes:
+      label: Error Messages or Stack Trace
+      description: If applicable, provide any error messages or stack traces.
+      placeholder: |
+        ```
+        Paste error messages or stack traces here
+        ```
+    validations:
+      required: false
+      
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here.
+      placeholder: |
+        - Screenshots
+        - Log files
+        - Related issues
+        - Workarounds you've tried
+    validations:
+      required: false

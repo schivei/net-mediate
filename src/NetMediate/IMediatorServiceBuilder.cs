@@ -88,6 +88,8 @@ public interface IMediatorServiceBuilder
     /// </summary>
     /// <typeparam name="TMessage">The type of the message to handle.</typeparam>
     /// <typeparam name="THandler">The type of the notification handler.</typeparam>
+    /// <typeparam name="TMessage">The type of the message to validate.</typeparam>
+    /// <typeparam name="THandler">The type of the notification handler.</typeparam>
     /// <returns>The <see cref="IMediatorServiceBuilder"/> instance for chaining.</returns>
     IMediatorServiceBuilder RegisterNotificationHandler<TMessage, THandler>()
         where THandler : class, INotificationHandler<TMessage> =>

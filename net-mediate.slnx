@@ -11,6 +11,9 @@
     <Project Path="src/NetMediate/NetMediate.csproj" Id="232b3170-ace0-4adb-a81d-541c5b872bac" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/NetMediate.Tests/NetMediate.Tests.csproj" Id="7c9982c0-0795-4743-988d-be05f7cd797b" />
+    <Project
+      Path="tests/NetMediate.Tests/NetMediate.Tests.csproj"
+      Id="7c9982c0-0795-4743-988d-be05f7cd797b"
+    />
   </Folder>
 </Solution>

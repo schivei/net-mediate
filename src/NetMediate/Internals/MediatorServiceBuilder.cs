@@ -183,11 +183,11 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         handlerInterface ??= types
             .Select(
                 (type, _) =>
-                    type.interfaces.FirstOrDefault(ifce =>
+                    type.interfaces.First(ifce =>
                         s_validInterface.Contains(ifce.GetGenericTypeDefinition())
                     )
             )
-            .FirstOrDefault()
+            .First()?
             .GetGenericTypeDefinition();
 
         var handlerTypes = types

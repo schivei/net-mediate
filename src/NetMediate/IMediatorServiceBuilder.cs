@@ -101,6 +101,8 @@ public interface IMediatorServiceBuilder
     /// <typeparam name="TMessage">The type of the message to validate.</typeparam>
     /// <typeparam name="TMessage">The type of the message to handle.</typeparam>
     /// <typeparam name="THandler">The type of the command handler.</typeparam>
+    /// <typeparam name="TMessage">The type of the message to validate.</typeparam>
+    /// <typeparam name="THandler">The type of the command handler.</typeparam>
     /// <returns>The <see cref="IMediatorServiceBuilder"/> instance for chaining.</returns>
     IMediatorServiceBuilder RegisterCommandHandler<TMessage, THandler>()
         where THandler : class, ICommandHandler<TMessage> =>

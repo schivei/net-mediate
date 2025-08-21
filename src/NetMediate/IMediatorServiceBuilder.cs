@@ -138,6 +138,8 @@ public interface IMediatorServiceBuilder
     /// </summary>
     /// <typeparam name="TMessage">The type of the message to handle.</typeparam>
     /// <typeparam name="THandler">The type of the validation handler.</typeparam>
+    /// <typeparam name="TMessage">The type of the message to validate.</typeparam>
+    /// <typeparam name="THandler">The type of the stream handler.</typeparam>
     /// <returns>The <see cref="IMediatorServiceBuilder"/> instance for chaining.</returns>
     IMediatorServiceBuilder RegisterStreamHandler<TMessage, THandler>()
         where THandler : class, IStreamHandler<TMessage, object> =>

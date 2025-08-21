@@ -104,6 +104,7 @@ jobs:
         
     - name: Publish to GitHub Packages
       if: github.ref == 'refs/heads/main'
+      continue-on-error: true
       run: dotnet nuget push ./packages/*.nupkg --api-key ${{ secrets.GITHUB_TOKEN }} --source https://nuget.pkg.github.com/schivei/index.json --skip-duplicate
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

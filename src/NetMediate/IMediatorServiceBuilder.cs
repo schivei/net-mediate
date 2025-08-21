@@ -123,7 +123,7 @@ public interface IMediatorServiceBuilder
     /// <summary>
     /// Registers a stream handler for a specific message type.
     /// </summary>
-    /// <typeparam name="TMessage">The type of the message to validate.</typeparam>
+    /// <typeparam name="TMessage">The type of the message to handle.</typeparam>
     /// <typeparam name="THandler">The type of the validation handler.</typeparam>
     /// </summary>
     /// <typeparam name="TMessage">The type of the message to handle.</typeparam>

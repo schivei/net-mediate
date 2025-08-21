@@ -84,6 +84,13 @@ public interface IMediatorServiceBuilder
     /// <returns>The <see cref="IMediatorServiceBuilder"/> instance for chaining.</returns>
     IMediatorServiceBuilder RegisterNotificationHandler<TMessage, THandler>()
         where THandler : class, INotificationHandler<TMessage> =>
+    /// Registers a notification handler for a specific message type.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of the message to handle.</typeparam>
+    /// <typeparam name="THandler">The type of the notification handler.</typeparam>
+    /// <returns>The <see cref="IMediatorServiceBuilder"/> instance for chaining.</returns>
+    IMediatorServiceBuilder RegisterNotificationHandler<TMessage, THandler>()
+        where THandler : class, INotificationHandler<TMessage> =>
         Register(typeof(TMessage), typeof(THandler));
 
     /// <summary>

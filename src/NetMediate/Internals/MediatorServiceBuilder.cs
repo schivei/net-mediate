@@ -67,12 +67,9 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         return this;
     }
 
-    private MediatorServiceBuilder Filter<TMessage, THandler, TBase>(
-        Func<TMessage, bool> filter,
-        bool unique = true
-    )
+    private MediatorServiceBuilder Filter<TMessage, THandler, TBase>(Func<TMessage, bool> filter)
     {
-        Register(typeof(TBase), typeof(THandler), unique);
+        RegisterType(typeof(TBase), typeof(THandler));
 
         _configuration.InstantiateHandlerByMessageFilter<TMessage>(message =>
         {
@@ -88,7 +85,7 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         Func<TMessage, bool> filter
     )
         where THandler : class, INotificationHandler<TMessage> =>
-        Filter<TMessage, THandler, INotificationHandler<TMessage>>(filter, false);
+        Filter<TMessage, THandler, INotificationHandler<TMessage>>(filter);
 
     public IMediatorServiceBuilder FilterCommand<TMessage, THandler>(Func<TMessage, bool> filter)
         where THandler : class, ICommandHandler<TMessage> =>
@@ -121,11 +118,11 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
     ];
 
     private void MapValidationHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
-        Map(types, typeof(IValidationHandler<>), false);
+        Map(types, typeof(IValidationHandler<>));
 
     private void MapNotificationHandlers(
         IEnumerable<(Type handlerType, Type[] interfaces)> types
-    ) => Map(types, typeof(INotificationHandler<>), false);
+    ) => Map(types, typeof(INotificationHandler<>));
 
     private void MapRequestHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
         Map(types, typeof(IRequestHandler<,>));
@@ -136,12 +133,70 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
     private void MapStreamHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
         Map(types, typeof(IStreamHandler<,>));
 
+    public IMediatorServiceBuilder Register(Type messageType, Type handlerType)
+    {
+        ArgumentNullException.ThrowIfNull(messageType);
+        ArgumentNullException.ThrowIfNull(handlerType);
+
+        var interfaces = GetInterfaces(handlerType, messageType);
+        Map([(handlerType, interfaces)]);
+
+        return this;
+    }
+
+    private static Type[] GetInterfaces(Type handlerType, Type messageType)
+    {
+        if (!handlerType.IsClass || handlerType.IsAbstract)
+        {
+            throw new ArgumentException(
+                $"Handler type '{handlerType.FullName}' must be a non-abstract class.",
+                nameof(handlerType)
+            );
+        }
+
+        var interfaces = handlerType
+            .GetInterfaces()
+            .Where(i =>
+                i.IsGenericType
+                && s_validInterface.Contains(i.GetGenericTypeDefinition())
+                && i.GenericTypeArguments.Length >= 1
+                && i.GenericTypeArguments[0] == messageType
+            )
+            .ToArray();
+
+        if (interfaces.Length == 0)
+        {
+            throw new ArgumentException(
+                $"Handler type '{handlerType.FullName}' does not implement any valid handler interfaces.",
+                nameof(handlerType)
+            );
+        }
+
+        return interfaces;
+    }
+
     private void Map(
         IEnumerable<(Type handlerType, Type[] interfaces)> types,
-        Type handlerInterface,
-        bool unique = true
+        Type? handlerInterface = null
     )
     {
+        handlerInterface ??= types
+            .Select(type =>
+                type.interfaces.FirstOrDefault(ifce =>
+                    s_validInterface.Contains(ifce.GetGenericTypeDefinition())
+                )
+            )
+            .FirstOrDefault(t => t is not null)?
+            .GetGenericTypeDefinition();
+
+        if (handlerInterface is null)
+        {
+            throw new ArgumentException(
+                "No valid handler interface found in the provided types.",
+                nameof(handlerInterface)
+            );
+        }
+
         var handlerTypes = types
             .Where(type =>
                 type.interfaces.Any(i =>
@@ -159,18 +214,22 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
             .ToList();
 
         foreach (var (handlerType, interfaceType) in handlerTypes)
-            Register(interfaceType, handlerType, unique);
+            RegisterType(interfaceType, handlerType);
     }
 
-    private void Register(Type interfaceType, Type handlerType, bool unique = true)
+    private void RegisterType(Type interfaceType, Type handlerType)
     {
+        var unique =
+            interfaceType.GetGenericTypeDefinition() != typeof(INotificationHandler<>)
+            && interfaceType.GetGenericTypeDefinition() != typeof(IValidationHandler<>);
+
         if (unique)
-            UniqueRegister(interfaceType, handlerType);
+            UniqueRegisterType(interfaceType, handlerType);
         else
-            MultiRegister(interfaceType, handlerType);
+            MultiRegisterType(interfaceType, handlerType);
     }
 
-    private void UniqueRegister(Type interfaceType, Type handlerType)
+    private void UniqueRegisterType(Type interfaceType, Type handlerType)
     {
         var keyed = handlerType.GetKey();
 
@@ -180,7 +239,7 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
             Services.TryAddScoped(interfaceType, handlerType);
     }
 
-    private void MultiRegister(Type interfaceType, Type handlerType)
+    private void MultiRegisterType(Type interfaceType, Type handlerType)
     {
         var keyed = handlerType.GetKey();
         if (keyed is not null)

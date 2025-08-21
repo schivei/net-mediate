@@ -386,7 +386,8 @@ builder.Services.AddNetMediate()
     .IgnoreUnhandledMessages(ignore: true, log: true, logLevel: LogLevel.Warning)
     .FilterCommand<CreateUserCommand, CreateUserCommandHandler>(cmd => cmd.Email.EndsWith("@company.com"))
     .InstantiateHandlerByMessageFilter<DynamicMessage>(msg => 
-        msg.Type == "urgent" ? typeof(UrgentMessageHandler) : typeof(StandardMessageHandler));
+        msg.Type == "urgent" ? typeof(UrgentMessageHandler) : typeof(StandardMessageHandler))
+    .RegisterNotificationHandler<DummyNotificationMessage, DummyNotificationHandler>();
 ```
 
 ## Framework Support

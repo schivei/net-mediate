@@ -167,25 +167,21 @@ public class MediatorServiceBuilderTests
     public void Map_RegistersHandlers()
     {
         var services = new ServiceCollection();
-        var builder = new MediatorServiceBuilder(services);
-        var types = new[]
-        {
-            (
-                typeof(DummyNotificationHandler),
-                new[] { typeof(INotificationHandler<DummyNotification>) }
-            ),
-            (typeof(DummyCommandHandler), [typeof(ICommandHandler<DummyCommand>)]),
-            (typeof(DummyRequestHandler), [typeof(IRequestHandler<DummyRequest, object>)]),
-            (typeof(DummyStreamHandler), [typeof(IStreamHandler<DummyStream, object>)]),
-            (typeof(DummyValidationHandler), [typeof(IValidationHandler<DummyValidation>)]),
-        };
-        var mapMethod = typeof(MediatorServiceBuilder).GetMethod(
-            "Map",
-            BindingFlags.NonPublic | BindingFlags.Instance
-        );
-        mapMethod!.Invoke(builder, [types, typeof(INotificationHandler<>), false]);
+        var builder = MakeBuilder(services);
+        builder.RegisterNotificationHandler<DummyNotification, DummyNotificationHandler>();
+        builder.RegisterCommandHandler<DummyCommand, DummyCommandHandler>();
+        builder.RegisterRequestHandler<DummyRequest, DummyRequestHandler>();
+        builder.RegisterStreamHandler<DummyStream, DummyStreamHandler>();
+        builder.RegisterValidationHandler<DummyValidation, DummyValidationHandler>();
         Assert.Contains(services, s => s.ImplementationType == typeof(DummyNotificationHandler));
+        Assert.Contains(services, s => s.ImplementationType == typeof(DummyCommandHandler));
+        Assert.Contains(services, s => s.ImplementationType == typeof(DummyRequestHandler));
+        Assert.Contains(services, s => s.ImplementationType == typeof(DummyStreamHandler));
+        Assert.Contains(services, s => s.ImplementationType == typeof(DummyValidationHandler));
     }
+
+    private static IMediatorServiceBuilder MakeBuilder(IServiceCollection services) =>
+        new MediatorServiceBuilder(services);
 
     [Fact]
     public void ExtractTypes_ReturnsExpectedTypes()

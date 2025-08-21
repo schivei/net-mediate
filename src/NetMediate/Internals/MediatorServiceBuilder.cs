@@ -67,9 +67,7 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         return this;
     }
 
-    private MediatorServiceBuilder Filter<TMessage, THandler, TBase>(
-        Func<TMessage, bool> filter
-    )
+    private MediatorServiceBuilder Filter<TMessage, THandler, TBase>(Func<TMessage, bool> filter)
     {
         RegisterType(typeof(TBase), typeof(THandler));
 
@@ -156,9 +154,14 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
             );
         }
 
-        var interfaces = handlerType.GetInterfaces()
-            .Where(i => i.IsGenericType && s_validInterface.Contains(i.GetGenericTypeDefinition()) &&
-                i.GenericTypeArguments.Length >= 1 && i.GenericTypeArguments[0] == messageType)
+        var interfaces = handlerType
+            .GetInterfaces()
+            .Where(i =>
+                i.IsGenericType
+                && s_validInterface.Contains(i.GetGenericTypeDefinition())
+                && i.GenericTypeArguments.Length >= 1
+                && i.GenericTypeArguments[0] == messageType
+            )
             .ToArray();
 
         if (interfaces.Length == 0)
@@ -177,8 +180,15 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         Type? handlerInterface = null
     )
     {
-        handlerInterface ??= types.Select((type, _) => type.interfaces.FirstOrDefault(ifce => s_validInterface.Contains(ifce.GetGenericTypeDefinition())))
-            .FirstOrDefault().GetGenericTypeDefinition();
+        handlerInterface ??= types
+            .Select(
+                (type, _) =>
+                    type.interfaces.FirstOrDefault(ifce =>
+                        s_validInterface.Contains(ifce.GetGenericTypeDefinition())
+                    )
+            )
+            .FirstOrDefault()
+            .GetGenericTypeDefinition();
 
         var handlerTypes = types
             .Where(type =>
@@ -202,8 +212,9 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
 
     private void RegisterType(Type interfaceType, Type handlerType)
     {
-        var unique = interfaceType.GetGenericTypeDefinition() != typeof(INotificationHandler<>) &&
-            interfaceType.GetGenericTypeDefinition() != typeof(IValidationHandler<>);
+        var unique =
+            interfaceType.GetGenericTypeDefinition() != typeof(INotificationHandler<>)
+            && interfaceType.GetGenericTypeDefinition() != typeof(IValidationHandler<>);
 
         if (unique)
             UniqueRegisterType(interfaceType, handlerType);

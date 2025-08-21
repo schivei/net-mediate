@@ -186,8 +186,16 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
                     s_validInterface.Contains(ifce.GetGenericTypeDefinition())
                 )
             )
-            .First()
+            .FirstOrDefault()?
             .GetGenericTypeDefinition();
+
+        if (handlerInterface is null)
+        {
+            throw new ArgumentException(
+                "No valid handler interface found in the provided types.",
+                nameof(handlerInterface)
+            );
+        }
 
         var handlerTypes = types
             .Where(type =>

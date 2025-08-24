@@ -166,7 +166,7 @@ internal class Mediator(
         if (!AssertHandler<TMessage, INotificationHandler<TMessage>>(handlers))
             return;
 
-        foreach (var handler in handlers)
+        var tasks = handlers.Select(async handler =>
         {
             try
             {
@@ -179,7 +179,8 @@ internal class Mediator(
                     ex
                 ).ConfigureAwait(false);
             }
-        }
+        });
+        await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
     private IEnumerable<T> Resolve<T>(IServiceScope scope, object message, bool ignore = false)

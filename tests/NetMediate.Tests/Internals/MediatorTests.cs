@@ -13,7 +13,7 @@ public class MediatorTests
     private readonly Mock<IServiceScopeFactory> _serviceScopeFactoryMock;
     private readonly Mock<IServiceScope> _serviceScopeMock;
     private readonly Mock<IServiceProvider> _serviceProviderMock;
-    private readonly Channel<object> _channel;
+    private readonly Channel<INotificationPacket> _channel;
     private readonly Configuration _configuration;
     private readonly Mediator _mediator;
 
@@ -24,7 +24,7 @@ public class MediatorTests
         _serviceScopeMock = new Mock<IServiceScope>();
         _serviceProviderMock = new Mock<IServiceProvider>();
 
-        _channel = Channel.CreateUnbounded<object>();
+        _channel = Channel.CreateUnbounded<INotificationPacket>();
         _configuration = new Configuration(_channel)
         {
             IgnoreUnhandledMessages = false,
@@ -52,11 +52,11 @@ public class MediatorTests
         var message = new TestMessage { Content = "Test" };
 
         // Act
-        await _mediator.Notify(message);
+        await _mediator.Notify(message, (_,_,_) => Task.CompletedTask);
 
         // Assert
         Assert.True(_channel.Reader.TryRead(out var receivedMessage));
-        Assert.Same(message, receivedMessage);
+        Assert.Same(message, receivedMessage.Message);
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public class MediatorTests
         TestMessage? message = null;
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => _mediator.Notify(message!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => _mediator.Notify(message!, (_, _, _) => Task.CompletedTask));
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public class MediatorTests
         _configuration.IgnoreUnhandledMessages = true;
 
         // Act & Assert
-        await _mediator.Notify(message!); // Should not throw
+        await _mediator.Notify(message!, (_, _, _) => Task.CompletedTask); // Should not throw
 
         // Verify logging
         VerifyLoggerCalled(LogLevel.Warning, "Received null message");
@@ -91,7 +91,7 @@ public class MediatorTests
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<MessageValidationException>(() =>
-            _mediator.Notify(message)
+            _mediator.Notify(message, (_, _, _) => Task.CompletedTask)
         );
         Assert.Equal("Validation failed", exception.Message);
     }
@@ -110,7 +110,7 @@ public class MediatorTests
 
         // Act & Assert
         var exception = await Assert.ThrowsAsync<MessageValidationException>(() =>
-            _mediator.Notify(message)
+            _mediator.Notify(message, (_, _, _) => Task.CompletedTask)
         );
         Assert.Equal("External validation failed", exception.Message);
     }
@@ -305,10 +305,10 @@ public class MediatorTests
             .Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
-        SetupHandler<INotificationHandler<TestMessage>>([handler1.Object, handler2.Object]);
+        SetupHandler([handler1.Object, handler2.Object]);
 
         // Act
-        await _mediator.Notifies(message);
+        await _mediator.Notifies(new NotificationPacket<TestMessage>(message));
 
         // Assert
         handler1.Verify(h => h.Handle(message, It.IsAny<CancellationToken>()), Times.Once);
@@ -323,7 +323,7 @@ public class MediatorTests
         SetupHandler<INotificationHandler<TestMessage>>([]);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _mediator.Notifies(message));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _mediator.Notifies(new NotificationPacket<TestMessage>(message)));
     }
 
     [Fact]
@@ -335,7 +335,7 @@ public class MediatorTests
         SetupHandler<INotificationHandler<TestMessage>>([]);
 
         // Act
-        await _mediator.Notifies(message);
+        await _mediator.Notifies(new NotificationPacket<TestMessage>(message));
 
         // Assert
         VerifyLoggerCalled(LogLevel.Warning, "No handler found");

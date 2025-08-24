@@ -3,11 +3,11 @@ using Microsoft.Extensions.Logging;
 
 namespace NetMediate.Internals;
 
-internal sealed class Configuration(Channel<object> channel) : IAsyncDisposable
+internal sealed class Configuration(Channel<INotificationPacket> channel) : IAsyncDisposable
 {
     private readonly Dictionary<Type, Func<object, Type?>> _filters = [];
-    public ChannelWriter<object> ChannelWriter => channel.Writer;
-    public ChannelReader<object> ChannelReader => channel.Reader;
+    public ChannelWriter<INotificationPacket> ChannelWriter => channel.Writer;
+    public ChannelReader<INotificationPacket> ChannelReader => channel.Reader;
     public bool IgnoreUnhandledMessages { get; set; }
     public bool LogUnhandledMessages { get; set; }
     public LogLevel UnhandledMessagesLogLevel { get; set; }

@@ -44,11 +44,12 @@ public interface IMediatorServiceBuilder
     /// The handler constraint uses <c>object</c> as the response type; consider a generic overload if stronger typing is desired.
     /// </remarks>
     /// <typeparam name="TMessage">The request message type.</typeparam>
+    /// <typeparam name="TResponse">The response type expected from the handler.</typeparam>
     /// <typeparam name="THandler">The handler type implementing <see cref="IRequestHandler{TRequest,TResponse}"/> for <typeparamref name="TMessage"/>.</typeparam>
     /// <param name="filter">Predicate returning true to allow execution; false to skip.</param>
     /// <returns>This builder for chaining.</returns>
-    IMediatorServiceBuilder FilterRequest<TMessage, THandler>(Func<TMessage, bool> filter)
-        where THandler : class, IRequestHandler<TMessage, object>;
+    IMediatorServiceBuilder FilterRequest<TMessage, TResponse, THandler>(Func<TMessage, bool> filter)
+        where THandler : class, IRequestHandler<TMessage, TResponse>;
 
     /// <summary>
     /// Registers a predicate that determines whether a specific stream handler should execute
@@ -58,11 +59,12 @@ public interface IMediatorServiceBuilder
     /// The handler constraint uses <c>object</c> as the streamed item type; consider a generic overload if stronger typing is desired.
     /// </remarks>
     /// <typeparam name="TMessage">The streamed request message type.</typeparam>
+    /// <typeparam name="TResponse">The type of items streamed in response.</typeparam>
     /// <typeparam name="THandler">The handler type implementing <see cref="IStreamHandler{TRequest,TItem}"/> for <typeparamref name="TMessage"/>.</typeparam>
     /// <param name="filter">Predicate returning true to allow execution; false to skip.</param>
     /// <returns>This builder for chaining.</returns>
-    IMediatorServiceBuilder FilterStream<TMessage, THandler>(Func<TMessage, bool> filter)
-        where THandler : class, IStreamHandler<TMessage, object>;
+    IMediatorServiceBuilder FilterStream<TMessage, TResponse, THandler>(Func<TMessage, bool> filter)
+        where THandler : class, IStreamHandler<TMessage, TResponse>;
 
     /// <summary>
     /// Configures how unhandled messages are treated.
@@ -113,20 +115,22 @@ public interface IMediatorServiceBuilder
     /// Registers a request handler for <typeparamref name="TMessage"/>.
     /// </summary>
     /// <typeparam name="TMessage">The request message type.</typeparam>
+    /// <typeparam name="TResponse">The response type expected from the handler.</typeparam>
     /// <typeparam name="THandler">The handler implementing <see cref="IRequestHandler{TRequest,TResponse}"/> for <typeparamref name="TMessage"/>.</typeparam>
     /// <returns>This builder for chaining.</returns>
-    IMediatorServiceBuilder RegisterRequestHandler<TMessage, THandler>()
-        where THandler : class, IRequestHandler<TMessage, object> =>
+    IMediatorServiceBuilder RegisterRequestHandler<TMessage, TResponse, THandler>()
+        where THandler : class, IRequestHandler<TMessage, TResponse> =>
         Register(typeof(TMessage), typeof(THandler));
 
     /// <summary>
     /// Registers a stream handler for <typeparamref name="TMessage"/>.
     /// </summary>
     /// <typeparam name="TMessage">The stream request message type.</typeparam>
+    /// <typeparam name="TResponse">The type of items streamed in response.</typeparam>
     /// <typeparam name="THandler">The handler implementing <see cref="IStreamHandler{TRequest,TItem}"/> for <typeparamref name="TMessage"/>.</typeparam>
     /// <returns>This builder for chaining.</returns>
-    IMediatorServiceBuilder RegisterStreamHandler<TMessage, THandler>()
-        where THandler : class, IStreamHandler<TMessage, object> =>
+    IMediatorServiceBuilder RegisterStreamHandler<TMessage, TResponse, THandler>()
+        where THandler : class, IStreamHandler<TMessage, TResponse> =>
         Register(typeof(TMessage), typeof(THandler));
 
     /// <summary>

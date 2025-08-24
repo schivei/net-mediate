@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,33 +14,44 @@ internal class Mediator(
 {
     public async Task Notify<TMessage>(
         TMessage message,
+        NotificationErrorDelegate<TMessage> onError,
         CancellationToken cancellationToken = default
     )
     {
-        await ValidateMessage(message, cancellationToken);
+        using var scope = serviceScopeFactory.CreateScope();
+
+        await ValidateMessage(scope, message, cancellationToken);
 
         await configuration
-            .ChannelWriter.WriteAsync(message, cancellationToken)
+            .ChannelWriter.WriteAsync(new NotificationPacket<TMessage>(message, onError), cancellationToken)
             .ConfigureAwait(false);
     }
 
     private async Task ValidateMessage<TMessage>(
+        IServiceScope scope,
         TMessage message,
         CancellationToken cancellationToken
     ) =>
         await configuration.ValidateMessageAsync(
+            scope,
             message,
             logger,
             Resolve<IValidationHandler<TMessage>>,
             cancellationToken
         );
 
-    private bool AssertHandler<TMessage>(TMessage message, object handlers)
+    private bool AssertHandler<TMessage, THandler>(IEnumerable<THandler> handlers)
+        where THandler : IHandler
     {
-        if (handlers is IEnumerable ien and not string && ien.Cast<object>().Any())
+        if (handlers is not null && handlers.Any() && handlers.All(o => o is not null))
             return true;
 
-        if (handlers is not null && (handlers is string or not IEnumerable))
+        return AssertHandler<TMessage>(handlers.FirstOrDefault());
+    }
+
+    private bool AssertHandler<TMessage>(IHandler? handler)
+    {
+        if (handler is not null)
             return true;
 
         if (!configuration.IgnoreUnhandledMessages)
@@ -52,9 +62,8 @@ internal class Mediator(
         if (configuration.IgnoreUnhandledMessages && configuration.LogUnhandledMessages)
             logger.Log(
                 configuration.UnhandledMessagesLogLevel,
-                "No handler found for message type {MessageType}. Message: {Message}",
-                typeof(TMessage).Name,
-                message
+                "No handler found for message type {MessageType}.",
+                typeof(TMessage).Name
             );
 
         return false;
@@ -65,17 +74,18 @@ internal class Mediator(
         CancellationToken cancellationToken = default
     )
     {
-        await ValidateMessage(message, cancellationToken);
+        using var scope = serviceScopeFactory.CreateScope();
+
+        await ValidateMessage(scope, message, cancellationToken);
 
         logger.LogDebug(
-            "Sending message of type {MessageType}: {Message}",
-            typeof(TMessage).Name,
-            message
+            "Sending message of type {MessageType}",
+            typeof(TMessage).Name
         );
 
-        var handler = Resolve<ICommandHandler<TMessage>>(message).FirstOrDefault();
+        var handler = Resolve<ICommandHandler<TMessage>>(scope, message).FirstOrDefault();
 
-        if (!AssertHandler(message, handler))
+        if (!AssertHandler<TMessage>(handler))
             return;
 
         await handler.Handle(message, cancellationToken).ConfigureAwait(true);
@@ -86,17 +96,18 @@ internal class Mediator(
         CancellationToken cancellationToken = default
     )
     {
-        await ValidateMessage(message, cancellationToken);
+        using var scope = serviceScopeFactory.CreateScope();
+
+        await ValidateMessage(scope, message, cancellationToken);
 
         logger.LogDebug(
-            "Sending message of type {MessageType}: {Message}",
-            typeof(TMessage).Name,
-            message
+            "Sending message of type {MessageType}",
+            typeof(TMessage).Name
         );
 
-        var handler = Resolve<IRequestHandler<TMessage, TResponse>>(message).FirstOrDefault();
+        var handler = Resolve<IRequestHandler<TMessage, TResponse>>(scope, message).FirstOrDefault();
 
-        if (!AssertHandler(message, handler))
+        if (!AssertHandler<TMessage>(handler))
             return default!;
 
         return await handler.Handle(message, cancellationToken).ConfigureAwait(true);
@@ -107,17 +118,18 @@ internal class Mediator(
         [EnumeratorCancellation] CancellationToken cancellationToken = default
     )
     {
-        await ValidateMessage(message, cancellationToken);
+        using var scope = serviceScopeFactory.CreateScope();
+
+        await ValidateMessage(scope, message, cancellationToken);
 
         logger.LogDebug(
-            "Sending message of type {MessageType}: {Message}",
-            typeof(TMessage).Name,
-            message
+            "Sending message of type {MessageType}",
+            typeof(TMessage).Name
         );
 
-        var handler = Resolve<IStreamHandler<TMessage, TResponse>>(message).FirstOrDefault();
+        var handler = Resolve<IStreamHandler<TMessage, TResponse>>(scope, message).FirstOrDefault();
 
-        if (!AssertHandler(message, handler))
+        if (!AssertHandler<TMessage>(handler))
             yield break;
 
         await foreach (
@@ -128,40 +140,53 @@ internal class Mediator(
         }
     }
 
-    public Task Notifies(object message, CancellationToken cancellationToken = default) =>
+    public Task Notifies(INotificationPacket packet, CancellationToken cancellationToken = default) =>
         (Task)
             GetType()
                 .GetMethod(nameof(Notifies), BindingFlags.NonPublic | BindingFlags.Instance)!
-                .MakeGenericMethod(message.GetType())
-                .Invoke(this, [message, cancellationToken]);
+                .MakeGenericMethod(packet.Message.GetType())
+                .Invoke(this, [packet, cancellationToken]);
 
     private async Task Notifies<TMessage>(
-        TMessage message,
+        NotificationPacket<TMessage> packet,
         CancellationToken cancellationToken = default
     )
     {
-        await ValidateMessage(message, cancellationToken);
+        using var scope = serviceScopeFactory.CreateScope();
+
+        await ValidateMessage(scope, packet.Message, cancellationToken);
 
         logger.LogDebug(
-            "Notifying message of type {MessageType}: {Message}",
-            typeof(TMessage).Name,
-            message
+            "Notifying message of type {MessageType}",
+            typeof(TMessage).Name
         );
 
-        var handlers = Resolve<INotificationHandler<TMessage>>(message);
+        var handlers = Resolve<INotificationHandler<TMessage>>(scope, packet.Message);
 
-        if (!AssertHandler(message, handlers))
+        if (!AssertHandler<TMessage, INotificationHandler<TMessage>>(handlers))
             return;
 
-        await Task.WhenAll(handlers.Select(handler => handler.Handle(message, cancellationToken)))
-            .ConfigureAwait(false);
+        foreach (var handler in handlers)
+        {
+            await handler.Handle(packet.Message, cancellationToken).ContinueWith(task =>
+            {
+                if (task.IsFaulted)
+                    packet.OnErrorAsync(
+                        handler.GetType(),
+                        task.Exception!
+                    ).ConfigureAwait(false);
+            }, cancellationToken).ConfigureAwait(false);
+        }
     }
 
-    private IEnumerable<T> Resolve<T>(object message, bool ignore = false)
+    private IEnumerable<T> Resolve<T>(IServiceScope scope, object message, bool ignore = false)
     {
-        var messageType = message.GetType();
+        logger.LogDebug(
+            "Resolving handlers for message of type {MessageType}",
+            message.GetType().Name
+        );
 
-        using var scope = serviceScopeFactory.CreateScope();
+        var messageType = message.GetType();
 
         var messageAttribute = messageType.GetCustomAttribute<KeyedMessageAttribute>(false);
 
@@ -174,24 +199,38 @@ internal class Mediator(
         }
         catch (InvalidOperationException ex)
         {
-            handlers = ResolvesCatching(message, messageType, ex, ignore, handlers);
+            handlers = ResolvesCatching(messageType, ex, ignore, handlers);
         }
 
-        return FilterResolves(message, handlers);
+        handlers = FilterResolves(message, handlers);
+
+        logger.LogDebug(
+            "Resolved {HandlerCount} handlers for message of type {MessageType}",
+            handlers.Count(),
+            messageType.Name
+        );
+
+        return handlers;
     }
 
     [ExcludeFromCodeCoverage]
     private IEnumerable<T> FilterResolves<T>(object message, IEnumerable<T> handlers)
     {
+        logger.LogDebug(
+            "Filtering handlers for message of type {MessageType}",
+            message.GetType().Name
+        );
+
         if (configuration.TryGetHandlerTypeByMessageFilter(message, out var type))
+        {
             return [handlers.First(h => h.GetType() == type)];
+        }
 
         return handlers;
     }
 
     [ExcludeFromCodeCoverage]
     private IEnumerable<T> ResolvesCatching<T>(
-        object message,
         Type messageType,
         Exception ex,
         bool ignore,
@@ -210,9 +249,8 @@ internal class Mediator(
         if (configuration.LogUnhandledMessages)
             logger.Log(
                 configuration.UnhandledMessagesLogLevel,
-                "No handler found for message type {MessageType}. Message: {Message}",
-                messageType.Name,
-                message
+                "No handler found for message type {MessageType}.",
+                messageType.Name
             );
 
         return handlers;

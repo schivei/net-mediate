@@ -5,12 +5,12 @@ namespace NetMediate.Tests.Internals;
 
 public class ConfigurationTests
 {
-    private readonly Channel<object> _channel;
+    private readonly Channel<INotificationPacket> _channel;
     private readonly Configuration _configuration;
 
     public ConfigurationTests()
     {
-        _channel = Channel.CreateUnbounded<object>();
+        _channel = Channel.CreateUnbounded<INotificationPacket>();
         _configuration = new Configuration(_channel);
     }
 
@@ -103,7 +103,7 @@ public class ConfigurationTests
     public async Task DisposeAsync_CompletesWriterAndDrainsReader()
     {
         // Arrange
-        await _configuration.ChannelWriter.WriteAsync(new TestMessage());
+        await _configuration.ChannelWriter.WriteAsync(new NotificationPacket<TestMessage>(new(), (_, _, _) => Task.CompletedTask));
 
         // Act
         await _configuration.DisposeAsync();

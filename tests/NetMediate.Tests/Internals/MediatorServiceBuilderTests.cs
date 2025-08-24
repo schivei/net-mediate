@@ -139,7 +139,7 @@ public class MediatorServiceBuilderTests
     {
         var services = new ServiceCollection();
         var builder = new MediatorServiceBuilder(services);
-        builder.FilterRequest<DummyRequest, DummyRequestHandler>(msg => true);
+        builder.FilterRequest<DummyRequest, object, DummyRequestHandler>(msg => true);
         Assert.Contains(services, s => s.ImplementationType == typeof(DummyRequestHandler));
     }
 
@@ -148,7 +148,7 @@ public class MediatorServiceBuilderTests
     {
         var services = new ServiceCollection();
         var builder = new MediatorServiceBuilder(services);
-        builder.FilterStream<DummyStream, DummyStreamHandler>(msg => true);
+        builder.FilterStream<DummyStream, object, DummyStreamHandler>(msg => true);
         Assert.Contains(services, s => s.ImplementationType == typeof(DummyStreamHandler));
     }
 
@@ -170,8 +170,8 @@ public class MediatorServiceBuilderTests
         var builder = MakeBuilder(services);
         builder.RegisterNotificationHandler<DummyNotification, DummyNotificationHandler>();
         builder.RegisterCommandHandler<DummyCommand, DummyCommandHandler>();
-        builder.RegisterRequestHandler<DummyRequest, DummyRequestHandler>();
-        builder.RegisterStreamHandler<DummyStream, DummyStreamHandler>();
+        builder.RegisterRequestHandler<DummyRequest, object, DummyRequestHandler>();
+        builder.RegisterStreamHandler<DummyStream, object, DummyStreamHandler>();
         builder.RegisterValidationHandler<DummyValidation, DummyValidationHandler>();
         Assert.Contains(services, s => s.ImplementationType == typeof(DummyNotificationHandler));
         Assert.Contains(services, s => s.ImplementationType == typeof(DummyCommandHandler));

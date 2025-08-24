@@ -15,7 +15,7 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
 
     internal MediatorServiceBuilder(IServiceCollection services)
     {
-        _configuration = new Configuration(Channel.CreateUnbounded<object>());
+        _configuration = new Configuration(Channel.CreateUnbounded<INotificationPacket>());
 
         Services = services;
 
@@ -91,13 +91,13 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         where THandler : class, ICommandHandler<TMessage> =>
         Filter<TMessage, THandler, ICommandHandler<TMessage>>(filter);
 
-    public IMediatorServiceBuilder FilterRequest<TMessage, THandler>(Func<TMessage, bool> filter)
-        where THandler : class, IRequestHandler<TMessage, object> =>
-        Filter<TMessage, THandler, IRequestHandler<TMessage, object>>(filter);
+    public IMediatorServiceBuilder FilterRequest<TMessage, TResponse, THandler>(Func<TMessage, bool> filter)
+        where THandler : class, IRequestHandler<TMessage, TResponse> =>
+        Filter<TMessage, THandler, IRequestHandler<TMessage, TResponse>>(filter);
 
-    public IMediatorServiceBuilder FilterStream<TMessage, THandler>(Func<TMessage, bool> filter)
-        where THandler : class, IStreamHandler<TMessage, object> =>
-        Filter<TMessage, THandler, IStreamHandler<TMessage, object>>(filter);
+    public IMediatorServiceBuilder FilterStream<TMessage, TResponse, THandler>(Func<TMessage, bool> filter)
+        where THandler : class, IStreamHandler<TMessage, TResponse> =>
+        Filter<TMessage, THandler, IStreamHandler<TMessage, TResponse>>(filter);
 
     public IMediatorServiceBuilder InstantiateHandlerByMessageFilter<TMessage>(
         Func<TMessage, Type?> filter

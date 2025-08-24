@@ -10,9 +10,51 @@ public interface IMediator
     /// </summary>
     /// <typeparam name="TMessage">The type of the notification message.</typeparam>
     /// <param name="message">The notification message to publish.</param>
+    /// <param name="onError">The callback to handle errors that occur during message processing.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default);
+    Task Notify<TMessage>(TMessage message, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Publishes a collection of notification messages to all registered handlers.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of the notification message.</typeparam>
+    /// <param name="messages">The collection of notification messages to publish.</param>
+    /// <param name="onError">The callback to handle errors that occur during message processing.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    Task Notify<TMessage>(IEnumerable<TMessage> messages, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken = default)
+    {
+        if (messages is null || !messages.Any())
+            return Task.CompletedTask;
+
+        return Task.WhenAll(messages.Select(message => Notify(message, onError, cancellationToken)));
+    }
+
+    /// <summary>
+    /// Publishes a notification message to all registered handlers.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of the notification message.</typeparam>
+    /// <param name="message">The notification message to publish.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) =>
+        Notify(message, (_, _, _) => Task.CompletedTask, cancellationToken);
+
+    /// <summary>
+    /// Publishes a collection of notification messages to all registered handlers.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of the notification message.</typeparam>
+    /// <param name="messages">The collection of notification messages to publish.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default)
+    {
+        if (messages is null || !messages.Any())
+            return Task.CompletedTask;
+
+        return Task.WhenAll(messages.Select(message => Notify(message, cancellationToken)));
+    }
 
     /// <summary>
     /// Sends a command message to a single handler.

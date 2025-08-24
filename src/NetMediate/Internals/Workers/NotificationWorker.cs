@@ -42,34 +42,27 @@ internal sealed class NotificationWorker(
 
     private async Task ConsumeAsync(CancellationToken cancellationToken)
     {
-        while (configuration.ChannelReader.TryRead(out var message))
+        while (configuration.ChannelReader.TryRead(out var packet))
         {
-            if (message is null)
+            if (packet.Message is null)
                 continue;
+            
+            logger.LogDebug(
+                "Processing message of type {MessageType}.",
+                packet.Message.GetType().Name
+            );
 
             try
             {
-                logger.LogDebug(
-                    "Processing message of type {MessageType}: {Message}",
-                    message.GetType().Name,
-                    message
-                );
-                await mediator.Notifies(message, cancellationToken).ConfigureAwait(false);
+                await mediator.Notifies(packet, cancellationToken);
             }
             catch (Exception ex)
-                when (ex is not OperationCanceledException and not ChannelClosedException)
             {
-                if (!configuration.IgnoreUnhandledMessages)
-                    throw;
-
-                if (configuration.LogUnhandledMessages)
-                    logger.Log(
-                        configuration.UnhandledMessagesLogLevel,
-                        ex,
-                        "Error processing message of type {MessageType}: {Message}",
-                        message.GetType().Name,
-                        message
-                    );
+                logger.LogTrace(
+                    ex,
+                    "An error occurred while processing message of type {MessageType}.",
+                    packet.Message.GetType().Name
+                );
             }
         }
     }

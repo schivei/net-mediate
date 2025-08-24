@@ -1,7 +1,7 @@
-using Microsoft.Extensions.DependencyInjection;
-using NetMediate.Internals;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
+using NetMediate.Internals;
 
 namespace NetMediate.Tests.Internals;
 
@@ -10,30 +10,44 @@ public sealed class MediatorServiceBuilderPrivateTests
     private static (Type, Type[]) TypeTuple(Type t) => (t, t.GetInterfaces());
 
     private static MethodInfo GetInterfacesMethod() =>
-        typeof(MediatorServiceBuilder).GetMethod("GetInterfaces", BindingFlags.NonPublic | BindingFlags.Static)!;
+        typeof(MediatorServiceBuilder).GetMethod(
+            "GetInterfaces",
+            BindingFlags.NonPublic | BindingFlags.Static
+        )!;
 
     private static MethodInfo MapMethod() =>
-        typeof(MediatorServiceBuilder).GetMethod("Map", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        typeof(MediatorServiceBuilder).GetMethod(
+            "Map",
+            BindingFlags.NonPublic | BindingFlags.Instance
+        )!;
 
     // Dummy message
     public sealed class Msg { }
 
     // Valid handler implementing multiple valid interfaces for Msg
-    public sealed class MultiHandler :
-        INotificationHandler<Msg>,
-        ICommandHandler<Msg>,
-        IRequestHandler<Msg, string>,
-        IStreamHandler<Msg, string>,
-        IValidationHandler<Msg>
+    public sealed class MultiHandler
+        : INotificationHandler<Msg>,
+            ICommandHandler<Msg>,
+            IRequestHandler<Msg, string>,
+            IStreamHandler<Msg, string>,
+            IValidationHandler<Msg>
     {
         public Task Handle(Msg _, CancellationToken __ = default) => Task.CompletedTask;
-        Task<string> IRequestHandler<Msg, string>.Handle(Msg _, CancellationToken __ = default) => Task.FromResult("ok");
-        async IAsyncEnumerable<string> IStreamHandler<Msg, string>.Handle(Msg _, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken __ = default)
+
+        Task<string> IRequestHandler<Msg, string>.Handle(Msg _, CancellationToken __ = default) =>
+            Task.FromResult("ok");
+
+        async IAsyncEnumerable<string> IStreamHandler<Msg, string>.Handle(
+            Msg _,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken __ = default
+        )
         {
             yield return "s";
             await Task.CompletedTask;
         }
-        public ValueTask<ValidationResult> ValidateAsync(Msg _, CancellationToken __ = default) => ValueTask.FromResult(ValidationResult.Success!);
+
+        public ValueTask<ValidationResult> ValidateAsync(Msg _, CancellationToken __ = default) =>
+            ValueTask.FromResult(ValidationResult.Success!);
     }
 
     public abstract class AbstractHandler : ICommandHandler<Msg>
@@ -72,11 +86,26 @@ public sealed class MediatorServiceBuilderPrivateTests
     {
         var mi = GetInterfacesMethod();
         var result = (Type[])mi.Invoke(null, [typeof(MultiHandler), typeof(Msg)])!;
-        Assert.Contains(result, i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(INotificationHandler<>));
-        Assert.Contains(result, i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICommandHandler<>));
-        Assert.Contains(result, i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequestHandler<,>));
-        Assert.Contains(result, i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IStreamHandler<,>));
-        Assert.Contains(result, i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IValidationHandler<>));
+        Assert.Contains(
+            result,
+            i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(INotificationHandler<>)
+        );
+        Assert.Contains(
+            result,
+            i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ICommandHandler<>)
+        );
+        Assert.Contains(
+            result,
+            i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequestHandler<,>)
+        );
+        Assert.Contains(
+            result,
+            i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IStreamHandler<,>)
+        );
+        Assert.Contains(
+            result,
+            i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IValidationHandler<>)
+        );
     }
 
     [Fact]
@@ -88,9 +117,7 @@ public sealed class MediatorServiceBuilderPrivateTests
 
         var types = new List<(Type, Type[])> { (typeof(NoInterfaceHandler), Type.EmptyTypes) };
 
-        var ex = Assert.Throws<TargetInvocationException>(() =>
-            map.Invoke(builder, [types, null])
-        );
+        var ex = Assert.Throws<TargetInvocationException>(() => map.Invoke(builder, [types, null]));
         var inner = Assert.IsType<ArgumentException>(ex.InnerException);
         Assert.Equal("handlerInterface", inner.ParamName);
         Assert.Contains("No valid handler interface found", inner.Message);
@@ -110,6 +137,9 @@ public sealed class MediatorServiceBuilderPrivateTests
         map.Invoke(builder, [types, typeof(INotificationHandler<>)]);
 
         var serviceType = typeof(INotificationHandler<>).MakeGenericType(typeof(Msg));
-        Assert.Contains(services, d => d.ServiceType == serviceType && d.ImplementationType == typeof(MultiHandler));
+        Assert.Contains(
+            services,
+            d => d.ServiceType == serviceType && d.ImplementationType == typeof(MultiHandler)
+        );
     }
 }

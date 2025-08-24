@@ -23,7 +23,10 @@ internal class Mediator(
         await ValidateMessage(scope, message, cancellationToken);
 
         await configuration
-            .ChannelWriter.WriteAsync(new NotificationPacket<TMessage>(message, onError), cancellationToken)
+            .ChannelWriter.WriteAsync(
+                new NotificationPacket<TMessage>(message, onError),
+                cancellationToken
+            )
             .ConfigureAwait(false);
     }
 
@@ -78,10 +81,7 @@ internal class Mediator(
 
         await ValidateMessage(scope, message, cancellationToken);
 
-        logger.LogDebug(
-            "Sending message of type {MessageType}",
-            typeof(TMessage).Name
-        );
+        logger.LogDebug("Sending message of type {MessageType}", typeof(TMessage).Name);
 
         var handler = Resolve<ICommandHandler<TMessage>>(scope, message).FirstOrDefault();
 
@@ -100,12 +100,10 @@ internal class Mediator(
 
         await ValidateMessage(scope, message, cancellationToken);
 
-        logger.LogDebug(
-            "Sending message of type {MessageType}",
-            typeof(TMessage).Name
-        );
+        logger.LogDebug("Sending message of type {MessageType}", typeof(TMessage).Name);
 
-        var handler = Resolve<IRequestHandler<TMessage, TResponse>>(scope, message).FirstOrDefault();
+        var handler = Resolve<IRequestHandler<TMessage, TResponse>>(scope, message)
+            .FirstOrDefault();
 
         if (!AssertHandler<TMessage>(handler))
             return default!;
@@ -122,10 +120,7 @@ internal class Mediator(
 
         await ValidateMessage(scope, message, cancellationToken);
 
-        logger.LogDebug(
-            "Sending message of type {MessageType}",
-            typeof(TMessage).Name
-        );
+        logger.LogDebug("Sending message of type {MessageType}", typeof(TMessage).Name);
 
         var handler = Resolve<IStreamHandler<TMessage, TResponse>>(scope, message).FirstOrDefault();
 
@@ -140,7 +135,10 @@ internal class Mediator(
         }
     }
 
-    public Task Notifies(INotificationPacket packet, CancellationToken cancellationToken = default) =>
+    public Task Notifies(
+        INotificationPacket packet,
+        CancellationToken cancellationToken = default
+    ) =>
         (Task)
             GetType()
                 .GetMethod(nameof(Notifies), BindingFlags.NonPublic | BindingFlags.Instance)!
@@ -156,10 +154,7 @@ internal class Mediator(
 
         await ValidateMessage(scope, packet.Message, cancellationToken);
 
-        logger.LogDebug(
-            "Notifying message of type {MessageType}",
-            typeof(TMessage).Name
-        );
+        logger.LogDebug("Notifying message of type {MessageType}", typeof(TMessage).Name);
 
         var handlers = Resolve<INotificationHandler<TMessage>>(scope, packet.Message);
 
@@ -174,10 +169,7 @@ internal class Mediator(
             }
             catch (Exception ex)
             {
-                await packet.OnErrorAsync(
-                    handler.GetType(),
-                    ex
-                ).ConfigureAwait(false);
+                await packet.OnErrorAsync(handler.GetType(), ex).ConfigureAwait(false);
             }
         });
         await Task.WhenAll(tasks).ConfigureAwait(false);

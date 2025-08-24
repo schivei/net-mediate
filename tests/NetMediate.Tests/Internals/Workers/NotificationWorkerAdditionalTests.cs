@@ -8,16 +8,21 @@ namespace NetMediate.Tests.Internals.Workers;
 
 public sealed class NotificationWorkerAdditionalTests
 {
-    private static void VerifyLog(Mock<ILogger<NotificationWorker>> logger, LogLevel level, string contains)
+    private static void VerifyLog(
+        Mock<ILogger<NotificationWorker>> logger,
+        LogLevel level,
+        string contains
+    )
     {
         logger.Verify(
-            x => x.Log(
-                It.Is<LogLevel>(l => l == level),
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v!.ToString()!.Contains(contains)),
-                It.IsAny<Exception?>(),
-                It.Is<Func<It.IsAnyType, Exception?, string>>((_, _) => true)
-            ),
+            x =>
+                x.Log(
+                    It.Is<LogLevel>(l => l == level),
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>((v, t) => v!.ToString()!.Contains(contains)),
+                    It.IsAny<Exception?>(),
+                    It.Is<Func<It.IsAnyType, Exception?, string>>((_, _) => true)
+                ),
             Times.AtLeastOnce
         );
     }
@@ -42,7 +47,10 @@ public sealed class NotificationWorkerAdditionalTests
         await Task.Delay(50);
 
         // mediator.Notifies must not be called for null message
-        mediator.Verify(m => m.Notifies(It.IsAny<INotificationPacket>(), It.IsAny<CancellationToken>()), Times.Never);
+        mediator.Verify(
+            m => m.Notifies(It.IsAny<INotificationPacket>(), It.IsAny<CancellationToken>()),
+            Times.Never
+        );
 
         await worker.StopAsync(CancellationToken.None);
         VerifyLog(logger, LogLevel.Debug, "Notification worker stopped.");
@@ -94,7 +102,10 @@ public sealed class NotificationWorkerAdditionalTests
 
         await Task.Delay(50);
 
-        mediator.Verify(m => m.Notifies(It.IsAny<INotificationPacket>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        mediator.Verify(
+            m => m.Notifies(It.IsAny<INotificationPacket>(), It.IsAny<CancellationToken>()),
+            Times.AtLeastOnce
+        );
 
         await worker.StopAsync(CancellationToken.None);
         VerifyLog(logger, LogLevel.Debug, "Notification worker stopped.");

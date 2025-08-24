@@ -20,6 +20,7 @@ A lightweight and efficient .NET implementation of the Mediator pattern, providi
 - [Framework Support](#framework-support)
 - [Contributing](#contributing)
 - [License](#license)
+- [Fixed problems](#fixed-problems)
 
 ## Introduction
 
@@ -162,7 +163,35 @@ public class AuditLogHandler : INotificationHandler<UserRegistered>
 #### Publish Notifications
 ```csharp
 var notification = new UserRegistered("user123", "user@example.com", DateTime.UtcNow);
-await mediator.Notify(notification);
+await mediator.Notify(notification, cancellationToken);
+```
+
+Batch notifications in one call:
+```csharp
+var notifications = [
+    new UserRegistered("user123", "user@example.com", DateTime.UtcNow),
+	new UserRegistered("user321", "user2@example.com", DateTime.UtcNow)
+];
+await mediator.Notify(notifications, cancellationToken);
+```
+
+Error handling
+```csharp
+await mediator.Notify(
+    notification,
+    (handlerType, message, exception) =>
+    {
+        logger.LogError(exception, "Publish failed for {MessageType} at {HandlerType}", message?.GetType().Name, handlerType?.Name);
+    },
+    cancellationToken);
+	
+await mediator.Notify(
+    notifications,
+    (handlerType, message, exception) =>
+    {
+        logger.LogError(exception, "Publish failed for {MessageType} at {HandlerType}", message?.GetType().Name, handlerType?.Name);
+    },
+    cancellationToken);
 ```
 
 ### Commands
@@ -438,3 +467,10 @@ For critical situations requiring immediate package publishing, see the [Emergen
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Fixed problems
+
+- Prevented notification exceptions from stopping execution by introducing a dedicated onError callback.
+- Added batch publishing support for notifications.
+- Improved consistency across handler interfaces via the IHandler base.
+- Refactored internals for clearer, more maintainable code.

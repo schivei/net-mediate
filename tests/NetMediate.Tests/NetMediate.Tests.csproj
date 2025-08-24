@@ -4,7 +4,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-	<NoWarn>CS1066;CA1859;$(NoWarn)</NoWarn>
+    <NoWarn>CS1066;CA1859;$(NoWarn)</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4">

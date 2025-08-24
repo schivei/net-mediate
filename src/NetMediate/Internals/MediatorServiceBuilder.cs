@@ -91,11 +91,15 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         where THandler : class, ICommandHandler<TMessage> =>
         Filter<TMessage, THandler, ICommandHandler<TMessage>>(filter);
 
-    public IMediatorServiceBuilder FilterRequest<TMessage, TResponse, THandler>(Func<TMessage, bool> filter)
+    public IMediatorServiceBuilder FilterRequest<TMessage, TResponse, THandler>(
+        Func<TMessage, bool> filter
+    )
         where THandler : class, IRequestHandler<TMessage, TResponse> =>
         Filter<TMessage, THandler, IRequestHandler<TMessage, TResponse>>(filter);
 
-    public IMediatorServiceBuilder FilterStream<TMessage, TResponse, THandler>(Func<TMessage, bool> filter)
+    public IMediatorServiceBuilder FilterStream<TMessage, TResponse, THandler>(
+        Func<TMessage, bool> filter
+    )
         where THandler : class, IStreamHandler<TMessage, TResponse> =>
         Filter<TMessage, THandler, IStreamHandler<TMessage, TResponse>>(filter);
 
@@ -186,8 +190,8 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
                     s_validInterface.Contains(ifce.GetGenericTypeDefinition())
                 )
             )
-            .FirstOrDefault(t => t is not null)?
-            .GetGenericTypeDefinition();
+            .FirstOrDefault(t => t is not null)
+            ?.GetGenericTypeDefinition();
 
         if (handlerInterface is null)
         {

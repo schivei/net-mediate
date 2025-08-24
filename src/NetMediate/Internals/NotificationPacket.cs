@@ -3,7 +3,10 @@
 namespace NetMediate.Internals;
 
 [ExcludeFromCodeCoverage]
-internal readonly record struct NotificationPacket<TMessage>(TMessage Message, NotificationErrorDelegate<TMessage> ErrorHandler = default) : INotificationPacket
+internal readonly record struct NotificationPacket<TMessage>(
+    TMessage Message,
+    NotificationErrorDelegate<TMessage> ErrorHandler = default
+) : INotificationPacket
 {
     object INotificationPacket.Message => Message;
     Delegate INotificationPacket.ErrorHandler => ErrorHandler;

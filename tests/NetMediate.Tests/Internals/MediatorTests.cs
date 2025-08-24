@@ -52,7 +52,7 @@ public class MediatorTests
         var message = new TestMessage { Content = "Test" };
 
         // Act
-        await _mediator.Notify(message, (_,_,_) => Task.CompletedTask);
+        await _mediator.Notify(message, (_, _, _) => Task.CompletedTask);
 
         // Assert
         Assert.True(_channel.Reader.TryRead(out var receivedMessage));
@@ -66,7 +66,9 @@ public class MediatorTests
         TestMessage? message = null;
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() => _mediator.Notify(message!, (_, _, _) => Task.CompletedTask));
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            _mediator.Notify(message!, (_, _, _) => Task.CompletedTask)
+        );
     }
 
     [Fact]
@@ -323,7 +325,9 @@ public class MediatorTests
         SetupHandler<INotificationHandler<TestMessage>>([]);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _mediator.Notifies(new NotificationPacket<TestMessage>(message)));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _mediator.Notifies(new NotificationPacket<TestMessage>(message))
+        );
     }
 
     [Fact]

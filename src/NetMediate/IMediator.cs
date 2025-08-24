@@ -13,7 +13,11 @@ public interface IMediator
     /// <param name="onError">The callback to handle errors that occur during message processing.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    Task Notify<TMessage>(TMessage message, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken = default);
+    Task Notify<TMessage>(
+        TMessage message,
+        NotificationErrorDelegate<TMessage> onError,
+        CancellationToken cancellationToken = default
+    );
 
     /// <summary>
     /// Publishes a collection of notification messages to all registered handlers.
@@ -23,12 +27,18 @@ public interface IMediator
     /// <param name="onError">The callback to handle errors that occur during message processing.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    Task Notify<TMessage>(IEnumerable<TMessage> messages, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken = default)
+    Task Notify<TMessage>(
+        IEnumerable<TMessage> messages,
+        NotificationErrorDelegate<TMessage> onError,
+        CancellationToken cancellationToken = default
+    )
     {
         if (messages is null || !messages.Any())
             return Task.CompletedTask;
 
-        return Task.WhenAll(messages.Select(message => Notify(message, onError, cancellationToken)));
+        return Task.WhenAll(
+            messages.Select(message => Notify(message, onError, cancellationToken))
+        );
     }
 
     /// <summary>
@@ -48,7 +58,10 @@ public interface IMediator
     /// <param name="messages">The collection of notification messages to publish.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default)
+    Task Notify<TMessage>(
+        IEnumerable<TMessage> messages,
+        CancellationToken cancellationToken = default
+    )
     {
         if (messages is null || !messages.Any())
             return Task.CompletedTask;

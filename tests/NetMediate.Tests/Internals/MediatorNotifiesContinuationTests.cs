@@ -33,7 +33,8 @@ public sealed class MediatorNotifiesContinuationTests
 
     private sealed class OkHandler : INotificationHandler<Msg>
     {
-        public Task Handle(Msg notification, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task Handle(Msg notification, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class FaultHandler : INotificationHandler<Msg>
@@ -46,8 +47,9 @@ public sealed class MediatorNotifiesContinuationTests
     public async Task Notifies_HandlerSuccess_DoesNotInvokeErrorCallback()
     {
         var message = new Msg();
-        _provider.Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
-                 .Returns(new[] { new OkHandler() });
+        _provider
+            .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
+            .Returns(new[] { new OkHandler() });
 
         var called = false;
         Task onError(Type _, Msg __, Exception ___)
@@ -67,10 +69,13 @@ public sealed class MediatorNotifiesContinuationTests
     public async Task Notifies_HandlerFaulted_InvokesErrorCallback()
     {
         var message = new Msg();
-        _provider.Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
-                 .Returns(new[] { new FaultHandler() });
+        _provider
+            .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
+            .Returns(new[] { new FaultHandler() });
 
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var tcs = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously
+        );
         Task onError(Type _, Msg __, Exception ___)
         {
             tcs.TrySetResult(true);

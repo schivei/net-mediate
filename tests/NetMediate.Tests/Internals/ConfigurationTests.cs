@@ -103,7 +103,9 @@ public class ConfigurationTests
     public async Task DisposeAsync_CompletesWriterAndDrainsReader()
     {
         // Arrange
-        await _configuration.ChannelWriter.WriteAsync(new NotificationPacket<TestMessage>(new(), (_, _, _) => Task.CompletedTask));
+        await _configuration.ChannelWriter.WriteAsync(
+            new NotificationPacket<TestMessage>(new(), (_, _, _) => Task.CompletedTask)
+        );
 
         // Act
         await _configuration.DisposeAsync();

@@ -9,18 +9,31 @@ public sealed class IMediatorDefaultAdditionalTests
         public int SingleNotifyCalls;
         public readonly ConcurrentBag<object?> Notified = [];
 
-        public Task Notify<TMessage>(TMessage message, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken = default)
+        public Task Notify<TMessage>(
+            TMessage message,
+            NotificationErrorDelegate<TMessage> onError,
+            CancellationToken cancellationToken = default
+        )
         {
             SingleNotifyCalls++;
             Notified.Add(message);
             return Task.CompletedTask;
         }
 
-        public Task Send<TMessage>(TMessage message, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task Send<TMessage>(
+            TMessage message,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
 
-        public Task<TResponse> Request<TMessage, TResponse>(TMessage message, CancellationToken cancellationToken = default) => Task.FromResult(default(TResponse)!);
+        public Task<TResponse> Request<TMessage, TResponse>(
+            TMessage message,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult(default(TResponse)!);
 
-        public IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(TMessage message, CancellationToken cancellationToken = default)
+        public IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
+            TMessage message,
+            CancellationToken cancellationToken = default
+        )
         {
             return GetAsync();
             static async IAsyncEnumerable<TResponse> GetAsync()

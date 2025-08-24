@@ -46,7 +46,7 @@ internal sealed class NotificationWorker(
         {
             if (packet.Message is null)
                 continue;
-            
+
             logger.LogDebug(
                 "Processing message of type {MessageType}.",
                 packet.Message.GetType().Name

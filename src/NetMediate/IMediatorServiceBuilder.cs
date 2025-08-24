@@ -48,7 +48,9 @@ public interface IMediatorServiceBuilder
     /// <typeparam name="THandler">The handler type implementing <see cref="IRequestHandler{TRequest,TResponse}"/> for <typeparamref name="TMessage"/>.</typeparam>
     /// <param name="filter">Predicate returning true to allow execution; false to skip.</param>
     /// <returns>This builder for chaining.</returns>
-    IMediatorServiceBuilder FilterRequest<TMessage, TResponse, THandler>(Func<TMessage, bool> filter)
+    IMediatorServiceBuilder FilterRequest<TMessage, TResponse, THandler>(
+        Func<TMessage, bool> filter
+    )
         where THandler : class, IRequestHandler<TMessage, TResponse>;
 
     /// <summary>

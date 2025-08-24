@@ -1,9 +1,9 @@
+using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using Microsoft.Extensions.Logging;
 using Moq;
 using NetMediate.Internals;
 using NetMediate.Internals.Workers;
-using System.Runtime.CompilerServices;
-using System.Threading.Channels;
 
 namespace NetMediate.Tests.Internals.Workers;
 
@@ -34,8 +34,10 @@ public class NotificationWorkerTests
         );
     }
 
-    private static INotificationPacket Pack<TMessage>(TMessage message, NotificationErrorDelegate<TMessage>? onError = null) =>
-        new NotificationPacket<TMessage>(message, onError ?? ((_, _, _) => Task.CompletedTask));
+    private static INotificationPacket Pack<TMessage>(
+        TMessage message,
+        NotificationErrorDelegate<TMessage>? onError = null
+    ) => new NotificationPacket<TMessage>(message, onError ?? ((_, _, _) => Task.CompletedTask));
 
     [Fact]
     public async Task ExecuteAsync_ProcessesMessages_Successfully()
@@ -121,7 +123,11 @@ public class NotificationWorkerTests
         await Task.Delay(100);
 
         // Assert
-        VerifyDebugLog("An error occurred while processing message of type TestMessage", Times.Once(), LogLevel.Trace);
+        VerifyDebugLog(
+            "An error occurred while processing message of type TestMessage",
+            Times.Once(),
+            LogLevel.Trace
+        );
         await _worker.StopAsync(cts.Token);
     }
 
@@ -143,7 +149,11 @@ public class NotificationWorkerTests
         VerifyDebugLog("Notification worker stopped.", Times.Once());
     }
 
-    private void VerifyDebugLog(string messageContains, Times times, LogLevel level = LogLevel.Debug)
+    private void VerifyDebugLog(
+        string messageContains,
+        Times times,
+        LogLevel level = LogLevel.Debug
+    )
     {
         _loggerMock.Verify(
             x =>
@@ -180,8 +190,11 @@ public class NotificationWorkerTests
 
     public class MediatorTest : IMediator, INotifiable
     {
-        public Task Notify<TMessage>(TMessage message, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task Notify<TMessage>(
+            TMessage message,
+            NotificationErrorDelegate<TMessage> onError,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
 
         public virtual Task<TResponse> Request<TMessage, TResponse>(
             TMessage message,
@@ -203,13 +216,20 @@ public class NotificationWorkerTests
             CancellationToken cancellationToken = default
         ) => Task.CompletedTask;
 
-        internal virtual Task Handle(INotificationPacket packet, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        internal virtual Task Handle(
+            INotificationPacket packet,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
 
-        Task INotifiable.Notifies(INotificationPacket packet, CancellationToken cancellationToken) =>
-            Notifies(packet, cancellationToken);
+        Task INotifiable.Notifies(
+            INotificationPacket packet,
+            CancellationToken cancellationToken
+        ) => Notifies(packet, cancellationToken);
 
-        internal virtual async Task Notifies(INotificationPacket packet, CancellationToken cancellationToken = default)
+        internal virtual async Task Notifies(
+            INotificationPacket packet,
+            CancellationToken cancellationToken = default
+        )
         {
             try
             {
@@ -217,10 +237,7 @@ public class NotificationWorkerTests
             }
             catch (Exception ex)
             {
-                await packet.OnErrorAsync(
-                    packet.Message.GetType(),
-                    ex
-                );
+                await packet.OnErrorAsync(packet.Message.GetType(), ex);
             }
         }
     }

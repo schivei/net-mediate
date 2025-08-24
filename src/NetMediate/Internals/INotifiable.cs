@@ -2,5 +2,5 @@
 
 internal interface INotifiable
 {
-    Task Notifies(object message, CancellationToken cancellationToken = default);
+    Task Notifies(INotificationPacket packet, CancellationToken cancellationToken = default);
 }

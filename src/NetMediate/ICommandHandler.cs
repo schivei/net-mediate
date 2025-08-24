@@ -4,7 +4,7 @@
 /// Defines a handler for a command message.
 /// </summary>
 /// <typeparam name="TMessage">The type of the command message to handle.</typeparam>
-public interface ICommandHandler<in TMessage>
+public interface ICommandHandler<in TMessage> : IHandler
 {
     /// <summary>
     /// Handles the specified command asynchronously.

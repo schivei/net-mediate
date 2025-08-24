@@ -5,23 +5,24 @@ namespace NetMediate.Tests;
 
 public sealed class NotificationTests
 {
-    private static async Task NotificationHandle<T>(T message, bool expected, bool required = true)
+    private static async Task NotificationHandle<T>(
+        bool expected,
+        bool required = true,
+        IEnumerable<T> values = null!
+    )
         where T : BaseMessage
     {
         using var fixture = new NetMediateFixture();
-
         await fixture.RunAsync(
             async (sp) =>
             {
                 var mediator = sp.GetRequiredService<IMediator>();
-                await mediator.Notify(message, fixture.CancellationTokenSource.Token);
+                await mediator.Notify(values, fixture.CancellationTokenSource.Token);
                 await Task.Delay(500);
             }
         );
-
         // Act
         await fixture.WaitAsync();
-        Assert.Equal(expected, message.Runned);
 
         if (expected)
         {
@@ -34,6 +35,22 @@ public sealed class NotificationTests
             var msg = required ? "Name is required" : "Name must be 'right'.";
             Assert.Equal(msg, ex.Message);
         }
+    }
+
+    private static async Task NotificationHandle<T>(T message, bool expected, bool required = true)
+        where T : BaseMessage
+    {
+        await NotificationHandle(expected, required, [message]);
+        Assert.Equal(expected, message.Runned);
+    }
+
+    [Fact]
+    public async Task DecoupledNotificationHandler_Handle_ShouldCompleteSuccessfully_Collection()
+    {
+        IEnumerable<DecoupledValidatableMessage> c1 = [];
+        IEnumerable<DecoupledValidatableMessage> c2 = null!;
+        await NotificationHandle(true, false, c1);
+        await NotificationHandle(true, false, c2);
     }
 
     [Theory]

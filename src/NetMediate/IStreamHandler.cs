@@ -5,7 +5,7 @@
 /// </summary>
 /// <typeparam name="TMessage">The type of the message to handle.</typeparam>
 /// <typeparam name="TResponse">The type of the response returned in the stream.</typeparam>
-public interface IStreamHandler<in TMessage, TResponse>
+public interface IStreamHandler<in TMessage, TResponse> : IHandler
 {
     /// <summary>
     /// Handles the specified message and returns an asynchronous stream of responses.

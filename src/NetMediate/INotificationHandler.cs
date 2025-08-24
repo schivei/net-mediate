@@ -6,7 +6,7 @@
 /// <typeparam name="TMessage">
 /// The type of notification message to handle.
 /// </typeparam>
-public interface INotificationHandler<in TMessage>
+public interface INotificationHandler<in TMessage> : IHandler
 {
     /// <summary>
     /// Handles a notification message.

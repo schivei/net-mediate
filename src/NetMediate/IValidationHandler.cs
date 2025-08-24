@@ -6,7 +6,7 @@ namespace NetMediate;
 /// Defines a handler for validating messages of type <typeparamref name="TMessage"/>.
 /// </summary>
 /// <typeparam name="TMessage">The type of the message to validate.</typeparam>
-public interface IValidationHandler<TMessage>
+public interface IValidationHandler<TMessage> : IHandler
 {
     /// <summary>
     /// Asynchronously validates the specified message.

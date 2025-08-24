@@ -168,14 +168,17 @@ internal class Mediator(
 
         foreach (var handler in handlers)
         {
-            await handler.Handle(packet.Message, cancellationToken).ContinueWith(task =>
+            try
             {
-                if (task.IsFaulted)
-                    packet.OnErrorAsync(
-                        handler.GetType(),
-                        task.Exception!
-                    ).ConfigureAwait(false);
-            }, cancellationToken).ConfigureAwait(false);
+                await handler.Handle(packet.Message, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                await packet.OnErrorAsync(
+                    handler.GetType(),
+                    ex
+                ).ConfigureAwait(false);
+            }
         }
     }
 

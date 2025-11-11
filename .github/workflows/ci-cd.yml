@@ -122,7 +122,7 @@ jobs:
       uses: actions/checkout@v5
       
     - name: Download package artifacts
-      uses: actions/download-artifact@v5
+      uses: actions/download-artifact@v6
       with:
         name: nuget-packages
         path: ./packages

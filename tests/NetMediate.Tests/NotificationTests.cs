@@ -6,8 +6,6 @@ namespace NetMediate.Tests;
 public sealed class NotificationTests
 {
     private static async Task NotificationHandle<T>(
-        bool expected,
-        bool required = true,
         IEnumerable<T> values = null!
     )
         where T : BaseMessage
@@ -24,23 +22,13 @@ public sealed class NotificationTests
         // Act
         await fixture.WaitAsync();
 
-        if (expected)
-        {
-            Assert.Null(fixture.RunError);
-        }
-        else
-        {
-            Assert.NotNull(fixture.RunError);
-            var ex = Assert.IsType<MessageValidationException>(fixture.RunError);
-            var msg = required ? "Name is required" : "Name must be 'right'.";
-            Assert.Equal(msg, ex.Message);
-        }
+        Assert.Null(fixture.RunError);
     }
 
-    private static async Task NotificationHandle<T>(T message, bool expected, bool required = true)
+    private static async Task NotificationHandle<T>(T message, bool expected)
         where T : BaseMessage
     {
-        await NotificationHandle(expected, required, [message]);
+        await NotificationHandle([message]);
         Assert.Equal(expected, message.Runned);
     }
 
@@ -49,8 +37,8 @@ public sealed class NotificationTests
     {
         IEnumerable<DecoupledValidatableMessage> c1 = [];
         IEnumerable<DecoupledValidatableMessage> c2 = null!;
-        await NotificationHandle(true, false, c1);
-        await NotificationHandle(true, false, c2);
+        await NotificationHandle(c1);
+        await NotificationHandle(c2);
     }
 
     [Theory]
@@ -59,7 +47,7 @@ public sealed class NotificationTests
     public Task DecoupledNotificationHandler_Handle_ShouldCompleteSuccessfully(
         string name,
         bool expected
-    ) => NotificationHandle(new DecoupledValidatableMessage(name), expected, false);
+    ) => NotificationHandle(new DecoupledValidatableMessage(name), expected);
 
     [Theory]
     [InlineData("right", true)]

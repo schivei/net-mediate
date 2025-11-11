@@ -59,64 +59,6 @@ public class MediatorTests
         Assert.Same(message, receivedMessage.Message);
     }
 
-    [Fact]
-    public async Task Notify_WithNullMessage_ShouldThrowArgumentNullException()
-    {
-        // Arrange
-        TestMessage? message = null;
-
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            _mediator.Notify(message!, (_, _, _) => Task.CompletedTask)
-        );
-    }
-
-    [Fact]
-    public async Task Notify_WithNullMessageAndIgnoreUnhandledMessages_ShouldNotThrow()
-    {
-        // Arrange
-        TestMessage? message = null;
-        _configuration.IgnoreUnhandledMessages = true;
-
-        // Act & Assert
-        await _mediator.Notify(message!, (_, _, _) => Task.CompletedTask); // Should not throw
-
-        // Verify logging
-        VerifyLoggerCalled(LogLevel.Warning, "Received null message");
-    }
-
-    [Fact]
-    public async Task Notify_WithValidatableMessageThatFails_ShouldThrowValidationException()
-    {
-        // Arrange
-        var message = new TestValidatableMessage { ShouldFail = true };
-
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<MessageValidationException>(() =>
-            _mediator.Notify(message, (_, _, _) => Task.CompletedTask)
-        );
-        Assert.Equal("Validation failed", exception.Message);
-    }
-
-    [Fact]
-    public async Task Notify_WithExternalValidationThatFails_ShouldThrowValidationException()
-    {
-        // Arrange
-        var message = new TestMessage { Content = "Invalid" };
-        var validationHandler = new Mock<IValidationHandler<TestMessage>>();
-        validationHandler
-            .Setup(h => h.ValidateAsync(message, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ValidationResult("External validation failed"));
-
-        SetupHandler(validationHandler.Object);
-
-        // Act & Assert
-        var exception = await Assert.ThrowsAsync<MessageValidationException>(() =>
-            _mediator.Notify(message, (_, _, _) => Task.CompletedTask)
-        );
-        Assert.Equal("External validation failed", exception.Message);
-    }
-
     #endregion
 
     #region Send Tests

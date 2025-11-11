@@ -20,8 +20,6 @@ internal class Mediator(
     {
         using var scope = serviceScopeFactory.CreateScope();
 
-        await ValidateMessage(scope, message, cancellationToken);
-
         await configuration
             .ChannelWriter.WriteAsync(
                 new NotificationPacket<TMessage>(message, onError),

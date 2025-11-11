@@ -17,6 +17,7 @@ updates:
       - "nuget"
     reviewers:
       - "schivei"
+      - "copilot"
     assignees:
       - "schivei"
     # Group minor and patch updates together
@@ -53,5 +54,6 @@ updates:
       - "github-actions"
     reviewers:
       - "schivei"
+      - "copilot"
     assignees:
       - "schivei"

@@ -425,13 +425,13 @@ builder.Services.AddNetMediate()
 
 NetMediate currently supports:
 
-- **.NET 9.0**: Full support with all features available
+- **.NET 10.0**: Full support with all features available
 
 ### Unsupported Frameworks
 
 The following frameworks are **not currently supported**:
 
-- **.NET 8.0**: While previously mentioned, current builds target only .NET 9.0
+- **.NET 8.0/9.0**: While previously mentioned, current builds target only .NET 10.0
 - **.NET Standard 2.1**: Not supported in current version
 - **.NET Framework**: No support planned
 - **.NET Core 3.1 and earlier**: End of life, not supported
@@ -440,8 +440,8 @@ The following frameworks are **not currently supported**:
 
 If you're upgrading from a previous version that supported multiple target frameworks:
 
-1. **Update your project**: Ensure you're using .NET 9.0 or later
-2. **Review dependencies**: Make sure all your dependencies are compatible with .NET 9.0
+1. **Update your project**: Ensure you're using .NET 10.0 or later
+2. **Review dependencies**: Make sure all your dependencies are compatible with .NET 10.0
 3. **Test thoroughly**: While the API remains the same, some behavior may differ
 
 For legacy framework support, consider staying on an earlier version of NetMediate that supported your target framework.

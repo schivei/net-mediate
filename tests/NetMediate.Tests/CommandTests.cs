@@ -90,4 +90,25 @@ public sealed class CommandTests
         string name,
         bool expected
     ) => CommandHandle(new SimpleValidatableMessage(name), expected);
+
+    [Fact]
+    public async Task MessageCommand_Handle_ShouldCompleteSuccessfully()
+    {
+        var message = new MessageCommand(10);
+
+        using var fixture = new NetMediateFixture();
+        // Act
+        await fixture.RunAsync(
+            async (sp) =>
+            {
+                var mediator = sp.GetRequiredService<IMediator>();
+                await mediator
+                    .Send(message, fixture.CancellationTokenSource.Token);
+            }
+        );
+        // Assert
+        await fixture.WaitAsync();
+        Assert.True(message.Runned);
+        Assert.Null(fixture.RunError);
+    }
 }

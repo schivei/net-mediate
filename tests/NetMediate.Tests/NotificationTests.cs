@@ -25,6 +25,33 @@ public sealed class NotificationTests
         Assert.Null(fixture.RunError);
     }
 
+    private static async Task NotificationsHandle<T>(
+        IEnumerable<INotification<T>> values = null!
+    )
+        where T : BaseMessage, INotification<T>
+    {
+        using var fixture = new NetMediateFixture();
+        await fixture.RunAsync(
+            async (sp) =>
+            {
+                var mediator = sp.GetRequiredService<IMediator>();
+                await mediator.Notify(values, fixture.CancellationTokenSource.Token);
+                await Task.Delay(500);
+            }
+        );
+        // Act
+        await fixture.WaitAsync();
+
+        Assert.Null(fixture.RunError);
+    }
+
+    private static async Task NotificationsHandle<T>(INotification<T> message, bool expected)
+        where T : BaseMessage, INotification<T>
+    {
+        await NotificationsHandle([message]);
+        Assert.Equal(expected, ((T)message).Runned);
+    }
+
     private static async Task NotificationHandle<T>(T message, bool expected)
         where T : BaseMessage
     {
@@ -96,4 +123,8 @@ public sealed class NotificationTests
         string name,
         bool expected
     ) => NotificationHandle(new SimpleValidatableMessage(name), expected);
+
+    [Fact]
+    public Task MessageNotification_Handle_ShouldCompleteSuccessfully() =>
+        NotificationsHandle(new MessageNotification(1), true);
 }

@@ -20,6 +20,20 @@ public interface IMediator
     );
 
     /// <summary>
+    /// Publishes a notification to all registered handlers.
+    /// </summary>
+    /// <typeparam name="TMessage"></typeparam>
+    /// <param name="notification"></param>
+    /// <param name="onError"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task Notify<TMessage>(
+        INotification<TMessage> notification,
+        NotificationErrorDelegate<TMessage> onError,
+        CancellationToken cancellationToken = default
+    ) where TMessage : INotification<TMessage>;
+
+    /// <summary>
     /// Publishes a collection of notification messages to all registered handlers.
     /// </summary>
     /// <typeparam name="TMessage">The type of the notification message.</typeparam>
@@ -42,6 +56,28 @@ public interface IMediator
     }
 
     /// <summary>
+    /// Publishes a collection of notifications to all registered handlers.
+    /// </summary>
+    /// <typeparam name="TMessage"></typeparam>
+    /// <param name="notifications"></param>
+    /// <param name="onError"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task Notify<TMessage>(
+        IEnumerable<INotification<TMessage>> notifications,
+        NotificationErrorDelegate<TMessage> onError,
+        CancellationToken cancellationToken = default
+    ) where TMessage : INotification<TMessage>
+    {
+        if (notifications is null || !notifications.Any())
+            return Task.CompletedTask;
+        return Task.WhenAll(
+            notifications.Select(notification =>
+                Notify(notification, onError, cancellationToken))
+        );
+    }
+
+    /// <summary>
     /// Publishes a notification message to all registered handlers.
     /// </summary>
     /// <typeparam name="TMessage">The type of the notification message.</typeparam>
@@ -50,6 +86,19 @@ public interface IMediator
     /// <returns>A task that represents the asynchronous operation.</returns>
     Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) =>
         Notify(message, (_, _, _) => Task.CompletedTask, cancellationToken);
+
+    /// <summary>
+    /// Publishes a notification to all registered handlers.
+    /// </summary>
+    /// <typeparam name="TMessage"></typeparam>
+    /// <param name="notification"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task Notify<TMessage>(
+        INotification<TMessage> notification,
+        CancellationToken cancellationToken = default
+    ) where TMessage : INotification<TMessage> =>
+        Notify<TMessage>(notification, (_, _, _) => Task.CompletedTask, cancellationToken);
 
     /// <summary>
     /// Publishes a collection of notification messages to all registered handlers.
@@ -70,6 +119,26 @@ public interface IMediator
     }
 
     /// <summary>
+    /// Publishes a collection of notifications to all registered handlers.
+    /// </summary>
+    /// <typeparam name="TMessage"></typeparam>
+    /// <param name="notifications"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task Notify<TMessage>(
+        IEnumerable<INotification<TMessage>> notifications,
+        CancellationToken cancellationToken = default
+    ) where TMessage : INotification<TMessage>
+    {
+        if (notifications is null || !notifications.Any())
+            return Task.CompletedTask;
+        return Task.WhenAll(
+            notifications.Select(notification =>
+                Notify(notification, cancellationToken))
+        );
+    }
+
+    /// <summary>
     /// Sends a command message to a single handler.
     /// </summary>
     /// <typeparam name="TMessage">The type of the command message.</typeparam>
@@ -77,6 +146,18 @@ public interface IMediator
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     Task Send<TMessage>(TMessage message, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a command to a single handler.
+    /// </summary>
+    /// <typeparam name="TMessage"></typeparam>
+    /// <param name="command"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task Send<TMessage>(
+        ICommand<TMessage> command,
+        CancellationToken cancellationToken = default
+    ) where TMessage : ICommand<TMessage>;
 
     /// <summary>
     /// Sends a request message to a handler and awaits a response.
@@ -92,6 +173,19 @@ public interface IMediator
     );
 
     /// <summary>
+    /// Sends a request to a handler and awaits a response.
+    /// </summary>
+    /// <typeparam name="TMessage"></typeparam>
+    /// <typeparam name="TResponse"></typeparam>
+    /// <param name="request"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    Task<TResponse> Request<TMessage, TResponse>(
+        IRequest<TMessage, TResponse> request,
+        CancellationToken cancellationToken = default
+    ) where TMessage : IRequest<TMessage, TResponse>;
+
+    /// <summary>
     /// Sends a request message to a handler and receives a stream of responses asynchronously.
     /// </summary>
     /// <typeparam name="TMessage">The type of the request message.</typeparam>
@@ -103,4 +197,17 @@ public interface IMediator
         TMessage message,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// Sends a request to a handler and receives a stream of responses asynchronously.
+    /// </summary>
+    /// <typeparam name="TMessage"></typeparam>
+    /// <typeparam name="TResponse"></typeparam>
+    /// <param name="request"></param>
+    /// <param name="cancellationToken"></param>
+    /// <returns></returns>
+    IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
+        IStream<TMessage, TResponse> request,
+        CancellationToken cancellationToken = default
+    ) where TMessage : IStream<TMessage, TResponse>;
 }

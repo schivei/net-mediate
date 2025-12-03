@@ -240,5 +240,17 @@ public class NotificationWorkerTests
                 await packet.OnErrorAsync(packet.Message.GetType(), ex);
             }
         }
+
+        Task IMediator.Notify<TMessage>(INotification<TMessage> notification, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken) =>
+            Notify((TMessage)notification, onError, cancellationToken);
+
+        Task IMediator.Send<TMessage>(ICommand<TMessage> command, CancellationToken cancellationToken) =>
+            Send((TMessage)command, cancellationToken);
+
+        Task<TResponse> IMediator.Request<TMessage, TResponse>(IRequest<TMessage, TResponse> request, CancellationToken cancellationToken) =>
+            Request<TMessage, TResponse>((TMessage)request, cancellationToken);
+
+        IAsyncEnumerable<TResponse> IMediator.RequestStream<TMessage, TResponse>(IStream<TMessage, TResponse> request, CancellationToken cancellationToken) =>
+            RequestStream<TMessage, TResponse>((TMessage)request, cancellationToken);
     }
 }

@@ -16,6 +16,7 @@ A lightweight and efficient .NET implementation of the Mediator pattern, providi
   - [Requests](#requests)
   - [Streams](#streams)
   - [Validations](#validations)
+  - [Simplified Messages](#simplified-messages)
   - [Advanced Configuration](#advanced-configuration)
 - [Framework Support](#framework-support)
 - [Contributing](#contributing)
@@ -379,6 +380,53 @@ catch (MessageValidationException ex)
     Console.WriteLine($"Validation failed: {ex.Message}");
 }
 ```
+
+### Simplified Messages
+NetMediate supports simplified message definitions without explicit handler interfaces.
+
+#### Simplified Command
+```csharp
+public record SimpleCommand(string Data) : ICommand<SimpleCommand>;
+```
+
+And its invocation:
+```csharp
+await mediator.Send(new SimpleCommand("Some data"), cancellationToken);
+```
+
+#### Simplified Request
+```csharp
+public record SimpleRequest(string Query) : IRequest<SimpleRequest, string>;
+```
+
+And its invocation:
+```csharp
+var response = await mediator.Request(new SimpleRequest("Get info"), cancellationToken);
+```
+
+#### Simplified Notification
+```csharp
+public record SimpleNotification(string Message) : INotification<SimpleNotification>;
+```
+
+And its invocation:
+```csharp
+await mediator.Notify(new SimpleNotification("Hello all"), cancellationToken);
+```
+
+#### Simplified Stream
+```csharp
+public record SimpleStreamRequest(int Count) : IStream<SimpleStreamRequest, int>;
+```
+
+And its invocation:
+```csharp
+await foreach (var number in mediator.RequestStream(new SimpleStreamRequest(5), cancellationToken))
+{
+    Console.WriteLine(number);
+}
+```
+
 
 ### Advanced Configuration
 

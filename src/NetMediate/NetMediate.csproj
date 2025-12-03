@@ -10,6 +10,7 @@
     <WarningsNotAsErrors>CS1591</WarningsNotAsErrors>
     <!-- Make missing XML documentation a warning that gets promoted to error in CI -->
     <GenerateDocumentationFileInReleaseBuild>true</GenerateDocumentationFileInReleaseBuild>
+	<NoWarn>$(NoWarn);CA1873</NoWarn>
   </PropertyGroup>
   <!-- Enable XML documentation warnings as errors only in Release mode for stricter CI enforcement -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">

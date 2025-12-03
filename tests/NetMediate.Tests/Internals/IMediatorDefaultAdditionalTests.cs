@@ -1,3 +1,4 @@
+using NetMediate.Tests.Messages;
 using System.Collections.Concurrent;
 
 namespace NetMediate.Tests.Internals;
@@ -42,6 +43,18 @@ public sealed class IMediatorDefaultAdditionalTests
                 yield break;
             }
         }
+
+        Task IMediator.Notify<TMessage>(INotification<TMessage> notification, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken) =>
+            Notify((TMessage)notification, onError, cancellationToken);
+
+        Task IMediator.Send<TMessage>(ICommand<TMessage> command, CancellationToken cancellationToken) =>
+            Send((TMessage)command, cancellationToken);
+
+        Task<TResponse> IMediator.Request<TMessage, TResponse>(IRequest<TMessage, TResponse> request, CancellationToken cancellationToken) =>
+            Request<TMessage, TResponse>((TMessage)request, cancellationToken);
+
+        IAsyncEnumerable<TResponse> IMediator.RequestStream<TMessage, TResponse>(IStream<TMessage, TResponse> request, CancellationToken cancellationToken) =>
+            RequestStream<TMessage, TResponse>((TMessage)request, cancellationToken);
     }
 
     private static readonly int[] integerMessages = [1, 2, 3];
@@ -100,5 +113,15 @@ public sealed class IMediatorDefaultAdditionalTests
         Assert.Contains(1, m.Notified);
         Assert.Contains(2, m.Notified);
         Assert.Contains(3, m.Notified);
+    }
+
+    [Fact]
+    public async Task Notify_Single_Interfaced_WithoutOnError_Forwards()
+    {
+        var msg = new MessageNotification(1);
+        var m = new TestMediator();
+        await ((IMediator)m).Notify(msg);
+        Assert.Equal(1, m.SingleNotifyCalls);
+        Assert.Contains(msg, m.Notified);
     }
 }

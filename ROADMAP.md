@@ -1,24 +1,24 @@
 # Roadmap
 
-Este roadmap consolida sugestões de melhorias e novas features para evolução do ecossistema NetMediate.
+This roadmap consolidates improvement ideas and new features for the NetMediate ecosystem.
 
-## Curto prazo
+## Short term
 
-- [ ] Publicar guias de migração completos de MediatR para `NetMediate.Compat` (cenários básicos, avançados e troubleshooting).
-- [ ] Expandir a documentação do `NetMediate.Moq` com receitas de testes unitários e de integração.
-- [ ] Adicionar exemplos de aplicação (API, Worker e Minimal API) consumindo `NetMediate`, `NetMediate.Compat` e `NetMediate.Moq`.
-- [ ] Cobrir cenários de diagnóstico com logs estruturados e métricas por tipo de mensagem.
+- [ ] Publish complete migration guides from MediatR to `NetMediate.Compat` (basic, advanced, and troubleshooting scenarios).
+- [ ] Expand `NetMediate.Moq` documentation with unit and integration testing recipes.
+- [ ] Add sample applications (API, Worker, and Minimal API) using `NetMediate`, `NetMediate.Compat`, and `NetMediate.Moq`.
+- [ ] Cover diagnostics scenarios with structured logs and message-type metrics.
 
-## Médio prazo
+## Mid term
 
-- [ ] Adicionar pipeline behaviors/interceptors compatíveis com o fluxo MediatR (pré/pós processamento).
-- [ ] Incluir estratégias de retry, timeout e circuit-breaker para handlers de notificação/request.
-- [ ] Disponibilizar suporte opcional a source generators para reduzir reflection no startup.
-- [ ] Evoluir suporte a observabilidade (OpenTelemetry traces/metrics para Send/Request/Notify/Stream).
+- [ ] Add pipeline behaviors/interceptors compatible with the MediatR processing flow (pre/post processing).
+- [ ] Include retry, timeout, and circuit-breaker strategies for notification/request handlers.
+- [ ] Provide optional source generator support to reduce reflection cost at startup.
+- [ ] Evolve observability support (OpenTelemetry traces/metrics for Send/Request/Notify/Stream).
 
-## Longo prazo
+## Long term
 
-- [ ] Criar pacote de integração com principais validadores (ex.: FluentValidation) sem acoplamento obrigatório.
-- [ ] Disponibilizar benchmark suite pública comparando NetMediate, MediatR e cenários de alto throughput.
-- [ ] Explorar modo AOT-friendly com otimizações para trimming e NativeAOT.
-- [ ] Definir trilha de extensões oficiais do ecossistema (testing, diagnostics, resilience e adapters).
+- [ ] Create an integration package for popular validators (for example, FluentValidation) without mandatory coupling.
+- [ ] Publish a benchmark suite comparing NetMediate, MediatR, and high-throughput scenarios.
+- [ ] Explore an AOT-friendly mode with trimming and NativeAOT optimizations.
+- [ ] Define an official ecosystem extension track (testing, diagnostics, resilience, and adapters).

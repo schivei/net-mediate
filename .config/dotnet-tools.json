@@ -3,28 +3,28 @@
   "isRoot": true,
   "tools": {
     "husky": {
-      "version": "0.9.1",
+      "version": "0.*",
       "commands": [
         "husky"
       ],
       "rollForward": false
     },
     "csharpier": {
-      "version": "1.2.6",
+      "version": "1.*",
       "commands": [
         "csharpier"
       ],
       "rollForward": false
     },
     "dotnet-reportgenerator-globaltool": {
-      "version": "5.5.4",
+      "version": "5.*",
       "commands": [
         "reportgenerator"
       ],
       "rollForward": false
     },
     "coverlet.console": {
-      "version": "8.0.1",
+      "version": "10.*",
       "commands": [
         "coverlet"
       ],

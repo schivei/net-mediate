@@ -49,7 +49,13 @@ jobs:
       run: dotnet build src/NetMediate/NetMediate.csproj --no-restore --configuration Release
       
     - name: Test
-      run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+      run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+    - name: Test Shared Parity (NetMediate)
+      run: dotnet test tests/SharedParity.NetMediate.Tests/SharedParity.NetMediate.Tests.csproj --configuration Release --verbosity normal
+
+    - name: Test Shared Parity (MediatR Compat)
+      run: dotnet test tests/SharedParity.MediatRCompat.Tests/SharedParity.MediatRCompat.Tests.csproj --configuration Release --verbosity normal
       
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v6
@@ -82,10 +88,22 @@ jobs:
       run: dotnet build src/NetMediate/NetMediate.csproj --no-restore --configuration Release
       
     - name: Run Tests
-      run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --no-build --configuration Release --verbosity normal
+      run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release --verbosity normal
+
+    - name: Run Shared Parity Tests (NetMediate)
+      run: dotnet test tests/SharedParity.NetMediate.Tests/SharedParity.NetMediate.Tests.csproj --configuration Release --verbosity normal
+
+    - name: Run Shared Parity Tests (MediatR Compat)
+      run: dotnet test tests/SharedParity.MediatRCompat.Tests/SharedParity.MediatRCompat.Tests.csproj --configuration Release --verbosity normal
       
-    - name: Pack NuGet package
-      run: dotnet pack src/NetMediate/NetMediate.csproj --no-build --configuration Release --output ./packages
+    - name: Pack NetMediate package
+      run: dotnet pack src/NetMediate/NetMediate.csproj --configuration Release --output ./packages
+
+    - name: Pack NetMediate.Compat package
+      run: dotnet pack src/NetMediate.Compat/NetMediate.Compat.csproj --configuration Release --output ./packages
+
+    - name: Pack NetMediate.Moq package
+      run: dotnet pack src/NetMediate.Moq/NetMediate.Moq.csproj --configuration Release --output ./packages
       
     - name: List package contents
       run: ls -la ./packages/

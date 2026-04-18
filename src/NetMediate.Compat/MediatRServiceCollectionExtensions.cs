@@ -12,9 +12,6 @@ namespace MediatR;
 /// </summary>
 public static class MediatRServiceCollectionExtensions
 {
-    private static readonly FieldInfo s_mediatorServiceBuilderField = typeof(NetMediateDI)
-        .GetField("_mediatorServiceBuilder", BindingFlags.NonPublic | BindingFlags.Static);
-
     /// <summary>
     /// Adds MediatR-compatible services by scanning the provided assemblies.
     /// </summary>
@@ -37,8 +34,6 @@ public static class MediatRServiceCollectionExtensions
             ]
             : assemblies;
 
-        // NetMediate keeps a static builder; when available, reset to isolate each IServiceCollection registration.
-        s_mediatorServiceBuilderField?.SetValue(null, null);
         services.AddNetMediate(selectedAssemblies);
         services.TryAddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
 

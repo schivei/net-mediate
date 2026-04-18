@@ -73,6 +73,12 @@ public class MediatRCompatTests
         Assert.NotNull(response);
         Assert.Equal("obj:pong", Assert.IsType<PingResponse>(response).Value);
 
+        var unit = await mediator.Send(
+            (object)new VoidCommand("obj-run"),
+            TestContext.Current.CancellationToken
+        );
+        Assert.Equal(Unit.Value, Assert.IsType<Unit>(unit));
+
         await mediator.Publish(
             (object)new PingNotification("obj-notify"),
             TestContext.Current.CancellationToken
@@ -88,6 +94,7 @@ public class MediatRCompatTests
         Assert.Equal([0, 1], streamed);
 
         var recorder = host.Services.GetRequiredService<DispatchRecorder>();
+        Assert.Equal("obj-run", recorder.LastCommand);
 
         var delivered = await WaitUntilAsync(
             () => recorder.LastNotification == "obj-notify",

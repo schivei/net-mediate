@@ -11,8 +11,6 @@ namespace NetMediate;
 [ExcludeFromCodeCoverage]
 public static class NetMediateDI
 {
-    private static MediatorServiceBuilder? _mediatorServiceBuilder;
-
     /// <summary>
     /// Adds NetMediate services to the specified <see cref="IServiceCollection"/> and returns a <see cref="IMediatorServiceBuilder"/>
     /// for further configuration. This method scans all loaded assemblies for handlers.
@@ -49,8 +47,5 @@ public static class NetMediateDI
     public static IMediatorServiceBuilder AddNetMediate(
         this IServiceCollection services,
         params Assembly[] assemblies
-    ) =>
-        (_mediatorServiceBuilder ??= new MediatorServiceBuilder(services)).MapAssemblies(
-            assemblies
-        );
+    ) => new MediatorServiceBuilder(services).MapAssemblies(assemblies);
 }

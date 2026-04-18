@@ -28,7 +28,8 @@ var loose = Mocking.Loose<IMyService>();
 ```csharp
 var mock = Mocking.Strict<IAsyncSample>();
 mock.Setup(x => x.Execute()).ReturnsCompletedTask();
-mock.Setup(x => x.GetValue()).ReturnsValueTask("ok");
+mock.Setup(x => x.Get()).ReturnsTaskResult("ok");
+mock.Setup(x => x.GetValueTask()).ReturnsValueTask("ok-vt");
 ```
 
 ## Register mediator mock quickly

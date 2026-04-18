@@ -56,6 +56,12 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        if (request is IRequest)
+        {
+            await SendWithoutResponse(_mediator, request, cancellationToken);
+            return Unit.Value;
+        }
+
         var requestType = request.GetType();
         var requestInterface = requestType
             .GetInterfaces()
@@ -63,12 +69,6 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
 
         if (requestInterface is null)
         {
-            if (request is IRequest)
-            {
-                await SendWithoutResponse(_mediator, request, cancellationToken);
-                return null;
-            }
-
             throw new ArgumentException(
                 $"The object '{requestType.FullName}' does not implement IRequest.",
                 nameof(request)

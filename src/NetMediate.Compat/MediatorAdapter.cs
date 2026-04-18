@@ -15,7 +15,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
         .GetMethod(nameof(PublishCore), BindingFlags.NonPublic | BindingFlags.Static)!;
 
     private static readonly MethodInfo s_streamMethod = typeof(MediatorAdapter)
-        .GetMethod(nameof(CreateStreamCore), BindingFlags.NonPublic | BindingFlags.Static)!;
+        .GetMethod(nameof(CreateStreamInvokerCore), BindingFlags.NonPublic | BindingFlags.Static)!;
 
     private static readonly ConcurrentDictionary<Type, Func<NetMediate.IMediator, object, CancellationToken, Task<object?>>> s_sendWithResponseInvokers =
         new();
@@ -91,7 +91,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        return CreateStream(request, cancellationToken).Select(item => (TResponse)item!);
+        return CreateTypedStream<TResponse>(request, cancellationToken);
     }
 
     public IAsyncEnumerable<object?> CreateStream(
@@ -114,7 +114,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
             );
         }
 
-        return CreateStreamCore(
+        return CreateStreamInvoker(
             _mediator,
             request,
             requestType,
@@ -203,7 +203,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
         )(mediator, notification, cancellationToken);
     }
 
-    private static IAsyncEnumerable<object?> CreateStreamCore(
+    private static IAsyncEnumerable<object?> CreateStreamInvoker(
         NetMediate.IMediator mediator,
         object request,
         Type requestType,
@@ -245,7 +245,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
         CancellationToken cancellationToken
     ) => mediator.Notify((TNotification)notification, cancellationToken);
 
-    private static async IAsyncEnumerable<object?> CreateStreamCore<TRequest, TResponse>(
+    private static async IAsyncEnumerable<object?> CreateStreamInvokerCore<TRequest, TResponse>(
         NetMediate.IMediator mediator,
         object request,
         [System.Runtime.CompilerServices.EnumeratorCancellation]
@@ -259,5 +259,15 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
         {
             yield return item;
         }
+    }
+
+    private async IAsyncEnumerable<TResponse> CreateTypedStream<TResponse>(
+        IStreamRequest<TResponse> request,
+        [System.Runtime.CompilerServices.EnumeratorCancellation]
+            CancellationToken cancellationToken = default
+    )
+    {
+        await foreach (var item in CreateStream((object)request, cancellationToken))
+            yield return (TResponse)item!;
     }
 }

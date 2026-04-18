@@ -14,7 +14,9 @@ public static class Mocking
     /// <typeparam name="T">Service type being mocked.</typeparam>
     /// <param name="behavior">Optional mock behavior.</param>
     /// <returns>Configured mock instance.</returns>
-    public static Moq.Mock<T> Create<T>(Moq.MockBehavior behavior = Moq.MockBehavior.Default)
+    public static global::Moq.Mock<T> Create<T>(
+        global::Moq.MockBehavior behavior = global::Moq.MockBehavior.Default
+    )
         where T : class => new(behavior);
 
     /// <summary>
@@ -22,16 +24,16 @@ public static class Mocking
     /// </summary>
     /// <typeparam name="T">Service type being mocked.</typeparam>
     /// <returns>Strict mock instance.</returns>
-    public static Moq.Mock<T> Strict<T>()
-        where T : class => new(Moq.MockBehavior.Strict);
+    public static global::Moq.Mock<T> Strict<T>()
+        where T : class => new(global::Moq.MockBehavior.Strict);
 
     /// <summary>
     /// Creates a loose mock.
     /// </summary>
     /// <typeparam name="T">Service type being mocked.</typeparam>
     /// <returns>Loose mock instance.</returns>
-    public static Moq.Mock<T> Loose<T>()
-        where T : class => new(Moq.MockBehavior.Loose);
+    public static global::Moq.Mock<T> Loose<T>()
+        where T : class => new(global::Moq.MockBehavior.Loose);
 
     /// <summary>
     /// Creates and registers a singleton mock object in the service collection.
@@ -41,14 +43,14 @@ public static class Mocking
     /// <param name="services">Service collection.</param>
     /// <param name="behavior">Optional mock behavior.</param>
     /// <returns>The created mock instance.</returns>
-    public static Moq.Mock<TService> AddMockSingleton<TService>(
+    public static global::Moq.Mock<TService> AddMockSingleton<TService>(
         this IServiceCollection services,
-        Moq.MockBehavior behavior = Moq.MockBehavior.Default
+        global::Moq.MockBehavior behavior = global::Moq.MockBehavior.Default
     ) where TService : class
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        var mock = new Moq.Mock<TService>(behavior);
+        var mock = new global::Moq.Mock<TService>(behavior);
         services.ReplaceWithMock(mock);
         return mock;
     }
@@ -61,9 +63,9 @@ public static class Mocking
     /// <param name="services">Service collection.</param>
     /// <param name="mock">Existing mock.</param>
     /// <returns>The provided mock instance.</returns>
-    public static Moq.Mock<TService> AddMockSingleton<TService>(
+    public static global::Moq.Mock<TService> AddMockSingleton<TService>(
         this IServiceCollection services,
-        Moq.Mock<TService> mock
+        global::Moq.Mock<TService> mock
     ) where TService : class
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -79,18 +81,18 @@ public static class Mocking
     /// <param name="services">Service collection.</param>
     /// <param name="behavior">Optional mock behavior.</param>
     /// <returns>The created mediator mock instance.</returns>
-    public static Moq.Mock<global::NetMediate.IMediator> AddMediatorMock(
+    public static global::Moq.Mock<global::NetMediate.IMediator> AddMediatorMock(
         this IServiceCollection services,
-        Moq.MockBehavior behavior = Moq.MockBehavior.Default
+        global::Moq.MockBehavior behavior = global::Moq.MockBehavior.Default
     ) => services.AddMockSingleton<global::NetMediate.IMediator>(behavior);
 
     private static void ReplaceWithMock<TService>(
         this IServiceCollection services,
-        Moq.Mock<TService> mock
+        global::Moq.Mock<TService> mock
     ) where TService : class
     {
         services.RemoveAll<TService>();
-        services.RemoveAll<Moq.Mock<TService>>();
+        services.RemoveAll<global::Moq.Mock<TService>>();
         services.AddSingleton(mock);
         services.AddSingleton(_ => mock.Object);
     }

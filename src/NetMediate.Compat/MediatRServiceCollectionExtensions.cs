@@ -1,6 +1,8 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using NetMediate;
 
 namespace MediatR;
@@ -10,6 +12,9 @@ namespace MediatR;
 /// </summary>
 public static class MediatRServiceCollectionExtensions
 {
+    private static readonly FieldInfo s_mediatorServiceBuilderField = typeof(NetMediateDI)
+        .GetField("_mediatorServiceBuilder", BindingFlags.NonPublic | BindingFlags.Static)!;
+
     /// <summary>
     /// Adds MediatR-compatible services by scanning the provided assemblies.
     /// </summary>
@@ -32,7 +37,10 @@ public static class MediatRServiceCollectionExtensions
             ]
             : assemblies;
 
+        // NetMediate keeps a static builder; reset to isolate each IServiceCollection registration.
+        s_mediatorServiceBuilderField.SetValue(null, null);
         services.AddNetMediate(selectedAssemblies);
+        services.TryAddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
 
         services.TryAddSingleton<IMediator, MediatorAdapter>();
         services.TryAddSingleton<ISender>(sp => sp.GetRequiredService<IMediator>());

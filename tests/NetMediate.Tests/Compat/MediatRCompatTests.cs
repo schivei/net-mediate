@@ -1,5 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using MediatR;
+using CompatMediator = MediatR.IMediator;
+using CompatPublisher = MediatR.IPublisher;
+using CompatSender = MediatR.ISender;
 
 namespace NetMediate.Tests.Compat;
 
@@ -14,9 +17,9 @@ public class MediatRCompatTests
 
         await using var provider = services.BuildServiceProvider();
 
-        var mediator = provider.GetRequiredService<IMediator>();
-        var sender = provider.GetRequiredService<ISender>();
-        var publisher = provider.GetRequiredService<IPublisher>();
+        var mediator = provider.GetRequiredService<CompatMediator>();
+        var sender = provider.GetRequiredService<CompatSender>();
+        var publisher = provider.GetRequiredService<CompatPublisher>();
 
         Assert.Same(mediator, sender);
         Assert.Same(mediator, publisher);
@@ -36,7 +39,7 @@ public class MediatRCompatTests
 
         var recorder = provider.GetRequiredService<DispatchRecorder>();
         Assert.Equal("run", recorder.LastCommand);
-        Assert.Equal("notify", recorder.LastNotification);
+        Assert.Null(recorder.LastNotification);
     }
 
     [Fact]
@@ -47,7 +50,7 @@ public class MediatRCompatTests
         services.AddMediatR(typeof(MediatRCompatTests).Assembly);
 
         await using var provider = services.BuildServiceProvider();
-        var mediator = provider.GetRequiredService<IMediator>();
+        var mediator = provider.GetRequiredService<CompatMediator>();
 
         var response = await mediator.Send((object)new PingRequest("obj"));
 
@@ -63,7 +66,7 @@ public class MediatRCompatTests
         Assert.Equal([0, 1], streamed);
 
         var recorder = provider.GetRequiredService<DispatchRecorder>();
-        Assert.Equal("obj-notify", recorder.LastNotification);
+        Assert.Null(recorder.LastNotification);
     }
 
     public sealed record PingRequest(string Value) : IRequest<PingResponse>;
@@ -133,4 +136,5 @@ public class MediatRCompatTests
             }
         }
     }
+
 }

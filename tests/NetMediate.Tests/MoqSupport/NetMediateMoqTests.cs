@@ -16,7 +16,7 @@ public class NetMediateMoqTests
 
         using var provider = services.BuildServiceProvider();
 
-        var resolvedMock = provider.GetRequiredService<Moq.Mock<ISampleService>>();
+        var resolvedMock = provider.GetRequiredService<global::Moq.Mock<ISampleService>>();
         var resolvedService = provider.GetRequiredService<ISampleService>();
 
         Assert.Same(mock, resolvedMock);

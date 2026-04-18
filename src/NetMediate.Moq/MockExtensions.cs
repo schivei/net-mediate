@@ -11,8 +11,8 @@ public static class MockExtensions
     /// <typeparam name="TMock">Mock target type.</typeparam>
     /// <param name="setup">Task setup expression.</param>
     /// <returns>Setup continuation for fluent assertions.</returns>
-    public static Moq.Language.Flow.IReturnsResult<TMock> ReturnsCompletedTask<TMock>(
-        this Moq.Language.Flow.ISetup<TMock, Task> setup
+    public static global::Moq.Language.Flow.IReturnsResult<TMock> ReturnsCompletedTask<TMock>(
+        this global::Moq.Language.Flow.ISetup<TMock, Task> setup
     ) where TMock : class => setup.Returns(Task.CompletedTask);
 
     /// <summary>
@@ -23,8 +23,8 @@ public static class MockExtensions
     /// <param name="setup">Task setup expression.</param>
     /// <param name="value">Value to return.</param>
     /// <returns>Setup continuation for fluent assertions.</returns>
-    public static Moq.Language.Flow.IReturnsResult<TMock> ReturnsValueTask<TMock, TResult>(
-        this Moq.Language.Flow.ISetup<TMock, Task<TResult>> setup,
+    public static global::Moq.Language.Flow.IReturnsResult<TMock> ReturnsValueTask<TMock, TResult>(
+        this global::Moq.Language.Flow.ISetup<TMock, Task<TResult>> setup,
         TResult value
-    ) where TMock : class => setup.ReturnsAsync(value);
+    ) where TMock : class => setup.Returns(Task.FromResult(value));
 }

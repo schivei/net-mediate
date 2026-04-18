@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using MediatR;
 using CompatMediator = MediatR.IMediator;
 using CompatPublisher = MediatR.IPublisher;
@@ -11,15 +12,16 @@ public class MediatRCompatTests
     [Fact]
     public async Task AddMediatR_ShouldResolveMediatorContractsAndDispatchMessages()
     {
-        var services = new ServiceCollection();
-        services.AddSingleton<DispatchRecorder>();
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<MediatRCompatTests>());
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddSingleton<DispatchRecorder>();
+        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<MediatRCompatTests>());
 
-        await using var provider = services.BuildServiceProvider();
+        using var host = builder.Build();
+        await host.StartAsync(TestContext.Current.CancellationToken);
 
-        var mediator = provider.GetRequiredService<CompatMediator>();
-        var sender = provider.GetRequiredService<CompatSender>();
-        var publisher = provider.GetRequiredService<CompatPublisher>();
+        var mediator = host.Services.GetRequiredService<CompatMediator>();
+        var sender = host.Services.GetRequiredService<CompatSender>();
+        var publisher = host.Services.GetRequiredService<CompatPublisher>();
 
         Assert.Same(mediator, sender);
         Assert.Same(mediator, publisher);
@@ -27,46 +29,73 @@ public class MediatRCompatTests
         var reply = await mediator.Send(new PingRequest("ping"));
         Assert.Equal("ping:pong", reply.Value);
 
-        await sender.Send(new VoidCommand("run"));
+        await sender.Send(new VoidCommand("run"), TestContext.Current.CancellationToken);
 
-        await publisher.Publish(new PingNotification("notify"));
+        await publisher.Publish(new PingNotification("notify"), TestContext.Current.CancellationToken);
 
         var streamed = new List<int>();
-        await foreach (var item in sender.CreateStream(new CounterStream(3)))
+        await foreach (var item in sender.CreateStream(
+                           new CounterStream(3),
+                           TestContext.Current.CancellationToken
+                       ))
             streamed.Add(item);
 
         Assert.Equal([0, 1, 2], streamed);
 
-        var recorder = provider.GetRequiredService<DispatchRecorder>();
+        var recorder = host.Services.GetRequiredService<DispatchRecorder>();
         Assert.Equal("run", recorder.LastCommand);
-        Assert.Null(recorder.LastNotification);
+
+        var delivered = await WaitUntilAsync(
+            () => recorder.LastNotification == "notify",
+            TestContext.Current.CancellationToken
+        );
+        Assert.True(delivered);
+
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 
     [Fact]
     public async Task ObjectOverloads_ShouldDispatchByRuntimeType()
     {
-        var services = new ServiceCollection();
-        services.AddSingleton<DispatchRecorder>();
-        services.AddMediatR(typeof(MediatRCompatTests).Assembly);
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddSingleton<DispatchRecorder>();
+        builder.Services.AddMediatR(typeof(MediatRCompatTests).Assembly);
 
-        await using var provider = services.BuildServiceProvider();
-        var mediator = provider.GetRequiredService<CompatMediator>();
+        using var host = builder.Build();
+        await host.StartAsync(TestContext.Current.CancellationToken);
+        var mediator = host.Services.GetRequiredService<CompatMediator>();
 
-        var response = await mediator.Send((object)new PingRequest("obj"));
+        var response = await mediator.Send(
+            (object)new PingRequest("obj"),
+            TestContext.Current.CancellationToken
+        );
 
         Assert.NotNull(response);
         Assert.Equal("obj:pong", Assert.IsType<PingResponse>(response).Value);
 
-        await mediator.Publish((object)new PingNotification("obj-notify"));
+        await mediator.Publish(
+            (object)new PingNotification("obj-notify"),
+            TestContext.Current.CancellationToken
+        );
 
         var streamed = new List<object?>();
-        await foreach (var item in mediator.CreateStream((object)new CounterStream(2)))
+        await foreach (var item in mediator.CreateStream(
+                           (object)new CounterStream(2),
+                           TestContext.Current.CancellationToken
+                       ))
             streamed.Add(item);
 
         Assert.Equal([0, 1], streamed);
 
-        var recorder = provider.GetRequiredService<DispatchRecorder>();
-        Assert.Null(recorder.LastNotification);
+        var recorder = host.Services.GetRequiredService<DispatchRecorder>();
+
+        var delivered = await WaitUntilAsync(
+            () => recorder.LastNotification == "obj-notify",
+            TestContext.Current.CancellationToken
+        );
+        Assert.True(delivered);
+
+        await host.StopAsync(TestContext.Current.CancellationToken);
     }
 
     public sealed record PingRequest(string Value) : IRequest<PingResponse>;
@@ -137,4 +166,21 @@ public class MediatRCompatTests
         }
     }
 
+    private static async Task<bool> WaitUntilAsync(
+        Func<bool> predicate,
+        CancellationToken cancellationToken,
+        int attempts = 40,
+        int delayMilliseconds = 25
+    )
+    {
+        for (var index = 0; index < attempts; index++)
+        {
+            if (predicate())
+                return true;
+
+            await Task.Delay(delayMilliseconds, cancellationToken);
+        }
+
+        return predicate();
+    }
 }

@@ -15,7 +15,6 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.*" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
-    <PackageReference Include="Moq" Version="4.*" />
     <PackageReference Include="xunit.v3" Version="3.*" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.*">
       <PrivateAssets>all</PrivateAssets>
@@ -24,6 +23,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
+    <ProjectReference Include="..\..\src\NetMediate.Compat\NetMediate.Compat.csproj" />
+    <ProjectReference Include="..\..\src\NetMediate.Moq\NetMediate.Moq.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

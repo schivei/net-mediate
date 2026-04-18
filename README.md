@@ -56,6 +56,15 @@ dotnet add package NetMediate
 <PackageReference Include="NetMediate" Version="x.x.x" />
 ```
 
+### Optional companion packages
+```xml
+<PackageReference Include="NetMediate.Compat" Version="x.x.x" />
+<PackageReference Include="NetMediate.Moq" Version="x.x.x" />
+```
+
+- **NetMediate.Compat**: keeps MediatR contracts (`MediatR.IMediator`, `IRequest`, `INotification`, handlers, and `AddMediatR`) so migration to NetMediate can be done without rewriting contracts.
+- **NetMediate.Moq**: adds lightweight Moq helpers for cleaner unit and integration tests (`Mocking.Create`, `AddMockSingleton`, and async setup extensions).
+
 ## Quick Start
 
 Here's a minimal example to get you started with NetMediate:

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\pack.props" />
+  <PropertyGroup>
+    <AssemblyName>NetMediate.Moq</AssemblyName>
+    <Title>NetMediate.Moq</Title>
+    <Description>Utilities for elegant and efficient NetMediate unit and integration test mocking.</Description>
+    <PackageTags>Mediator;Moq;Testing;NetMediate</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
+    <PackageReference Include="Moq" Version="4.*" />
+  </ItemGroup>
+</Project>

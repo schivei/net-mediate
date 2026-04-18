@@ -8,3 +8,5 @@
   - `dotnet restore src/NetMediate/NetMediate.csproj`
   - `dotnet build src/NetMediate/NetMediate.csproj --no-restore --configuration Release`
   - `dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release`
+  - `dotnet test tests/SharedParity.NetMediate.Tests/SharedParity.NetMediate.Tests.csproj --configuration Release`
+  - `dotnet test tests/SharedParity.MediatRCompat.Tests/SharedParity.MediatRCompat.Tests.csproj --configuration Release`

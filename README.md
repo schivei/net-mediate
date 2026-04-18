@@ -19,6 +19,7 @@ A lightweight and efficient .NET implementation of the Mediator pattern, providi
   - [Simplified Messages](#simplified-messages)
   - [Advanced Configuration](#advanced-configuration)
 - [Framework Support](#framework-support)
+- [Companion Guides](#companion-guides)
 - [Contributing](#contributing)
 - [License](#license)
 - [Fixed problems](#fixed-problems)
@@ -37,7 +38,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Dependency Injection**: Seamless integration with Microsoft.Extensions.DependencyInjection
 - **Keyed Services**: Support for keyed service registration and resolution
 - **Cancellation Support**: Full cancellation token support across all operations
-- **Multi-targeting**: Supports .NET 9.0 (see [Framework Support](#framework-support) for details)
+- **Modern runtime support**: Supports .NET 10.0 LTS (see [Framework Support](#framework-support) for details)
 
 ## Installation
 
@@ -64,6 +65,13 @@ dotnet add package NetMediate
 
 - **NetMediate.Compat**: keeps MediatR contracts (`MediatR.IMediator`, `IRequest`, `INotification`, handlers, and `AddMediatR`) so migration to NetMediate can be done without rewriting contracts.
 - **NetMediate.Moq**: adds lightweight Moq helpers for cleaner unit and integration tests (`Mocking.Create`, `AddMockSingleton`, and async setup extensions).
+
+## Companion Guides
+
+- [MediatR migration guide](docs/MEDIATR_MIGRATION_GUIDE.md)
+- [NetMediate.Moq recipes](docs/NETMEDIATE_MOQ_RECIPES.md)
+- [API/Worker/Minimal API samples](docs/SAMPLES.md)
+- [Diagnostics (structured logs + metrics)](docs/DIAGNOSTICS.md)
 
 ## Quick Start
 
@@ -482,7 +490,7 @@ builder.Services.AddNetMediate()
 
 NetMediate currently supports:
 
-- **.NET 10.0**: Full support with all features available
+- **.NET 10.0 (latest LTS)**: Full support with all features available
 
 ### Unsupported Frameworks
 

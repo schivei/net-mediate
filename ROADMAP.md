@@ -4,10 +4,10 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 
 ## Short term
 
-- [ ] Publish complete migration guides from MediatR to `NetMediate.Compat` (basic, advanced, and troubleshooting scenarios).
-- [ ] Expand `NetMediate.Moq` documentation with unit and integration testing recipes.
-- [ ] Add sample applications (API, Worker, and Minimal API) using `NetMediate`, `NetMediate.Compat`, and `NetMediate.Moq`.
-- [ ] Cover diagnostics scenarios with structured logs and message-type metrics.
+- [x] Publish complete migration guides from MediatR to `NetMediate.Compat` (basic, advanced, and troubleshooting scenarios). See `docs/MEDIATR_MIGRATION_GUIDE.md`.
+- [x] Expand `NetMediate.Moq` documentation with unit and integration testing recipes. See `docs/NETMEDIATE_MOQ_RECIPES.md`.
+- [x] Add sample applications (API, Worker, and Minimal API) using `NetMediate`, `NetMediate.Compat`, and `NetMediate.Moq`. See `docs/SAMPLES.md`.
+- [x] Cover diagnostics scenarios with structured logs and message-type metrics. See `docs/DIAGNOSTICS.md`.
 
 ## Mid term
 

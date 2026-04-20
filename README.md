@@ -65,11 +65,13 @@ dotnet add package NetMediate
 <PackageReference Include="NetMediate.Compat" Version="x.x.x" />
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
 <PackageReference Include="NetMediate.Resilience" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 ```
 
 - **NetMediate.Compat**: keeps MediatR contracts (`MediatR.IMediator`, `IRequest`, `INotification`, handlers, and `AddMediatR`) so migration to NetMediate can be done without rewriting contracts.
 - **NetMediate.Moq**: adds lightweight Moq helpers for cleaner unit and integration tests (`Mocking.Create`, `AddMockSingleton`, and async setup extensions).
 - **NetMediate.Resilience**: adds optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
+- **NetMediate.SourceGeneration**: generates `AddNetMediateGenerated(...)` to register handlers at compile-time and reduce reflection cost at startup.
 
 ## Companion Guides
 
@@ -78,6 +80,7 @@ dotnet add package NetMediate
 - [API/Worker/Minimal API samples](docs/SAMPLES.md)
 - [Diagnostics (structured logs + metrics)](docs/DIAGNOSTICS.md)
 - [Resilience package guide and load capacity](docs/RESILIENCE.md)
+- [Source generation guide](docs/SOURCE_GENERATION.md)
 
 ## Quick Start
 

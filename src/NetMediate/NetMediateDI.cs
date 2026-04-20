@@ -38,6 +38,25 @@ public static class NetMediateDI
         AddNetMediate(services, typeof(T).Assembly);
 
     /// <summary>
+    /// Adds NetMediate core services without assembly scanning and applies custom registration configuration.
+    /// This overload is useful for source-generated handler registration to avoid reflection at startup.
+    /// </summary>
+    /// <param name="services">The service collection to add NetMediate services to.</param>
+    /// <param name="configure">The callback that performs explicit handler registrations.</param>
+    /// <returns>A <see cref="IMediatorServiceBuilder"/> instance for additional configuration.</returns>
+    public static IMediatorServiceBuilder AddNetMediate(
+        this IServiceCollection services,
+        Action<IMediatorServiceBuilder> configure
+    )
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+
+        var builder = AddNetMediate(services, []);
+        configure(builder);
+        return builder;
+    }
+
+    /// <summary>
     /// Adds NetMediate services to the specified <see cref="IServiceCollection"/> and returns a <see cref="IMediatorServiceBuilder"/>
     /// for further configuration. This method scans the provided assemblies for handlers.
     /// </summary>

@@ -64,6 +64,11 @@ Measurements were captured with the same load scenarios used in tests, using **5
 - command: 20,000 operations
 - request_parallel: 10,000 operations
 
+Environment used for these measurements:
+
+- CPU/vCPU: **AMD EPYC 7763** with **4 vCPU**
+- Memory: **15 GiB RAM**
+
 | Scenario | `origin/main` median throughput (ops/s) | Current branch median throughput (ops/s) | Delta |
 |---|---:|---:|---:|
 | command | 172,650.29 | 179,843.50 | +4.17% |

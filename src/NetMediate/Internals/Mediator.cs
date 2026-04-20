@@ -324,6 +324,8 @@ internal class Mediator(
     }
 
     private static TBehavior[] ResolveBehaviors<TBehavior>(IServiceProvider serviceProvider) =>
+        // Fast path for the common case where no behaviors are registered for this message flow.
+        // This avoids per-call IEnumerable resolution/allocation in high-throughput paths.
         serviceProvider is IServiceProviderIsService isService
             && !isService.IsService(typeof(TBehavior))
             ? []

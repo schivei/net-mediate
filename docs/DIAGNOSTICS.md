@@ -71,7 +71,8 @@ Measurements were captured with the same load scenarios used in tests, using **5
 
 > Notes:
 > - command throughput improved slightly with the current branch in this environment.
-> - request-parallel throughput is lower due to additional pipeline/observability path work per request.
+> - request-parallel throughput is lower because this branch adds extra per-request work in the hot path (behavior-chain resolution + diagnostics counters/tags + activity lifecycle checks).
+> - this benchmark uses trivial in-memory handlers, so framework overhead dominates; in real handlers with I/O/database calls, this relative cost is typically much smaller.
 > - performance tests are sensitive to runtime environment noise (CPU contention, warmup state, parallel load). Re-run multiple times for stable medians before release decisions.
 
 ## Validation checklist

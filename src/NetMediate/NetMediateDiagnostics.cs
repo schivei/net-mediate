@@ -55,24 +55,53 @@ public static class NetMediateDiagnostics
 
     internal static Activity? StartActivity<TMessage>(string operation)
     {
+        if (!ActivitySource.HasListeners())
+            return null;
+
         var activity = ActivitySource.StartActivity($"NetMediate.{operation}", ActivityKind.Internal);
         activity?.SetTag("netmediate.operation", operation);
         activity?.SetTag("netmediate.message_type", typeof(TMessage).Name);
         return activity;
     }
 
-    internal static void RecordSend<TMessage>() =>
-        s_sendCount.Add(1, KeyValuePair.Create<string, object?>("message_type", typeof(TMessage).Name));
+    internal static void RecordSend<TMessage>()
+    {
+        if (!s_sendCount.Enabled)
+            return;
 
-    internal static void RecordRequest<TMessage>() =>
+        s_sendCount.Add(1, KeyValuePair.Create<string, object?>("message_type", typeof(TMessage).Name));
+    }
+
+    internal static void RecordRequest<TMessage>()
+    {
+        if (!s_requestCount.Enabled)
+            return;
+
         s_requestCount.Add(
             1,
             KeyValuePair.Create<string, object?>("message_type", typeof(TMessage).Name)
         );
+    }
 
-    internal static void RecordNotify<TMessage>() =>
-        s_notifyCount.Add(1, KeyValuePair.Create<string, object?>("message_type", typeof(TMessage).Name));
+    internal static void RecordNotify<TMessage>()
+    {
+        if (!s_notifyCount.Enabled)
+            return;
 
-    internal static void RecordStream<TMessage>() =>
-        s_streamCount.Add(1, KeyValuePair.Create<string, object?>("message_type", typeof(TMessage).Name));
+        s_notifyCount.Add(
+            1,
+            KeyValuePair.Create<string, object?>("message_type", typeof(TMessage).Name)
+        );
+    }
+
+    internal static void RecordStream<TMessage>()
+    {
+        if (!s_streamCount.Enabled)
+            return;
+
+        s_streamCount.Add(
+            1,
+            KeyValuePair.Create<string, object?>("message_type", typeof(TMessage).Name)
+        );
+    }
 }

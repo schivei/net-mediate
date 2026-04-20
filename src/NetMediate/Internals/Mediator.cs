@@ -167,14 +167,29 @@ internal class Mediator(
         if (!AssertHandler<TMessage>(handler))
             yield break;
 
+        var stream = ExecuteStreamPipeline(scope, message, handler, cancellationToken);
+
         try
         {
-            await foreach (
-                var response in ExecuteStreamPipeline(scope, message, handler, cancellationToken)
-                    .ConfigureAwait(true)
-            )
+            await using var enumerator = stream.GetAsyncEnumerator(cancellationToken);
+
+            while (true)
             {
-                yield return response;
+                bool hasNext;
+                try
+                {
+                    hasNext = await enumerator.MoveNextAsync().ConfigureAwait(true);
+                }
+                catch (Exception ex)
+                {
+                    activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
+                    throw;
+                }
+
+                if (!hasNext)
+                    break;
+
+                yield return enumerator.Current;
             }
         }
         finally
@@ -309,7 +324,10 @@ internal class Mediator(
     }
 
     private static TBehavior[] ResolveBehaviors<TBehavior>(IServiceProvider serviceProvider) =>
-        serviceProvider.GetService<IEnumerable<TBehavior>>()?.ToArray() ?? [];
+        serviceProvider is IServiceProviderIsService isService
+            && !isService.IsService(typeof(TBehavior))
+            ? []
+            : serviceProvider.GetService<IEnumerable<TBehavior>>()?.ToArray() ?? [];
 
     private IEnumerable<T> Resolve<T>(IServiceScope scope, object message, bool ignore = false)
     {

@@ -59,17 +59,20 @@ For MediatR contracts using compat, the same approach applies with `MediatR.IMed
 
 ## Performance comparison (main vs current branch)
 
-Measurements were captured with the same load scenarios used in tests:
+Measurements were captured with the same load scenarios used in tests, using **5 runs per branch** and reporting the **median throughput**:
 
 - command: 20,000 operations
 - request_parallel: 10,000 operations
 
-| Scenario | `origin/main` throughput (ops/s) | Current branch throughput (ops/s) | Delta |
+| Scenario | `origin/main` median throughput (ops/s) | Current branch median throughput (ops/s) | Delta |
 |---|---:|---:|---:|
-| command | 180,212.81 | 180,964.69 | +0.42% |
-| request_parallel | 232,033.64 | 125,026.88 | -46.12% |
+| command | 172,650.29 | 179,843.50 | +4.17% |
+| request_parallel | 280,944.65 | 118,619.88 | -57.78% |
 
-> Note: performance tests are sensitive to runtime environment noise (CPU contention, warmup state, parallel load). Re-run multiple times for stable medians before release decisions.
+> Notes:
+> - command throughput improved slightly with the current branch in this environment.
+> - request-parallel throughput is lower due to additional pipeline/observability path work per request.
+> - performance tests are sensitive to runtime environment noise (CPU contention, warmup state, parallel load). Re-run multiple times for stable medians before release decisions.
 
 ## Validation checklist
 

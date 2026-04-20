@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace NetMediate.Tests.Internals;
 
@@ -10,7 +11,8 @@ public sealed class DiagnosticsTelemetryTests
     [Fact]
     public async Task MediatorOperations_ShouldEmitActivitiesAndCounters()
     {
-        using var fixture = new NetMediateFixture();
+        using var host = await CreateHostAsync();
+        var mediator = host.Services.GetRequiredService<IMediator>();
 
         var activityNames = new ConcurrentQueue<string>();
         var counterNames = new ConcurrentQueue<string>();
@@ -35,20 +37,13 @@ public sealed class DiagnosticsTelemetryTests
         );
         meterListener.Start();
 
-        await fixture.RunAsync(
-            async sp =>
-            {
-                var mediator = sp.GetRequiredService<IMediator>();
-                var ct = fixture.CancellationTokenSource.Token;
+        var ct = TestContext.Current.CancellationToken;
 
-                await mediator.Send(new TestMessage("ok"), ct);
-                _ = await mediator.Request<TestMessage, string>(new TestMessage("ok"), ct);
-                await mediator.Notify(new TestMessage("ok"), ct);
-                _ = await mediator.RequestStream<TestMessage, string>(new TestMessage("ok"), ct)
-                    .AsyncToSync();
-            }
-        );
-        await fixture.WaitAsync();
+        await mediator.Send(new TestMessage("ok"), ct);
+        _ = await mediator.Request<TestMessage, string>(new TestMessage("ok"), ct);
+        await mediator.Notify(new TestMessage("ok"), ct);
+        _ = await mediator.RequestStream<TestMessage, string>(new TestMessage("ok"), ct)
+            .AsyncToSync();
 
         var activityNamesSnapshot = activityNames.ToArray();
         var counterNamesSnapshot = counterNames.ToArray();
@@ -62,6 +57,20 @@ public sealed class DiagnosticsTelemetryTests
         Assert.Contains(NetMediateDiagnostics.RequestCountMetricName, counterNamesSnapshot);
         Assert.Contains(NetMediateDiagnostics.NotifyCountMetricName, counterNamesSnapshot);
         Assert.Contains(NetMediateDiagnostics.StreamCountMetricName, counterNamesSnapshot);
+    }
+
+    private static async Task<IHost> CreateHostAsync()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddNetMediate(typeof(DiagnosticsTelemetryTests).Assembly);
+        builder.Services.AddScoped<ICommandHandler<TestMessage>, TestCommandHandler>();
+        builder.Services.AddScoped<IRequestHandler<TestMessage, string>, TestRequestHandler>();
+        builder.Services.AddScoped<INotificationHandler<TestMessage>, TestNotificationHandler>();
+        builder.Services.AddScoped<IStreamHandler<TestMessage, string>, TestStreamHandler>();
+
+        var host = builder.Build();
+        await host.StartAsync(TestContext.Current.CancellationToken);
+        return host;
     }
 
     private sealed record TestMessage(string Name);

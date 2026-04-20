@@ -9,6 +9,9 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     CircuitBreakerBehaviorOptions options
 ) : IRequestBehavior<TMessage, TResponse>
 {
+    // State is intentionally isolated per closed generic behavior type (per message type).
+    // This keeps circuits decoupled across different flows and aligns with package-level
+    // single-responsibility design for independently tunable message pipelines.
     private static readonly object Sync = new();
     private static int s_consecutiveFailures;
     private static DateTimeOffset? s_openUntil;
@@ -92,6 +95,9 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 public sealed class CircuitBreakerNotificationBehavior<TMessage>(CircuitBreakerBehaviorOptions options)
     : INotificationBehavior<TMessage>
 {
+    // State is intentionally isolated per closed generic behavior type (per message type).
+    // This keeps circuits decoupled across different flows and aligns with package-level
+    // single-responsibility design for independently tunable message pipelines.
     private static readonly object Sync = new();
     private static int s_consecutiveFailures;
     private static DateTimeOffset? s_openUntil;

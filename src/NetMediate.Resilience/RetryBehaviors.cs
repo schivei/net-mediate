@@ -36,10 +36,6 @@ public sealed class RetryRequestBehavior<TMessage, TResponse>(RetryBehaviorOptio
                 if (delay > TimeSpan.Zero)
                     await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
-            catch
-            {
-                throw;
-            }
         }
     }
 }
@@ -79,10 +75,6 @@ public sealed class RetryNotificationBehavior<TMessage>(RetryBehaviorOptions opt
             {
                 if (delay > TimeSpan.Zero)
                     await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
-            catch
-            {
-                throw;
             }
         }
     }

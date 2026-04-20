@@ -12,6 +12,9 @@ This follows a UNIX-style philosophy: each package should do one thing well.
 
 > For notification flows, NetMediate still uses `onError` callbacks per handler.
 > Resilience behaviors wrap the notification pipeline execution and remain compatible with this model.
+>
+> Circuit-breaker state is intentionally isolated per message flow (closed generic behavior type),
+> so one message type opening a circuit does not block unrelated message types.
 
 ## Installation
 

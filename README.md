@@ -35,6 +35,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Requests**: Send messages and receive responses
 - **Streaming**: Handle requests that return multiple responses over time
 - **Validation**: Built-in message validation support with custom validators
+- **Pipeline Behaviors**: Interceptors with pre/post flow for Send/Request/Notify/Stream
 - **Dependency Injection**: Seamless integration with Microsoft.Extensions.DependencyInjection
 - **Keyed Services**: Support for keyed service registration and resolution
 - **Cancellation Support**: Full cancellation token support across all operations
@@ -482,6 +483,26 @@ builder.Services.AddNetMediate()
     .InstantiateHandlerByMessageFilter<DynamicMessage>(msg => 
         msg.Type == "urgent" ? typeof(UrgentMessageHandler) : typeof(StandardMessageHandler))
     .RegisterNotificationHandler<DummyNotificationMessage, DummyNotificationHandler>();
+```
+
+#### Pipeline Behaviors / Interceptors
+```csharp
+public class AuditRequestBehavior<TMessage, TResponse> : IRequestBehavior<TMessage, TResponse>
+{
+    public async Task<TResponse> Handle(
+        TMessage message,
+        RequestHandlerDelegate<TResponse> next,
+        CancellationToken cancellationToken = default)
+    {
+        var startedAt = DateTimeOffset.UtcNow;
+        var response = await next(cancellationToken);
+        Console.WriteLine($"{typeof(TMessage).Name} handled in {DateTimeOffset.UtcNow - startedAt}");
+        return response;
+    }
+}
+
+builder.Services.AddNetMediate();
+builder.Services.AddScoped(typeof(IRequestBehavior<,>), typeof(AuditRequestBehavior<,>));
 ```
 
 ## Framework Support

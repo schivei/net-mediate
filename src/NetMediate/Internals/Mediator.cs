@@ -86,7 +86,7 @@ internal class Mediator(
         if (!AssertHandler<TMessage>(handler))
             return;
 
-        await handler.Handle(message, cancellationToken).ConfigureAwait(true);
+        await ExecuteCommandPipeline(scope, message, handler, cancellationToken).ConfigureAwait(true);
     }
 
     public async Task<TResponse> Request<TMessage, TResponse>(
@@ -106,7 +106,8 @@ internal class Mediator(
         if (!AssertHandler<TMessage>(handler))
             return default!;
 
-        return await handler.Handle(message, cancellationToken).ConfigureAwait(true);
+        return await ExecuteRequestPipeline(scope, message, handler, cancellationToken)
+            .ConfigureAwait(true);
     }
 
     public async IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
@@ -126,7 +127,8 @@ internal class Mediator(
             yield break;
 
         await foreach (
-            var response in handler.Handle(message, cancellationToken).ConfigureAwait(true)
+            var response in ExecuteStreamPipeline(scope, message, handler, cancellationToken)
+                .ConfigureAwait(true)
         )
         {
             yield return response;
@@ -159,18 +161,105 @@ internal class Mediator(
         if (!AssertHandler<TMessage, INotificationHandler<TMessage>>(handlers))
             return;
 
-        var tasks = handlers.Select(async handler =>
+        await ExecuteNotificationPipeline(scope, packet, handlers, cancellationToken).ConfigureAwait(
+            false
+        );
+    }
+
+    private static async Task ExecuteCommandPipeline<TMessage>(
+        IServiceScope scope,
+        TMessage message,
+        ICommandHandler<TMessage> handler,
+        CancellationToken cancellationToken
+    )
+    {
+        var behaviors = scope.ServiceProvider.GetServices<ICommandBehavior<TMessage>>().ToArray();
+        CommandHandlerDelegate next = token => handler.Handle(message, token);
+
+        for (var i = behaviors.Length - 1; i >= 0; i--)
         {
-            try
+            var behavior = behaviors[i];
+            var current = next;
+            next = token => behavior.Handle(message, current, token);
+        }
+
+        await next(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async Task<TResponse> ExecuteRequestPipeline<TMessage, TResponse>(
+        IServiceScope scope,
+        TMessage message,
+        IRequestHandler<TMessage, TResponse> handler,
+        CancellationToken cancellationToken
+    )
+    {
+        var behaviors = scope.ServiceProvider.GetServices<IRequestBehavior<TMessage, TResponse>>()
+            .ToArray();
+        RequestHandlerDelegate<TResponse> next = token => handler.Handle(message, token);
+
+        for (var i = behaviors.Length - 1; i >= 0; i--)
+        {
+            var behavior = behaviors[i];
+            var current = next;
+            next = token => behavior.Handle(message, current, token);
+        }
+
+        return await next(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static IAsyncEnumerable<TResponse> ExecuteStreamPipeline<TMessage, TResponse>(
+        IServiceScope scope,
+        TMessage message,
+        IStreamHandler<TMessage, TResponse> handler,
+        CancellationToken cancellationToken
+    )
+    {
+        var behaviors = scope.ServiceProvider.GetServices<IStreamBehavior<TMessage, TResponse>>()
+            .ToArray();
+        StreamHandlerDelegate<TResponse> next = token => handler.Handle(message, token);
+
+        for (var i = behaviors.Length - 1; i >= 0; i--)
+        {
+            var behavior = behaviors[i];
+            var current = next;
+            next = token => behavior.Handle(message, current, token);
+        }
+
+        return next(cancellationToken);
+    }
+
+    private static async Task ExecuteNotificationPipeline<TMessage>(
+        IServiceScope scope,
+        NotificationPacket<TMessage> packet,
+        IEnumerable<INotificationHandler<TMessage>> handlers,
+        CancellationToken cancellationToken
+    )
+    {
+        var behaviors = scope.ServiceProvider.GetServices<INotificationBehavior<TMessage>>().ToArray();
+        NotificationHandlerDelegate next = async token =>
+        {
+            var tasks = handlers.Select(async handler =>
             {
-                await handler.Handle(packet.Message, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                await packet.OnErrorAsync(handler.GetType(), ex).ConfigureAwait(false);
-            }
-        });
-        await Task.WhenAll(tasks).ConfigureAwait(false);
+                try
+                {
+                    await handler.Handle(packet.Message, token).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    await packet.OnErrorAsync(handler.GetType(), ex).ConfigureAwait(false);
+                }
+            });
+            await Task.WhenAll(tasks).ConfigureAwait(false);
+        };
+
+        for (var i = behaviors.Length - 1; i >= 0; i--)
+        {
+            var behavior = behaviors[i];
+            var current = next;
+            next = token => behavior.Handle(packet.Message, current, token);
+        }
+
+        await next(cancellationToken).ConfigureAwait(false);
     }
 
     private IEnumerable<T> Resolve<T>(IServiceScope scope, object message, bool ignore = false)

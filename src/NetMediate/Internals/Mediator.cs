@@ -173,7 +173,7 @@ internal class Mediator(
         CancellationToken cancellationToken
     )
     {
-        var behaviors = scope.ServiceProvider.GetServices<ICommandBehavior<TMessage>>().ToArray();
+        var behaviors = ResolveBehaviors<ICommandBehavior<TMessage>>(scope.ServiceProvider);
         CommandHandlerDelegate next = token => handler.Handle(message, token);
 
         for (var i = behaviors.Length - 1; i >= 0; i--)
@@ -193,8 +193,7 @@ internal class Mediator(
         CancellationToken cancellationToken
     )
     {
-        var behaviors = scope.ServiceProvider.GetServices<IRequestBehavior<TMessage, TResponse>>()
-            .ToArray();
+        var behaviors = ResolveBehaviors<IRequestBehavior<TMessage, TResponse>>(scope.ServiceProvider);
         RequestHandlerDelegate<TResponse> next = token => handler.Handle(message, token);
 
         for (var i = behaviors.Length - 1; i >= 0; i--)
@@ -214,8 +213,7 @@ internal class Mediator(
         CancellationToken cancellationToken
     )
     {
-        var behaviors = scope.ServiceProvider.GetServices<IStreamBehavior<TMessage, TResponse>>()
-            .ToArray();
+        var behaviors = ResolveBehaviors<IStreamBehavior<TMessage, TResponse>>(scope.ServiceProvider);
         StreamHandlerDelegate<TResponse> next = token => handler.Handle(message, token);
 
         for (var i = behaviors.Length - 1; i >= 0; i--)
@@ -235,7 +233,7 @@ internal class Mediator(
         CancellationToken cancellationToken
     )
     {
-        var behaviors = scope.ServiceProvider.GetServices<INotificationBehavior<TMessage>>().ToArray();
+        var behaviors = ResolveBehaviors<INotificationBehavior<TMessage>>(scope.ServiceProvider);
         NotificationHandlerDelegate next = async token =>
         {
             var tasks = handlers.Select(async handler =>
@@ -261,6 +259,9 @@ internal class Mediator(
 
         await next(cancellationToken).ConfigureAwait(false);
     }
+
+    private static TBehavior[] ResolveBehaviors<TBehavior>(IServiceProvider serviceProvider) =>
+        serviceProvider.GetService<IEnumerable<TBehavior>>()?.ToArray() ?? [];
 
     private IEnumerable<T> Resolve<T>(IServiceScope scope, object message, bool ignore = false)
     {

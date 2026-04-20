@@ -8,32 +8,39 @@ public sealed class SourceGenerationSupportTests
     [Fact]
     public async Task AddNetMediate_WithConfigureOverload_ShouldAllowExplicitRegistrationWithoutAssemblyScan()
     {
-        GeneratedCommandHandler.Executed = false;
+        ExplicitRegistrationCommandHandler.Executed = 0;
 
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddNetMediate(registration =>
         {
-            registration.RegisterCommandHandler<GeneratedCommand, GeneratedCommandHandler>();
+            registration.RegisterCommandHandler<
+                ExplicitRegistrationCommand,
+                ExplicitRegistrationCommandHandler
+            >();
         });
 
         using var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new GeneratedCommand(), TestContext.Current.CancellationToken);
+        await mediator.Send(new ExplicitRegistrationCommand(), TestContext.Current.CancellationToken);
 
-        Assert.True(GeneratedCommandHandler.Executed);
+        Assert.Equal(1, Volatile.Read(ref ExplicitRegistrationCommandHandler.Executed));
     }
 
-    public sealed record GeneratedCommand;
+    public sealed record ExplicitRegistrationCommand;
 
-    private sealed class GeneratedCommandHandler : ICommandHandler<GeneratedCommand>
+    private sealed class ExplicitRegistrationCommandHandler
+        : ICommandHandler<ExplicitRegistrationCommand>
     {
-        public static bool Executed { get; set; }
+        public static int Executed;
 
-        public Task Handle(GeneratedCommand command, CancellationToken cancellationToken = default)
+        public Task Handle(
+            ExplicitRegistrationCommand command,
+            CancellationToken cancellationToken = default
+        )
         {
-            Executed = true;
+            Interlocked.Increment(ref Executed);
             return Task.CompletedTask;
         }
     }

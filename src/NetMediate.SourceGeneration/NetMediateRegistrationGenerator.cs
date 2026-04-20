@@ -55,10 +55,15 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
             foreach (var @interface in handlerType.AllInterfaces)
             {
-                var definition = @interface.OriginalDefinition.ToDisplayString();
+                var definition = @interface.OriginalDefinition;
+                if (definition.ContainingNamespace.ToDisplayString() != "NetMediate")
+                    continue;
+
+                var definitionName = definition.Name;
+                var definitionArity = definition.Arity;
                 var args = @interface.TypeArguments;
 
-                if (definition == "NetMediate.ICommandHandler<TMessage>" && args.Length == 1)
+                if (definitionName == "ICommandHandler" && definitionArity == 1 && args.Length == 1)
                 {
                     registrations.Add(
                         $"builder.RegisterCommandHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
@@ -66,7 +71,11 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     continue;
                 }
 
-                if (definition == "NetMediate.INotificationHandler<TMessage>" && args.Length == 1)
+                if (
+                    definitionName == "INotificationHandler"
+                    && definitionArity == 1
+                    && args.Length == 1
+                )
                 {
                     registrations.Add(
                         $"builder.RegisterNotificationHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
@@ -74,7 +83,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     continue;
                 }
 
-                if (definition == "NetMediate.IRequestHandler<TMessage, TResponse>" && args.Length == 2)
+                if (definitionName == "IRequestHandler" && definitionArity == 2 && args.Length == 2)
                 {
                     registrations.Add(
                         $"builder.RegisterRequestHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
@@ -82,7 +91,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     continue;
                 }
 
-                if (definition == "NetMediate.IStreamHandler<TMessage, TResponse>" && args.Length == 2)
+                if (definitionName == "IStreamHandler" && definitionArity == 2 && args.Length == 2)
                 {
                     registrations.Add(
                         $"builder.RegisterStreamHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
@@ -90,7 +99,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     continue;
                 }
 
-                if (definition == "NetMediate.IValidationHandler<TMessage>" && args.Length == 1)
+                if (definitionName == "IValidationHandler" && definitionArity == 1 && args.Length == 1)
                 {
                     registrations.Add(
                         $"builder.RegisterValidationHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"

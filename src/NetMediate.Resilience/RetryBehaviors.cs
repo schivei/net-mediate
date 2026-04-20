@@ -30,6 +30,9 @@ public sealed class RetryRequestBehavior<TMessage, TResponse>(RetryBehaviorOptio
             {
                 if (attempt >= maxRetryCount)
                     throw;
+
+                if (delay > TimeSpan.Zero)
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception) when (attempt < maxRetryCount)
             {
@@ -70,6 +73,9 @@ public sealed class RetryNotificationBehavior<TMessage>(RetryBehaviorOptions opt
             {
                 if (attempt >= maxRetryCount)
                     throw;
+
+                if (delay > TimeSpan.Zero)
+                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception) when (attempt < maxRetryCount)
             {

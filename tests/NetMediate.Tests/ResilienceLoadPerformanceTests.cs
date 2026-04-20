@@ -42,7 +42,7 @@ public sealed class ResilienceLoadPerformanceTests(ITestOutputHelper output)
         );
 
         Assert.True(
-            throughput > 500,
+            throughput > 50_000,
             $"Unexpected low resilience request throughput: {throughput:F2} ops/s"
         );
     }

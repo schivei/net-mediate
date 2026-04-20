@@ -36,6 +36,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Streaming**: Handle requests that return multiple responses over time
 - **Validation**: Built-in message validation support with custom validators
 - **Pipeline Behaviors**: Interceptors with pre/post flow for Send/Request/Notify/Stream
+- **Optional resilience package**: Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience`
 - **OpenTelemetry-ready diagnostics**: Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream
 - **Dependency Injection**: Seamless integration with Microsoft.Extensions.DependencyInjection
 - **Keyed Services**: Support for keyed service registration and resolution
@@ -63,10 +64,12 @@ dotnet add package NetMediate
 ```xml
 <PackageReference Include="NetMediate.Compat" Version="x.x.x" />
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
+<PackageReference Include="NetMediate.Resilience" Version="x.x.x" />
 ```
 
 - **NetMediate.Compat**: keeps MediatR contracts (`MediatR.IMediator`, `IRequest`, `INotification`, handlers, and `AddMediatR`) so migration to NetMediate can be done without rewriting contracts.
 - **NetMediate.Moq**: adds lightweight Moq helpers for cleaner unit and integration tests (`Mocking.Create`, `AddMockSingleton`, and async setup extensions).
+- **NetMediate.Resilience**: adds optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
 
 ## Companion Guides
 
@@ -74,6 +77,7 @@ dotnet add package NetMediate
 - [NetMediate.Moq recipes](docs/NETMEDIATE_MOQ_RECIPES.md)
 - [API/Worker/Minimal API samples](docs/SAMPLES.md)
 - [Diagnostics (structured logs + metrics)](docs/DIAGNOSTICS.md)
+- [Resilience package guide and load capacity](docs/RESILIENCE.md)
 
 ## Quick Start
 

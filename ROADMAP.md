@@ -12,7 +12,7 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 ## Mid term
 
 - [x] Add pipeline behaviors/interceptors compatible with the MediatR processing flow (pre/post processing). Implemented through `ICommandBehavior<TMessage>`, `IRequestBehavior<TMessage,TResponse>`, `INotificationBehavior<TMessage>`, and `IStreamBehavior<TMessage,TResponse>` in `src/NetMediate`, validated in `tests/NetMediate.Tests/PipelineBehaviorTests.cs`.
-- [ ] Include retry, timeout, and circuit-breaker strategies for notification/request handlers.
+- [x] Include retry, timeout, and circuit-breaker strategies for notification/request handlers. Delivered as a dedicated package (`src/NetMediate.Resilience`) to keep the core mediator package focused and allow optional adoption.
 - [ ] Provide optional source generator support to reduce reflection cost at startup.
 - [x] Evolve observability support (OpenTelemetry traces/metrics for Send/Request/Notify/Stream). Implemented with built-in `ActivitySource`/`Meter` in `NetMediateDiagnostics` and covered by `tests/NetMediate.Tests/Internals/DiagnosticsTelemetryTests.cs`.
 

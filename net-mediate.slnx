@@ -12,6 +12,7 @@
   <Folder Name="/src/">
     <Project Path="src/NetMediate.Compat/NetMediate.Compat.csproj" Id="f4cd068c-c0f2-4a74-920b-b9b4ba89de54" />
     <Project Path="src/NetMediate.Moq/NetMediate.Moq.csproj" Id="9d54e570-e883-4296-b281-c8d40ed4e8af" />
+    <Project Path="src/NetMediate.Resilience/NetMediate.Resilience.csproj" Id="a88213d8-a9ce-4d78-90cc-34a03cd7187a" />
     <Project Path="src/NetMediate/NetMediate.csproj" Id="232b3170-ace0-4adb-a81d-541c5b872bac" />
   </Folder>
   <Folder Name="/tests/">

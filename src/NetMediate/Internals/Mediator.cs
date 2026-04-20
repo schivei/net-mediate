@@ -18,14 +18,27 @@ internal class Mediator(
         CancellationToken cancellationToken = default
     )
     {
+        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Notify");
         using var scope = serviceScopeFactory.CreateScope();
 
-        await configuration
-            .ChannelWriter.WriteAsync(
-                new NotificationPacket<TMessage>(message, onError),
-                cancellationToken
-            )
-            .ConfigureAwait(false);
+        try
+        {
+            await configuration
+                .ChannelWriter.WriteAsync(
+                    new NotificationPacket<TMessage>(message, onError),
+                    cancellationToken
+                )
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
+        finally
+        {
+            NetMediateDiagnostics.RecordNotify<TMessage>();
+        }
     }
 
     private async Task ValidateMessage<TMessage>(
@@ -75,18 +88,31 @@ internal class Mediator(
         CancellationToken cancellationToken = default
     )
     {
+        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Send");
         using var scope = serviceScopeFactory.CreateScope();
 
-        await ValidateMessage(scope, message, cancellationToken);
+        try
+        {
+            await ValidateMessage(scope, message, cancellationToken);
 
-        logger.LogDebug("Sending message of type {MessageType}", typeof(TMessage).Name);
+            logger.LogDebug("Sending message of type {MessageType}", typeof(TMessage).Name);
 
-        var handler = Resolve<ICommandHandler<TMessage>>(scope, message).FirstOrDefault();
+            var handler = Resolve<ICommandHandler<TMessage>>(scope, message).FirstOrDefault();
 
-        if (!AssertHandler<TMessage>(handler))
-            return;
+            if (!AssertHandler<TMessage>(handler))
+                return;
 
-        await ExecuteCommandPipeline(scope, message, handler, cancellationToken).ConfigureAwait(true);
+            await ExecuteCommandPipeline(scope, message, handler, cancellationToken).ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
+        finally
+        {
+            NetMediateDiagnostics.RecordSend<TMessage>();
+        }
     }
 
     public async Task<TResponse> Request<TMessage, TResponse>(
@@ -94,20 +120,33 @@ internal class Mediator(
         CancellationToken cancellationToken = default
     )
     {
+        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Request");
         using var scope = serviceScopeFactory.CreateScope();
 
-        await ValidateMessage(scope, message, cancellationToken);
+        try
+        {
+            await ValidateMessage(scope, message, cancellationToken);
 
-        logger.LogDebug("Sending message of type {MessageType}", typeof(TMessage).Name);
+            logger.LogDebug("Sending message of type {MessageType}", typeof(TMessage).Name);
 
-        var handler = Resolve<IRequestHandler<TMessage, TResponse>>(scope, message)
-            .FirstOrDefault();
+            var handler = Resolve<IRequestHandler<TMessage, TResponse>>(scope, message)
+                .FirstOrDefault();
 
-        if (!AssertHandler<TMessage>(handler))
-            return default!;
+            if (!AssertHandler<TMessage>(handler))
+                return default!;
 
-        return await ExecuteRequestPipeline(scope, message, handler, cancellationToken)
-            .ConfigureAwait(true);
+            return await ExecuteRequestPipeline(scope, message, handler, cancellationToken)
+                .ConfigureAwait(true);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
+        finally
+        {
+            NetMediateDiagnostics.RecordRequest<TMessage>();
+        }
     }
 
     public async IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
@@ -115,23 +154,32 @@ internal class Mediator(
         [EnumeratorCancellation] CancellationToken cancellationToken = default
     )
     {
+        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("RequestStream");
         using var scope = serviceScopeFactory.CreateScope();
 
         await ValidateMessage(scope, message, cancellationToken);
 
         logger.LogDebug("Sending message of type {MessageType}", typeof(TMessage).Name);
 
-        var handler = Resolve<IStreamHandler<TMessage, TResponse>>(scope, message).FirstOrDefault();
+        var handler = Resolve<IStreamHandler<TMessage, TResponse>>(scope, message)
+            .FirstOrDefault();
 
         if (!AssertHandler<TMessage>(handler))
             yield break;
 
-        await foreach (
-            var response in ExecuteStreamPipeline(scope, message, handler, cancellationToken)
-                .ConfigureAwait(true)
-        )
+        try
         {
-            yield return response;
+            await foreach (
+                var response in ExecuteStreamPipeline(scope, message, handler, cancellationToken)
+                    .ConfigureAwait(true)
+            )
+            {
+                yield return response;
+            }
+        }
+        finally
+        {
+            NetMediateDiagnostics.RecordStream<TMessage>();
         }
     }
 

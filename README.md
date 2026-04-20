@@ -36,6 +36,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Streaming**: Handle requests that return multiple responses over time
 - **Validation**: Built-in message validation support with custom validators
 - **Pipeline Behaviors**: Interceptors with pre/post flow for Send/Request/Notify/Stream
+- **OpenTelemetry-ready diagnostics**: Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream
 - **Dependency Injection**: Seamless integration with Microsoft.Extensions.DependencyInjection
 - **Keyed Services**: Support for keyed service registration and resolution
 - **Cancellation Support**: Full cancellation token support across all operations

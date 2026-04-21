@@ -21,6 +21,12 @@ builder.Services.AddNetMediateGenerated();
 
 The generator emits `AddNetMediateGenerated(...)`, which calls explicit registrations for discovered handlers.
 
+If you want the generated registration execution path excluded from coverage, pass:
+
+```csharp
+builder.Services.AddNetMediateGenerated(excludeFromCodeCoverage: true);
+```
+
 ## Manual no-scan fallback
 
 You can register handlers explicitly (without source generator) using:

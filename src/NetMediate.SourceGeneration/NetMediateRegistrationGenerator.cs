@@ -119,14 +119,32 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         sb.AppendLine();
         sb.AppendLine("public static class NetMediateGeneratedDI");
         sb.AppendLine("{");
-        sb.AppendLine("    public static IMediatorServiceBuilder AddNetMediateGenerated(this Microsoft.Extensions.DependencyInjection.IServiceCollection services)");
+        sb.AppendLine("    public static IMediatorServiceBuilder AddNetMediateGenerated(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, bool excludeFromCodeCoverage = false)");
+        sb.AppendLine("    {");
+        sb.AppendLine("        if (excludeFromCodeCoverage)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            return AddNetMediateGeneratedExcludedFromCodeCoverage(services);");
+        sb.AppendLine("        }");
+        sb.AppendLine();
+        sb.AppendLine("        var builder = services.AddNetMediate(static _ => { });");
+        sb.AppendLine("        RegisterGeneratedHandlers(builder);");
+        sb.AppendLine("        return builder;");
+        sb.AppendLine("    }");
+        sb.AppendLine();
+        sb.AppendLine("    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]");
+        sb.AppendLine("    private static IMediatorServiceBuilder AddNetMediateGeneratedExcludedFromCodeCoverage(Microsoft.Extensions.DependencyInjection.IServiceCollection services)");
         sb.AppendLine("    {");
         sb.AppendLine("        var builder = services.AddNetMediate(static _ => { });");
+        sb.AppendLine("        RegisterGeneratedHandlers(builder);");
+        sb.AppendLine("        return builder;");
+        sb.AppendLine("    }");
+        sb.AppendLine();
+        sb.AppendLine("    private static void RegisterGeneratedHandlers(IMediatorServiceBuilder builder)");
+        sb.AppendLine("    {");
 
         foreach (var registration in registrations)
             sb.AppendLine($"        {registration}");
 
-        sb.AppendLine("        return builder;");
         sb.AppendLine("    }");
         sb.AppendLine("}");
         return sb.ToString();

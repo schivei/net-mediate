@@ -12,6 +12,8 @@ internal class Mediator(
     IServiceScopeFactory serviceScopeFactory
 ) : IMediator, INotifiable
 {
+    private static readonly object NotificationExceptionSync = new();
+
     public async Task Notify<TMessage>(
         TMessage message,
         NotificationErrorDelegate<TMessage> onError,
@@ -156,30 +158,30 @@ internal class Mediator(
     {
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("RequestStream");
         using var scope = serviceScopeFactory.CreateScope();
-        IAsyncEnumerable<TResponse> stream;
+        IAsyncEnumerable<TResponse> stream = EmptyAsyncEnumerable<TResponse>();
 
         try
         {
-            await ValidateMessage(scope, message, cancellationToken);
+            try
+            {
+                await ValidateMessage(scope, message, cancellationToken);
 
-            logger.LogDebug("Sending message of type {MessageType}", typeof(TMessage).Name);
+                logger.LogDebug("Sending message of type {MessageType}", typeof(TMessage).Name);
 
-            var handler = Resolve<IStreamHandler<TMessage, TResponse>>(scope, message)
-                .FirstOrDefault();
+                var handler = Resolve<IStreamHandler<TMessage, TResponse>>(scope, message)
+                    .FirstOrDefault();
 
-            if (!AssertHandler<TMessage>(handler))
-                yield break;
+                if (!AssertHandler<TMessage>(handler))
+                    yield break;
 
-            stream = ExecuteStreamPipeline(scope, message, handler, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-            throw;
-        }
+                stream = ExecuteStreamPipeline(scope, message, handler, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
+                throw;
+            }
 
-        try
-        {
             await using var enumerator = stream.GetAsyncEnumerator(cancellationToken);
 
             while (true)
@@ -308,8 +310,7 @@ internal class Mediator(
         var behaviors = ResolveBehaviors<INotificationBehavior<TMessage>>(scope.ServiceProvider);
         NotificationHandlerDelegate next = async token =>
         {
-            List<Exception> exceptions = [];
-            var sync = new object();
+            List<Exception>? exceptions = null;
             var tasks = handlers.Select(async handler =>
             {
                 try
@@ -319,15 +320,16 @@ internal class Mediator(
                 catch (Exception ex)
                 {
                     await packet.OnErrorAsync(handler.GetType(), ex).ConfigureAwait(false);
-                    lock (sync)
+                    lock (NotificationExceptionSync)
                     {
+                        exceptions ??= [];
                         exceptions.Add(ex);
                     }
                 }
             });
             await Task.WhenAll(tasks).ConfigureAwait(false);
 
-            if (exceptions.Count > 0)
+            if (exceptions is not null && exceptions.Count > 0)
                 throw new AggregateException(exceptions);
         };
 
@@ -339,6 +341,11 @@ internal class Mediator(
         }
 
         await next(cancellationToken).ConfigureAwait(false);
+    }
+
+    private static async IAsyncEnumerable<T> EmptyAsyncEnumerable<T>()
+    {
+        yield break;
     }
 
     private static TBehavior[] ResolveBehaviors<TBehavior>(IServiceProvider serviceProvider) =>

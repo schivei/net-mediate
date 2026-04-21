@@ -63,6 +63,43 @@ public class MediatorTests
         Assert.Same(message, receivedMessage.Message);
     }
 
+    [Fact]
+    public async Task Notify_Enumerable_WithOnError_SinglePassEnumerable_ShouldWriteAllToChannel()
+    {
+        var messages = new SinglePassEnumerable<TestMessage>(
+            [new TestMessage { Content = "1" }, new TestMessage { Content = "2" }]
+        );
+
+        await ((IMediator)_mediator).Notify(
+            messages: messages,
+            (_, _, _) => Task.CompletedTask,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.True(_channel.Reader.TryRead(out var packet1));
+        Assert.True(_channel.Reader.TryRead(out var packet2));
+        Assert.Equal("1", ((TestMessage)packet1.Message).Content);
+        Assert.Equal("2", ((TestMessage)packet2.Message).Content);
+    }
+
+    [Fact]
+    public async Task Notify_NotificationEnumerable_WithoutOnError_SinglePassEnumerable_ShouldWriteAllToChannel()
+    {
+        var notifications = new SinglePassEnumerable<INotification<NotificationTestMessage>>(
+            [new NotificationTestMessage { Id = 10 }, new NotificationTestMessage { Id = 20 }]
+        );
+
+        await ((IMediator)_mediator).Notify(
+            notifications: notifications,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.True(_channel.Reader.TryRead(out var packet1));
+        Assert.True(_channel.Reader.TryRead(out var packet2));
+        Assert.Equal(10, ((NotificationTestMessage)packet1.Message).Id);
+        Assert.Equal(20, ((NotificationTestMessage)packet2.Message).Id);
+    }
+
     #endregion
 
     #region Send Tests
@@ -385,6 +422,11 @@ public class MediatorTests
     public class TestResponse
     {
         public string Value { get; set; } = string.Empty;
+    }
+
+    public class NotificationTestMessage : INotification<NotificationTestMessage>
+    {
+        public int Id { get; set; }
     }
 
     public class TestValidatableMessage : IValidatable

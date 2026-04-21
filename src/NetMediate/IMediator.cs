@@ -62,11 +62,15 @@ public interface IMediator
     ;
 #else
     {
-        if (messages is null || !messages.Any())
+        if (messages is null)
+            return Task.CompletedTask;
+
+        var bufferedMessages = messages as TMessage[] ?? messages.ToArray();
+        if (bufferedMessages.Length == 0)
             return Task.CompletedTask;
 
         return Task.WhenAll(
-            messages.Select(message => Notify(message, onError, cancellationToken))
+            bufferedMessages.Select(message => Notify(message, onError, cancellationToken))
         );
     }
 #endif
@@ -92,10 +96,15 @@ public interface IMediator
     ;
 #else
     {
-        if (notifications is null || !notifications.Any())
+        if (notifications is null)
             return Task.CompletedTask;
+        var bufferedNotifications =
+            notifications as INotification<TMessage>[] ?? notifications.ToArray();
+        if (bufferedNotifications.Length == 0)
+            return Task.CompletedTask;
+
         return Task.WhenAll(
-            notifications.Select(notification =>
+            bufferedNotifications.Select(notification =>
                 Notify(notification, onError, cancellationToken))
         );
     }
@@ -147,10 +156,15 @@ public interface IMediator
     ;
 #else
     {
-        if (messages is null || !messages.Any())
+        if (messages is null)
+            return Task.CompletedTask;
+        var bufferedMessages = messages as TMessage[] ?? messages.ToArray();
+        if (bufferedMessages.Length == 0)
             return Task.CompletedTask;
 
-        return Task.WhenAll(messages.Select(message => Notify(message, cancellationToken)));
+        return Task.WhenAll(
+            bufferedMessages.Select(message => Notify(message, cancellationToken))
+        );
     }
 #endif
 
@@ -169,10 +183,15 @@ public interface IMediator
     ;
 #else
     {
-        if (notifications is null || !notifications.Any())
+        if (notifications is null)
             return Task.CompletedTask;
+        var bufferedNotifications =
+            notifications as INotification<TMessage>[] ?? notifications.ToArray();
+        if (bufferedNotifications.Length == 0)
+            return Task.CompletedTask;
+
         return Task.WhenAll(
-            notifications.Select(notification =>
+            bufferedNotifications.Select(notification =>
                 Notify(notification, cancellationToken))
         );
     }

@@ -444,18 +444,30 @@ internal class Mediator(
 
     Task IMediator.Notify<TMessage>(IEnumerable<TMessage> messages, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken)
     {
-        if (messages is null || !messages.Any())
+        if (messages is null)
+            return Task.CompletedTask;
+        var bufferedMessages = messages as TMessage[] ?? messages.ToArray();
+        if (bufferedMessages.Length == 0)
             return Task.CompletedTask;
 
-        return Task.WhenAll(messages.Select(message => Notify(message, onError, cancellationToken)));
+        return Task.WhenAll(
+            bufferedMessages.Select(message => Notify(message, onError, cancellationToken))
+        );
     }
 
     Task IMediator.Notify<TMessage>(IEnumerable<INotification<TMessage>> notifications, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken)
     {
-        if (notifications is null || !notifications.Any())
+        if (notifications is null)
+            return Task.CompletedTask;
+        var bufferedNotifications =
+            notifications as INotification<TMessage>[] ?? notifications.ToArray();
+        if (bufferedNotifications.Length == 0)
             return Task.CompletedTask;
 
-        return Task.WhenAll(notifications.Select(notification => Notify((TMessage)notification, onError, cancellationToken)));
+        return Task.WhenAll(
+            bufferedNotifications.Select(notification =>
+                Notify((TMessage)notification, onError, cancellationToken))
+        );
     }
 
     Task IMediator.Notify<TMessage>(TMessage message, CancellationToken cancellationToken) =>
@@ -466,18 +478,31 @@ internal class Mediator(
 
     Task IMediator.Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken)
     {
-        if (messages is null || !messages.Any())
+        if (messages is null)
+            return Task.CompletedTask;
+        var bufferedMessages = messages as TMessage[] ?? messages.ToArray();
+        if (bufferedMessages.Length == 0)
             return Task.CompletedTask;
 
-        return Task.WhenAll(messages.Select(message => Notify(message, (_, _, _) => Task.CompletedTask, cancellationToken)));
+        return Task.WhenAll(
+            bufferedMessages.Select(message =>
+                Notify(message, (_, _, _) => Task.CompletedTask, cancellationToken))
+        );
     }
 
     Task IMediator.Notify<TMessage>(IEnumerable<INotification<TMessage>> notifications, CancellationToken cancellationToken)
     {
-        if (notifications is null || !notifications.Any())
+        if (notifications is null)
+            return Task.CompletedTask;
+        var bufferedNotifications =
+            notifications as INotification<TMessage>[] ?? notifications.ToArray();
+        if (bufferedNotifications.Length == 0)
             return Task.CompletedTask;
 
-        return Task.WhenAll(notifications.Select(notification => Notify((TMessage)notification, (_, _, _) => Task.CompletedTask, cancellationToken)));
+        return Task.WhenAll(
+            bufferedNotifications.Select(notification =>
+                Notify((TMessage)notification, (_, _, _) => Task.CompletedTask, cancellationToken))
+        );
     }
 
     Task IMediator.Send<TMessage>(ICommand<TMessage> command, CancellationToken cancellationToken) =>

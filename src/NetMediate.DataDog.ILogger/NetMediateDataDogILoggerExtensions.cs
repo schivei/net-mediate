@@ -12,12 +12,15 @@ public static class NetMediateDataDogILoggerExtensions
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configure">Optional options configuration.</param>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
     /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddNetMediateDataDogILogger(
         this IServiceCollection services,
-        Action<DataDogILoggerOptions>? configure = null
+        Action<DataDogILoggerOptions>? configure = null,
+        CancellationToken cancellationToken = default
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var options = new DataDogILoggerOptions();
         configure?.Invoke(options);
         services.AddSingleton(options);
@@ -29,12 +32,15 @@ public static class NetMediateDataDogILoggerExtensions
     /// </summary>
     /// <param name="logger">The target logger.</param>
     /// <param name="options">The DataDog ILogger options.</param>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
     /// <returns>An IDisposable scope.</returns>
     public static IDisposable BeginNetMediateDataDogScope(
         this Microsoft.Extensions.Logging.ILogger logger,
-        DataDogILoggerOptions options
+        DataDogILoggerOptions options,
+        CancellationToken cancellationToken = default
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var scope = new Dictionary<string, object?>
         {
             ["dd.service"] = options.Service,

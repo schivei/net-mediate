@@ -5,6 +5,7 @@ This page is the wiki entry point for the repository documentation set.
 ## Core guides
 
 - [README](../README.md)
+- [Installation, configuration, and usage by resource](WIKI_INSTALLATION_CONFIGURATION_USAGE.md)
 - [Diagnostics](DIAGNOSTICS.md)
 - [Resilience](RESILIENCE.md)
 - [Source generation](SOURCE_GENERATION.md)

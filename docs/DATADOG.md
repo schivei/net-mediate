@@ -33,7 +33,7 @@ builder.Services.AddNetMediateDataDogOpenTelemetry(options =>
     options.Environment = "prod";
     options.OtlpEndpoint = new Uri("http://localhost:4318");
     options.ApiKey = "<DATADOG_API_KEY>"; // optional
-});
+}, CancellationToken.None);
 ```
 
 ## Serilog package (`NetMediate.DataDog.Serilog`)
@@ -51,7 +51,7 @@ Log.Logger = new LoggerConfiguration()
         options.Service = "my-service";
         options.Source = "csharp";
         options.Tags = ["team:platform", "env:prod"];
-    })
+    }, CancellationToken.None)
     .CreateLogger();
 ```
 
@@ -67,10 +67,10 @@ builder.Services.AddNetMediateDataDogILogger(options =>
     options.Service = "my-service";
     options.Environment = "prod";
     options.Version = "1.0.0";
-});
+}, CancellationToken.None);
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
 var ddOptions = app.Services.GetRequiredService<DataDogILoggerOptions>();
-using var scope = logger.BeginNetMediateDataDogScope(ddOptions);
+using var scope = logger.BeginNetMediateDataDogScope(ddOptions, CancellationToken.None);
 logger.LogInformation("Application started");
 ```

@@ -16,12 +16,15 @@ public static class NetMediateDataDogOpenTelemetryDI
     /// </summary>
     /// <param name="services">The service collection.</param>
     /// <param name="configure">Optional options configuration.</param>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
     /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddNetMediateDataDogOpenTelemetry(
         this IServiceCollection services,
-        Action<DataDogOpenTelemetryOptions>? configure = null
+        Action<DataDogOpenTelemetryOptions>? configure = null,
+        CancellationToken cancellationToken = default
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var options = new DataDogOpenTelemetryOptions();
         configure?.Invoke(options);
 

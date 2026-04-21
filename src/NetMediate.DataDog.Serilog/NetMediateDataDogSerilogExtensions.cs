@@ -12,12 +12,15 @@ public static class NetMediateDataDogSerilogExtensions
     /// </summary>
     /// <param name="loggerConfiguration">The Serilog configuration instance.</param>
     /// <param name="configure">Optional DataDog sink options configuration.</param>
+    /// <param name="cancellationToken">Optional cancellation token.</param>
     /// <returns>The same logger configuration for chaining.</returns>
     public static LoggerConfiguration UseNetMediateDataDogSerilog(
         this LoggerConfiguration loggerConfiguration,
-        Action<DataDogSerilogOptions>? configure = null
+        Action<DataDogSerilogOptions>? configure = null,
+        CancellationToken cancellationToken = default
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var options = new DataDogSerilogOptions();
         configure?.Invoke(options);
 

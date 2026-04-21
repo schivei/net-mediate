@@ -45,7 +45,11 @@ public sealed class ResilienceLoadPerformanceTests(ITestOutputHelper output)
             $"LOAD_RESULT resilience_request_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 0, $"Unexpected resilience request throughput: {throughput:F2} ops/s");
+        var minimumThroughput = GetMinimumThroughput();
+        Assert.True(
+            throughput >= minimumThroughput,
+            $"Unexpected resilience request throughput: {throughput:F2} ops/s. Minimum expected: {minimumThroughput:F2} ops/s."
+        );
     }
 
     private static async Task<IHost> CreateHostAsync()
@@ -81,6 +85,15 @@ public sealed class ResilienceLoadPerformanceTests(ITestOutputHelper output)
             "true",
             StringComparison.OrdinalIgnoreCase
         );
+
+    private static double GetMinimumThroughput() =>
+        string.Equals(
+            Environment.GetEnvironmentVariable("GITHUB_ACTIONS"),
+            "true",
+            StringComparison.OrdinalIgnoreCase
+        )
+            ? 30_000d
+            : 50_000d;
 
     public sealed record ResilienceLoadRequest(int Value);
 

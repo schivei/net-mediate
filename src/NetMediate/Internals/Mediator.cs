@@ -19,7 +19,6 @@ internal class Mediator(
     )
     {
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Notify");
-        using var scope = serviceScopeFactory.CreateScope();
 
         try
         {
@@ -102,7 +101,8 @@ internal class Mediator(
             if (!AssertHandler<TMessage>(handler))
                 return;
 
-            await ExecuteCommandPipeline(scope, message, handler, cancellationToken).ConfigureAwait(true);
+            await ExecuteCommandPipeline(scope, message, handler, cancellationToken)
+                .ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -136,7 +136,7 @@ internal class Mediator(
                 return default!;
 
             return await ExecuteRequestPipeline(scope, message, handler, cancellationToken)
-                .ConfigureAwait(true);
+                .ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -187,7 +187,7 @@ internal class Mediator(
                 bool hasNext;
                 try
                 {
-                    hasNext = await enumerator.MoveNextAsync().ConfigureAwait(true);
+                    hasNext = await enumerator.MoveNextAsync().ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {

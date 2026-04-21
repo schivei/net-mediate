@@ -100,7 +100,12 @@ public interface IMediatorServiceBuilder
     /// <typeparam name="THandler">The handler implementing <see cref="INotificationHandler{TMessage}"/>.</typeparam>
     /// <returns>This builder for chaining.</returns>
     IMediatorServiceBuilder RegisterNotificationHandler<TMessage, THandler>()
-        where THandler : class, INotificationHandler<TMessage>;
+        where THandler : class, INotificationHandler<TMessage>
+#if NETSTANDARD2_0
+        ;
+#else
+        => Register(typeof(TMessage), typeof(THandler));
+#endif
 
     /// <summary>
     /// Registers a command handler for <typeparamref name="TMessage"/>.
@@ -109,7 +114,12 @@ public interface IMediatorServiceBuilder
     /// <typeparam name="THandler">The handler implementing <see cref="ICommandHandler{TMessage}"/>.</typeparam>
     /// <returns>This builder for chaining.</returns>
     IMediatorServiceBuilder RegisterCommandHandler<TMessage, THandler>()
-        where THandler : class, ICommandHandler<TMessage>;
+        where THandler : class, ICommandHandler<TMessage>
+#if NETSTANDARD2_0
+        ;
+#else
+        => Register(typeof(TMessage), typeof(THandler));
+#endif
 
     /// <summary>
     /// Registers a request handler for <typeparamref name="TMessage"/>.
@@ -119,7 +129,12 @@ public interface IMediatorServiceBuilder
     /// <typeparam name="THandler">The handler implementing <see cref="IRequestHandler{TRequest,TResponse}"/> for <typeparamref name="TMessage"/>.</typeparam>
     /// <returns>This builder for chaining.</returns>
     IMediatorServiceBuilder RegisterRequestHandler<TMessage, TResponse, THandler>()
-        where THandler : class, IRequestHandler<TMessage, TResponse>;
+        where THandler : class, IRequestHandler<TMessage, TResponse>
+#if NETSTANDARD2_0
+        ;
+#else
+        => Register(typeof(TMessage), typeof(THandler));
+#endif
 
     /// <summary>
     /// Registers a stream handler for <typeparamref name="TMessage"/>.
@@ -129,7 +144,12 @@ public interface IMediatorServiceBuilder
     /// <typeparam name="THandler">The handler implementing <see cref="IStreamHandler{TRequest,TItem}"/> for <typeparamref name="TMessage"/>.</typeparam>
     /// <returns>This builder for chaining.</returns>
     IMediatorServiceBuilder RegisterStreamHandler<TMessage, TResponse, THandler>()
-        where THandler : class, IStreamHandler<TMessage, TResponse>;
+        where THandler : class, IStreamHandler<TMessage, TResponse>
+#if NETSTANDARD2_0
+        ;
+#else
+        => Register(typeof(TMessage), typeof(THandler));
+#endif
 
     /// <summary>
     /// Registers a validation handler for <typeparamref name="TMessage"/>.
@@ -138,7 +158,12 @@ public interface IMediatorServiceBuilder
     /// <typeparam name="THandler">The handler implementing <see cref="IValidationHandler{TMessage}"/>.</typeparam>
     /// <returns>This builder for chaining.</returns>
     IMediatorServiceBuilder RegisterValidationHandler<TMessage, THandler>()
-        where THandler : class, IValidationHandler<TMessage>;
+        where THandler : class, IValidationHandler<TMessage>
+#if NETSTANDARD2_0
+        ;
+#else
+        => Register(typeof(TMessage), typeof(THandler));
+#endif
 
     /// <summary>
     /// Core registration API mapping a message type to a handler type.

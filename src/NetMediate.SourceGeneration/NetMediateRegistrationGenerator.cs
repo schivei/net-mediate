@@ -24,6 +24,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     if (typeSymbol.IsAbstract || typeSymbol.IsGenericType)
                         return null;
 
+                    if (!IsAccessible(typeSymbol))
+                        return null;
+
                     return typeSymbol;
                 }
             )
@@ -65,6 +68,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
                 if (definitionName == "ICommandHandler" && definitionArity == 1 && args.Length == 1)
                 {
+                    if (!IsAccessible(args[0]))
+                        continue;
+
                     registrations.Add(
                         $"builder.RegisterCommandHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
                     );
@@ -77,6 +83,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     && args.Length == 1
                 )
                 {
+                    if (!IsAccessible(args[0]))
+                        continue;
+
                     registrations.Add(
                         $"builder.RegisterNotificationHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
                     );
@@ -85,6 +94,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
                 if (definitionName == "IRequestHandler" && definitionArity == 2 && args.Length == 2)
                 {
+                    if (!IsAccessible(args[0]) || !IsAccessible(args[1]))
+                        continue;
+
                     registrations.Add(
                         $"builder.RegisterRequestHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
                     );
@@ -93,6 +105,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
                 if (definitionName == "IStreamHandler" && definitionArity == 2 && args.Length == 2)
                 {
+                    if (!IsAccessible(args[0]) || !IsAccessible(args[1]))
+                        continue;
+
                     registrations.Add(
                         $"builder.RegisterStreamHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
                     );
@@ -101,6 +116,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
                 if (definitionName == "IValidationHandler" && definitionArity == 1 && args.Length == 1)
                 {
+                    if (!IsAccessible(args[0]))
+                        continue;
+
                     registrations.Add(
                         $"builder.RegisterValidationHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
                     );
@@ -148,5 +166,40 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         sb.AppendLine("    }");
         sb.AppendLine("}");
         return sb.ToString();
+    }
+
+    private static bool IsAccessible(ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol is IArrayTypeSymbol arrayType)
+            return IsAccessible(arrayType.ElementType);
+
+        if (typeSymbol is IPointerTypeSymbol pointerType)
+            return IsAccessible(pointerType.PointedAtType);
+
+        if (typeSymbol is INamedTypeSymbol namedType)
+        {
+            if (namedType.TypeArguments.Any(argument => !IsAccessible(argument)))
+                return false;
+
+            return IsNamedTypeAccessible(namedType);
+        }
+
+        return true;
+    }
+
+    private static bool IsNamedTypeAccessible(INamedTypeSymbol typeSymbol)
+    {
+        for (var current = typeSymbol; current is not null; current = current.ContainingType)
+        {
+            if (
+                current.DeclaredAccessibility is not Accessibility.Public
+                and not Accessibility.Internal
+            )
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

@@ -64,7 +64,7 @@ public sealed class IMediatorDefaultAdditionalTests
     public async Task Notify_Enumerable_WithOnError_Null_DoesNothing()
     {
         var m = new TestMediator();
-        await ((IMediator)m).Notify<string>(messages: null!);
+        await ((IMediator)m).Notify<string>(messages: null!, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(0, m.SingleNotifyCalls);
     }
 
@@ -72,7 +72,7 @@ public sealed class IMediatorDefaultAdditionalTests
     public async Task Notify_Enumerable_WithOnError_Empty_DoesNothing()
     {
         var m = new TestMediator();
-        await ((IMediator)m).Notify(messages: Array.Empty<string>());
+        await ((IMediator)m).Notify(messages: Array.Empty<string>(), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(0, m.SingleNotifyCalls);
     }
 
@@ -80,7 +80,7 @@ public sealed class IMediatorDefaultAdditionalTests
     public async Task Notify_Enumerable_WithOnError_TwoItems_CallsTwice()
     {
         var m = new TestMediator();
-        await ((IMediator)m).Notify(messages: stringMessages);
+        await ((IMediator)m).Notify(messages: stringMessages, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(2, m.SingleNotifyCalls);
         Assert.Contains("a", m.Notified);
         Assert.Contains("b", m.Notified);
@@ -90,7 +90,7 @@ public sealed class IMediatorDefaultAdditionalTests
     public async Task Notify_Single_WithoutOnError_ForwardsOnce()
     {
         var m = new TestMediator();
-        await ((IMediator)m).Notify("x");
+        await ((IMediator)m).Notify("x", TestContext.Current.CancellationToken);
         Assert.Equal(1, m.SingleNotifyCalls);
         Assert.Contains("x", m.Notified);
     }
@@ -99,8 +99,8 @@ public sealed class IMediatorDefaultAdditionalTests
     public async Task Notify_Enumerable_WithoutOnError_Null_And_Empty_DoesNothing()
     {
         var m = new TestMediator();
-        await ((IMediator)m).Notify<string>(messages: null!);
-        await ((IMediator)m).Notify(messages: Array.Empty<string>());
+        await ((IMediator)m).Notify<string>(messages: null!, cancellationToken: TestContext.Current.CancellationToken);
+        await ((IMediator)m).Notify(messages: Array.Empty<string>(), cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(0, m.SingleNotifyCalls);
     }
 
@@ -108,7 +108,7 @@ public sealed class IMediatorDefaultAdditionalTests
     public async Task Notify_Enumerable_WithoutOnError_Multiple_Forwards()
     {
         var m = new TestMediator();
-        await ((IMediator)m).Notify(messages: integerMessages);
+        await ((IMediator)m).Notify(messages: integerMessages, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(3, m.SingleNotifyCalls);
         Assert.Contains(1, m.Notified);
         Assert.Contains(2, m.Notified);
@@ -120,7 +120,7 @@ public sealed class IMediatorDefaultAdditionalTests
     {
         var msg = new MessageNotification(1);
         var m = new TestMediator();
-        await ((IMediator)m).Notify(msg);
+        await ((IMediator)m).Notify(msg, TestContext.Current.CancellationToken);
         Assert.Equal(1, m.SingleNotifyCalls);
         Assert.Contains(msg, m.Notified);
     }

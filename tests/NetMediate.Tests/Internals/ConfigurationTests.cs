@@ -104,14 +104,15 @@ public class ConfigurationTests
     {
         // Arrange
         await _configuration.ChannelWriter.WriteAsync(
-            new NotificationPacket<TestMessage>(new(), (_, _, _) => Task.CompletedTask)
+            new NotificationPacket<TestMessage>(new(), (_, _, _) => Task.CompletedTask),
+            TestContext.Current.CancellationToken
         );
 
         // Act
         await _configuration.DisposeAsync();
 
         // Assert
-        Assert.False(await _configuration.ChannelReader.WaitToReadAsync());
+        Assert.False(await _configuration.ChannelReader.WaitToReadAsync(TestContext.Current.CancellationToken));
     }
 
     // Test classes

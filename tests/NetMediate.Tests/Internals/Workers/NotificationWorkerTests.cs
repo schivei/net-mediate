@@ -42,17 +42,18 @@ public class NotificationWorkerTests
     [Fact]
     public async Task ExecuteAsync_ProcessesMessages_Successfully()
     {
+        var testCancellationToken = TestContext.Current.CancellationToken;
         // Arrange
         var message = new TestMessage { Id = 1 };
         var pack = Pack(message);
-        await _channel.Writer.WriteAsync(pack);
+        await _channel.Writer.WriteAsync(pack, testCancellationToken);
         _channel.Writer.Complete();
         var cts = new CancellationTokenSource();
 
         // Act
         var task = _worker.StartAsync(cts.Token);
-        await Task.Delay(100); // Allow time for processing
-        await _worker.StopAsync(cts.Token);
+        await Task.Delay(100, testCancellationToken); // Allow time for processing
+        await _worker.StopAsync(testCancellationToken);
 
         // Assert
         _mediatorMock.Verify(m => m.Notifies(pack, It.IsAny<CancellationToken>()), Times.Once);
@@ -62,15 +63,16 @@ public class NotificationWorkerTests
     [Fact]
     public async Task ExecuteAsync_SkipsNullMessages()
     {
+        var testCancellationToken = TestContext.Current.CancellationToken;
         // Arrange
-        await _channel.Writer.WriteAsync(null!);
+        await _channel.Writer.WriteAsync(null!, testCancellationToken);
         _channel.Writer.Complete();
         var cts = new CancellationTokenSource();
 
         // Act
         var task = _worker.StartAsync(cts.Token);
-        await Task.Delay(100); // Allow time for processing
-        await _worker.StopAsync(cts.Token);
+        await Task.Delay(100, testCancellationToken); // Allow time for processing
+        await _worker.StopAsync(testCancellationToken);
 
         // Assert
         _mediatorMock.Verify(
@@ -82,6 +84,7 @@ public class NotificationWorkerTests
     [Fact]
     public async Task ExecuteAsync_HandlesOperationCanceledException()
     {
+        var testCancellationToken = TestContext.Current.CancellationToken;
         // Arrange
         var message = new TestMessage { Id = 1 };
         var pack = Pack(message);
@@ -90,11 +93,11 @@ public class NotificationWorkerTests
             .ThrowsAsync(new OperationCanceledException());
         var cts = new CancellationTokenSource();
 
-        await _channel.Writer.WriteAsync(pack);
+        await _channel.Writer.WriteAsync(pack, testCancellationToken);
 
         // Act
         var task = _worker.StartAsync(cts.Token);
-        await Task.Delay(100); // Allow time for processing
+        await Task.Delay(100, testCancellationToken); // Allow time for processing
 
         // Assert
         VerifyDebugLog(
@@ -102,12 +105,13 @@ public class NotificationWorkerTests
             Times.Once(),
             LogLevel.Trace
         );
-        await _worker.StopAsync(cts.Token);
+        await _worker.StopAsync(testCancellationToken);
     }
 
     [Fact]
     public async Task ExecuteAsync_HandlesChannelClosedException()
     {
+        var testCancellationToken = TestContext.Current.CancellationToken;
         // Arrange
         var message = new TestMessage { Id = 1 };
         var pack = Pack(message);
@@ -116,11 +120,11 @@ public class NotificationWorkerTests
             .ThrowsAsync(new ChannelClosedException());
         var cts = new CancellationTokenSource();
 
-        await _channel.Writer.WriteAsync(pack);
+        await _channel.Writer.WriteAsync(pack, testCancellationToken);
 
         // Act
         var task = _worker.StartAsync(cts.Token);
-        await Task.Delay(100);
+        await Task.Delay(100, testCancellationToken);
 
         // Assert
         VerifyDebugLog(
@@ -128,22 +132,23 @@ public class NotificationWorkerTests
             Times.Once(),
             LogLevel.Trace
         );
-        await _worker.StopAsync(cts.Token);
+        await _worker.StopAsync(testCancellationToken);
     }
 
     [Fact]
     public async Task ExecuteAsync_StopsWhenCancellationRequested()
     {
+        var testCancellationToken = TestContext.Current.CancellationToken;
         // Arrange
         var message = new TestMessage { Id = 1 };
         var pack = Pack(message);
-        await _channel2.Writer.WriteAsync(pack);
+        await _channel2.Writer.WriteAsync(pack, testCancellationToken);
         var cts = new CancellationTokenSource();
         cts.CancelAfter(50);
 
         // Act
         await _worker2.StartAsync(cts.Token);
-        await Task.Delay(500);
+        await Task.Delay(500, testCancellationToken);
 
         // Assert
         VerifyDebugLog("Notification worker stopped.", Times.Once());

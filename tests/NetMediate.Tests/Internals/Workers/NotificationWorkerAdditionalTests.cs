@@ -30,6 +30,7 @@ public sealed class NotificationWorkerAdditionalTests
     [Fact]
     public async Task NullMessage_IsSkipped_NoDispatch()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var ch = Channel.CreateUnbounded<INotificationPacket>();
         var cfg = new Configuration(ch);
         var mediator = new Mock<INotifiable>(MockBehavior.Strict);
@@ -37,14 +38,14 @@ public sealed class NotificationWorkerAdditionalTests
 
         var worker = new NotificationWorker(mediator.Object, cfg, logger.Object);
 
-        await worker.StartAsync(CancellationToken.None);
+        await worker.StartAsync(cancellationToken);
 
         // enqueue a null message packet
         var packet = new NotificationPacket<string?>(null, (_, _, _) => Task.CompletedTask);
-        await cfg.ChannelWriter.WriteAsync(packet);
+        await cfg.ChannelWriter.WriteAsync(packet, cancellationToken);
 
         // small delay to allow processing
-        await Task.Delay(50);
+        await Task.Delay(50, cancellationToken);
 
         // mediator.Notifies must not be called for null message
         mediator.Verify(
@@ -52,13 +53,14 @@ public sealed class NotificationWorkerAdditionalTests
             Times.Never
         );
 
-        await worker.StopAsync(CancellationToken.None);
+        await worker.StopAsync(cancellationToken);
         VerifyLog(logger, LogLevel.Debug, "Notification worker stopped.");
     }
 
     [Fact]
     public async Task Logs_Trace_When_Notifies_Throws()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var channel = Channel.CreateUnbounded<INotificationPacket>();
         var config = new Configuration(channel);
         var mediator = new Mock<INotifiable>();
@@ -70,21 +72,22 @@ public sealed class NotificationWorkerAdditionalTests
 
         var worker = new NotificationWorker(mediator.Object, config, logger.Object);
 
-        await worker.StartAsync(CancellationToken.None);
+        await worker.StartAsync(cancellationToken);
 
         var packet = new NotificationPacket<string>("msg", (_, _, _) => Task.CompletedTask);
-        await config.ChannelWriter.WriteAsync(packet);
+        await config.ChannelWriter.WriteAsync(packet, cancellationToken);
 
-        await Task.Delay(50);
+        await Task.Delay(50, cancellationToken);
 
         VerifyLog(logger, LogLevel.Trace, "An error occurred while processing message of type");
 
-        await worker.StopAsync(CancellationToken.None);
+        await worker.StopAsync(cancellationToken);
     }
 
     [Fact]
     public async Task Runs_And_Stops_Cleanly()
     {
+        var cancellationToken = TestContext.Current.CancellationToken;
         var channel = Channel.CreateUnbounded<INotificationPacket>();
         var config = new Configuration(channel);
         var mediator = new Mock<INotifiable>();
@@ -95,19 +98,19 @@ public sealed class NotificationWorkerAdditionalTests
         var logger = new Mock<ILogger<NotificationWorker>>();
         var worker = new NotificationWorker(mediator.Object, config, logger.Object);
 
-        await worker.StartAsync(CancellationToken.None);
+        await worker.StartAsync(cancellationToken);
 
         var packet = new NotificationPacket<string>("ok", (_, _, _) => Task.CompletedTask);
-        await config.ChannelWriter.WriteAsync(packet);
+        await config.ChannelWriter.WriteAsync(packet, cancellationToken);
 
-        await Task.Delay(50);
+        await Task.Delay(50, cancellationToken);
 
         mediator.Verify(
             m => m.Notifies(It.IsAny<INotificationPacket>(), It.IsAny<CancellationToken>()),
             Times.AtLeastOnce
         );
 
-        await worker.StopAsync(CancellationToken.None);
+        await worker.StopAsync(cancellationToken);
         VerifyLog(logger, LogLevel.Debug, "Notification worker stopped.");
     }
 }

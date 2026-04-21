@@ -1,4 +1,5 @@
 using System.Reflection;
+using NetMediate;
 
 namespace MediatR;
 
@@ -16,7 +17,7 @@ public sealed class MediatRServiceConfiguration
     /// <returns>Current configuration instance.</returns>
     public MediatRServiceConfiguration RegisterServicesFromAssembly(Assembly assembly)
     {
-        ArgumentNullException.ThrowIfNull(assembly);
+        Guard.ThrowIfNull(assembly);
 
         AssembliesToRegister.Add(assembly);
         return this;
@@ -37,7 +38,7 @@ public sealed class MediatRServiceConfiguration
     /// <returns>Current configuration instance.</returns>
     public MediatRServiceConfiguration RegisterServicesFromAssemblies(params Assembly[] assemblies)
     {
-        ArgumentNullException.ThrowIfNull(assemblies);
+        Guard.ThrowIfNull(assemblies);
 
         foreach (var assembly in assemblies)
             RegisterServicesFromAssembly(assembly);

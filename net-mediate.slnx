@@ -10,8 +10,13 @@
     <File Path="versions.props" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj" Id="2aabfa26-9c0d-4a0f-80f2-f5f2d1b13f2a" />
+    <Project Path="src/NetMediate.DataDog.OpenTelemetry/NetMediate.DataDog.OpenTelemetry.csproj" Id="dc9d6521-e745-44d8-8e4b-4d5c4f4eb070" />
+    <Project Path="src/NetMediate.DataDog.Serilog/NetMediate.DataDog.Serilog.csproj" Id="141fb2d3-cd7b-4184-9b6a-a1f7d18db143" />
     <Project Path="src/NetMediate.Compat/NetMediate.Compat.csproj" Id="f4cd068c-c0f2-4a74-920b-b9b4ba89de54" />
     <Project Path="src/NetMediate.Moq/NetMediate.Moq.csproj" Id="9d54e570-e883-4296-b281-c8d40ed4e8af" />
+    <Project Path="src/NetMediate.Resilience/NetMediate.Resilience.csproj" Id="a88213d8-a9ce-4d78-90cc-34a03cd7187a" />
+    <Project Path="src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj" Id="40a8f7d3-d0c1-48d3-b96d-51bc74cbf218" />
     <Project Path="src/NetMediate/NetMediate.csproj" Id="232b3170-ace0-4adb-a81d-541c5b872bac" />
   </Folder>
   <Folder Name="/tests/">

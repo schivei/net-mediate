@@ -35,10 +35,14 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Requests**: Send messages and receive responses
 - **Streaming**: Handle requests that return multiple responses over time
 - **Validation**: Built-in message validation support with custom validators
+- **Pipeline Behaviors**: Interceptors with pre/post flow for Send/Request/Notify/Stream
+- **Optional resilience package**: Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience`
+- **OpenTelemetry-ready diagnostics**: Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream
+- **Optional DataDog integrations**: OpenTelemetry, Serilog, and ILogger support packages
 - **Dependency Injection**: Seamless integration with Microsoft.Extensions.DependencyInjection
 - **Keyed Services**: Support for keyed service registration and resolution
 - **Cancellation Support**: Full cancellation token support across all operations
-- **Modern runtime support**: Supports .NET 10.0 LTS (see [Framework Support](#framework-support) for details)
+- **Broad runtime compatibility**: Multi-targeted for `net10.0`, `netstandard2.0`, and `netstandard2.1`
 
 ## Installation
 
@@ -61,10 +65,20 @@ dotnet add package NetMediate
 ```xml
 <PackageReference Include="NetMediate.Compat" Version="x.x.x" />
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
+<PackageReference Include="NetMediate.Resilience" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+<PackageReference Include="NetMediate.DataDog.OpenTelemetry" Version="x.x.x" />
+<PackageReference Include="NetMediate.DataDog.Serilog" Version="x.x.x" />
+<PackageReference Include="NetMediate.DataDog.ILogger" Version="x.x.x" />
 ```
 
 - **NetMediate.Compat**: keeps MediatR contracts (`MediatR.IMediator`, `IRequest`, `INotification`, handlers, and `AddMediatR`) so migration to NetMediate can be done without rewriting contracts.
 - **NetMediate.Moq**: adds lightweight Moq helpers for cleaner unit and integration tests (`Mocking.Create`, `AddMockSingleton`, and async setup extensions).
+- **NetMediate.Resilience**: adds optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
+- **NetMediate.SourceGeneration**: generates `AddNetMediateGenerated(...)` to register handlers at compile-time and reduce reflection cost at startup.
+- **NetMediate.DataDog.OpenTelemetry**: wires NetMediate traces/metrics to DataDog through OpenTelemetry OTLP exporters.
+- **NetMediate.DataDog.Serilog**: adds DataDog Serilog sink configuration and NetMediate observability enrichers.
+- **NetMediate.DataDog.ILogger**: adds ILogger scope helpers with DataDog-compatible fields and NetMediate correlation values.
 
 ## Companion Guides
 
@@ -72,6 +86,10 @@ dotnet add package NetMediate
 - [NetMediate.Moq recipes](docs/NETMEDIATE_MOQ_RECIPES.md)
 - [API/Worker/Minimal API samples](docs/SAMPLES.md)
 - [Diagnostics (structured logs + metrics)](docs/DIAGNOSTICS.md)
+- [Resilience package guide and load capacity](docs/RESILIENCE.md)
+- [Source generation guide](docs/SOURCE_GENERATION.md)
+- [DataDog integrations guide](docs/DATADOG.md)
+- [Wiki index](docs/WIKI.md)
 
 ## Quick Start
 
@@ -484,32 +502,54 @@ builder.Services.AddNetMediate()
     .RegisterNotificationHandler<DummyNotificationMessage, DummyNotificationHandler>();
 ```
 
+#### Pipeline Behaviors / Interceptors
+```csharp
+public class AuditRequestBehavior<TMessage, TResponse> : IRequestBehavior<TMessage, TResponse>
+{
+    public async Task<TResponse> Handle(
+        TMessage message,
+        RequestHandlerDelegate<TResponse> next,
+        CancellationToken cancellationToken = default)
+    {
+        var startedAt = DateTimeOffset.UtcNow;
+        var response = await next(cancellationToken);
+        Console.WriteLine($"{typeof(TMessage).Name} handled in {DateTimeOffset.UtcNow - startedAt}");
+        return response;
+    }
+}
+
+builder.Services.AddNetMediate();
+builder.Services.AddScoped(typeof(IRequestBehavior<,>), typeof(AuditRequestBehavior<,>));
+```
+
 ## Framework Support
 
-### Supported Frameworks
+### Supported package TFMs
 
-NetMediate currently supports:
+All runtime packages (`NetMediate`, `NetMediate.Compat`, `NetMediate.Moq`, `NetMediate.Resilience`) are published with:
 
-- **.NET 10.0 (latest LTS)**: Full support with all features available
+- `net10.0`
+- `netstandard2.0`
+- `netstandard2.1`
 
-### Unsupported Frameworks
+`NetMediate.SourceGeneration` remains an analyzer package (`netstandard2.0`) and works from all supported host TFMs.
 
-The following frameworks are **not currently supported**:
+### Application types covered
 
-- **.NET 8.0/9.0**: While previously mentioned, current builds target only .NET 10.0
-- **.NET Standard 2.1**: Not supported in current version
-- **.NET Framework**: No support planned
-- **.NET Core 3.1 and earlier**: End of life, not supported
+Because packages expose `netstandard2.0` and `netstandard2.1` assets, they can be consumed by:
 
-### Migration Notes
+- desktop applications
+- CLI applications
+- mobile applications
+- MAUI applications
+- server/web applications
 
-If you're upgrading from a previous version that supported multiple target frameworks:
+Always validate your specific app stack (DI host model, platform runtime, and trimming/AOT profile) in your CI pipeline.
 
-1. **Update your project**: Ensure you're using .NET 10.0 or later
-2. **Review dependencies**: Make sure all your dependencies are compatible with .NET 10.0
-3. **Test thoroughly**: While the API remains the same, some behavior may differ
+### Benchmark note by target
 
-For legacy framework support, consider staying on an earlier version of NetMediate that supported your target framework.
+Performance scenarios are measured from runnable host runtimes. Current benchmark executions are reported for `net10.0`.
+For `netstandard2.0`/`netstandard2.1`, throughput is determined by the concrete runtime hosting those assets (desktop/CLI/mobile/MAUI).
 
 ## Contributing
 

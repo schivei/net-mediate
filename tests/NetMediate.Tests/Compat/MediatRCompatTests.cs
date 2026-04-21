@@ -26,7 +26,7 @@ public class MediatRCompatTests
         Assert.Same(mediator, sender);
         Assert.Same(mediator, publisher);
 
-        var reply = await mediator.Send(new PingRequest("ping"));
+        var reply = await mediator.Send(new PingRequest("ping"), TestContext.Current.CancellationToken);
         Assert.Equal("ping:pong", reply.Value);
 
         await sender.Send(new VoidCommand("run"), TestContext.Current.CancellationToken);

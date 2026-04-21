@@ -43,6 +43,15 @@ public sealed class MediatorNotifiesContinuationTests
             Task.FromException(new InvalidOperationException("x"));
     }
 
+    private sealed class PassThroughBehavior : INotificationBehavior<Msg>
+    {
+        public Task Handle(
+            Msg message,
+            NotificationHandlerDelegate next,
+            CancellationToken cancellationToken = default
+        ) => next(cancellationToken);
+    }
+
     [Fact]
     public async Task Notifies_HandlerSuccess_DoesNotInvokeErrorCallback()
     {
@@ -58,15 +67,18 @@ public sealed class MediatorNotifiesContinuationTests
             return Task.CompletedTask;
         }
 
-        await _sut.Notifies(new NotificationPacket<Msg>(message, onError));
+        await _sut.Notifies(
+            new NotificationPacket<Msg>(message, onError),
+            TestContext.Current.CancellationToken
+        );
         // Give time for continuation (even though it won't run)
-        await Task.Delay(20);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
 
         Assert.False(called);
     }
 
     [Fact]
-    public async Task Notifies_HandlerFaulted_InvokesErrorCallback()
+    public async Task Notifies_HandlerFaulted_InvokesErrorCallback_WithoutNotificationBehavior()
     {
         var message = new Msg();
         _provider
@@ -82,9 +94,49 @@ public sealed class MediatorNotifiesContinuationTests
             return Task.CompletedTask;
         }
 
-        await _sut.Notifies(new NotificationPacket<Msg>(message, onError));
+        await _sut.Notifies(
+            new NotificationPacket<Msg>(message, onError),
+            TestContext.Current.CancellationToken
+        );
 
-        var completed = await Task.WhenAny(tcs.Task, Task.Delay(500));
+        var completed = await Task.WhenAny(
+            tcs.Task,
+            Task.Delay(500, TestContext.Current.CancellationToken)
+        );
+        Assert.Same(tcs.Task, completed);
+        Assert.True(await tcs.Task);
+    }
+
+    [Fact]
+    public async Task Notifies_HandlerFaulted_WithNotificationBehavior_ThrowsAndInvokesErrorCallback()
+    {
+        var message = new Msg();
+        _provider
+            .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
+            .Returns(new[] { new FaultHandler() });
+        _provider
+            .Setup(p => p.GetService(typeof(IEnumerable<INotificationBehavior<Msg>>)))
+            .Returns(new[] { new PassThroughBehavior() });
+
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task onError(Type _, Msg __, Exception ___)
+        {
+            tcs.TrySetResult(true);
+            return Task.CompletedTask;
+        }
+
+        var exception = await Assert.ThrowsAsync<AggregateException>(() =>
+            _sut.Notifies(
+                new NotificationPacket<Msg>(message, onError),
+                TestContext.Current.CancellationToken
+            )
+        );
+        Assert.Contains(exception.InnerExceptions, e => e is InvalidOperationException);
+
+        var completed = await Task.WhenAny(
+            tcs.Task,
+            Task.Delay(500, TestContext.Current.CancellationToken)
+        );
         Assert.Same(tcs.Task, completed);
         Assert.True(await tcs.Task);
     }

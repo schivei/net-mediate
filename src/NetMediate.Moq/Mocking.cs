@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using NetMediate;
 
 namespace NetMediate.Moq;
 
@@ -48,7 +49,7 @@ public static class Mocking
         global::Moq.MockBehavior behavior = global::Moq.MockBehavior.Default
     ) where TService : class
     {
-        ArgumentNullException.ThrowIfNull(services);
+        Guard.ThrowIfNull(services);
 
         var mock = new global::Moq.Mock<TService>(behavior);
         services.ReplaceWithMock(mock);
@@ -68,8 +69,8 @@ public static class Mocking
         global::Moq.Mock<TService> mock
     ) where TService : class
     {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(mock);
+        Guard.ThrowIfNull(services);
+        Guard.ThrowIfNull(mock);
 
         services.ReplaceWithMock(mock);
         return mock;

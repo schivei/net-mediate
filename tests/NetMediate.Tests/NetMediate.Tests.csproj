@@ -25,6 +25,10 @@
     <ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.Compat\NetMediate.Compat.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.Moq\NetMediate.Moq.csproj" />
+    <ProjectReference Include="..\..\src\NetMediate.Resilience\NetMediate.Resilience.csproj" />
+    <ProjectReference Include="..\..\src\NetMediate.DataDog.OpenTelemetry\NetMediate.DataDog.OpenTelemetry.csproj" />
+    <ProjectReference Include="..\..\src\NetMediate.DataDog.Serilog\NetMediate.DataDog.Serilog.csproj" />
+    <ProjectReference Include="..\..\src\NetMediate.DataDog.ILogger\NetMediate.DataDog.ILogger.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />

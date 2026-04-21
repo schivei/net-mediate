@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\pack.props" />
+  <PropertyGroup>
+    <AssemblyName>NetMediate.Resilience</AssemblyName>
+    <Title>NetMediate.Resilience</Title>
+    <Description>Resilience pipeline behaviors for NetMediate (retry, timeout, circuit breaker).</Description>
+    <PackageTags>Mediator;NetMediate;Resilience;Retry;Timeout;CircuitBreaker</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
+  </ItemGroup>
+</Project>

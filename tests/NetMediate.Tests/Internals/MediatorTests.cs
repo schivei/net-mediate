@@ -52,11 +52,52 @@ public class MediatorTests
         var message = new TestMessage { Content = "Test" };
 
         // Act
-        await _mediator.Notify(message, (_, _, _) => Task.CompletedTask);
+        await _mediator.Notify(
+            message,
+            (_, _, _) => Task.CompletedTask,
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         Assert.True(_channel.Reader.TryRead(out var receivedMessage));
         Assert.Same(message, receivedMessage.Message);
+    }
+
+    [Fact]
+    public async Task Notify_Enumerable_WithOnError_SinglePassEnumerable_ShouldWriteAllToChannel()
+    {
+        var messages = new SinglePassEnumerable<TestMessage>(
+            [new TestMessage { Content = "1" }, new TestMessage { Content = "2" }]
+        );
+
+        await ((IMediator)_mediator).Notify(
+            messages: messages,
+            (_, _, _) => Task.CompletedTask,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.True(_channel.Reader.TryRead(out var packet1));
+        Assert.True(_channel.Reader.TryRead(out var packet2));
+        Assert.Equal("1", ((TestMessage)packet1.Message).Content);
+        Assert.Equal("2", ((TestMessage)packet2.Message).Content);
+    }
+
+    [Fact]
+    public async Task Notify_NotificationEnumerable_WithoutOnError_SinglePassEnumerable_ShouldWriteAllToChannel()
+    {
+        var notifications = new SinglePassEnumerable<INotification<NotificationTestMessage>>(
+            [new NotificationTestMessage { Id = 10 }, new NotificationTestMessage { Id = 20 }]
+        );
+
+        await ((IMediator)_mediator).Notify(
+            notifications: notifications,
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.True(_channel.Reader.TryRead(out var packet1));
+        Assert.True(_channel.Reader.TryRead(out var packet2));
+        Assert.Equal(10, ((NotificationTestMessage)packet1.Message).Id);
+        Assert.Equal(20, ((NotificationTestMessage)packet2.Message).Id);
     }
 
     #endregion
@@ -76,7 +117,7 @@ public class MediatorTests
         SetupHandler(handler.Object);
 
         // Act
-        await _mediator.Send(message);
+        await _mediator.Send(message, TestContext.Current.CancellationToken);
 
         // Assert
         handler.Verify(h => h.Handle(message, It.IsAny<CancellationToken>()), Times.Once);
@@ -90,7 +131,9 @@ public class MediatorTests
         SetupHandler<ICommandHandler<TestMessage>>([]);
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _mediator.Send(message));
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            _mediator.Send(message, TestContext.Current.CancellationToken)
+        );
     }
 
     [Fact]
@@ -102,7 +145,7 @@ public class MediatorTests
         SetupHandler<ICommandHandler<TestMessage>>([]);
 
         // Act
-        await _mediator.Send(message);
+        await _mediator.Send(message, TestContext.Current.CancellationToken);
 
         // Assert
         VerifyLoggerCalled(LogLevel.Warning, "No handler found");
@@ -124,7 +167,10 @@ public class MediatorTests
         SetupHandler(handler.Object);
 
         // Act
-        var result = await _mediator.Request<TestRequest, TestResponse>(message);
+        var result = await _mediator.Request<TestRequest, TestResponse>(
+            message,
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         Assert.Same(response, result);
@@ -140,7 +186,10 @@ public class MediatorTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _mediator.Request<TestRequest, TestResponse>(message)
+            _mediator.Request<TestRequest, TestResponse>(
+                message,
+                TestContext.Current.CancellationToken
+            )
         );
     }
 
@@ -153,7 +202,10 @@ public class MediatorTests
         SetupHandler<IRequestHandler<TestRequest, TestResponse>>([]);
 
         // Act
-        var result = await _mediator.Request<TestRequest, TestResponse>(message);
+        var result = await _mediator.Request<TestRequest, TestResponse>(
+            message,
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         Assert.Null(result);
@@ -184,7 +236,12 @@ public class MediatorTests
 
         // Act
         var results = new List<TestResponse>();
-        await foreach (var item in _mediator.RequestStream<TestRequest, TestResponse>(message))
+        await foreach (
+            var item in _mediator.RequestStream<TestRequest, TestResponse>(
+                message,
+                TestContext.Current.CancellationToken
+            )
+        )
         {
             results.Add(item);
         }
@@ -205,7 +262,12 @@ public class MediatorTests
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
-            await foreach (var _ in _mediator.RequestStream<TestRequest, TestResponse>(message)) { }
+            await foreach (
+                var _ in _mediator.RequestStream<TestRequest, TestResponse>(
+                    message,
+                    TestContext.Current.CancellationToken
+                )
+            ) { }
         });
         Assert.Contains("No handler found", ex.Message);
     }
@@ -220,7 +282,12 @@ public class MediatorTests
 
         // Act
         var results = new List<TestResponse>();
-        await foreach (var item in _mediator.RequestStream<TestRequest, TestResponse>(message))
+        await foreach (
+            var item in _mediator.RequestStream<TestRequest, TestResponse>(
+                message,
+                TestContext.Current.CancellationToken
+            )
+        )
         {
             results.Add(item);
         }
@@ -252,7 +319,10 @@ public class MediatorTests
         SetupHandler([handler1.Object, handler2.Object]);
 
         // Act
-        await _mediator.Notifies(new NotificationPacket<TestMessage>(message));
+        await _mediator.Notifies(
+            new NotificationPacket<TestMessage>(message),
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         handler1.Verify(h => h.Handle(message, It.IsAny<CancellationToken>()), Times.Once);
@@ -268,7 +338,10 @@ public class MediatorTests
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _mediator.Notifies(new NotificationPacket<TestMessage>(message))
+            _mediator.Notifies(
+                new NotificationPacket<TestMessage>(message),
+                TestContext.Current.CancellationToken
+            )
         );
     }
 
@@ -281,7 +354,10 @@ public class MediatorTests
         SetupHandler<INotificationHandler<TestMessage>>([]);
 
         // Act
-        await _mediator.Notifies(new NotificationPacket<TestMessage>(message));
+        await _mediator.Notifies(
+            new NotificationPacket<TestMessage>(message),
+            TestContext.Current.CancellationToken
+        );
 
         // Assert
         VerifyLoggerCalled(LogLevel.Warning, "No handler found");
@@ -325,7 +401,7 @@ public class MediatorTests
         foreach (var item in items)
         {
             yield return item;
-            await Task.Delay(1);
+            await Task.Delay(1, TestContext.Current.CancellationToken);
         }
     }
 
@@ -346,6 +422,11 @@ public class MediatorTests
     public class TestResponse
     {
         public string Value { get; set; } = string.Empty;
+    }
+
+    public class NotificationTestMessage : INotification<NotificationTestMessage>
+    {
+        public int Id { get; set; }
     }
 
     public class TestValidatableMessage : IValidatable

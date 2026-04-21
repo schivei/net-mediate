@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\pack.props" />
+  <PropertyGroup>
+    <AssemblyName>NetMediate.DataDog.Serilog</AssemblyName>
+    <Title>NetMediate.DataDog.Serilog</Title>
+    <Description>DataDog Serilog sink integrations for NetMediate observability.</Description>
+    <PackageTags>Mediator;NetMediate;DataDog;Serilog;Logs;APM</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
+    <PackageReference Include="Serilog" Version="4.*" />
+    <PackageReference Include="Serilog.Sinks.Datadog.Logs" Version="0.*" />
+  </ItemGroup>
+</Project>

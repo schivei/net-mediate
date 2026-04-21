@@ -11,6 +11,10 @@ public interface IMediator
     /// <typeparam name="TMessage">The type of the notification message.</typeparam>
     /// <param name="message">The notification message to publish.</param>
     /// <param name="onError">The callback to handle errors that occur during message processing.</param>
+    /// <remarks>
+    /// Even when <paramref name="onError"/> is provided, this method can still fault when notification behaviors are registered
+    /// and they choose to propagate handler failures (for example, resilience behaviors that need exceptions to drive retries).
+    /// </remarks>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     Task Notify<TMessage>(
@@ -24,7 +28,11 @@ public interface IMediator
     /// </summary>
     /// <typeparam name="TMessage"></typeparam>
     /// <param name="notification"></param>
-    /// <param name="onError"></param>
+    /// <param name="onError">The callback to handle errors that occur during notification processing.</param>
+    /// <remarks>
+    /// Even when <paramref name="onError"/> is provided, this method can still fault when notification behaviors are registered
+    /// and they choose to propagate handler failures.
+    /// </remarks>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     Task Notify<TMessage>(
@@ -39,6 +47,10 @@ public interface IMediator
     /// <typeparam name="TMessage">The type of the notification message.</typeparam>
     /// <param name="messages">The collection of notification messages to publish.</param>
     /// <param name="onError">The callback to handle errors that occur during message processing.</param>
+    /// <remarks>
+    /// Even when <paramref name="onError"/> is provided, this method can still fault when notification behaviors are registered
+    /// and they choose to propagate handler failures.
+    /// </remarks>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     Task Notify<TMessage>(
@@ -46,21 +58,33 @@ public interface IMediator
         NotificationErrorDelegate<TMessage> onError,
         CancellationToken cancellationToken = default
     )
+#if NETSTANDARD2_0
+    ;
+#else
     {
-        if (messages is null || !messages.Any())
+        if (messages is null)
+            return Task.CompletedTask;
+
+        var bufferedMessages = messages as TMessage[] ?? messages.ToArray();
+        if (bufferedMessages.Length == 0)
             return Task.CompletedTask;
 
         return Task.WhenAll(
-            messages.Select(message => Notify(message, onError, cancellationToken))
+            bufferedMessages.Select(message => Notify(message, onError, cancellationToken))
         );
     }
+#endif
 
     /// <summary>
     /// Publishes a collection of notifications to all registered handlers.
     /// </summary>
     /// <typeparam name="TMessage"></typeparam>
     /// <param name="notifications"></param>
-    /// <param name="onError"></param>
+    /// <param name="onError">The callback to handle errors that occur during notification processing.</param>
+    /// <remarks>
+    /// Even when <paramref name="onError"/> is provided, this method can still fault when notification behaviors are registered
+    /// and they choose to propagate handler failures.
+    /// </remarks>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     Task Notify<TMessage>(
@@ -68,14 +92,23 @@ public interface IMediator
         NotificationErrorDelegate<TMessage> onError,
         CancellationToken cancellationToken = default
     ) where TMessage : INotification<TMessage>
+#if NETSTANDARD2_0
+    ;
+#else
     {
-        if (notifications is null || !notifications.Any())
+        if (notifications is null)
             return Task.CompletedTask;
+        var bufferedNotifications =
+            notifications as INotification<TMessage>[] ?? notifications.ToArray();
+        if (bufferedNotifications.Length == 0)
+            return Task.CompletedTask;
+
         return Task.WhenAll(
-            notifications.Select(notification =>
+            bufferedNotifications.Select(notification =>
                 Notify(notification, onError, cancellationToken))
         );
     }
+#endif
 
     /// <summary>
     /// Publishes a notification message to all registered handlers.
@@ -84,8 +117,12 @@ public interface IMediator
     /// <param name="message">The notification message to publish.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) =>
-        Notify(message, (_, _, _) => Task.CompletedTask, cancellationToken);
+    Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+#if NETSTANDARD2_0
+    ;
+#else
+        => Notify(message, (_, _, _) => Task.CompletedTask, cancellationToken);
+#endif
 
     /// <summary>
     /// Publishes a notification to all registered handlers.
@@ -97,8 +134,12 @@ public interface IMediator
     Task Notify<TMessage>(
         INotification<TMessage> notification,
         CancellationToken cancellationToken = default
-    ) where TMessage : INotification<TMessage> =>
-        Notify<TMessage>(notification, (_, _, _) => Task.CompletedTask, cancellationToken);
+    ) where TMessage : INotification<TMessage>
+#if NETSTANDARD2_0
+    ;
+#else
+        => Notify<TMessage>(notification, (_, _, _) => Task.CompletedTask, cancellationToken);
+#endif
 
     /// <summary>
     /// Publishes a collection of notification messages to all registered handlers.
@@ -111,12 +152,21 @@ public interface IMediator
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
     )
+#if NETSTANDARD2_0
+    ;
+#else
     {
-        if (messages is null || !messages.Any())
+        if (messages is null)
+            return Task.CompletedTask;
+        var bufferedMessages = messages as TMessage[] ?? messages.ToArray();
+        if (bufferedMessages.Length == 0)
             return Task.CompletedTask;
 
-        return Task.WhenAll(messages.Select(message => Notify(message, cancellationToken)));
+        return Task.WhenAll(
+            bufferedMessages.Select(message => Notify(message, cancellationToken))
+        );
     }
+#endif
 
     /// <summary>
     /// Publishes a collection of notifications to all registered handlers.
@@ -129,14 +179,23 @@ public interface IMediator
         IEnumerable<INotification<TMessage>> notifications,
         CancellationToken cancellationToken = default
     ) where TMessage : INotification<TMessage>
+#if NETSTANDARD2_0
+    ;
+#else
     {
-        if (notifications is null || !notifications.Any())
+        if (notifications is null)
             return Task.CompletedTask;
+        var bufferedNotifications =
+            notifications as INotification<TMessage>[] ?? notifications.ToArray();
+        if (bufferedNotifications.Length == 0)
+            return Task.CompletedTask;
+
         return Task.WhenAll(
-            notifications.Select(notification =>
+            bufferedNotifications.Select(notification =>
                 Notify(notification, cancellationToken))
         );
     }
+#endif
 
     /// <summary>
     /// Sends a command message to a single handler.

@@ -21,6 +21,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <NoWarn>$(NoWarn);nullable</NoWarn>
-    <TargetFramework>net10.0</TargetFramework>
+    <TargetFrameworks>net10.0;netstandard2.0;netstandard2.1</TargetFrameworks>
   </PropertyGroup>
 </Project>

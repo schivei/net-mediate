@@ -58,9 +58,12 @@ public sealed class MediatorNotifiesContinuationTests
             return Task.CompletedTask;
         }
 
-        await _sut.Notifies(new NotificationPacket<Msg>(message, onError));
+        await _sut.Notifies(
+            new NotificationPacket<Msg>(message, onError),
+            TestContext.Current.CancellationToken
+        );
         // Give time for continuation (even though it won't run)
-        await Task.Delay(20);
+        await Task.Delay(20, TestContext.Current.CancellationToken);
 
         Assert.False(called);
     }
@@ -82,9 +85,18 @@ public sealed class MediatorNotifiesContinuationTests
             return Task.CompletedTask;
         }
 
-        await _sut.Notifies(new NotificationPacket<Msg>(message, onError));
+        var exception = await Assert.ThrowsAsync<AggregateException>(() =>
+            _sut.Notifies(
+                new NotificationPacket<Msg>(message, onError),
+                TestContext.Current.CancellationToken
+            )
+        );
+        Assert.Contains(exception.InnerExceptions, e => e is InvalidOperationException);
 
-        var completed = await Task.WhenAny(tcs.Task, Task.Delay(500));
+        var completed = await Task.WhenAny(
+            tcs.Task,
+            Task.Delay(500, TestContext.Current.CancellationToken)
+        );
         Assert.Same(tcs.Task, completed);
         Assert.True(await tcs.Task);
     }

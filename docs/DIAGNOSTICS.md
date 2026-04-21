@@ -96,6 +96,7 @@ LOAD_RESULT <scenario> tfm=<target_framework_name> ops=... elapsed_ms=... throug
 > - request-parallel throughput is lower because this branch adds extra per-request work in the hot path (behavior-chain resolution + diagnostics counters/tags + activity lifecycle checks).
 > - this benchmark uses trivial in-memory handlers, so framework overhead dominates; in real handlers with I/O/database calls, this relative cost is typically much smaller.
 > - performance tests are sensitive to runtime environment noise (CPU contention, warmup state, parallel load). Re-run multiple times for stable medians before release decisions.
+> - CI/unit runs keep performance tests opt-in; set `NETMEDIATE_RUN_PERFORMANCE_TESTS=true` to execute throughput assertions and emit `LOAD_RESULT` lines locally/CI.
 
 ## Validation checklist
 

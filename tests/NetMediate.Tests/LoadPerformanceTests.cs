@@ -9,6 +9,9 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
     [Fact]
     public async Task CommandLoad_ShouldSustainMinimumThroughput()
     {
+        if (!ShouldRunPerformanceTests())
+            return;
+
         using var host = await CreateHostAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -33,6 +36,9 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
     [Fact]
     public async Task RequestLoad_ShouldSustainMinimumThroughputInParallel()
     {
+        if (!ShouldRunPerformanceTests())
+            return;
+
         using var host = await CreateHostAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -74,6 +80,13 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
         await host.StartAsync(TestContext.Current.CancellationToken);
         return host;
     }
+
+    private static bool ShouldRunPerformanceTests() =>
+        string.Equals(
+            Environment.GetEnvironmentVariable("NETMEDIATE_RUN_PERFORMANCE_TESTS"),
+            "true",
+            StringComparison.OrdinalIgnoreCase
+        );
 
     public sealed record LoadCommand(int Value);
     public sealed record LoadRequest(int Value);

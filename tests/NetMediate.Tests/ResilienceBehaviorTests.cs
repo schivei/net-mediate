@@ -54,6 +54,42 @@ public sealed class ResilienceBehaviorTests
     }
 
     [Fact]
+    public async Task RetryNotificationBehavior_WithMediatorNotify_ShouldRetryUntilSuccess()
+    {
+        using var host = await CreateHostAsync(
+            configureServices: services =>
+            {
+                services.AddNetMediateRetry(options =>
+                {
+                    options.MaxRetryCount = 3;
+                    options.Delay = TimeSpan.Zero;
+                });
+            }
+        );
+
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        var onErrorCalls = 0;
+
+        await mediator.Notify(
+            new RetryNotificationViaMediatorMessage("ok"),
+            (_, _, _) =>
+            {
+                Interlocked.Increment(ref onErrorCalls);
+                return Task.CompletedTask;
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        await WaitForAsync(
+            () => RetryNotificationViaMediatorHandler.Attempts >= 3,
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(3, RetryNotificationViaMediatorHandler.Attempts);
+        Assert.Equal(2, Volatile.Read(ref onErrorCalls));
+    }
+
+    [Fact]
     public async Task TimeoutRequestBehavior_ShouldThrowTimeoutException()
     {
         using var host = await CreateHostAsync(
@@ -119,6 +155,7 @@ public sealed class ResilienceBehaviorTests
     private static async Task<IHost> CreateHostAsync(Action<IServiceCollection> configureServices)
     {
         RetryRequestHandler.Reset();
+        RetryNotificationViaMediatorHandler.Reset();
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddNetMediate(typeof(ResilienceBehaviorTests).Assembly);
         configureServices(builder.Services);
@@ -128,8 +165,22 @@ public sealed class ResilienceBehaviorTests
         return host;
     }
 
+    private static async Task WaitForAsync(Func<bool> predicate, CancellationToken cancellationToken)
+    {
+        for (var attempt = 0; attempt < 100; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (predicate())
+                return;
+            await Task.Delay(10, cancellationToken);
+        }
+
+        Assert.Fail("Timed out waiting for notification processing.");
+    }
+
     public sealed record RetryRequestMessage(string Value);
     public sealed record RetryNotificationMessage(string Value);
+    public sealed record RetryNotificationViaMediatorMessage(string Value);
     public sealed record TimeoutRequestMessage(string Value);
     public sealed record CircuitBreakerRequestMessage(string Value);
 
@@ -170,5 +221,25 @@ public sealed class ResilienceBehaviorTests
             CircuitBreakerRequestMessage query,
             CancellationToken cancellationToken = default
         ) => throw new InvalidOperationException("request failure");
+    }
+
+    private sealed class RetryNotificationViaMediatorHandler
+        : INotificationHandler<RetryNotificationViaMediatorMessage>
+    {
+        private static int s_attempts;
+        public static int Attempts => Volatile.Read(ref s_attempts);
+        public static void Reset() => Interlocked.Exchange(ref s_attempts, 0);
+
+        public Task Handle(
+            RetryNotificationViaMediatorMessage notification,
+            CancellationToken cancellationToken = default
+        )
+        {
+            var attempt = Interlocked.Increment(ref s_attempts);
+            if (attempt < 3)
+                throw new InvalidOperationException($"failed attempt {attempt}");
+
+            return Task.CompletedTask;
+        }
     }
 }

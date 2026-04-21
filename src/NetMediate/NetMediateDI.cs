@@ -49,7 +49,7 @@ public static class NetMediateDI
         Action<IMediatorServiceBuilder> configure
     )
     {
-        ArgumentNullException.ThrowIfNull(configure);
+        Guard.ThrowIfNull(configure);
 
         var builder = AddNetMediate(services, []);
         configure(builder);

@@ -411,6 +411,44 @@ internal class Mediator(
     Task IMediator.Notify<TMessage>(INotification<TMessage> notification, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken) =>
         Notify((TMessage)notification, onError, cancellationToken);
 
+    Task IMediator.Notify<TMessage>(IEnumerable<TMessage> messages, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken)
+    {
+        if (messages is null || !messages.Any())
+            return Task.CompletedTask;
+
+        return Task.WhenAll(messages.Select(message => Notify(message, onError, cancellationToken)));
+    }
+
+    Task IMediator.Notify<TMessage>(IEnumerable<INotification<TMessage>> notifications, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken)
+    {
+        if (notifications is null || !notifications.Any())
+            return Task.CompletedTask;
+
+        return Task.WhenAll(notifications.Select(notification => Notify((TMessage)notification, onError, cancellationToken)));
+    }
+
+    Task IMediator.Notify<TMessage>(TMessage message, CancellationToken cancellationToken) =>
+        Notify(message, (_, _, _) => Task.CompletedTask, cancellationToken);
+
+    Task IMediator.Notify<TMessage>(INotification<TMessage> notification, CancellationToken cancellationToken) =>
+        Notify((TMessage)notification, (_, _, _) => Task.CompletedTask, cancellationToken);
+
+    Task IMediator.Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken)
+    {
+        if (messages is null || !messages.Any())
+            return Task.CompletedTask;
+
+        return Task.WhenAll(messages.Select(message => Notify(message, (_, _, _) => Task.CompletedTask, cancellationToken)));
+    }
+
+    Task IMediator.Notify<TMessage>(IEnumerable<INotification<TMessage>> notifications, CancellationToken cancellationToken)
+    {
+        if (notifications is null || !notifications.Any())
+            return Task.CompletedTask;
+
+        return Task.WhenAll(notifications.Select(notification => Notify((TMessage)notification, (_, _, _) => Task.CompletedTask, cancellationToken)));
+    }
+
     Task IMediator.Send<TMessage>(ICommand<TMessage> command, CancellationToken cancellationToken) =>
         Send((TMessage)command, cancellationToken);
 

@@ -62,16 +62,40 @@ jobs:
           ${{ runner.os }}-nuget-
           
     - name: Restore dependencies
-      run: dotnet restore src/NetMediate/NetMediate.csproj
+      run: dotnet restore net-mediate.slnx
       
     - name: Build Release
       run: dotnet build src/NetMediate/NetMediate.csproj --no-restore --configuration Release
+
+    - name: Build NetMediate.Compat
+      run: dotnet build src/NetMediate.Compat/NetMediate.Compat.csproj --no-restore --configuration Release
+
+    - name: Build NetMediate.Moq
+      run: dotnet build src/NetMediate.Moq/NetMediate.Moq.csproj --no-restore --configuration Release
+
+    - name: Build NetMediate.Resilience
+      run: dotnet build src/NetMediate.Resilience/NetMediate.Resilience.csproj --no-restore --configuration Release
+
+    - name: Build NetMediate.SourceGeneration
+      run: dotnet build src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release
       
     - name: Run Tests
       run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --no-build --configuration Release --verbosity normal
       
-    - name: Pack NuGet package
+    - name: Pack NetMediate package
       run: dotnet pack src/NetMediate/NetMediate.csproj --no-build --configuration Release --output ./packages
+
+    - name: Pack NetMediate.Compat package
+      run: dotnet pack src/NetMediate.Compat/NetMediate.Compat.csproj --configuration Release --output ./packages
+
+    - name: Pack NetMediate.Moq package
+      run: dotnet pack src/NetMediate.Moq/NetMediate.Moq.csproj --configuration Release --output ./packages
+
+    - name: Pack NetMediate.Resilience package
+      run: dotnet pack src/NetMediate.Resilience/NetMediate.Resilience.csproj --configuration Release --output ./packages
+
+    - name: Pack NetMediate.SourceGeneration package
+      run: dotnet pack src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --output ./packages
       
     - name: List package contents
       run: ls -la ./packages/

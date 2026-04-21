@@ -69,7 +69,7 @@ public static class NetMediateDiagnostics
         if (!s_sendCount.Enabled)
             return;
 
-        s_sendCount.Add(1, KeyValuePair.Create<string, object?>("message_type", typeof(TMessage).Name));
+        s_sendCount.Add(1, new KeyValuePair<string, object?>("message_type", typeof(TMessage).Name));
     }
 
     internal static void RecordRequest<TMessage>()
@@ -79,7 +79,7 @@ public static class NetMediateDiagnostics
 
         s_requestCount.Add(
             1,
-            KeyValuePair.Create<string, object?>("message_type", typeof(TMessage).Name)
+            new KeyValuePair<string, object?>("message_type", typeof(TMessage).Name)
         );
     }
 
@@ -90,7 +90,7 @@ public static class NetMediateDiagnostics
 
         s_notifyCount.Add(
             1,
-            KeyValuePair.Create<string, object?>("message_type", typeof(TMessage).Name)
+            new KeyValuePair<string, object?>("message_type", typeof(TMessage).Name)
         );
     }
 
@@ -101,7 +101,7 @@ public static class NetMediateDiagnostics
 
         s_streamCount.Add(
             1,
-            KeyValuePair.Create<string, object?>("message_type", typeof(TMessage).Name)
+            new KeyValuePair<string, object?>("message_type", typeof(TMessage).Name)
         );
     }
 }

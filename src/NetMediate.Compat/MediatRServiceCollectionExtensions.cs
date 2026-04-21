@@ -23,8 +23,8 @@ public static class MediatRServiceCollectionExtensions
         params Assembly[] assemblies
     )
     {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(assemblies);
+        Guard.ThrowIfNull(services);
+        Guard.ThrowIfNull(assemblies);
 
         var selectedAssemblies = assemblies.Length == 0
             ? [
@@ -55,8 +55,8 @@ public static class MediatRServiceCollectionExtensions
         Action<MediatRServiceConfiguration> configuration
     )
     {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(configuration);
+        Guard.ThrowIfNull(services);
+        Guard.ThrowIfNull(configuration);
 
         var options = new MediatRServiceConfiguration();
         configuration(options);

@@ -71,8 +71,26 @@ To provide user-facing package capacity guidance, we ran 5 executions for:
 
 Observed delta for this environment: **-28.76%** throughput with resilience behaviors enabled.
 
+`ResilienceLoadPerformanceTests` uses environment-aware assertions:
+
+- **CI (`GITHUB_ACTIONS=true`)**: minimum **30,000 ops/s** (shared-runner stability)
+- **Local/other environments**: minimum **50,000 ops/s**
+
+Documented median values above should continue to be used for release-level capacity analysis.
+
+## Target coverage for package assets
+
+`NetMediate.Resilience` is published for:
+
+- `net10.0`
+- `netstandard2.0`
+- `netstandard2.1`
+
+The measured throughput table above is produced on a `net10.0` host runtime. For `netstandard2.0`/`netstandard2.1`,
+benchmark numbers depend on the runtime that hosts the package (desktop/CLI/mobile/MAUI).
+
 Use the test output line format below to copy measured values:
 
 ```
-LOAD_RESULT resilience_request_parallel ops=... elapsed_ms=... throughput_ops_s=...
+LOAD_RESULT resilience_request_parallel tfm=<target_framework_name> ops=... elapsed_ms=... throughput_ops_s=...
 ```

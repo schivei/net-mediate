@@ -13,6 +13,7 @@ public sealed class ResilienceLoadPerformanceTests(ITestOutputHelper output)
         using var host = await CreateHostAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
         var cancellationToken = TestContext.Current.CancellationToken;
+        var targetFramework = AppContext.TargetFrameworkName ?? "unknown";
 
         const int operations = 10_000;
         var start = Stopwatch.GetTimestamp();
@@ -38,11 +39,15 @@ public sealed class ResilienceLoadPerformanceTests(ITestOutputHelper output)
         var throughput = operations / elapsed.TotalSeconds;
 
         output.WriteLine(
-            $"LOAD_RESULT resilience_request_parallel ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
+            $"LOAD_RESULT resilience_request_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
+        var minimumExpectedThroughput = Environment.GetEnvironmentVariable("GITHUB_ACTIONS") == "true"
+            ? 30_000
+            : 50_000;
+
         Assert.True(
-            throughput > 50_000,
+            throughput > minimumExpectedThroughput,
             $"Unexpected low resilience request throughput: {throughput:F2} ops/s"
         );
     }

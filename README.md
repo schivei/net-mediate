@@ -41,7 +41,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Dependency Injection**: Seamless integration with Microsoft.Extensions.DependencyInjection
 - **Keyed Services**: Support for keyed service registration and resolution
 - **Cancellation Support**: Full cancellation token support across all operations
-- **Modern runtime support**: Supports .NET 10.0 LTS (see [Framework Support](#framework-support) for details)
+- **Broad runtime compatibility**: Multi-targeted for `net10.0`, `netstandard2.0`, and `netstandard2.1`
 
 ## Installation
 
@@ -81,6 +81,7 @@ dotnet add package NetMediate
 - [Diagnostics (structured logs + metrics)](docs/DIAGNOSTICS.md)
 - [Resilience package guide and load capacity](docs/RESILIENCE.md)
 - [Source generation guide](docs/SOURCE_GENERATION.md)
+- [Wiki index](docs/WIKI.md)
 
 ## Quick Start
 
@@ -515,30 +516,32 @@ builder.Services.AddScoped(typeof(IRequestBehavior<,>), typeof(AuditRequestBehav
 
 ## Framework Support
 
-### Supported Frameworks
+### Supported package TFMs
 
-NetMediate currently supports:
+All runtime packages (`NetMediate`, `NetMediate.Compat`, `NetMediate.Moq`, `NetMediate.Resilience`) are published with:
 
-- **.NET 10.0 (latest LTS)**: Full support with all features available
+- `net10.0`
+- `netstandard2.0`
+- `netstandard2.1`
 
-### Unsupported Frameworks
+`NetMediate.SourceGeneration` remains an analyzer package (`netstandard2.0`) and works from all supported host TFMs.
 
-The following frameworks are **not currently supported**:
+### Application types covered
 
-- **.NET 8.0/9.0**: While previously mentioned, current builds target only .NET 10.0
-- **.NET Standard 2.1**: Not supported in current version
-- **.NET Framework**: No support planned
-- **.NET Core 3.1 and earlier**: End of life, not supported
+Because packages expose `netstandard2.0` and `netstandard2.1` assets, they can be consumed by:
 
-### Migration Notes
+- desktop applications
+- CLI applications
+- mobile applications
+- MAUI applications
+- server/web applications
 
-If you're upgrading from a previous version that supported multiple target frameworks:
+Always validate your specific app stack (DI host model, platform runtime, and trimming/AOT profile) in your CI pipeline.
 
-1. **Update your project**: Ensure you're using .NET 10.0 or later
-2. **Review dependencies**: Make sure all your dependencies are compatible with .NET 10.0
-3. **Test thoroughly**: While the API remains the same, some behavior may differ
+### Benchmark note by target
 
-For legacy framework support, consider staying on an earlier version of NetMediate that supported your target framework.
+Performance scenarios are measured from runnable host runtimes. Current benchmark executions are reported for `net10.0`.
+For `netstandard2.0`/`netstandard2.1`, throughput is determined by the concrete runtime hosting those assets (desktop/CLI/mobile/MAUI).
 
 ## Contributing
 

@@ -74,6 +74,23 @@ Environment used for these measurements:
 | command | 172,650.29 | 179,843.50 | +4.17% |
 | request_parallel | 280,944.65 | 118,619.88 | -57.78% |
 
+## Benchmark matrix by package target
+
+NetMediate runtime packages now publish assets for `net10.0`, `netstandard2.0`, and `netstandard2.1`.
+Benchmarks execute on runnable app runtimes, so measured throughput is reported for `net10.0` here.
+
+| Target asset | Benchmark status | Notes |
+|---|---|---|
+| `net10.0` | Measured | See throughput table above |
+| `netstandard2.0` | Host-runtime dependent | Throughput must be measured on the concrete host runtime (desktop/CLI/mobile/MAUI) |
+| `netstandard2.1` | Host-runtime dependent | Throughput must be measured on the concrete host runtime (desktop/CLI/mobile/MAUI) |
+
+Use the load output format below to capture per-target results:
+
+```
+LOAD_RESULT <scenario> tfm=<target_framework_name> ops=... elapsed_ms=... throughput_ops_s=...
+```
+
 > Notes:
 > - command throughput improved slightly with the current branch in this environment.
 > - request-parallel throughput is lower because this branch adds extra per-request work in the hot path (behavior-chain resolution + diagnostics counters/tags + activity lifecycle checks).

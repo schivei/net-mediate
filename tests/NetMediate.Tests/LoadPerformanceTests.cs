@@ -12,6 +12,7 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
         using var host = await CreateHostAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
         var cancellationToken = TestContext.Current.CancellationToken;
+        var targetFramework = AppContext.TargetFrameworkName ?? "unknown";
 
         const int operations = 20_000;
         var start = Stopwatch.GetTimestamp();
@@ -23,7 +24,7 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
         var throughput = operations / elapsed.TotalSeconds;
 
         output.WriteLine(
-            $"LOAD_RESULT command ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
+            $"LOAD_RESULT command tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
         Assert.True(throughput > 500, $"Unexpected low command throughput: {throughput:F2} ops/s");
@@ -35,6 +36,7 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
         using var host = await CreateHostAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
         var cancellationToken = TestContext.Current.CancellationToken;
+        var targetFramework = AppContext.TargetFrameworkName ?? "unknown";
 
         const int operations = 10_000;
         var start = Stopwatch.GetTimestamp();
@@ -57,7 +59,7 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
         var throughput = operations / elapsed.TotalSeconds;
 
         output.WriteLine(
-            $"LOAD_RESULT request_parallel ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
+            $"LOAD_RESULT request_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
         Assert.True(throughput > 500, $"Unexpected low request throughput: {throughput:F2} ops/s");

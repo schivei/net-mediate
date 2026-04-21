@@ -137,10 +137,30 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
     private void MapStreamHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
         Map(types, typeof(IStreamHandler<,>));
 
+    public IMediatorServiceBuilder RegisterNotificationHandler<TMessage, THandler>()
+        where THandler : class, INotificationHandler<TMessage> =>
+        Register(typeof(TMessage), typeof(THandler));
+
+    public IMediatorServiceBuilder RegisterCommandHandler<TMessage, THandler>()
+        where THandler : class, ICommandHandler<TMessage> =>
+        Register(typeof(TMessage), typeof(THandler));
+
+    public IMediatorServiceBuilder RegisterRequestHandler<TMessage, TResponse, THandler>()
+        where THandler : class, IRequestHandler<TMessage, TResponse> =>
+        Register(typeof(TMessage), typeof(THandler));
+
+    public IMediatorServiceBuilder RegisterStreamHandler<TMessage, TResponse, THandler>()
+        where THandler : class, IStreamHandler<TMessage, TResponse> =>
+        Register(typeof(TMessage), typeof(THandler));
+
+    public IMediatorServiceBuilder RegisterValidationHandler<TMessage, THandler>()
+        where THandler : class, IValidationHandler<TMessage> =>
+        Register(typeof(TMessage), typeof(THandler));
+
     public IMediatorServiceBuilder Register(Type messageType, Type handlerType)
     {
-        ArgumentNullException.ThrowIfNull(messageType);
-        ArgumentNullException.ThrowIfNull(handlerType);
+        Guard.ThrowIfNull(messageType);
+        Guard.ThrowIfNull(handlerType);
 
         var interfaces = GetInterfaces(handlerType, messageType);
         Map([(handlerType, interfaces)]);

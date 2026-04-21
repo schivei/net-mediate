@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Reflection;
+using NetMediate;
 
 namespace MediatR;
 
@@ -36,7 +37,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
         CancellationToken cancellationToken = default
     )
     {
-        ArgumentNullException.ThrowIfNull(request);
+        Guard.ThrowIfNull(request);
 
         var response = await Send((object)request, cancellationToken);
         return response is null
@@ -47,14 +48,14 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
     public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default)
         where TRequest : IRequest
     {
-        ArgumentNullException.ThrowIfNull(request);
+        Guard.ThrowIfNull(request);
 
         return SendWithoutResponse(_mediator, request, cancellationToken);
     }
 
     public async Task<object?> Send(object request, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        Guard.ThrowIfNull(request);
 
         if (request is IRequest)
         {
@@ -89,7 +90,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
         CancellationToken cancellationToken = default
     )
     {
-        ArgumentNullException.ThrowIfNull(request);
+        Guard.ThrowIfNull(request);
 
         return CreateTypedStream<TResponse>(request, cancellationToken);
     }
@@ -99,7 +100,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
         CancellationToken cancellationToken = default
     )
     {
-        ArgumentNullException.ThrowIfNull(request);
+        Guard.ThrowIfNull(request);
 
         var requestType = request.GetType();
         var requestInterface = requestType
@@ -125,7 +126,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
 
     public Task Publish(object notification, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(notification);
+        Guard.ThrowIfNull(notification);
 
         if (notification is not INotification)
         {
@@ -143,7 +144,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
         CancellationToken cancellationToken = default
     ) where TNotification : INotification
     {
-        ArgumentNullException.ThrowIfNull(notification);
+        Guard.ThrowIfNull(notification);
 
         return Publish((object)notification, cancellationToken);
     }

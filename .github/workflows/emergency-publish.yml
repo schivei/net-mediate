@@ -78,6 +78,15 @@ jobs:
 
     - name: Build NetMediate.SourceGeneration
       run: dotnet build src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release
+
+    - name: Build NetMediate.DataDog.OpenTelemetry
+      run: dotnet build src/NetMediate.DataDog.OpenTelemetry/NetMediate.DataDog.OpenTelemetry.csproj --configuration Release
+
+    - name: Build NetMediate.DataDog.Serilog
+      run: dotnet build src/NetMediate.DataDog.Serilog/NetMediate.DataDog.Serilog.csproj --configuration Release
+
+    - name: Build NetMediate.DataDog.ILogger
+      run: dotnet build src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --configuration Release
       
     - name: Run Tests
       run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --no-build --configuration Release --verbosity normal
@@ -96,6 +105,15 @@ jobs:
 
     - name: Pack NetMediate.SourceGeneration package
       run: dotnet pack src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --output ./packages
+
+    - name: Pack NetMediate.DataDog.OpenTelemetry package
+      run: dotnet pack src/NetMediate.DataDog.OpenTelemetry/NetMediate.DataDog.OpenTelemetry.csproj --configuration Release --output ./packages
+
+    - name: Pack NetMediate.DataDog.Serilog package
+      run: dotnet pack src/NetMediate.DataDog.Serilog/NetMediate.DataDog.Serilog.csproj --configuration Release --output ./packages
+
+    - name: Pack NetMediate.DataDog.ILogger package
+      run: dotnet pack src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --configuration Release --output ./packages
       
     - name: List package contents
       run: ls -la ./packages/

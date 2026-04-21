@@ -38,6 +38,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Pipeline Behaviors**: Interceptors with pre/post flow for Send/Request/Notify/Stream
 - **Optional resilience package**: Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience`
 - **OpenTelemetry-ready diagnostics**: Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream
+- **Optional DataDog integrations**: OpenTelemetry, Serilog, and ILogger support packages
 - **Dependency Injection**: Seamless integration with Microsoft.Extensions.DependencyInjection
 - **Keyed Services**: Support for keyed service registration and resolution
 - **Cancellation Support**: Full cancellation token support across all operations
@@ -66,12 +67,18 @@ dotnet add package NetMediate
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
 <PackageReference Include="NetMediate.Resilience" Version="x.x.x" />
 <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+<PackageReference Include="NetMediate.DataDog.OpenTelemetry" Version="x.x.x" />
+<PackageReference Include="NetMediate.DataDog.Serilog" Version="x.x.x" />
+<PackageReference Include="NetMediate.DataDog.ILogger" Version="x.x.x" />
 ```
 
 - **NetMediate.Compat**: keeps MediatR contracts (`MediatR.IMediator`, `IRequest`, `INotification`, handlers, and `AddMediatR`) so migration to NetMediate can be done without rewriting contracts.
 - **NetMediate.Moq**: adds lightweight Moq helpers for cleaner unit and integration tests (`Mocking.Create`, `AddMockSingleton`, and async setup extensions).
 - **NetMediate.Resilience**: adds optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
 - **NetMediate.SourceGeneration**: generates `AddNetMediateGenerated(...)` to register handlers at compile-time and reduce reflection cost at startup.
+- **NetMediate.DataDog.OpenTelemetry**: wires NetMediate traces/metrics to DataDog through OpenTelemetry OTLP exporters.
+- **NetMediate.DataDog.Serilog**: adds DataDog Serilog sink configuration and NetMediate observability enrichers.
+- **NetMediate.DataDog.ILogger**: adds ILogger scope helpers with DataDog-compatible fields and NetMediate correlation values.
 
 ## Companion Guides
 
@@ -81,6 +88,7 @@ dotnet add package NetMediate
 - [Diagnostics (structured logs + metrics)](docs/DIAGNOSTICS.md)
 - [Resilience package guide and load capacity](docs/RESILIENCE.md)
 - [Source generation guide](docs/SOURCE_GENERATION.md)
+- [DataDog integrations guide](docs/DATADOG.md)
 - [Wiki index](docs/WIKI.md)
 
 ## Quick Start

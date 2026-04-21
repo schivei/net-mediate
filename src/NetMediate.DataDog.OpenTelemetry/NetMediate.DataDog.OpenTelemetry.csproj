@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\pack.props" />
+  <PropertyGroup>
+    <AssemblyName>NetMediate.DataDog.OpenTelemetry</AssemblyName>
+    <Title>NetMediate.DataDog.OpenTelemetry</Title>
+    <Description>DataDog OpenTelemetry integrations for NetMediate traces and metrics.</Description>
+    <PackageTags>Mediator;NetMediate;DataDog;OpenTelemetry;Tracing;Metrics;APM</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.*" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.*" />
+  </ItemGroup>
+</Project>

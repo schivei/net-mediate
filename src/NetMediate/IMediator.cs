@@ -11,6 +11,10 @@ public interface IMediator
     /// <typeparam name="TMessage">The type of the notification message.</typeparam>
     /// <param name="message">The notification message to publish.</param>
     /// <param name="onError">The callback to handle errors that occur during message processing.</param>
+    /// <remarks>
+    /// Even when <paramref name="onError"/> is provided, this method can still fault when notification behaviors are registered
+    /// and they choose to propagate handler failures (for example, resilience behaviors that need exceptions to drive retries).
+    /// </remarks>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     Task Notify<TMessage>(
@@ -24,7 +28,11 @@ public interface IMediator
     /// </summary>
     /// <typeparam name="TMessage"></typeparam>
     /// <param name="notification"></param>
-    /// <param name="onError"></param>
+    /// <param name="onError">The callback to handle errors that occur during notification processing.</param>
+    /// <remarks>
+    /// Even when <paramref name="onError"/> is provided, this method can still fault when notification behaviors are registered
+    /// and they choose to propagate handler failures.
+    /// </remarks>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     Task Notify<TMessage>(
@@ -39,6 +47,10 @@ public interface IMediator
     /// <typeparam name="TMessage">The type of the notification message.</typeparam>
     /// <param name="messages">The collection of notification messages to publish.</param>
     /// <param name="onError">The callback to handle errors that occur during message processing.</param>
+    /// <remarks>
+    /// Even when <paramref name="onError"/> is provided, this method can still fault when notification behaviors are registered
+    /// and they choose to propagate handler failures.
+    /// </remarks>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
     Task Notify<TMessage>(
@@ -64,7 +76,11 @@ public interface IMediator
     /// </summary>
     /// <typeparam name="TMessage"></typeparam>
     /// <param name="notifications"></param>
-    /// <param name="onError"></param>
+    /// <param name="onError">The callback to handle errors that occur during notification processing.</param>
+    /// <remarks>
+    /// Even when <paramref name="onError"/> is provided, this method can still fault when notification behaviors are registered
+    /// and they choose to propagate handler failures.
+    /// </remarks>
     /// <param name="cancellationToken"></param>
     /// <returns></returns>
     Task Notify<TMessage>(

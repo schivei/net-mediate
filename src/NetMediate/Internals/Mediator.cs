@@ -12,8 +12,6 @@ internal class Mediator(
     IServiceScopeFactory serviceScopeFactory
 ) : IMediator, INotifiable
 {
-    private static readonly object NotificationExceptionSync = new();
-
     public async Task Notify<TMessage>(
         TMessage message,
         NotificationErrorDelegate<TMessage> onError,
@@ -308,9 +306,11 @@ internal class Mediator(
     )
     {
         var behaviors = ResolveBehaviors<INotificationBehavior<TMessage>>(scope.ServiceProvider);
+        var shouldPropagateExceptions = behaviors.Length > 0;
         NotificationHandlerDelegate next = async token =>
         {
             List<Exception>? exceptions = null;
+            object? exceptionSync = null;
             var tasks = handlers.Select(async handler =>
             {
                 try
@@ -320,7 +320,8 @@ internal class Mediator(
                 catch (Exception ex)
                 {
                     await packet.OnErrorAsync(handler.GetType(), ex).ConfigureAwait(false);
-                    lock (NotificationExceptionSync)
+                    var sync = LazyInitializer.EnsureInitialized(ref exceptionSync, static () => new object());
+                    lock (sync)
                     {
                         exceptions ??= [];
                         exceptions.Add(ex);
@@ -329,7 +330,11 @@ internal class Mediator(
             });
             await Task.WhenAll(tasks).ConfigureAwait(false);
 
-            if (exceptions is not null && exceptions.Count > 0)
+            if (
+                shouldPropagateExceptions
+                && exceptions is not null
+                && exceptions.Count > 0
+            )
                 throw new AggregateException(exceptions);
         };
 
@@ -353,6 +358,7 @@ internal class Mediator(
         // This avoids per-call IEnumerable resolution/allocation in high-throughput paths.
         serviceProvider is IServiceProviderIsService isService
             && !isService.IsService(typeof(TBehavior))
+            && !isService.IsService(typeof(IEnumerable<TBehavior>))
             ? []
             : serviceProvider.GetService<IEnumerable<TBehavior>>()?.ToArray() ?? [];
 

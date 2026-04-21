@@ -33,6 +33,14 @@ public static class NetMediateDataDogSerilogExtensions
         if (!options.EnableSink)
             return loggerConfiguration;
 
+        if (string.IsNullOrWhiteSpace(options.ApiKey))
+        {
+            throw new ArgumentException(
+                "DataDog API key must be provided when EnableSink is true.",
+                $"{nameof(options)}.{nameof(DataDogSerilogOptions.ApiKey)}"
+            );
+        }
+
         return loggerConfiguration.WriteTo.DatadogLogs(
             apiKey: options.ApiKey,
             source: options.Source,

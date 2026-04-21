@@ -123,11 +123,22 @@ public sealed class PipelineBehaviorTests
         CancellationToken cancellationToken
     )
     {
-        while (trace.Count < expected)
+        const int timeoutMilliseconds = 2000;
+        const int delayMilliseconds = 10;
+        const int maxAttempts = timeoutMilliseconds / delayMilliseconds;
+
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
+            if (trace.Count >= expected)
+                return;
+
             cancellationToken.ThrowIfCancellationRequested();
-            await Task.Delay(10, cancellationToken);
+            await Task.Delay(delayMilliseconds, cancellationToken);
         }
+
+        Assert.Fail(
+            $"Timed out waiting for trace size {expected}. Current size: {trace.Count}."
+        );
     }
 
     private static async Task<IHost> CreateHostAsync(Action<IServiceCollection> configure)

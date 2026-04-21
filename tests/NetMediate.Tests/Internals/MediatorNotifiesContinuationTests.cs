@@ -43,6 +43,15 @@ public sealed class MediatorNotifiesContinuationTests
             Task.FromException(new InvalidOperationException("x"));
     }
 
+    private sealed class PassThroughBehavior : INotificationBehavior<Msg>
+    {
+        public Task Handle(
+            Msg message,
+            NotificationHandlerDelegate next,
+            CancellationToken cancellationToken = default
+        ) => next(cancellationToken);
+    }
+
     [Fact]
     public async Task Notifies_HandlerSuccess_DoesNotInvokeErrorCallback()
     {
@@ -69,7 +78,7 @@ public sealed class MediatorNotifiesContinuationTests
     }
 
     [Fact]
-    public async Task Notifies_HandlerFaulted_InvokesErrorCallback()
+    public async Task Notifies_HandlerFaulted_InvokesErrorCallback_WithoutNotificationBehavior()
     {
         var message = new Msg();
         _provider
@@ -79,6 +88,37 @@ public sealed class MediatorNotifiesContinuationTests
         var tcs = new TaskCompletionSource<bool>(
             TaskCreationOptions.RunContinuationsAsynchronously
         );
+        Task onError(Type _, Msg __, Exception ___)
+        {
+            tcs.TrySetResult(true);
+            return Task.CompletedTask;
+        }
+
+        await _sut.Notifies(
+            new NotificationPacket<Msg>(message, onError),
+            TestContext.Current.CancellationToken
+        );
+
+        var completed = await Task.WhenAny(
+            tcs.Task,
+            Task.Delay(500, TestContext.Current.CancellationToken)
+        );
+        Assert.Same(tcs.Task, completed);
+        Assert.True(await tcs.Task);
+    }
+
+    [Fact]
+    public async Task Notifies_HandlerFaulted_WithNotificationBehavior_ThrowsAndInvokesErrorCallback()
+    {
+        var message = new Msg();
+        _provider
+            .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
+            .Returns(new[] { new FaultHandler() });
+        _provider
+            .Setup(p => p.GetService(typeof(IEnumerable<INotificationBehavior<Msg>>)))
+            .Returns(new[] { new PassThroughBehavior() });
+
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         Task onError(Type _, Msg __, Exception ___)
         {
             tcs.TrySetResult(true);

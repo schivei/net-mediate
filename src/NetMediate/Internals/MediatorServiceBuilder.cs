@@ -32,6 +32,11 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
 
     public IServiceCollection Services { get; }
 
+#if NET5_0_OR_GREATER
+    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode(
+        "Scans assembly types using reflection. Not compatible with trimming or Native AOT."
+    )]
+#endif
     internal IMediatorServiceBuilder MapAssemblies(params Assembly[] assemblies)
     {
         var assemblyHashCodes = assemblies
@@ -273,6 +278,11 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
     }
 
     [ExcludeFromCodeCoverage]
+#if NET5_0_OR_GREATER
+    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode(
+        "Scans assembly types using reflection. Not compatible with trimming or Native AOT."
+    )]
+#endif
     private static IEnumerable<(Type handlerType, Type[] interfaces)> ExtractTypes(
         Assembly[] assemblies
     ) =>

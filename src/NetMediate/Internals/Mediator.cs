@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
@@ -210,14 +211,9 @@ internal class Mediator(
     public Task Notifies(
         INotificationPacket packet,
         CancellationToken cancellationToken = default
-    ) =>
-        (Task)
-            GetType()
-                .GetMethod(nameof(Notifies), BindingFlags.NonPublic | BindingFlags.Instance)!
-                .MakeGenericMethod(packet.Message.GetType())
-                .Invoke(this, [packet, cancellationToken]);
+    ) => packet.DispatchAsync(this, cancellationToken);
 
-    private async Task Notifies<TMessage>(
+    public async Task NotifiesTyped<TMessage>(
         NotificationPacket<TMessage> packet,
         CancellationToken cancellationToken = default
     )
@@ -362,6 +358,15 @@ internal class Mediator(
             ? []
             : serviceProvider.GetService<IEnumerable<TBehavior>>()?.ToArray() ?? [];
 
+    // Cache KeyedMessageAttribute lookups by type to avoid per-call reflection in the hot path.
+    private static readonly ConcurrentDictionary<Type, string?> s_serviceKeyCache = new();
+
+    private static string? GetServiceKey(Type messageType) =>
+        s_serviceKeyCache.GetOrAdd(
+            messageType,
+            static t => t.GetCustomAttribute<KeyedMessageAttribute>(false)?.ServiceKey
+        );
+
     private IEnumerable<T> Resolve<T>(IServiceScope scope, object message, bool ignore = false)
     {
         logger.LogDebug(
@@ -371,13 +376,13 @@ internal class Mediator(
 
         var messageType = message.GetType();
 
-        var messageAttribute = messageType.GetCustomAttribute<KeyedMessageAttribute>(false);
+        var serviceKey = GetServiceKey(messageType);
 
         IEnumerable<T> handlers = [];
         try
         {
-            handlers = messageAttribute is not null
-                ? scope.ServiceProvider.GetKeyedServices<T>(messageAttribute.ServiceKey)
+            handlers = serviceKey is not null
+                ? scope.ServiceProvider.GetKeyedServices<T>(serviceKey)
                 : scope.ServiceProvider.GetServices<T>();
         }
         catch (InvalidOperationException ex)

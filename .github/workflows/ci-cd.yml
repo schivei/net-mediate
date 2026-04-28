@@ -68,6 +68,9 @@ jobs:
 
     - name: Build NetMediate.DataDog.ILogger
       run: dotnet build src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --configuration Release
+
+    - name: Build NetMediate.FluentValidation
+      run: dotnet build src/NetMediate.FluentValidation/NetMediate.FluentValidation.csproj --no-restore --configuration Release
       
     - name: Test
       run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
@@ -77,6 +80,9 @@ jobs:
 
     - name: Test Shared Parity (MediatR Compat)
       run: dotnet test tests/SharedParity.MediatRCompat.Tests/SharedParity.MediatRCompat.Tests.csproj --configuration Release --verbosity normal
+
+    - name: Build Benchmarks
+      run: dotnet build tests/NetMediate.Benchmarks/NetMediate.Benchmarks.csproj --no-restore --configuration Release
       
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v6

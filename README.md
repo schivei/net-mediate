@@ -66,6 +66,7 @@ dotnet add package NetMediate
 <PackageReference Include="NetMediate.Compat" Version="x.x.x" />
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
 <PackageReference Include="NetMediate.Resilience" Version="x.x.x" />
+<PackageReference Include="NetMediate.FluentValidation" Version="x.x.x" />
 <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 <PackageReference Include="NetMediate.DataDog.OpenTelemetry" Version="x.x.x" />
 <PackageReference Include="NetMediate.DataDog.Serilog" Version="x.x.x" />
@@ -75,6 +76,7 @@ dotnet add package NetMediate
 - **NetMediate.Compat**: keeps MediatR contracts (`MediatR.IMediator`, `IRequest`, `INotification`, handlers, and `AddMediatR`) so migration to NetMediate can be done without rewriting contracts.
 - **NetMediate.Moq**: adds lightweight Moq helpers for cleaner unit and integration tests (`Mocking.Create`, `AddMockSingleton`, and async setup extensions).
 - **NetMediate.Resilience**: adds optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
+- **NetMediate.FluentValidation**: bridges FluentValidation `IValidator<T>` into the NetMediate validation pipeline without mandatory coupling (requires net8+).
 - **NetMediate.SourceGeneration**: generates `AddNetMediateGenerated(...)` to register handlers at compile-time and reduce reflection cost at startup.
 - **NetMediate.DataDog.OpenTelemetry**: wires NetMediate traces/metrics to DataDog through OpenTelemetry OTLP exporters.
 - **NetMediate.DataDog.Serilog**: adds DataDog Serilog sink configuration and NetMediate observability enrichers.
@@ -89,6 +91,8 @@ dotnet add package NetMediate
 - [Resilience package guide and load capacity](docs/RESILIENCE.md)
 - [Source generation guide](docs/SOURCE_GENERATION.md)
 - [DataDog integrations guide](docs/DATADOG.md)
+- [Library comparison (NetMediate vs MediatR vs others)](docs/LIBRARY_COMPARISON.md)
+- [Benchmark comparison](docs/BENCHMARK_COMPARISON.md)
 - [Wiki index](docs/WIKI.md)
 
 ## Quick Start
@@ -550,6 +554,23 @@ Always validate your specific app stack (DI host model, platform runtime, and tr
 
 Performance scenarios are measured from runnable host runtimes. Current benchmark executions are reported for `net10.0`.
 For `netstandard2.0`/`netstandard2.1`, throughput is determined by the concrete runtime hosting those assets (desktop/CLI/mobile/MAUI).
+
+<!-- PERF_START -->
+## Performance
+
+> Last benchmarked: **2026-04-28 22:40 UTC** on `.NETCoreApp,Version=v10.0` (sequential, no-op handlers).
+> Full details & tradeoff analysis in [docs/BENCHMARK_COMPARISON.md](docs/BENCHMARK_COMPARISON.md).
+
+| Scenario | NetMediate | MediatR 14 | Note |
+|----------|------------|------------|------|
+| Command | 243,879 | 1,399,110 | 83% slower |
+| Request | 246,861 | 1,747,091 | 86% slower |
+
+> NetMediate includes per-dispatch DI scoping, message validation, and
+> OpenTelemetry activity tracking that MediatR omits.  For I/O-bound handlers
+> the overhead is negligible compared to actual I/O latency.
+
+<!-- PERF_END -->
 
 ## Contributing
 

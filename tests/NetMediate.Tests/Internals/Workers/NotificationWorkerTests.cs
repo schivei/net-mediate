@@ -231,6 +231,11 @@ public class NotificationWorkerTests
             CancellationToken cancellationToken
         ) => Notifies(packet, cancellationToken);
 
+        Task INotifiable.NotifiesTyped<TMessage>(
+            NotificationPacket<TMessage> packet,
+            CancellationToken cancellationToken
+        ) => Notifies(packet, cancellationToken);
+
         internal virtual async Task Notifies(
             INotificationPacket packet,
             CancellationToken cancellationToken = default

@@ -11,6 +11,9 @@ internal readonly record struct NotificationPacket<TMessage>(
     object INotificationPacket.Message => Message;
     Delegate INotificationPacket.ErrorHandler => ErrorHandler;
 
+    public Task DispatchAsync(INotifiable notifiable, CancellationToken cancellationToken) =>
+        notifiable.NotifiesTyped(this, cancellationToken);
+
     public async Task OnErrorAsync(Type handlerType, Exception exception) =>
         await (ErrorHandler ?? ((_, _, _) => Task.CompletedTask))(handlerType, Message, exception);
 }

@@ -31,28 +31,34 @@ informed choice for your project.
 | **NetMediate** | see NuGet | netstandard2.0 / net10+ | ✅ Active |
 | **MediatR** | 14.x | net8+ | ✅ Active |
 | **Wolverine** | 3.x | net8+ | ✅ Active |
-| **Mediator** (martinothamar) | 2.x | net8+ | ✅ Active |
+| **Mediator** (martinothamar) | 3.x | net8+ | ✅ Active |
+| **TurboMediator** | 0.9.x | net8+ ⚠️ | 🔶 Pre-release |
+
+> ⚠️ **TurboMediator v0.9.3**: The source generator emits code that does not compile on
+> .NET 10 (a `ValueTask → ValueTask<Unit>` implicit conversion that no longer exists).
+> This is a known upstream issue.  Verify compatibility before adopting in net10+ projects.
 
 ---
 
 ## Feature Matrix
 
-| Feature | NetMediate | MediatR 14 | Wolverine | martinothamar/Mediator |
-|---------|:----------:|:----------:|:---------:|:----------------------:|
-| Commands (fire & forget) | ✅ | ✅ (as `IRequest`) | ✅ | ✅ |
-| Requests (query/response) | ✅ | ✅ | ✅ | ✅ |
-| Notifications (fan-out) | ✅ | ✅ | ✅ | ✅ |
-| Streaming responses | ✅ | ✅ | ✅ | ✅ |
-| Built-in validation | ✅ | ❌ | ❌ | ❌ |
-| FluentValidation bridge | ✅ (`NetMediate.FluentValidation`) | ❌ (separate libs) | partial | ❌ |
-| Pipeline behaviours | ✅ per-kind interfaces | ✅ `IPipelineBehavior<,>` | ✅ middleware | ✅ |
-| Keyed service support | ✅ | ❌ | ❌ | ❌ |
-| Source generation | ✅ (`NetMediate.SourceGeneration`) | ❌ | ❌ | ✅ (always-on) |
-| AOT / trimming annotations | ✅ (scan paths annotated) | ❌ | ❌ | ✅ |
-| MediatR migration shim | ✅ (`NetMediate.Compat`) | N/A | ❌ | ❌ |
-| Resilience (retry/circuit) | ✅ (`NetMediate.Resilience`) | ❌ | partial | ❌ |
-| OpenTelemetry built-in | ✅ | ❌ | ✅ | ❌ |
-| netstandard2.0 support | ✅ | ❌ (net8+ only from v12) | ❌ | ❌ |
+| Feature | NetMediate | MediatR 14 | Wolverine | martinothamar/Mediator 3 | TurboMediator |
+|---------|:----------:|:----------:|:---------:|:------------------------:|:-------------:|
+| Commands (fire & forget) | ✅ | ✅ (as `IRequest`) | ✅ | ✅ | ✅ |
+| Requests (query/response) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Notifications (fan-out) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Streaming responses | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Built-in validation | ✅ | ❌ | ❌ | ❌ | ✅ (extension) |
+| FluentValidation bridge | ✅ (`NetMediate.FluentValidation`) | ❌ (separate libs) | partial | ❌ | ✅ (`TurboMediator.FluentValidation`) |
+| Pipeline behaviours | ✅ per-kind interfaces | ✅ `IPipelineBehavior<,>` | ✅ middleware | ✅ | ✅ |
+| Keyed service support | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Source generation | ✅ (`NetMediate.SourceGeneration`) | ❌ | ❌ | ✅ (always-on) | ✅ (always-on) |
+| AOT / trimming annotations | ✅ (scan paths annotated) | ❌ | ❌ | ✅ | ✅ |
+| MediatR migration shim | ✅ (`NetMediate.Compat`) | N/A | ❌ | ❌ | ❌ |
+| Resilience (retry/circuit) | ✅ (`NetMediate.Resilience`) | ❌ | partial | ❌ | ✅ (`TurboMediator.Resilience`) |
+| OpenTelemetry built-in | ✅ | ❌ | ✅ | ❌ | ✅ (extension) |
+| netstandard2.0 support | ✅ | ❌ (net8+ only from v12) | ❌ | ❌ | ❌ |
+| .NET 10 compatible | ✅ | ✅ | ✅ | ✅ | ⚠️ issue v0.9.3 |
 
 ---
 
@@ -262,11 +268,12 @@ MediatR has no built-in resilience support.
 
 ## Source Generation & AOT
 
-| | NetMediate | MediatR 14 | martinothamar/Mediator |
-|-|-----------|-----------|----------------------|
-| Source generator | Optional (`NetMediate.SourceGeneration`) | ❌ | Always-on (required) |
-| AOT-safe dispatch | ✅ (no runtime reflection post-startup) | ❌ | ✅ |
-| Scan paths annotated | ✅ (`[RequiresUnreferencedCode]` on .NET 5+) | ❌ | N/A |
+| | NetMediate | MediatR 14 | martinothamar/Mediator 3 | TurboMediator |
+|-|-----------|-----------|--------------------------|---------------|
+| Source generator | Optional (`NetMediate.SourceGeneration`) | ❌ | Always-on (required) | Always-on (required) |
+| AOT-safe dispatch | ✅ (no runtime reflection post-startup) | ❌ | ✅ | ✅ |
+| Scan paths annotated | ✅ (`[RequiresUnreferencedCode]` on .NET 5+) | ❌ | N/A | N/A |
+| .NET 10 compatible | ✅ | ✅ | ✅ | ⚠️ issue v0.9.3 |
 
 Using `NetMediate.SourceGeneration` generates an `AddNetMediateGenerated()` extension
 method at compile time.  This means:
@@ -299,7 +306,32 @@ instructions.
 | Distributed messaging / service bus needed | **Wolverine** |
 | Minimal dependencies, community ecosystem matters | **MediatR** |
 | Need built-in resilience without extra packages | **NetMediate.Resilience** |
-| Need FluentValidation integration | **NetMediate.FluentValidation** |
+| Need FluentValidation integration | **NetMediate.FluentValidation** or **TurboMediator.FluentValidation** |
+| Maximum throughput, source-generated dispatch, .NET 8/9 | **martinothamar/Mediator** or **TurboMediator** (check .NET 10 compat) |
+| Large ecosystem of optional modules (scheduling, sagas…) | **TurboMediator** (20+ packages) or **Wolverine** |
+
+### About TurboMediator
+
+[TurboMediator](https://github.com/marcocestari/TurboMediator) is a high-performance
+mediator library built on Roslyn Source Generators with an extensive optional-package
+ecosystem (scheduling, feature flags, sagas, persistence, distributed locking, and more).
+
+**Quick start:**
+```csharp
+public record CreateOrder(string ProductId, int Qty) : IRequest<OrderId>;
+
+public class CreateOrderHandler : IRequestHandler<CreateOrder, OrderId>
+{
+    public ValueTask<OrderId> Handle(CreateOrder cmd, CancellationToken ct) => ...;
+}
+
+builder.Services.AddTurboMediator();
+var id = await mediator.Send(new CreateOrder("SKU-1", 3), ct);
+```
+
+> **Note:** TurboMediator v0.9.3 contains a source-generator bug that causes compilation
+> failures on .NET 10.  Check [upstream issues](https://github.com/marcocestari/TurboMediator)
+> for the fix status before adopting in .NET 10+ projects.
 
 ---
 

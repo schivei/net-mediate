@@ -41,11 +41,25 @@ internal class Mediator(
         }
     }
 
+    // ── Cached type names ─────────────────────────────────────────────────────
+    // Avoids repeated `typeof(TMessage).Name` string allocations in log calls.
+    private static readonly ConcurrentDictionary<Type, string> s_typeNames = new();
+
+    private static string GetTypeName<TMessage>() =>
+        s_typeNames.GetOrAdd(typeof(TMessage), static t => t.Name);
+
     private async Task ValidateMessage<TMessage>(
         IServiceScope scope,
         TMessage message,
         CancellationToken cancellationToken
-    ) =>
+    )
+    {
+        // Fast path: skip all validation DI resolution when no IValidationHandler<TMessage>
+        // is registered at startup AND the message is not self-validating (IValidatable).
+        // This eliminates one full DI enumerable resolution per dispatch in the common case.
+        if (!configuration.NeedsValidation(message))
+            return;
+
         await configuration.ValidateMessageAsync(
             scope,
             message,
@@ -53,6 +67,7 @@ internal class Mediator(
             Resolve<IValidationHandler<TMessage>>,
             cancellationToken
         );
+    }
 
     private bool AssertHandler<TMessage, THandler>(IEnumerable<THandler> handlers)
         where THandler : IHandler
@@ -95,7 +110,7 @@ internal class Mediator(
         {
             await ValidateMessage(scope, message, cancellationToken);
 
-            logger.LogDebug("Sending message of type {MessageType}", typeof(TMessage).Name);
+            logger.LogDebug("Sending message of type {MessageType}", GetTypeName<TMessage>());
 
             var handler = Resolve<ICommandHandler<TMessage>>(scope, message).FirstOrDefault();
 
@@ -128,7 +143,7 @@ internal class Mediator(
         {
             await ValidateMessage(scope, message, cancellationToken);
 
-            logger.LogDebug("Sending message of type {MessageType}", typeof(TMessage).Name);
+            logger.LogDebug("Sending message of type {MessageType}", GetTypeName<TMessage>());
 
             var handler = Resolve<IRequestHandler<TMessage, TResponse>>(scope, message)
                 .FirstOrDefault();
@@ -165,7 +180,7 @@ internal class Mediator(
             {
                 await ValidateMessage(scope, message, cancellationToken);
 
-                logger.LogDebug("Sending message of type {MessageType}", typeof(TMessage).Name);
+                logger.LogDebug("Sending message of type {MessageType}", GetTypeName<TMessage>());
 
                 var handler = Resolve<IStreamHandler<TMessage, TResponse>>(scope, message)
                     .FirstOrDefault();
@@ -222,7 +237,7 @@ internal class Mediator(
 
         await ValidateMessage(scope, packet.Message, cancellationToken);
 
-        logger.LogDebug("Notifying message of type {MessageType}", typeof(TMessage).Name);
+        logger.LogDebug("Notifying message of type {MessageType}", GetTypeName<TMessage>());
 
         var handlers = Resolve<INotificationHandler<TMessage>>(scope, packet.Message);
 
@@ -369,12 +384,16 @@ internal class Mediator(
 
     private IEnumerable<T> Resolve<T>(IServiceScope scope, object message, bool ignore = false)
     {
+        // Use cached type name to avoid repeated GetType().Name allocations.
+        // The IsEnabled check is deferred to the BackgroundLogger, but we cache the
+        // name here to avoid the allocation even before the logger check.
+        var messageType = message.GetType();
+        var typeName = s_typeNames.GetOrAdd(messageType, static t => t.Name);
+
         logger.LogDebug(
             "Resolving handlers for message of type {MessageType}",
-            message.GetType().Name
+            typeName
         );
-
-        var messageType = message.GetType();
 
         var serviceKey = GetServiceKey(messageType);
 
@@ -395,7 +414,7 @@ internal class Mediator(
         logger.LogDebug(
             "Resolved {HandlerCount} handlers for message of type {MessageType}",
             handlers.Count(),
-            messageType.Name
+            typeName
         );
 
         return handlers;
@@ -404,9 +423,10 @@ internal class Mediator(
     [ExcludeFromCodeCoverage]
     private IEnumerable<T> FilterResolves<T>(object message, IEnumerable<T> handlers)
     {
+        var typeName = s_typeNames.GetOrAdd(message.GetType(), static t => t.Name);
         logger.LogDebug(
             "Filtering handlers for message of type {MessageType}",
-            message.GetType().Name
+            typeName
         );
 
         if (configuration.TryGetHandlerTypeByMessageFilter(message, out var type))

@@ -1,23 +1,32 @@
 using System.Diagnostics;
 using System.Text;
 using MediatR;
+using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace NetMediate.Benchmarks;
 
 /// <summary>
-/// Throughput benchmarks comparing NetMediate against MediatR 14.x.
+/// Throughput benchmarks comparing NetMediate, MediatR 14, and martinothamar/Mediator 3.
 /// <para>
-/// These tests are gated by the <c>NETMEDIATE_RUN_PERFORMANCE_TESTS=true</c> environment
-/// variable so that they do not run in every CI build.  When the variable is set they also
-/// write/update two markdown documents:
+/// Only features that are common across ALL included libraries are benchmarked:
+/// command dispatch (fire-and-forget) and request/response dispatch.
+/// No validation, behaviours, or notification fan-out – those are NetMediate-specific extras.
+/// </para>
+/// <para>
+/// Gated by <c>NETMEDIATE_RUN_PERFORMANCE_TESTS=true</c>.  When the variable is set the tests
+/// also update two markdown documents:
 /// <list type="bullet">
 ///   <item><c>docs/BENCHMARK_COMPARISON.md</c> – detailed per-run results table</item>
-///   <item><c>README.md</c> – a concise "Performance" comparison summary table</item>
+///   <item><c>README.md</c> – concise "Performance" comparison summary table</item>
 /// </list>
-/// This keeps the published docs in sync with the latest measurements automatically whenever
-/// the benchmark suite is executed.
+/// </para>
+/// <para>
+/// <b>TurboMediator</b> (v0.9.3) is included in the library comparison document but is excluded
+/// from the live benchmarks because its source generator emits code that does not compile on
+/// .NET 10 (implicit <c>ValueTask → ValueTask&lt;Unit&gt;</c> conversion missing).
 /// </para>
 /// </summary>
 public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
@@ -82,7 +91,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // MediatR benchmarks
+    // MediatR 14 benchmarks
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -129,7 +138,54 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Comparison summary – runs both and writes docs
+    // martinothamar/Mediator 3 benchmarks (source-generated, zero-reflection)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task MartinMediator_Command_Throughput()
+    {
+        if (!ShouldRun()) return;
+
+        using var host = await CreateMartinMediatorHostAsync();
+        var mediator = host.Services.GetRequiredService<global::Mediator.IMediator>();
+        var ct = TestContext.Current.CancellationToken;
+
+        var result = await MeasureAsync(async () =>
+        {
+            for (var i = 0; i < CommandOps; i++)
+                await mediator.Send(new MtCommand(i), ct);
+        }, CommandOps);
+
+        output.WriteLine($"BENCH martinothamar/Mediator command: {result}");
+        Assert.True(result.OpsPerSec > MinThroughput,
+            $"martinothamar/Mediator command throughput too low: {result.OpsPerSec:F0} ops/s");
+    }
+
+    [Fact]
+    public async Task MartinMediator_Request_Throughput()
+    {
+        if (!ShouldRun()) return;
+
+        using var host = await CreateMartinMediatorHostAsync();
+        var mediator = host.Services.GetRequiredService<global::Mediator.IMediator>();
+        var ct = TestContext.Current.CancellationToken;
+
+        var result = await MeasureAsync(async () =>
+        {
+            for (var i = 0; i < RequestOps; i++)
+            {
+                var r = await mediator.Send(new MtQuery(i), ct);
+                Assert.Equal(i + 1, r);
+            }
+        }, RequestOps);
+
+        output.WriteLine($"BENCH martinothamar/Mediator request: {result}");
+        Assert.True(result.OpsPerSec > MinThroughput,
+            $"martinothamar/Mediator request throughput too low: {result.OpsPerSec:F0} ops/s");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Comparison summary – runs all libraries and writes docs
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -169,7 +225,21 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
                 await mrMediator.Send(new MrRequest(i), ct);
         }, RequestOps);
 
-        WriteComparisonDocs(timestamp, tfm, nmCmd, nmReq, mrCmd, mrReq);
+        // martinothamar/Mediator
+        using var mtHost = await CreateMartinMediatorHostAsync();
+        var mtMediator = mtHost.Services.GetRequiredService<global::Mediator.IMediator>();
+        var mtCmd = await MeasureAsync(async () =>
+        {
+            for (var i = 0; i < CommandOps; i++)
+                await mtMediator.Send(new MtCommand(i), ct);
+        }, CommandOps);
+        var mtReq = await MeasureAsync(async () =>
+        {
+            for (var i = 0; i < RequestOps; i++)
+                await mtMediator.Send(new MtQuery(i), ct);
+        }, RequestOps);
+
+        WriteComparisonDocs(timestamp, tfm, nmCmd, nmReq, mrCmd, mrReq, mtCmd, mtReq);
 
         output.WriteLine($"Benchmark docs written to {BenchmarkDocPath}");
     }
@@ -181,6 +251,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     private static async Task<IHost> CreateNetMediateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
+        builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Warning);
 #pragma warning disable IL2026
         builder.Services.AddNetMediate(typeof(LibraryBenchmarkTests).Assembly);
 #pragma warning restore IL2026
@@ -192,8 +263,19 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     private static async Task<IHost> CreateMediatRHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
+        builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Warning);
         builder.Services.AddMediatR(cfg =>
             cfg.RegisterServicesFromAssemblyContaining<LibraryBenchmarkTests>());
+        var host = builder.Build();
+        await host.StartAsync();
+        return host;
+    }
+
+    private static async Task<IHost> CreateMartinMediatorHostAsync()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Logging.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Warning);
+        builder.Services.AddMediator(opt => opt.ServiceLifetime = ServiceLifetime.Singleton);
         var host = builder.Build();
         await host.StartAsync();
         return host;
@@ -232,11 +314,12 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     private void WriteComparisonDocs(
         string timestamp, string tfm,
         BenchResult nmCmd, BenchResult nmReq,
-        BenchResult mrCmd, BenchResult mrReq)
+        BenchResult mrCmd, BenchResult mrReq,
+        BenchResult mtCmd, BenchResult mtReq)
     {
         // ── BENCHMARK_COMPARISON.md ─────────────────────────────────────────
         var sb = new StringBuilder();
-        sb.AppendLine("# Benchmark Comparison: NetMediate vs MediatR");
+        sb.AppendLine("# Benchmark Comparison: NetMediate, MediatR 14 &amp; martinothamar/Mediator 3");
         sb.AppendLine();
         sb.AppendLine("> **Auto-generated** by `LibraryBenchmarkTests.Comparison_WritesBenchmarkDocs`.");
         sb.AppendLine("> Re-run with `NETMEDIATE_RUN_PERFORMANCE_TESTS=true` to refresh.");
@@ -244,42 +327,54 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
         sb.AppendLine($"**Last run:** {timestamp}  ");
         sb.AppendLine($"**Target framework:** `{tfm}`");
         sb.AppendLine();
-        sb.AppendLine("## Throughput (operations / second, higher is better)");
+        sb.AppendLine("## Throughput (operations / second — higher is better)");
         sb.AppendLine();
-        sb.AppendLine("| Scenario | NetMediate | MediatR 14 | Comparison |");
-        sb.AppendLine("|----------|------------|------------|------------|");
-        AppendRow(sb, "Command (fire & forget)", nmCmd, mrCmd);
-        AppendRow(sb, "Request (query/response)", nmReq, mrReq);
+        sb.AppendLine("Only features that are **common to all included libraries** are benchmarked:");
+        sb.AppendLine("fire-and-forget command dispatch and request/response dispatch with no-op handlers.");
+        sb.AppendLine("Validation, pipeline behaviours, and notification fan-out are NetMediate extras");
+        sb.AppendLine("and are deliberately omitted for a fair comparison.");
+        sb.AppendLine();
+        sb.AppendLine("| Scenario | NetMediate | MediatR 14 | martinothamar/Mediator 3 |");
+        sb.AppendLine("|----------|:----------:|:----------:|:-----------------------:|");
+        AppendRow3(sb, "Command (fire & forget)", nmCmd, mrCmd, mtCmd);
+        AppendRow3(sb, "Request (query / response)", nmReq, mrReq, mtReq);
+        sb.AppendLine();
+        sb.AppendLine("> **TurboMediator** (v0.9.3) is listed in [LIBRARY_COMPARISON.md](LIBRARY_COMPARISON.md)");
+        sb.AppendLine("> but excluded from live benchmarks: its source generator emits code that does not");
+        sb.AppendLine("> compile on .NET 10 (`ValueTask → ValueTask<Unit>` implicit conversion removed).");
         sb.AppendLine();
         sb.AppendLine("## What the numbers mean");
         sb.AppendLine();
-        sb.AppendLine("MediatR 14 is faster in raw sequential throughput because it focuses exclusively");
-        sb.AppendLine("on message dispatch with minimal overhead.  NetMediate deliberately includes a");
-        sb.AppendLine("richer feature set per dispatch cycle:");
+        sb.AppendLine("**martinothamar/Mediator** is typically the fastest because it generates a");
+        sb.AppendLine("compile-time `switch`-expression dispatch with zero runtime reflection and no");
+        sb.AppendLine("intermediate allocations — the generated code calls handlers directly.");
         sb.AppendLine();
-        sb.AppendLine("| Per-dispatch cost | NetMediate | MediatR 14 |");
-        sb.AppendLine("|-------------------|-----------|-----------|");
-        sb.AppendLine("| New DI scope (isolation) | ✅ yes | ❌ no |");
-        sb.AppendLine("| Message validation | ✅ yes (no-op if no validator) | ❌ no |");
-        sb.AppendLine("| OpenTelemetry activity | ✅ yes (always) | ❌ no |");
-        sb.AppendLine("| Debug log per dispatch | ✅ yes | ❌ no |");
-        sb.AppendLine("| Pipeline behaviour resolution | ✅ yes | ✅ yes |");
+        sb.AppendLine("**MediatR 14** is fast because it is intentionally minimal: no scoping, no");
+        sb.AppendLine("validation, no tracing.  Its only overhead is a dictionary lookup per message type.");
         sb.AppendLine();
-        sb.AppendLine("For handlers that perform any real I/O (database, HTTP, etc.) these costs are");
-        sb.AppendLine("completely dominated by the I/O latency.  The difference only becomes noticeable");
-        sb.AppendLine("in tight micro-benchmark loops with no-op handlers.");
+        sb.AppendLine("**NetMediate** pays for richer per-dispatch semantics that the other libraries");
+        sb.AppendLine("do not offer:");
         sb.AppendLine();
-        sb.AppendLine("If raw throughput is the primary concern you can disable the Activity creation");
-        sb.AppendLine("by not registering the `ActivitySource`, and reduce scope overhead by reusing");
-        sb.AppendLine("the root service provider or supplying handlers as singletons.");
+        sb.AppendLine("| Per-dispatch cost | NetMediate | MediatR 14 | martinothamar/Mediator 3 |");
+        sb.AppendLine("|---|:---:|:---:|:---:|");
+        sb.AppendLine("| New DI scope (handler isolation) | ✅ yes | ❌ no | ❌ no |");
+        sb.AppendLine("| Message validation pipeline | ✅ fast-path skip | ❌ no | ❌ no |");
+        sb.AppendLine("| OpenTelemetry activity | ✅ listener-gated | ❌ no | ❌ no |");
+        sb.AppendLine("| Background async logging | ✅ channel-based | ✅ varies | ✅ varies |");
+        sb.AppendLine("| Source-generated dispatch | ❌ runtime DI | ❌ runtime DI | ✅ yes |");
+        sb.AppendLine();
+        sb.AppendLine("For handlers that perform any real I/O (database, HTTP, message broker, etc.)");
+        sb.AppendLine("these per-dispatch costs are completely dominated by I/O latency and become");
+        sb.AppendLine("irrelevant in practice.");
         sb.AppendLine();
         sb.AppendLine("## Measurement details");
         sb.AppendLine();
-        sb.AppendLine("| Metric | Command | Request |");
-        sb.AppendLine("|--------|---------|---------|");
+        sb.AppendLine($"| Metric | Command | Request |");
+        sb.AppendLine($"|--------|---------|---------|");
         sb.AppendLine($"| Operations | {CommandOps:N0} | {RequestOps:N0} |");
         sb.AppendLine($"| NetMediate elapsed | {nmCmd.Elapsed.TotalMilliseconds:F1} ms | {nmReq.Elapsed.TotalMilliseconds:F1} ms |");
-        sb.AppendLine($"| MediatR elapsed    | {mrCmd.Elapsed.TotalMilliseconds:F1} ms | {mrReq.Elapsed.TotalMilliseconds:F1} ms |");
+        sb.AppendLine($"| MediatR elapsed | {mrCmd.Elapsed.TotalMilliseconds:F1} ms | {mrReq.Elapsed.TotalMilliseconds:F1} ms |");
+        sb.AppendLine($"| martinothamar/Mediator elapsed | {mtCmd.Elapsed.TotalMilliseconds:F1} ms | {mtReq.Elapsed.TotalMilliseconds:F1} ms |");
         sb.AppendLine();
         sb.AppendLine("## Test environment");
         sb.AppendLine();
@@ -289,10 +384,10 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
         sb.AppendLine();
         sb.AppendLine("## Methodology");
         sb.AppendLine();
-        sb.AppendLine("Each scenario runs one warm-up pass (to JIT compile the path) followed by a");
-        sb.AppendLine("single timed pass.  All operations run **sequentially** to measure single-thread");
-        sb.AppendLine("throughput rather than parallelism.  Both libraries share the same handler");
-        sb.AppendLine("implementation and the same DI host.");
+        sb.AppendLine("Each scenario runs one warm-up pass (JIT compile) followed by a single timed");
+        sb.AppendLine("pass.  Operations run **sequentially** to measure single-thread throughput.");
+        sb.AppendLine("All libraries share the same DI host infrastructure; handlers are no-op stubs.");
+        sb.AppendLine("Logging is set to `Warning` level to avoid logger overhead in all libraries.");
         sb.AppendLine();
         sb.AppendLine("See `tests/NetMediate.Benchmarks/LibraryBenchmarkTests.cs` for the full source.");
 
@@ -300,46 +395,41 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
         File.WriteAllText(BenchmarkDocPath, sb.ToString());
 
         // ── README.md – update/insert the Performance section ──────────────
-        UpdateReadmePerformanceSection(timestamp, tfm, nmCmd, nmReq, mrCmd, mrReq);
+        UpdateReadmePerformanceSection(timestamp, tfm, nmCmd, nmReq, mrCmd, mrReq, mtCmd, mtReq);
     }
 
-    private static void AppendRow(StringBuilder sb, string scenario,
-        BenchResult nm, BenchResult mr)
+    private static void AppendRow3(StringBuilder sb, string scenario,
+        BenchResult nm, BenchResult mr, BenchResult mt)
     {
-        var ratio = mr.OpsPerSec > 0 ? nm.OpsPerSec / mr.OpsPerSec : 1.0;
-        var advantage = ratio >= 1.0
-            ? $"+{(ratio - 1.0) * 100:F0}% faster"
-            : $"{(1.0 - ratio) * 100:F0}% slower";
-        sb.AppendLine($"| {scenario} | {nm.OpsPerSec:N0} | {mr.OpsPerSec:N0} | {advantage} |");
+        sb.AppendLine($"| {scenario} | {nm.OpsPerSec:N0} | {mr.OpsPerSec:N0} | {mt.OpsPerSec:N0} |");
     }
 
     private void UpdateReadmePerformanceSection(
         string timestamp, string tfm,
         BenchResult nmCmd, BenchResult nmReq,
-        BenchResult mrCmd, BenchResult mrReq)
+        BenchResult mrCmd, BenchResult mrReq,
+        BenchResult mtCmd, BenchResult mtReq)
     {
         if (!File.Exists(ReadMePath)) return;
-
-        var ratioCmd = mrCmd.OpsPerSec > 0 ? nmCmd.OpsPerSec / mrCmd.OpsPerSec : 1.0;
-        var ratioReq = mrReq.OpsPerSec > 0 ? nmReq.OpsPerSec / mrReq.OpsPerSec : 1.0;
 
         var section = new StringBuilder();
         section.AppendLine("## Performance");
         section.AppendLine();
-        section.AppendLine($"> Last benchmarked: **{timestamp}** on `{tfm}` (sequential, no-op handlers).");
-        section.AppendLine($"> Full details & tradeoff analysis in [docs/BENCHMARK_COMPARISON.md](docs/BENCHMARK_COMPARISON.md).");
+        section.AppendLine($"> Last benchmarked: **{timestamp}** on `{tfm}` (sequential, no-op handlers, Warning log level).");
+        section.AppendLine($"> Full details in [docs/BENCHMARK_COMPARISON.md](docs/BENCHMARK_COMPARISON.md).");
         section.AppendLine();
-        section.AppendLine("| Scenario | NetMediate | MediatR 14 | Note |");
-        section.AppendLine("|----------|------------|------------|------|");
-        AppendRow(section, "Command", nmCmd, mrCmd);
-        AppendRow(section, "Request", nmReq, mrReq);
+        section.AppendLine("| Scenario | NetMediate | MediatR 14 | martinothamar/Mediator 3 |");
+        section.AppendLine("|----------|:----------:|:----------:|:-----------------------:|");
+        AppendRow3(section, "Command", nmCmd, mrCmd, mtCmd);
+        AppendRow3(section, "Request", nmReq, mrReq, mtReq);
         section.AppendLine();
-        section.AppendLine("> NetMediate includes per-dispatch DI scoping, message validation, and");
-        section.AppendLine("> OpenTelemetry activity tracking that MediatR omits.  For I/O-bound handlers");
-        section.AppendLine("> the overhead is negligible compared to actual I/O latency.");
+        section.AppendLine("> NetMediate includes per-dispatch DI scoping, message validation fast-path,");
+        section.AppendLine("> channel-based async logging, and OpenTelemetry activity tracking.");
+        section.AppendLine("> For I/O-bound handlers the overhead is negligible vs actual I/O latency.");
         section.AppendLine();
-        output.WriteLine($"NetMediate cmd: {nmCmd.OpsPerSec:N0} ops/s vs MediatR: {mrCmd.OpsPerSec:N0} ops/s (ratio {ratioCmd:F2}x)");
-        output.WriteLine($"NetMediate req: {nmReq.OpsPerSec:N0} ops/s vs MediatR: {mrReq.OpsPerSec:N0} ops/s (ratio {ratioReq:F2}x)");
+
+        output.WriteLine($"NetMediate cmd: {nmCmd.OpsPerSec:N0} ops/s  MediatR: {mrCmd.OpsPerSec:N0} ops/s  martinMediator: {mtCmd.OpsPerSec:N0} ops/s");
+        output.WriteLine($"NetMediate req: {nmReq.OpsPerSec:N0} ops/s  MediatR: {mrReq.OpsPerSec:N0} ops/s  martinMediator: {mtReq.OpsPerSec:N0} ops/s");
 
         const string startMarker = "<!-- PERF_START -->";
         const string endMarker = "<!-- PERF_END -->";
@@ -352,7 +442,6 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
         string updatedReadme;
         if (startIdx >= 0 && endIdx > startIdx)
         {
-            // Replace existing section
             updatedReadme =
                 readme[..(startIdx + startMarker.Length)] +
                 "\n" +
@@ -361,7 +450,6 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
         }
         else
         {
-            // Append before the Contributing section
             const string contributing = "## Contributing";
             var contributingIdx = readme.IndexOf(contributing, StringComparison.Ordinal);
             if (contributingIdx >= 0)
@@ -395,7 +483,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // NetMediate message/handler definitions
+    // NetMediate message / handler definitions
     // ─────────────────────────────────────────────────────────────────────────
 
     public sealed record NmCommand(int Value);
@@ -415,7 +503,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // MediatR message/handler definitions
+    // MediatR 14 message / handler definitions
     // ─────────────────────────────────────────────────────────────────────────
 
     public sealed record MrCommand(int Value) : global::MediatR.IRequest;
@@ -433,4 +521,31 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
         public Task<int> Handle(MrRequest request, CancellationToken cancellationToken) =>
             Task.FromResult(request.Value + 1);
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // martinothamar/Mediator 3 message / handler definitions
+    // Must be internal (not nested private) so the source generator can access them.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>Fire-and-forget command for martinothamar/Mediator benchmarks.</summary>
+    public sealed record MtCommand(int Value) : global::Mediator.ICommand;
+
+    /// <summary>Query (request/response) for martinothamar/Mediator benchmarks.</summary>
+    public sealed record MtQuery(int Value) : global::Mediator.IQuery<int>;
+}
+
+// martinothamar/Mediator handlers live outside the test class so the source generator
+// (which requires at least internal visibility) can reference them.
+internal sealed class MtCommandHandler : global::Mediator.ICommandHandler<NetMediate.Benchmarks.LibraryBenchmarkTests.MtCommand>
+{
+    public ValueTask<global::Mediator.Unit> Handle(
+        NetMediate.Benchmarks.LibraryBenchmarkTests.MtCommand command, CancellationToken ct) =>
+        ValueTask.FromResult(global::Mediator.Unit.Value);
+}
+
+internal sealed class MtQueryHandler : global::Mediator.IQueryHandler<NetMediate.Benchmarks.LibraryBenchmarkTests.MtQuery, int>
+{
+    public ValueTask<int> Handle(
+        NetMediate.Benchmarks.LibraryBenchmarkTests.MtQuery query, CancellationToken ct) =>
+        ValueTask.FromResult(query.Value + 1);
 }

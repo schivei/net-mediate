@@ -19,6 +19,13 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
 
         Services = services;
 
+        // Register background logger for the Mediator hot path so that debug log calls
+        // are non-blocking (queued to a channel and drained on a background thread).
+        Services.AddSingleton<BackgroundLogger<Mediator>>(
+            sp => new BackgroundLogger<Mediator>(sp.GetRequiredService<ILoggerFactory>()));
+        Services.AddSingleton<ILogger<Mediator>>(
+            sp => sp.GetRequiredService<BackgroundLogger<Mediator>>());
+
         Services.TryAddSingleton<IMediator, Mediator>();
         Services.TryAddSingleton<INotifiable>(sp => sp.GetRequiredService<IMediator>() as Mediator);
         Services.TryAddSingleton(_ => _configuration);
@@ -126,8 +133,26 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         typeof(IStreamHandler<,>),
     ];
 
-    private void MapValidationHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
-        Map(types, typeof(IValidationHandler<>));
+    private void MapValidationHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types)
+    {
+        var validationTypes = types
+            .Where(t => t.interfaces.Any(i =>
+                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IValidationHandler<>)))
+            .ToList();
+
+        Map(validationTypes, typeof(IValidationHandler<>));
+
+        // Track which message types have registered validators at startup so dispatch can
+        // skip the validation DI resolution entirely when no validators exist for a type.
+        foreach (var (_, interfaces) in validationTypes)
+        {
+            foreach (var iface in interfaces)
+            {
+                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IValidationHandler<>))
+                    _configuration.MarkAsValidatable(iface.GenericTypeArguments[0]);
+            }
+        }
+    }
 
     private void MapNotificationHandlers(
         IEnumerable<(Type handlerType, Type[] interfaces)> types
@@ -159,8 +184,12 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         Register(typeof(TMessage), typeof(THandler));
 
     public IMediatorServiceBuilder RegisterValidationHandler<TMessage, THandler>()
-        where THandler : class, IValidationHandler<TMessage> =>
-        Register(typeof(TMessage), typeof(THandler));
+        where THandler : class, IValidationHandler<TMessage>
+    {
+        // Mark the message type as validatable so the dispatch fast-path knows to run validation.
+        _configuration.MarkAsValidatable(typeof(TMessage));
+        return Register(typeof(TMessage), typeof(THandler));
+    }
 
     public IMediatorServiceBuilder Register(Type messageType, Type handlerType)
     {

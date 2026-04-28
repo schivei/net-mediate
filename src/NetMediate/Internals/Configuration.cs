@@ -22,6 +22,20 @@ internal sealed class Configuration(Channel<INotificationPacket> channel) : IAsy
     public bool LogUnhandledMessages { get; set; }
     public LogLevel UnhandledMessagesLogLevel { get; set; }
 
+    /// <summary>
+    /// When <see langword="false"/>, all OpenTelemetry activity creation and metric recording
+    /// is skipped on every dispatch call, eliminating the <see cref="System.Diagnostics.ActivitySource"/>
+    /// listener check and Counter.Enabled checks entirely.  Defaults to <see langword="true"/>.
+    /// </summary>
+    public bool EnableTelemetry { get; set; } = true;
+
+    /// <summary>
+    /// When <see langword="false"/>, the entire validation pipeline is bypassed on every
+    /// dispatch call regardless of whether any <see cref="IValidationHandler{TMessage}"/> or
+    /// <see cref="IValidatable"/> implementations are registered.  Defaults to <see langword="true"/>.
+    /// </summary>
+    public bool EnableValidation { get; set; } = true;
+
     /// <summary>Marks a message type as requiring validation (has at least one registered <see cref="IValidationHandler{TMessage}"/>).</summary>
     internal void MarkAsValidatable(Type messageType) => _validatableTypes.Add(messageType);
 

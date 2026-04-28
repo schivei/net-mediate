@@ -79,6 +79,20 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         return this;
     }
 
+    /// <inheritdoc/>
+    public IMediatorServiceBuilder DisableTelemetry()
+    {
+        _configuration.EnableTelemetry = false;
+        return this;
+    }
+
+    /// <inheritdoc/>
+    public IMediatorServiceBuilder DisableValidation()
+    {
+        _configuration.EnableValidation = false;
+        return this;
+    }
+
     private MediatorServiceBuilder Filter<TMessage, THandler, TBase>(Func<TMessage, bool> filter)
     {
         RegisterType(typeof(TBase), typeof(THandler));

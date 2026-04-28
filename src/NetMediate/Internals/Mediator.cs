@@ -19,7 +19,9 @@ internal class Mediator(
         CancellationToken cancellationToken = default
     )
     {
-        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Notify");
+        using var activity = configuration.EnableTelemetry
+            ? NetMediateDiagnostics.StartActivity<TMessage>("Notify")
+            : null;
 
         try
         {
@@ -37,7 +39,8 @@ internal class Mediator(
         }
         finally
         {
-            NetMediateDiagnostics.RecordNotify<TMessage>();
+            if (configuration.EnableTelemetry)
+                NetMediateDiagnostics.RecordNotify<TMessage>();
         }
     }
 
@@ -54,6 +57,10 @@ internal class Mediator(
         CancellationToken cancellationToken
     )
     {
+        // Fast path: validation disabled entirely at builder level.
+        if (!configuration.EnableValidation)
+            return;
+
         // Fast path: skip all validation DI resolution when no IValidationHandler<TMessage>
         // is registered at startup AND the message is not self-validating (IValidatable).
         // This eliminates one full DI enumerable resolution per dispatch in the common case.
@@ -103,7 +110,9 @@ internal class Mediator(
         CancellationToken cancellationToken = default
     )
     {
-        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Send");
+        using var activity = configuration.EnableTelemetry
+            ? NetMediateDiagnostics.StartActivity<TMessage>("Send")
+            : null;
         using var scope = serviceScopeFactory.CreateScope();
 
         try
@@ -127,7 +136,8 @@ internal class Mediator(
         }
         finally
         {
-            NetMediateDiagnostics.RecordSend<TMessage>();
+            if (configuration.EnableTelemetry)
+                NetMediateDiagnostics.RecordSend<TMessage>();
         }
     }
 
@@ -136,7 +146,9 @@ internal class Mediator(
         CancellationToken cancellationToken = default
     )
     {
-        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Request");
+        using var activity = configuration.EnableTelemetry
+            ? NetMediateDiagnostics.StartActivity<TMessage>("Request")
+            : null;
         using var scope = serviceScopeFactory.CreateScope();
 
         try
@@ -161,7 +173,8 @@ internal class Mediator(
         }
         finally
         {
-            NetMediateDiagnostics.RecordRequest<TMessage>();
+            if (configuration.EnableTelemetry)
+                NetMediateDiagnostics.RecordRequest<TMessage>();
         }
     }
 
@@ -170,7 +183,9 @@ internal class Mediator(
         [EnumeratorCancellation] CancellationToken cancellationToken = default
     )
     {
-        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("RequestStream");
+        using var activity = configuration.EnableTelemetry
+            ? NetMediateDiagnostics.StartActivity<TMessage>("RequestStream")
+            : null;
         using var scope = serviceScopeFactory.CreateScope();
         IAsyncEnumerable<TResponse> stream = EmptyAsyncEnumerable<TResponse>();
 
@@ -219,7 +234,8 @@ internal class Mediator(
         }
         finally
         {
-            NetMediateDiagnostics.RecordStream<TMessage>();
+            if (configuration.EnableTelemetry)
+                NetMediateDiagnostics.RecordStream<TMessage>();
         }
     }
 

@@ -82,6 +82,22 @@ public interface IMediatorServiceBuilder
     );
 
     /// <summary>
+    /// Disables all OpenTelemetry activity creation and metric recording on every dispatch
+    /// call.  Use this when the application does not export telemetry and wants to remove
+    /// even the listener-check overhead from the hot path.
+    /// </summary>
+    /// <returns>This builder for chaining.</returns>
+    IMediatorServiceBuilder DisableTelemetry();
+
+    /// <summary>
+    /// Disables the validation pipeline entirely.  No <see cref="IValidationHandler{TMessage}"/>
+    /// instances will be resolved or invoked, and <see cref="IValidatable"/> self-validation is
+    /// also skipped.  Use this when validation is handled externally or is not required.
+    /// </summary>
+    /// <returns>This builder for chaining.</returns>
+    IMediatorServiceBuilder DisableValidation();
+
+    /// <summary>
     /// Registers a factory predicate that can dynamically select (instantiate) a handler type based on the message instance.
     /// </summary>
     /// <typeparam name="TMessage">The message type.</typeparam>

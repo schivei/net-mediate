@@ -82,42 +82,6 @@ public interface IMediatorServiceBuilder
     );
 
     /// <summary>
-    /// Disables all OpenTelemetry activity creation and metric recording on every dispatch
-    /// call.  Use this when the application does not export telemetry and wants to remove
-    /// even the listener-check overhead from the hot path.
-    /// </summary>
-    /// <returns>This builder for chaining.</returns>
-    IMediatorServiceBuilder DisableTelemetry();
-
-    /// <summary>
-    /// Disables the validation pipeline entirely.  No <see cref="IValidationHandler{TMessage}"/>
-    /// instances will be resolved or invoked, and <see cref="IValidatable"/> self-validation is
-    /// also skipped.  Use this when validation is handled externally or is not required.
-    /// </summary>
-    /// <returns>This builder for chaining.</returns>
-    IMediatorServiceBuilder DisableValidation();
-
-    /// <summary>
-    /// Replaces the built-in Channel + background-worker notification pipeline with a custom
-    /// <see cref="INotificationProvider"/> implementation.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The built-in <c>NotificationWorker</c> hosted service becomes a no-op when a custom
-    /// provider is registered.  The provider is entirely responsible for delivering notifications
-    /// to their handlers.
-    /// </para>
-    /// <para>
-    /// Inject <see cref="INotificationDispatcher"/> into your custom consumer to invoke the
-    /// registered <see cref="INotificationHandler{TMessage}"/> implementations.
-    /// </para>
-    /// </remarks>
-    /// <typeparam name="TProvider">The custom notification provider type.</typeparam>
-    /// <returns>This builder for chaining.</returns>
-    IMediatorServiceBuilder UseNotificationProvider<TProvider>()
-        where TProvider : class, INotificationProvider;
-
-    /// <summary>
     /// Registers a factory predicate that can dynamically select (instantiate) a handler type based on the message instance.
     /// </summary>
     /// <typeparam name="TMessage">The message type.</typeparam>
@@ -208,13 +172,4 @@ public interface IMediatorServiceBuilder
     /// <param name="handlerType">The handler type.</param>
     /// <returns>This builder for chaining.</returns>
     IMediatorServiceBuilder Register(Type messageType, Type handlerType);
-
-    /// <summary>
-    /// Registers a validation handler for <paramref name="messageType"/> and marks the
-    /// message type as requiring validation in the dispatch hot-path.
-    /// </summary>
-    /// <param name="messageType">The message type validated.</param>
-    /// <param name="handlerType">The handler type implementing <see cref="IValidationHandler{TMessage}"/>.</param>
-    /// <returns>This builder for chaining.</returns>
-    IMediatorServiceBuilder RegisterValidationHandler(Type messageType, Type handlerType);
 }

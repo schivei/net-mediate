@@ -3,8 +3,8 @@ using System.Reflection;
 using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using NetMediate.Internals.Workers;
 
 namespace NetMediate.Internals;
 
@@ -22,19 +22,16 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         Services.TryAddSingleton<IMediator, Mediator>();
         Services.TryAddSingleton<INotifiable>(sp => sp.GetRequiredService<IMediator>() as Mediator);
         Services.TryAddSingleton(_ => _configuration);
-        Services.TryAddSingleton<INotificationProvider, BuiltInNotificationProvider>();
-        Services.TryAddSingleton<INotificationDispatcher>(sp =>
-            (INotificationDispatcher)sp.GetRequiredService<IMediator>());
-        Services.AddHostedService<Workers.NotificationWorker>();
+
+        if (!Services.Any(s => s.ServiceType == typeof(NotificationWorker)))
+        {
+            Services.TryAddSingleton<NotificationWorker>();
+            Services.AddHostedService(sp => sp.GetRequiredService<NotificationWorker>());
+        }
     }
 
     public IServiceCollection Services { get; }
 
-#if NET5_0_OR_GREATER
-    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode(
-        "Scans assembly types using reflection. Not compatible with trimming or Native AOT."
-    )]
-#endif
     internal IMediatorServiceBuilder MapAssemblies(params Assembly[] assemblies)
     {
         var assemblyHashCodes = assemblies
@@ -67,29 +64,6 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         _configuration.LogUnhandledMessages = log;
         _configuration.UnhandledMessagesLogLevel = logLevel;
 
-        return this;
-    }
-
-    /// <inheritdoc/>
-    public IMediatorServiceBuilder DisableTelemetry()
-    {
-        _configuration.EnableTelemetry = false;
-        return this;
-    }
-
-    /// <inheritdoc/>
-    public IMediatorServiceBuilder DisableValidation()
-    {
-        _configuration.EnableValidation = false;
-        return this;
-    }
-
-    /// <inheritdoc/>
-    public IMediatorServiceBuilder UseNotificationProvider<TProvider>()
-        where TProvider : class, INotificationProvider
-    {
-        _configuration.EnableBuiltInWorker = false;
-        Services.Replace(ServiceDescriptor.Singleton<INotificationProvider, TProvider>());
         return this;
     }
 
@@ -147,26 +121,8 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         typeof(IStreamHandler<,>),
     ];
 
-    private void MapValidationHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types)
-    {
-        var validationTypes = types
-            .Where(t => t.interfaces.Any(i =>
-                i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IValidationHandler<>)))
-            .ToList();
-
-        Map(validationTypes, typeof(IValidationHandler<>));
-
-        // Track which message types have registered validators at startup so dispatch can
-        // skip the validation DI resolution entirely when no validators exist for a type.
-        foreach (var (_, interfaces) in validationTypes)
-        {
-            foreach (var iface in interfaces)
-            {
-                if (iface.IsGenericType && iface.GetGenericTypeDefinition() == typeof(IValidationHandler<>))
-                    _configuration.MarkAsValidatable(iface.GenericTypeArguments[0]);
-            }
-        }
-    }
+    private void MapValidationHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
+        Map(types, typeof(IValidationHandler<>));
 
     private void MapNotificationHandlers(
         IEnumerable<(Type handlerType, Type[] interfaces)> types
@@ -198,22 +154,8 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         Register(typeof(TMessage), typeof(THandler));
 
     public IMediatorServiceBuilder RegisterValidationHandler<TMessage, THandler>()
-        where THandler : class, IValidationHandler<TMessage>
-    {
-        // Mark the message type as validatable so the dispatch fast-path knows to run validation.
-        _configuration.MarkAsValidatable(typeof(TMessage));
-        return Register(typeof(TMessage), typeof(THandler));
-    }
-
-    public IMediatorServiceBuilder RegisterValidationHandler(Type messageType, Type handlerType)
-    {
-        Guard.ThrowIfNull(messageType);
-        Guard.ThrowIfNull(handlerType);
-
-        // Mark the message type as validatable so the dispatch fast-path knows to run validation.
-        _configuration.MarkAsValidatable(messageType);
-        return Register(messageType, handlerType);
-    }
+        where THandler : class, IValidationHandler<TMessage> =>
+        Register(typeof(TMessage), typeof(THandler));
 
     public IMediatorServiceBuilder Register(Type messageType, Type handlerType)
     {
@@ -316,26 +258,21 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         var keyed = handlerType.GetKey();
 
         if (keyed is not null)
-            Services.TryAddKeyedSingleton(interfaceType, keyed, handlerType);
+            Services.TryAddKeyedScoped(interfaceType, keyed, handlerType);
         else
-            Services.TryAddSingleton(interfaceType, handlerType);
+            Services.TryAddScoped(interfaceType, handlerType);
     }
 
     private void MultiRegisterType(Type interfaceType, Type handlerType)
     {
         var keyed = handlerType.GetKey();
         if (keyed is not null)
-            Services.AddKeyedSingleton(interfaceType, keyed, handlerType);
+            Services.AddKeyedTransient(interfaceType, keyed, handlerType);
         else
-            Services.AddSingleton(interfaceType, handlerType);
+            Services.AddTransient(interfaceType, handlerType);
     }
 
     [ExcludeFromCodeCoverage]
-#if NET5_0_OR_GREATER
-    [System.Diagnostics.CodeAnalysis.RequiresUnreferencedCode(
-        "Scans assembly types using reflection. Not compatible with trimming or Native AOT."
-    )]
-#endif
     private static IEnumerable<(Type handlerType, Type[] interfaces)> ExtractTypes(
         Assembly[] assemblies
     ) =>

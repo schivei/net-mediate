@@ -16,8 +16,10 @@ public sealed class NotificationTests
             {
                 var mediator = sp.GetRequiredService<IMediator>();
                 await mediator.Notify(values, fixture.CancellationTokenSource.Token);
+                await Task.Delay(500);
             }
         );
+        // Act
         await fixture.WaitAsync();
 
         Assert.Null(fixture.RunError);
@@ -34,66 +36,27 @@ public sealed class NotificationTests
             {
                 var mediator = sp.GetRequiredService<IMediator>();
                 await mediator.Notify(values, fixture.CancellationTokenSource.Token);
+                await Task.Delay(500);
             }
         );
+        // Act
         await fixture.WaitAsync();
 
         Assert.Null(fixture.RunError);
     }
 
-    private static async Task NotificationHandle<T>(
-        T message,
-        bool expectedRun
-    )
-        where T : BaseMessage
-    {
-        using var fixture = new NetMediateFixture();
-        await fixture.RunAsync(
-            async (sp) =>
-            {
-                var mediator = sp.GetRequiredService<IMediator>();
-                try
-                {
-                    await mediator.Notify(message, fixture.CancellationTokenSource.Token);
-                }
-                catch (MessageValidationException)
-                {
-                    // With inline dispatch, validation failures propagate.
-                    // Swallow here; the expectedRun assertion below verifies correct behavior.
-                }
-            }
-        );
-        await fixture.WaitAsync();
-
-        Assert.Null(fixture.RunError);
-        Assert.Equal(expectedRun, message.Runned);
-    }
-
-    private static async Task NotificationsHandle<T>(
-        INotification<T> message,
-        bool expectedRun
-    )
+    private static async Task NotificationsHandle<T>(INotification<T> message, bool expected)
         where T : BaseMessage, INotification<T>
     {
-        using var fixture = new NetMediateFixture();
-        await fixture.RunAsync(
-            async (sp) =>
-            {
-                var mediator = sp.GetRequiredService<IMediator>();
-                try
-                {
-                    await mediator.Notify(message, fixture.CancellationTokenSource.Token);
-                }
-                catch (MessageValidationException)
-                {
-                    // With inline dispatch, validation failures propagate.
-                }
-            }
-        );
-        await fixture.WaitAsync();
+        await NotificationsHandle([message]);
+        Assert.Equal(expected, ((T)message).Runned);
+    }
 
-        Assert.Null(fixture.RunError);
-        Assert.Equal(expectedRun, ((T)message).Runned);
+    private static async Task NotificationHandle<T>(T message, bool expected)
+        where T : BaseMessage
+    {
+        await NotificationHandle([message]);
+        Assert.Equal(expected, message.Runned);
     }
 
     [Fact]

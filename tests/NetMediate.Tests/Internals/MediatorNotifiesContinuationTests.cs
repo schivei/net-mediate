@@ -26,17 +26,7 @@ public sealed class MediatorNotifiesContinuationTests
         _scopeFactory.Setup(f => f.CreateScope()).Returns(_scope.Object);
         _scope.Setup(s => s.ServiceProvider).Returns(_provider.Object);
 
-        _sut = new Mediator(
-            _logger.Object,
-            _cfg,
-            _provider.Object,
-            _scopeFactory.Object,
-            new BuiltInNotificationProvider(_provider.Object)
-        );
-
-        _provider
-            .Setup(p => p.GetService(typeof(INotificationDispatcher)))
-            .Returns(() => _sut);
+        _sut = new Mediator(_logger.Object, _cfg, _scopeFactory.Object);
     }
 
     public sealed class Msg { }
@@ -50,7 +40,7 @@ public sealed class MediatorNotifiesContinuationTests
     private sealed class FaultHandler : INotificationHandler<Msg>
     {
         public Task Handle(Msg notification, CancellationToken cancellationToken = default) =>
-            Task.FromException(new InvalidOperationException("handler error"));
+            Task.FromException(new InvalidOperationException("x"));
     }
 
     private sealed class PassThroughBehavior : INotificationBehavior<Msg>
@@ -63,38 +53,62 @@ public sealed class MediatorNotifiesContinuationTests
     }
 
     [Fact]
-    public async Task Notifies_HandlerSuccess_CompletesWithoutException()
+    public async Task Notifies_HandlerSuccess_DoesNotInvokeErrorCallback()
     {
         var message = new Msg();
         _provider
             .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
             .Returns(new[] { new OkHandler() });
 
+        var called = false;
+        Task onError(Type _, Msg __, Exception ___)
+        {
+            called = true;
+            return Task.CompletedTask;
+        }
+
         await _sut.Notifies(
-            new NotificationPacket<Msg>(message),
+            new NotificationPacket<Msg>(message, onError),
             TestContext.Current.CancellationToken
         );
+        // Give time for continuation (even though it won't run)
+        await Task.Delay(20, TestContext.Current.CancellationToken);
+
+        Assert.False(called);
     }
 
     [Fact]
-    public async Task Notifies_HandlerFaulted_ThrowsAggregateException()
+    public async Task Notifies_HandlerFaulted_InvokesErrorCallback_WithoutNotificationBehavior()
     {
         var message = new Msg();
         _provider
             .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
             .Returns(new[] { new FaultHandler() });
 
-        var ex = await Assert.ThrowsAsync<AggregateException>(() =>
-            _sut.Notifies(
-                new NotificationPacket<Msg>(message),
-                TestContext.Current.CancellationToken
-            )
+        var tcs = new TaskCompletionSource<bool>(
+            TaskCreationOptions.RunContinuationsAsynchronously
         );
-        Assert.Contains(ex.InnerExceptions, e => e is InvalidOperationException);
+        Task onError(Type _, Msg __, Exception ___)
+        {
+            tcs.TrySetResult(true);
+            return Task.CompletedTask;
+        }
+
+        await _sut.Notifies(
+            new NotificationPacket<Msg>(message, onError),
+            TestContext.Current.CancellationToken
+        );
+
+        var completed = await Task.WhenAny(
+            tcs.Task,
+            Task.Delay(500, TestContext.Current.CancellationToken)
+        );
+        Assert.Same(tcs.Task, completed);
+        Assert.True(await tcs.Task);
     }
 
     [Fact]
-    public async Task Notifies_HandlerFaulted_WithBehavior_ThrowsAggregateException()
+    public async Task Notifies_HandlerFaulted_WithNotificationBehavior_ThrowsAndInvokesErrorCallback()
     {
         var message = new Msg();
         _provider
@@ -104,12 +118,26 @@ public sealed class MediatorNotifiesContinuationTests
             .Setup(p => p.GetService(typeof(IEnumerable<INotificationBehavior<Msg>>)))
             .Returns(new[] { new PassThroughBehavior() });
 
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        Task onError(Type _, Msg __, Exception ___)
+        {
+            tcs.TrySetResult(true);
+            return Task.CompletedTask;
+        }
+
         var exception = await Assert.ThrowsAsync<AggregateException>(() =>
             _sut.Notifies(
-                new NotificationPacket<Msg>(message),
+                new NotificationPacket<Msg>(message, onError),
                 TestContext.Current.CancellationToken
             )
         );
         Assert.Contains(exception.InnerExceptions, e => e is InvalidOperationException);
+
+        var completed = await Task.WhenAny(
+            tcs.Task,
+            Task.Delay(500, TestContext.Current.CancellationToken)
+        );
+        Assert.Same(tcs.Task, completed);
+        Assert.True(await tcs.Task);
     }
 }

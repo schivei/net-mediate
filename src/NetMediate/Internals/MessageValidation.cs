@@ -7,10 +7,10 @@ internal static class MessageValidation
 {
     public static async Task ValidateMessageAsync<TMessage>(
         this Configuration configuration,
-        IServiceProvider serviceProvider,
+        IServiceScope scope,
         TMessage message,
         ILogger logger,
-        Func<IServiceProvider, object, bool, IValidationHandler<TMessage>[]> resolver,
+        Func<IServiceScope, object, bool, IEnumerable<IValidationHandler<TMessage>>> resolver,
         CancellationToken cancellationToken
     )
     {
@@ -22,7 +22,7 @@ internal static class MessageValidation
 
         await message.ValidatableValidationAsync();
 
-        var handlers = resolver(serviceProvider, message, true);
+        var handlers = resolver(scope, message, true);
 
         foreach (var handler in handlers)
             await handler.ValidateMessageAsync(message, cancellationToken);

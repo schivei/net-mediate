@@ -57,52 +57,77 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             var handlerName = handlerType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
             foreach (var @interface in handlerType.AllInterfaces)
-                TryAddRegistration(registrations, handlerName, @interface);
+            {
+                var definition = @interface.OriginalDefinition;
+                if (definition.ContainingNamespace.ToDisplayString() != "NetMediate")
+                    continue;
+
+                var definitionName = definition.Name;
+                var definitionArity = definition.Arity;
+                var args = @interface.TypeArguments;
+
+                if (definitionName == "ICommandHandler" && definitionArity == 1 && args.Length == 1)
+                {
+                    if (!IsAccessible(args[0]))
+                        continue;
+
+                    registrations.Add(
+                        $"builder.RegisterCommandHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
+                    );
+                    continue;
+                }
+
+                if (
+                    definitionName == "INotificationHandler"
+                    && definitionArity == 1
+                    && args.Length == 1
+                )
+                {
+                    if (!IsAccessible(args[0]))
+                        continue;
+
+                    registrations.Add(
+                        $"builder.RegisterNotificationHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
+                    );
+                    continue;
+                }
+
+                if (definitionName == "IRequestHandler" && definitionArity == 2 && args.Length == 2)
+                {
+                    if (!IsAccessible(args[0]) || !IsAccessible(args[1]))
+                        continue;
+
+                    registrations.Add(
+                        $"builder.RegisterRequestHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
+                    );
+                    continue;
+                }
+
+                if (definitionName == "IStreamHandler" && definitionArity == 2 && args.Length == 2)
+                {
+                    if (!IsAccessible(args[0]) || !IsAccessible(args[1]))
+                        continue;
+
+                    registrations.Add(
+                        $"builder.RegisterStreamHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
+                    );
+                    continue;
+                }
+
+                if (definitionName == "IValidationHandler" && definitionArity == 1 && args.Length == 1)
+                {
+                    if (!IsAccessible(args[0]))
+                        continue;
+
+                    registrations.Add(
+                        $"builder.RegisterValidationHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
+                    );
+                }
+            }
         }
 
         return [.. registrations.OrderBy(r => r, StringComparer.Ordinal)];
     }
-
-    private static void TryAddRegistration(
-        HashSet<string> registrations,
-        string handlerName,
-        INamedTypeSymbol @interface
-    )
-    {
-        var definition = @interface.OriginalDefinition;
-        if (definition.ContainingNamespace.ToDisplayString() != "NetMediate")
-            return;
-
-        var definitionName = definition.Name;
-        var definitionArity = definition.Arity;
-        var args = @interface.TypeArguments;
-
-        switch (definitionName)
-        {
-            case "ICommandHandler" when definitionArity == 1 && args.Length == 1 && IsAccessible(args[0]):
-                registrations.Add($"builder.RegisterCommandHandler<{Qualify(args[0])}, {handlerName}>();");
-                break;
-
-            case "INotificationHandler" when definitionArity == 1 && args.Length == 1 && IsAccessible(args[0]):
-                registrations.Add($"builder.RegisterNotificationHandler<{Qualify(args[0])}, {handlerName}>();");
-                break;
-
-            case "IRequestHandler" when definitionArity == 2 && args.Length == 2 && IsAccessible(args[0]) && IsAccessible(args[1]):
-                registrations.Add($"builder.RegisterRequestHandler<{Qualify(args[0])}, {Qualify(args[1])}, {handlerName}>();");
-                break;
-
-            case "IStreamHandler" when definitionArity == 2 && args.Length == 2 && IsAccessible(args[0]) && IsAccessible(args[1]):
-                registrations.Add($"builder.RegisterStreamHandler<{Qualify(args[0])}, {Qualify(args[1])}, {handlerName}>();");
-                break;
-
-            case "IValidationHandler" when definitionArity == 1 && args.Length == 1 && IsAccessible(args[0]):
-                registrations.Add($"builder.RegisterValidationHandler<{Qualify(args[0])}, {handlerName}>();");
-                break;
-        }
-    }
-
-    private static string Qualify(ITypeSymbol typeSymbol) =>
-        typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
     private static string BuildSource(string[] registrations)
     {

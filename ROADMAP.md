@@ -18,7 +18,7 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 
 ## Long term
 
-- [x] Create an integration package for popular validators (for example, FluentValidation) without mandatory coupling. Delivered as `src/NetMediate.FluentValidation` (`IValidator<T>` bridge, `AddFluentValidation<TMessage,TValidator>` extension). Requires net8+.
-- [x] Publish a benchmark suite comparing NetMediate, MediatR, and high-throughput scenarios. Delivered in `tests/NetMediate.Benchmarks` with `LibraryBenchmarkTests`; results auto-written to `docs/BENCHMARK_COMPARISON.md` and the README `Performance` section when run with `NETMEDIATE_RUN_PERFORMANCE_TESTS=true`.
-- [x] Explore an AOT-friendly mode with trimming and NativeAOT optimizations. Assembly-scan overloads are annotated with `[RequiresUnreferencedCode]` on .NET 5+; the source-generation path (`NetMediate.SourceGeneration`) is the zero-reflection, fully AOT-safe registration path. Runtime notification dispatch no longer uses `MethodInfo.MakeGenericMethod` (eliminated via `INotificationPacket.DispatchAsync`); `KeyedMessageAttribute` lookups are cached per-type.
-- [x] Define an official ecosystem extension track (testing, diagnostics, resilience, and adapters). Documented in `docs/LIBRARY_COMPARISON.md` with a full feature matrix, API comparison, migration guidance, and "when to choose which library" section.
+- [ ] Create an integration package for popular validators (for example, FluentValidation) without mandatory coupling.
+- [ ] Publish a benchmark suite comparing NetMediate, MediatR, and high-throughput scenarios.
+- [ ] Explore an AOT-friendly mode with trimming and NativeAOT optimizations.
+- [ ] Define an official ecosystem extension track (testing, diagnostics, resilience, and adapters).

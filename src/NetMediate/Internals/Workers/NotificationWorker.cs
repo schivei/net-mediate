@@ -30,17 +30,16 @@ internal sealed class NotificationWorker(
                 {
                     await ConsumeAsync(stoppingToken);
                 }
-                catch (ChannelClosedException)
+                catch (ChannelClosedException closedEx)
                 {
-                    logger.LogDebug("Channel was closed, stopping notification worker.");
-                    await configuration.DisposeAsync();
+                    logger.LogDebug(closedEx, "Channel was closed, stopping notification worker.");
                     break;
                 }
             }
         }
         catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)
         {
-            logger.LogDebug("System operation was canceled, stopping notification worker.");
+            logger.LogDebug(ex, "System operation was canceled, stopping notification worker.");
         }
 
         await configuration.DisposeAsync();

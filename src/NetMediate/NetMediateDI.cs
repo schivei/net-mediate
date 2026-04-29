@@ -32,15 +32,14 @@ public static class NetMediateDI
         "handler registrations or the NetMediate.SourceGeneration source generator instead."
     )]
 #endif
-    public static IMediatorServiceBuilder AddNetMediate(this IServiceCollection services) =>
-        AddNetMediate(
-            services,
-            [
-                .. AppDomain
-                    .CurrentDomain.GetAssemblies()
-                    .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location)),
-            ]
-        );
+    public static IMediatorServiceBuilder AddNetMediate(this IServiceCollection services)
+    {
+        var assemblies = AppDomain
+            .CurrentDomain.GetAssemblies()
+            .Where(static a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
+            .ToArray();
+        return AddNetMediate(services, assemblies);
+    }
 
     /// <summary>
     /// Adds NetMediate services to the specified <see cref="IServiceCollection"/> and returns a <see cref="IMediatorServiceBuilder"/>
@@ -80,7 +79,7 @@ public static class NetMediateDI
     {
         Guard.ThrowIfNull(configure);
 
-        var builder = AddNetMediate(services, []);
+        var builder = AddNetMediate(services, Array.Empty<Assembly>());
         configure(builder);
         return builder;
     }

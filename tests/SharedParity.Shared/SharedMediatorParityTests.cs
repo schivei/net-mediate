@@ -106,6 +106,7 @@ public class SharedMediatorParityTests
     public sealed class PingRequestHandler : IRequestHandler<PingRequest, PingResponse>
 #endif
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Minor Code Smell", "S2325:Methods and properties that don't access instance data should be static", Justification = "Interface implementation cannot be static.")]
         public Task<PingResponse> Handle(PingRequest request, CancellationToken cancellationToken = default)
             => Task.FromResult(new PingResponse($"{request.Value}:pong"));
     }
@@ -153,6 +154,7 @@ public class SharedMediatorParityTests
     public sealed class CounterStreamHandler : IStreamHandler<CounterStream, int>
 #endif
     {
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Minor Code Smell", "S2325:Methods and properties that don't access instance data should be static", Justification = "Interface implementation cannot be static.")]
         public async IAsyncEnumerable<int> Handle(
             CounterStream request,
             [System.Runtime.CompilerServices.EnumeratorCancellation]

@@ -234,7 +234,7 @@ internal class Mediator(
             ? NetMediateDiagnostics.StartActivity<TMessage>("RequestStream")
             : null;
 
-        IAsyncEnumerable<TResponse> stream = EmptyAsyncEnumerable<TResponse>();
+        IAsyncEnumerable<TResponse>? stream = null;
         // Scope is only created when behaviors are registered; kept alive for entire enumeration.
         IServiceScope? behaviorScope = null;
 
@@ -281,7 +281,7 @@ internal class Mediator(
                 throw;
             }
 
-            await using var enumerator = stream.GetAsyncEnumerator(cancellationToken);
+            await using var enumerator = stream!.GetAsyncEnumerator(cancellationToken);
 
             while (true)
             {

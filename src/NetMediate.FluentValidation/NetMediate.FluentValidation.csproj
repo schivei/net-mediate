@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\pack.props" />
+  <PropertyGroup>
+    <!-- FluentValidation 12.x requires net8.0+; override the shared TFM list for this package -->
+    <TargetFrameworks>net10.0;net8.0</TargetFrameworks>
+    <AssemblyName>NetMediate.FluentValidation</AssemblyName>
+    <Title>NetMediate.FluentValidation</Title>
+    <Description>Optional FluentValidation integration for NetMediate. Bridges FluentValidation IValidator&lt;T&gt; into the NetMediate validation pipeline without mandatory coupling.</Description>
+    <PackageTags>Mediator;FluentValidation;Validation</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <WarningsNotAsErrors>CS1591</WarningsNotAsErrors>
+    <GenerateDocumentationFileInReleaseBuild>true</GenerateDocumentationFileInReleaseBuild>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <WarningsNotAsErrors />
+    <WarningsAsErrors>CS1591</WarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
+    <PackageReference Include="FluentValidation" Version="12.*" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
+  </ItemGroup>
+</Project>

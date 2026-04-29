@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../../pack.props" />
+  <PropertyGroup>
+    <AssemblyName>NetMediate.InternalNotifier.Test</AssemblyName>
+    <Title>NetMediate.InternalNotifier.Test</Title>
+    <Description>Synchronous inline notification provider for NetMediate. Dispatches notification handlers directly on the calling thread — no background worker or Task.Delay needed in tests.</Description>
+    <PackageTags>Mediator;NetMediate;Notifications;Testing</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
+  </ItemGroup>
+</Project>

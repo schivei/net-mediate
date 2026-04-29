@@ -157,10 +157,10 @@ public class MediatorServiceBuilderTests
     {
         var services = new ServiceCollection();
         var builder = new MediatorServiceBuilder(services);
-        builder.InstantiateHandlerByMessageFilter<DummyNotification>(msg =>
+        var result = builder.InstantiateHandlerByMessageFilter<DummyNotification>(msg =>
             typeof(DummyNotificationHandler)
         );
-        // No assertion, just ensure no exception
+        Assert.Same(builder, result);
     }
 
     [Fact]

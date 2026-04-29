@@ -10,7 +10,7 @@ internal static class Extensions
         channel.Writer.TryComplete();
 
         await foreach (var _ in channel.Reader.ReadAllAsync().ConfigureAwait(false))
-            /* ignore */;
+        { }
     }
 
     public static string? GetKey(this Type type) =>

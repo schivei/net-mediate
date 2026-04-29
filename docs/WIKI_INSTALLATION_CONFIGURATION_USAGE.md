@@ -15,15 +15,31 @@ dotnet add package NetMediate
 ```csharp
 using NetMediate;
 
+// Scan all loaded assemblies
+builder.Services.AddNetMediate();
+
+// Scan specific assemblies
 builder.Services.AddNetMediate(typeof(MyHandler).Assembly);
+
+// Scan via containing type
+builder.Services.AddNetMediate<MyHandler>();
 ```
 
 ### Usage
 
 ```csharp
+// Command (fire-and-forget)
 await mediator.Send(new CreateUserCommand("user-1"), cancellationToken);
-var dto = await mediator.Request(new GetUserRequest("user-1"), cancellationToken);
+
+// Request (query/response)
+var dto = await mediator.Request<GetUserRequest, UserDto>(new GetUserRequest("user-1"), cancellationToken);
+
+// Notification (fan-out)
 await mediator.Notify(new UserCreatedNotification("user-1"), cancellationToken);
+
+// Streaming
+await foreach (var item in mediator.RequestStream<GetUserActivityQuery, ActivityDto>(query, cancellationToken))
+    Console.WriteLine(item.Action);
 ```
 
 ## 2) Pipeline behaviors
@@ -71,8 +87,9 @@ Resilience behavior is applied transparently through mediator pipeline execution
 
 ### Installation
 
-```bash
-dotnet add package NetMediate.SourceGeneration
+```xml
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x"
+                  OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 ```
 
 ### Configuration
@@ -83,9 +100,81 @@ builder.Services.AddNetMediateGenerated();
 
 ### Usage
 
-Generated registration removes reflection scanning cost at startup for discovered handlers.
+Generated registration replaces reflection scanning at startup — zero startup reflection,
+AOT-safe.  See [SOURCE_GENERATION.md](SOURCE_GENERATION.md) for full details.
 
-## 5) DataDog integration packages
+## 5) Channel-based background notifications (`NetMediate.InternalNotifier`)
+
+### Installation
+
+```bash
+dotnet add package NetMediate.InternalNotifier
+```
+
+### Configuration
+
+```csharp
+using NetMediate.InternalNotifier;
+
+builder.Services.AddNetMediate().AddNetMediateInternalNotifier();
+```
+
+### Usage
+
+Notifications are written to an unbounded `Channel<T>` and consumed by a `BackgroundService`
+worker.  The `mediator.Notify(...)` call returns **immediately** without waiting for handlers.
+
+## 6) Inline test notification provider (`NetMediate.InternalNotifier.Test`)
+
+### Installation
+
+```bash
+dotnet add package NetMediate.InternalNotifier.Test
+```
+
+### Configuration
+
+```csharp
+using NetMediate.InternalNotifier.Test;
+
+services.AddNetMediate().AddNetMediateTestNotifier();
+```
+
+### Usage
+
+Dispatches notifications **inline and synchronously** — no `Task.Delay` needed in tests to wait
+for handler completion.
+
+## 7) Custom notification provider base (`NetMediate.Notifications`)
+
+### Installation
+
+```bash
+dotnet add package NetMediate.Notifications
+```
+
+### Usage
+
+```csharp
+using NetMediate.Notifications;
+
+public class MyBusNotificationProvider : NotificationProviderBase
+{
+    public override ValueTask EnqueueAsync<TMessage>(
+        TMessage message,
+        CancellationToken ct)
+    {
+        // publish to your own bus, outbox, etc.
+        // inject INotificationDispatcher to dispatch to handlers when the message is consumed
+        return ValueTask.CompletedTask;
+    }
+}
+
+// Registration
+builder.Services.AddNetMediate().UseCustomNotificationProvider<MyBusNotificationProvider>();
+```
+
+## 8) DataDog integration packages
 
 ### Installation
 
@@ -99,7 +188,7 @@ dotnet add package NetMediate.DataDog.ILogger
 
 See complete guide in [DATADOG.md](DATADOG.md).
 
-## 6) Compatibility package (`NetMediate.Compat`)
+## 9) Compatibility package (`NetMediate.Compat`)
 
 ### Installation
 
@@ -109,9 +198,11 @@ dotnet add package NetMediate.Compat
 
 ### Usage
 
-Use MediatR-compatible contracts while delegating runtime execution to NetMediate.
+Use MediatR-compatible contracts (`MediatR.IMediator`, `IRequest`, `INotification`, handler
+interfaces, `AddMediatR`) while delegating runtime execution to NetMediate.
+See [MEDIATR_MIGRATION_GUIDE.md](MEDIATR_MIGRATION_GUIDE.md) for step-by-step instructions.
 
-## 7) Moq helpers package (`NetMediate.Moq`)
+## 10) Moq helpers package (`NetMediate.Moq`)
 
 ### Installation
 

@@ -1,10 +1,5 @@
 name: CI/CD Pipeline
 
-permissions:
-  contents: read
-  pull-requests: write
-  packages: write
-
 on:
   push:
     branches: [ main, develop, 'feature/*', 'hotfix/*', 'release/*' ]
@@ -22,6 +17,8 @@ jobs:
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
     - name: Checkout code
@@ -68,6 +65,18 @@ jobs:
 
     - name: Build NetMediate.DataDog.ILogger
       run: dotnet build src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --configuration Release
+
+    - name: Build NetMediate.FluentValidation
+      run: dotnet build src/NetMediate.FluentValidation/NetMediate.FluentValidation.csproj --no-restore --configuration Release
+
+    - name: Build NetMediate.InternalNotifier
+      run: dotnet build src/NetMediate.InternalNotifier/NetMediate.InternalNotifier.csproj --no-restore --configuration Release
+
+    - name: Build NetMediate.InternalNotifier.Test
+      run: dotnet build src/NetMediate.InternalNotifier.Test/NetMediate.InternalNotifier.Test.csproj --no-restore --configuration Release
+
+    - name: Build NetMediate.Notifications
+      run: dotnet build src/NetMediate.Notifications/NetMediate.Notifications.csproj --no-restore --configuration Release
       
     - name: Test
       run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
@@ -77,6 +86,9 @@ jobs:
 
     - name: Test Shared Parity (MediatR Compat)
       run: dotnet test tests/SharedParity.MediatRCompat.Tests/SharedParity.MediatRCompat.Tests.csproj --configuration Release --verbosity normal
+
+    - name: Build Benchmarks
+      run: dotnet build tests/NetMediate.Benchmarks/NetMediate.Benchmarks.csproj --no-restore --configuration Release
       
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v6
@@ -90,6 +102,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-and-test]
     if: (github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      packages: write
+      pull-requests: write
     
     steps:
     - name: Checkout code
@@ -140,6 +156,18 @@ jobs:
 
     - name: Pack NetMediate.DataDog.ILogger package
       run: dotnet pack src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --no-build --no-restore --configuration Release --output ./packages
+
+    - name: Pack NetMediate.FluentValidation package
+      run: dotnet pack src/NetMediate.FluentValidation/NetMediate.FluentValidation.csproj --no-build --no-restore --configuration Release --output ./packages
+
+    - name: Pack NetMediate.InternalNotifier package
+      run: dotnet pack src/NetMediate.InternalNotifier/NetMediate.InternalNotifier.csproj --no-build --no-restore --configuration Release --output ./packages
+
+    - name: Pack NetMediate.InternalNotifier.Test package
+      run: dotnet pack src/NetMediate.InternalNotifier.Test/NetMediate.InternalNotifier.Test.csproj --no-build --no-restore --configuration Release --output ./packages
+
+    - name: Pack NetMediate.Notifications package
+      run: dotnet pack src/NetMediate.Notifications/NetMediate.Notifications.csproj --no-build --no-restore --configuration Release --output ./packages
       
     - name: List package contents
       run: ls -la ./packages/

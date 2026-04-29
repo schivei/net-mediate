@@ -14,6 +14,7 @@ public interface IRequest : IRequest<Unit>;
 /// Marker contract for request messages with a response.
 /// </summary>
 /// <typeparam name="TResponse">Response type expected by the request.</typeparam>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S2326:Unused type parameters should be removed", Justification = "Marker interface for MediatR API compatibility; TResponse is used at the caller site.")]
 public interface IRequest<out TResponse> : IBaseRequest;
 
 /// <summary>
@@ -25,6 +26,7 @@ public interface INotification;
 /// Marker contract for stream request messages.
 /// </summary>
 /// <typeparam name="TResponse">Response item type in the stream.</typeparam>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S2326:Unused type parameters should be removed", Justification = "Marker interface for MediatR API compatibility; TResponse is used at the caller site.")]
 public interface IStreamRequest<out TResponse> : IBaseRequest;
 
 /// <summary>

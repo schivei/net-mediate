@@ -6,15 +6,19 @@ namespace MediatR;
 
 internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
 {
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S3011:Reflection should not be used to increase accessibility of classes, methods, or fields", Justification = "Accessing own private static methods by design for generic method dispatch.")]
     private static readonly MethodInfo s_sendWithResponseMethod = typeof(MediatorAdapter)
         .GetMethod(nameof(SendWithResponseCore), BindingFlags.NonPublic | BindingFlags.Static)!;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S3011:Reflection should not be used to increase accessibility of classes, methods, or fields", Justification = "Accessing own private static methods by design for generic method dispatch.")]
     private static readonly MethodInfo s_sendWithoutResponseMethod = typeof(MediatorAdapter)
         .GetMethod(nameof(SendWithoutResponseCore), BindingFlags.NonPublic | BindingFlags.Static)!;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S3011:Reflection should not be used to increase accessibility of classes, methods, or fields", Justification = "Accessing own private static methods by design for generic method dispatch.")]
     private static readonly MethodInfo s_publishMethod = typeof(MediatorAdapter)
         .GetMethod(nameof(PublishCore), BindingFlags.NonPublic | BindingFlags.Static)!;
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S3011:Reflection should not be used to increase accessibility of classes, methods, or fields", Justification = "Accessing own private static methods by design for generic method dispatch.")]
     private static readonly MethodInfo s_streamMethod = typeof(MediatorAdapter)
         .GetMethod(nameof(CreateStreamInvokerCore), BindingFlags.NonPublic | BindingFlags.Static)!;
 
@@ -158,9 +162,9 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
     ) =>
         s_sendWithResponseInvokers.GetOrAdd(
             requestType,
-            _ =>
+            reqType =>
             {
-                var method = s_sendWithResponseMethod.MakeGenericMethod(requestType, responseType);
+                var method = s_sendWithResponseMethod.MakeGenericMethod(reqType, responseType);
                 return (innerMediator, message, token) =>
                     (Task<object?>)method.Invoke(null, [innerMediator, message, token])!;
             }
@@ -213,9 +217,9 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
     ) =>
         s_streamInvokers.GetOrAdd(
             requestType,
-            _ =>
+            reqType =>
             {
-                var method = s_streamMethod.MakeGenericMethod(requestType, responseType);
+                var method = s_streamMethod.MakeGenericMethod(reqType, responseType);
                 return (innerMediator, message, token) =>
                     (IAsyncEnumerable<object?>)method.Invoke(null, [innerMediator, message, token])!;
             }

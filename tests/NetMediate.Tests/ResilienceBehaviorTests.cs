@@ -68,15 +68,9 @@ public sealed class ResilienceBehaviorTests
         );
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        var onErrorCalls = 0;
 
         await mediator.Notify(
             new RetryNotificationViaMediatorMessage("ok"),
-            (_, _, _) =>
-            {
-                Interlocked.Increment(ref onErrorCalls);
-                return Task.CompletedTask;
-            },
             TestContext.Current.CancellationToken
         );
 
@@ -86,7 +80,6 @@ public sealed class ResilienceBehaviorTests
         );
 
         Assert.Equal(3, RetryNotificationViaMediatorHandler.Attempts);
-        Assert.Equal(2, Volatile.Read(ref onErrorCalls));
     }
 
     [Fact]

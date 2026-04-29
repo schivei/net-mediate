@@ -18,7 +18,7 @@ public sealed class RetryRequestBehavior<TMessage, TResponse>(RetryBehaviorOptio
         var maxRetryCount = Math.Max(0, options.MaxRetryCount);
         var delay = options.Delay < TimeSpan.Zero ? TimeSpan.Zero : options.Delay;
 
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = 0; attempt < maxRetryCount; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -28,18 +28,19 @@ public sealed class RetryRequestBehavior<TMessage, TResponse>(RetryBehaviorOptio
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                if (attempt >= maxRetryCount)
-                    throw;
-
                 if (delay > TimeSpan.Zero)
                     await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception) when (attempt < maxRetryCount)
+            catch (Exception)
             {
                 if (delay > TimeSpan.Zero)
                     await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
         }
+
+        // Final attempt — exceptions propagate naturally to the caller.
+        cancellationToken.ThrowIfCancellationRequested();
+        return await next(cancellationToken).ConfigureAwait(false);
     }
 }
 
@@ -60,7 +61,7 @@ public sealed class RetryNotificationBehavior<TMessage>(RetryBehaviorOptions opt
         var maxRetryCount = Math.Max(0, options.MaxRetryCount);
         var delay = options.Delay < TimeSpan.Zero ? TimeSpan.Zero : options.Delay;
 
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = 0; attempt < maxRetryCount; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -71,17 +72,18 @@ public sealed class RetryNotificationBehavior<TMessage>(RetryBehaviorOptions opt
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
-                if (attempt >= maxRetryCount)
-                    throw;
-
                 if (delay > TimeSpan.Zero)
                     await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception) when (attempt < maxRetryCount)
+            catch (Exception)
             {
                 if (delay > TimeSpan.Zero)
                     await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
             }
         }
+
+        // Final attempt — exceptions propagate naturally to the caller.
+        cancellationToken.ThrowIfCancellationRequested();
+        await next(cancellationToken).ConfigureAwait(false);
     }
 }

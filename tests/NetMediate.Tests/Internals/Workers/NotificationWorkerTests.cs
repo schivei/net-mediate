@@ -241,6 +241,25 @@ public class NotificationWorkerTests
             await Handle(packet, cancellationToken);
         }
 
+        Task IMediator.Notify<TMessage>(INotification<TMessage> notification, CancellationToken cancellationToken) =>
+            Notify((TMessage)notification, cancellationToken);
+
+        Task IMediator.Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken)
+        {
+            if (messages is null) return Task.CompletedTask;
+            var arr = messages as TMessage[] ?? messages.ToArray();
+            if (arr.Length == 0) return Task.CompletedTask;
+            return Task.WhenAll(arr.Select(m => Notify(m, cancellationToken)));
+        }
+
+        Task IMediator.Notify<TMessage>(IEnumerable<INotification<TMessage>> notifications, CancellationToken cancellationToken)
+        {
+            if (notifications is null) return Task.CompletedTask;
+            var arr = notifications as INotification<TMessage>[] ?? notifications.ToArray();
+            if (arr.Length == 0) return Task.CompletedTask;
+            return Task.WhenAll(arr.Select(n => Notify((TMessage)n, cancellationToken)));
+        }
+
         Task IMediator.Send<TMessage>(ICommand<TMessage> command, CancellationToken cancellationToken) =>
             Send((TMessage)command, cancellationToken);
 

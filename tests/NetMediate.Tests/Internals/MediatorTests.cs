@@ -41,63 +41,78 @@ public class MediatorTests
             _configuration,
             _serviceProviderMock.Object,
             _serviceScopeFactoryMock.Object,
-            new BuiltInNotificationProvider(_configuration)
+            new BuiltInNotificationProvider(_serviceProviderMock.Object)
         );
+
+        _serviceProviderMock
+            .Setup(p => p.GetService(typeof(INotificationDispatcher)))
+            .Returns(() => _mediator);
     }
 
     #region Notify Tests
 
     [Fact]
-    public async Task Notify_WithValidMessage_ShouldWriteToChannel()
+    public async Task Notify_WithValidMessage_ShouldDispatchInline()
     {
         // Arrange
         var message = new TestMessage { Content = "Test" };
+        var handlerMock = new Mock<INotificationHandler<TestMessage>>();
+        handlerMock
+            .Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _serviceProviderMock
+            .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<TestMessage>>)))
+            .Returns(new[] { handlerMock.Object });
 
         // Act
-        await _mediator.Notify(
-            message,
-            TestContext.Current.CancellationToken
-        );
+        await _mediator.Notify(message, TestContext.Current.CancellationToken);
 
         // Assert
-        Assert.True(_channel.Reader.TryRead(out var receivedMessage));
-        Assert.Same(message, receivedMessage.Message);
+        handlerMock.Verify(h => h.Handle(message, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Notify_Enumerable_SinglePassEnumerable_ShouldWriteAllToChannel()
+    public async Task Notify_Enumerable_SinglePassEnumerable_ShouldDispatchAllInline()
     {
-        var messages = new SinglePassEnumerable<TestMessage>(
-            [new TestMessage { Content = "1" }, new TestMessage { Content = "2" }]
-        );
+        var msg1 = new TestMessage { Content = "1" };
+        var msg2 = new TestMessage { Content = "2" };
+        var messages = new SinglePassEnumerable<TestMessage>([msg1, msg2]);
+        var handlerMock = new Mock<INotificationHandler<TestMessage>>();
+        handlerMock.Setup(h => h.Handle(It.IsAny<TestMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _serviceProviderMock
+            .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<TestMessage>>)))
+            .Returns(new[] { handlerMock.Object });
 
         await ((IMediator)_mediator).Notify(
             messages: messages,
             cancellationToken: TestContext.Current.CancellationToken
         );
 
-        Assert.True(_channel.Reader.TryRead(out var packet1));
-        Assert.True(_channel.Reader.TryRead(out var packet2));
-        Assert.Equal("1", ((TestMessage)packet1.Message).Content);
-        Assert.Equal("2", ((TestMessage)packet2.Message).Content);
+        handlerMock.Verify(h => h.Handle(msg1, It.IsAny<CancellationToken>()), Times.Once);
+        handlerMock.Verify(h => h.Handle(msg2, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Notify_NotificationEnumerable_WithoutOnError_SinglePassEnumerable_ShouldWriteAllToChannel()
+    public async Task Notify_NotificationEnumerable_ShouldDispatchAllInline()
     {
-        var notifications = new SinglePassEnumerable<INotification<NotificationTestMessage>>(
-            [new NotificationTestMessage { Id = 10 }, new NotificationTestMessage { Id = 20 }]
-        );
+        var n1 = new NotificationTestMessage { Id = 10 };
+        var n2 = new NotificationTestMessage { Id = 20 };
+        var notifications = new SinglePassEnumerable<INotification<NotificationTestMessage>>([n1, n2]);
+        var handlerMock = new Mock<INotificationHandler<NotificationTestMessage>>();
+        handlerMock.Setup(h => h.Handle(It.IsAny<NotificationTestMessage>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _serviceProviderMock
+            .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<NotificationTestMessage>>)))
+            .Returns(new[] { handlerMock.Object });
 
         await ((IMediator)_mediator).Notify(
             notifications: notifications,
             cancellationToken: TestContext.Current.CancellationToken
         );
 
-        Assert.True(_channel.Reader.TryRead(out var packet1));
-        Assert.True(_channel.Reader.TryRead(out var packet2));
-        Assert.Equal(10, ((NotificationTestMessage)packet1.Message).Id);
-        Assert.Equal(20, ((NotificationTestMessage)packet2.Message).Id);
+        handlerMock.Verify(h => h.Handle(n1, It.IsAny<CancellationToken>()), Times.Once);
+        handlerMock.Verify(h => h.Handle(n2, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     #endregion

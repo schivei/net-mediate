@@ -1,22 +1,33 @@
 using System.Runtime.CompilerServices;
-using System.Threading.Channels;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
 
 /// <summary>
-/// Default <see cref="INotificationProvider"/> implementation used when no custom provider is
-/// registered.  Writes every notification packet to the in-process
-/// <see cref="System.Threading.Channels.Channel{T}"/> that is drained by
-/// <see cref="Workers.NotificationWorker"/>.
+/// Default <see cref="INotificationProvider"/> registered when no custom provider is added.
+/// Dispatches notification handlers directly on the calling thread without any
+/// background queue or worker.
 /// </summary>
-internal sealed class BuiltInNotificationProvider(Configuration configuration) : INotificationProvider
+/// <remarks>
+/// <para>
+/// The dependency on <see cref="INotificationDispatcher"/> is resolved lazily via
+/// <see cref="IServiceProvider"/> to break the circular dependency chain at DI
+/// construction time.
+/// </para>
+/// <para>
+/// For true fire-and-forget delivery via a background worker, add the
+/// <c>NetMediate.InternalNotifier</c> package and call
+/// <c>AddNetMediateInternalNotifier()</c> on the builder.
+/// </para>
+/// </remarks>
+internal sealed class BuiltInNotificationProvider(IServiceProvider serviceProvider) : INotificationProvider
 {
     /// <inheritdoc/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ValueTask EnqueueAsync<TMessage>(
         TMessage message,
         CancellationToken cancellationToken) =>
-        configuration.ChannelWriter.WriteAsync(
-            new NotificationPacket<TMessage>(message),
-            cancellationToken);
+        new(serviceProvider
+            .GetRequiredService<INotificationDispatcher>()
+            .DispatchAsync(message, cancellationToken));
 }

@@ -15,8 +15,11 @@
     <Project Path="src/NetMediate.DataDog.Serilog/NetMediate.DataDog.Serilog.csproj" Id="141fb2d3-cd7b-4184-9b6a-a1f7d18db143" />
     <Project Path="src/NetMediate.Compat/NetMediate.Compat.csproj" Id="f4cd068c-c0f2-4a74-920b-b9b4ba89de54" />
     <Project Path="src/NetMediate.FluentValidation/NetMediate.FluentValidation.csproj" Id="b3e7a1d5-2f4c-4b8a-9e1f-6c8d0a2e3f7b" />
+    <Project Path="src/NetMediate.InternalNotifier/NetMediate.InternalNotifier.csproj" Id="a1b2c3d4-e5f6-7890-abcd-ef1234567890" />
+    <Project Path="src/NetMediate.InternalNotifier.Test/NetMediate.InternalNotifier.Test.csproj" Id="b2c3d4e5-f6a7-8901-bcde-f01234567891" />
     <Project Path="src/NetMediate.Moq/NetMediate.Moq.csproj" Id="9d54e570-e883-4296-b281-c8d40ed4e8af" />
     <Project Path="src/NetMediate.Resilience/NetMediate.Resilience.csproj" Id="a88213d8-a9ce-4d78-90cc-34a03cd7187a" />
+    <Project Path="src/NetMediate.Notifications/NetMediate.Notifications.csproj" Id="c3d4e5f6-a7b8-9012-cdef-012345678902" />
     <Project Path="src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj" Id="40a8f7d3-d0c1-48d3-b96d-51bc74cbf218" />
     <Project Path="src/NetMediate/NetMediate.csproj" Id="232b3170-ace0-4adb-a81d-541c5b872bac" />
   </Folder>

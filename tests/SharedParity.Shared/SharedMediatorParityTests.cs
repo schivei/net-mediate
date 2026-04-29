@@ -51,7 +51,6 @@ public class SharedMediatorParityTests
 
         await mediator.Notify(
             new PingNotification("notify"),
-            (_, _, _) => Task.CompletedTask,
             TestContext.Current.CancellationToken
         );
 

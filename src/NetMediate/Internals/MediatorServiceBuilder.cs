@@ -4,7 +4,6 @@ using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using NetMediate.Internals.Workers;
 
 namespace NetMediate.Internals;
 
@@ -25,12 +24,6 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         Services.TryAddSingleton<INotificationProvider, BuiltInNotificationProvider>();
         Services.TryAddSingleton<INotificationDispatcher>(sp =>
             (INotificationDispatcher)sp.GetRequiredService<IMediator>());
-
-        if (!Services.Any(s => s.ServiceType == typeof(NotificationWorker)))
-        {
-            Services.TryAddSingleton<NotificationWorker>();
-            Services.AddHostedService(sp => sp.GetRequiredService<NotificationWorker>());
-        }
     }
 
     public IServiceCollection Services { get; }
@@ -93,7 +86,6 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
     public IMediatorServiceBuilder UseNotificationProvider<TProvider>()
         where TProvider : class, INotificationProvider
     {
-        _configuration.EnableBuiltInWorker = false;
         Services.Replace(ServiceDescriptor.Singleton<INotificationProvider, TProvider>());
         return this;
     }

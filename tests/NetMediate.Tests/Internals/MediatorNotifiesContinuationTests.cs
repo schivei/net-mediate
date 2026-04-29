@@ -31,8 +31,12 @@ public sealed class MediatorNotifiesContinuationTests
             _cfg,
             _provider.Object,
             _scopeFactory.Object,
-            new BuiltInNotificationProvider(_cfg)
+            new BuiltInNotificationProvider(_provider.Object)
         );
+
+        _provider
+            .Setup(p => p.GetService(typeof(INotificationDispatcher)))
+            .Returns(() => _sut);
     }
 
     public sealed class Msg { }

@@ -8,6 +8,27 @@
 
 > TurboMediator benchmarked on **.NETCoreApp,Version=v8.0** at 2026-04-29 00:05 UTC.
 
+## Context and Interpretation
+
+These benchmarks measure only features that are common across all included libraries
+(command dispatch and request/response).  They are designed to be fair — not to make any
+library look bad.
+
+**Important caveats:**
+
+- **NetMediate** runs with a dedicated DI scope per dispatch (isolation guarantee), built-in
+  validation hooks, and OpenTelemetry activity creation — all disabled in these benchmarks
+  to produce a comparable baseline.  With `NetMediate.SourceGeneration` the startup
+  reflection cost is eliminated.
+- **MediatR 14** is the most widely used mediator library and provides an excellent, stable
+  API.  Its dispatch path is DI-resolved but does not create a new scope per dispatch.
+- **martinothamar/Mediator** and **TurboMediator** use always-on Roslyn source generators
+  that emit switch-based dispatch — effectively zero DI resolution overhead.  This explains
+  their much higher raw throughput (40–50× over DI-resolved libraries).  They require a
+  source generator at compile time and do not support netstandard2.0.
+- All libraries are benchmarked against no-op handlers with logging set to `Warning`.
+  Real-world handler logic will dominate the dispatch cost in most applications.
+
 ## Benchmark Modes
 
 | Mode | Description |

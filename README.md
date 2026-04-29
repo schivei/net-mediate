@@ -3,46 +3,67 @@
 [![CI/CD Pipeline](https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml)
 [![NuGet](https://img.shields.io/nuget/v/NetMediate?style=flat)](https://www.nuget.org/packages/NetMediate/)
 
-A lightweight and efficient .NET implementation of the Mediator pattern, providing a clean alternative to MediatR for in-process messaging and communication between components.
+A feature-rich, high-performance .NET Mediator pattern library designed for clean architecture, extensive observability, and seamless migration from MediatR. NetMediate ships ready-to-use built-in validation, OpenTelemetry tracing, resilience behaviors, and optional source-generated zero-reflection dispatch — all in one cohesive ecosystem.
 
 ## Table of Contents
 
-- [Introduction](#introduction)
+- [Why NetMediate?](#why-netmediate)
+- [Feature Highlights](#feature-highlights)
 - [Installation](#installation)
 - [Quick Start](#quick-start)
 - [Usage Examples](#usage-examples)
   - [Notifications](#notifications)
+  - [Notification Providers](#notification-providers)
   - [Commands](#commands)
   - [Requests](#requests)
   - [Streams](#streams)
   - [Validations](#validations)
   - [Simplified Messages](#simplified-messages)
   - [Advanced Configuration](#advanced-configuration)
+- [Package Ecosystem](#package-ecosystem)
 - [Framework Support](#framework-support)
 - [Companion Guides](#companion-guides)
 - [Contributing](#contributing)
 - [License](#license)
-- [Fixed problems](#fixed-problems)
 
-## Introduction
+## Why NetMediate?
 
-NetMediate is a mediator pattern library for .NET that enables decoupled communication between components in your application. It provides a simple and flexible way to send commands, publish notifications, make requests, and handle streaming responses while maintaining clean architecture principles.
+NetMediate was built to address real production needs that existing mediator libraries leave to user-land or third-party packages:
 
-### Key Features
+- **MediatR** ([source](https://github.com/jbogard/MediatR)) is the most widely adopted mediator library in .NET, with excellent community support and a simple API.  It is the right choice when you want a small, well-known dependency with a large ecosystem of blog posts and packages.  NetMediate is not trying to replace MediatR — it extends the idea with built-in validation, telemetry, keyed services, netstandard2.0 support, and an optional source-generated startup path.
 
-- **Commands**: Send one-way messages to single handlers
-- **Notifications**: Publish messages to multiple handlers simultaneously
-- **Requests**: Send messages and receive responses
-- **Streaming**: Handle requests that return multiple responses over time
-- **Validation**: Built-in message validation support with custom validators
-- **Pipeline Behaviors**: Interceptors with pre/post flow for Send/Request/Notify/Stream
-- **Optional resilience package**: Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience`
-- **OpenTelemetry-ready diagnostics**: Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream
-- **Optional DataDog integrations**: OpenTelemetry, Serilog, and ILogger support packages
-- **Dependency Injection**: Seamless integration with Microsoft.Extensions.DependencyInjection
-- **Keyed Services**: Support for keyed service registration and resolution
-- **Cancellation Support**: Full cancellation token support across all operations
-- **Broad runtime compatibility**: Multi-targeted for `net10.0`, `netstandard2.0`, and `netstandard2.1`
+- **martinothamar/Mediator** ([source](https://github.com/martinothamar/Mediator)) is the throughput champion: its always-on Roslyn source generator produces zero-allocation switch-based dispatch that is 40–50× faster than any DI-resolved mediator.  If raw throughput is your primary requirement and you are on .NET 8+, Mediator is an outstanding choice.  NetMediate offers an optional `NetMediate.SourceGeneration` package that approaches this performance while remaining DI-friendly and adding built-in cross-cutting concerns.
+
+- **Wolverine** ([source](https://github.com/JasperFx/wolverine)) goes well beyond in-process messaging to provide a full message-bus and saga framework with optional durability.  It is the right choice for distributed systems, long-running workflows, and transactional outbox patterns.
+
+- **TurboMediator** ([source](https://github.com/marcocestari/TurboMediator)) is an ambitious source-generated library with 20+ optional modules (scheduling, feature flags, persistence, distributed locking, and more).  It focuses on the .NET 8/9 ecosystem.
+
+**NetMediate's sweet spot** is the large set of production applications that need *more* than a basic mediator dispatch — built-in validation, telemetry, resilience, keyed services, MediatR migration, netstandard2.0 targeting — without pulling in a full message-bus framework.
+
+---
+
+## Feature Highlights
+
+| Feature | Details |
+|---------|---------|
+| **Commands** | Explicit `ICommandHandler<TMessage>` with dedicated pipeline |
+| **Requests** | `IRequestHandler<TMessage, TResponse>` with typed pipeline |
+| **Notifications** | Fan-out to all `INotificationHandler<T>` with pluggable dispatch strategy |
+| **Streaming** | `IAsyncEnumerable<T>` via `IStreamHandler<TMessage, TResponse>` |
+| **Built-in validation** | `IValidatable` (self-validation) + `IValidationHandler<T>` (external) |
+| **FluentValidation bridge** | `NetMediate.FluentValidation` adapts `IValidator<T>` into the validation pipeline |
+| **Per-kind pipeline behaviors** | `ICommandBehavior<T>`, `IRequestBehavior<T,R>`, `INotificationBehavior<T>`, `IStreamBehavior<T,R>` |
+| **OpenTelemetry built-in** | `ActivitySource` + `Meter` for every dispatch; zero extra packages required |
+| **Resilience** | Optional retry, timeout, circuit-breaker via `NetMediate.Resilience` (Polly v8) |
+| **Source generation** | `NetMediate.SourceGeneration` moves handler discovery to compile-time; AOT-safe |
+| **Keyed DI services** | `[KeyedMessage("key")]` routes messages to different handler instances |
+| **Notification providers** | Pluggable: inline (default), channel/background (`NetMediate.InternalNotifier`), custom (`NetMediate.Notifications`) |
+| **MediatR migration shim** | `NetMediate.Compat` re-exports MediatR contracts so existing code compiles unchanged |
+| **Singleton handlers** | Handlers registered as `Singleton` by default for maximum dispatch performance |
+| **Broad target framework** | `net10.0` · `netstandard2.0` · `netstandard2.1` |
+| **DataDog integrations** | `NetMediate.DataDog.OpenTelemetry`, `.Serilog`, `.ILogger` |
+
+---
 
 ## Installation
 
@@ -61,39 +82,57 @@ dotnet add package NetMediate
 <PackageReference Include="NetMediate" Version="x.x.x" />
 ```
 
-### Optional companion packages
+## Package Ecosystem
+
 ```xml
+<!-- Core + optional modules -->
+<PackageReference Include="NetMediate" Version="x.x.x" />
+
+<!-- MediatR migration compatibility layer -->
 <PackageReference Include="NetMediate.Compat" Version="x.x.x" />
+
+<!-- Moq helpers for unit tests -->
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
+
+<!-- Retry / timeout / circuit-breaker pipeline behaviors (Polly v8) -->
 <PackageReference Include="NetMediate.Resilience" Version="x.x.x" />
+
+<!-- FluentValidation bridge (net8+) -->
 <PackageReference Include="NetMediate.FluentValidation" Version="x.x.x" />
-<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+
+<!-- Compile-time handler registration (source generator / AOT-safe) -->
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x"
+                  OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+
+<!-- Channel-based fire-and-forget notification dispatch (background worker) -->
+<PackageReference Include="NetMediate.InternalNotifier" Version="x.x.x" />
+
+<!-- Inline synchronous notification dispatch for unit tests (no delays) -->
+<PackageReference Include="NetMediate.InternalNotifier.Test" Version="x.x.x" />
+
+<!-- Base class for custom notification providers -->
+<PackageReference Include="NetMediate.Notifications" Version="x.x.x" />
+
+<!-- DataDog telemetry / Serilog / ILogger integrations -->
 <PackageReference Include="NetMediate.DataDog.OpenTelemetry" Version="x.x.x" />
 <PackageReference Include="NetMediate.DataDog.Serilog" Version="x.x.x" />
 <PackageReference Include="NetMediate.DataDog.ILogger" Version="x.x.x" />
 ```
 
-- **NetMediate.Compat**: keeps MediatR contracts (`MediatR.IMediator`, `IRequest`, `INotification`, handlers, and `AddMediatR`) so migration to NetMediate can be done without rewriting contracts.
-- **NetMediate.Moq**: adds lightweight Moq helpers for cleaner unit and integration tests (`Mocking.Create`, `AddMockSingleton`, and async setup extensions).
-- **NetMediate.Resilience**: adds optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
-- **NetMediate.FluentValidation**: bridges FluentValidation `IValidator<T>` into the NetMediate validation pipeline without mandatory coupling (requires net8+).
-- **NetMediate.SourceGeneration**: generates `AddNetMediateGenerated(...)` to register handlers at compile-time and reduce reflection cost at startup.
-- **NetMediate.DataDog.OpenTelemetry**: wires NetMediate traces/metrics to DataDog through OpenTelemetry OTLP exporters.
-- **NetMediate.DataDog.Serilog**: adds DataDog Serilog sink configuration and NetMediate observability enrichers.
-- **NetMediate.DataDog.ILogger**: adds ILogger scope helpers with DataDog-compatible fields and NetMediate correlation values.
-
-## Companion Guides
-
-- [MediatR migration guide](docs/MEDIATR_MIGRATION_GUIDE.md)
-- [NetMediate.Moq recipes](docs/NETMEDIATE_MOQ_RECIPES.md)
-- [API/Worker/Minimal API samples](docs/SAMPLES.md)
-- [Diagnostics (structured logs + metrics)](docs/DIAGNOSTICS.md)
-- [Resilience package guide and load capacity](docs/RESILIENCE.md)
-- [Source generation guide](docs/SOURCE_GENERATION.md)
-- [DataDog integrations guide](docs/DATADOG.md)
-- [Library comparison (NetMediate vs MediatR vs others)](docs/LIBRARY_COMPARISON.md)
-- [Benchmark comparison](docs/BENCHMARK_COMPARISON.md)
-- [Wiki index](docs/WIKI.md)
+| Package | Purpose |
+|---------|---------|
+| `NetMediate` | Core mediator: commands, requests, notifications, streams, validation, telemetry |
+| `NetMediate.Compat` | Re-exports MediatR contracts so existing code compiles and runs without changes |
+| `NetMediate.Moq` | `Mocking.Create`, `AddMockSingleton`, and async setup helpers for concise test setup |
+| `NetMediate.Resilience` | Retry, timeout, and circuit-breaker pipeline behaviors via Polly v8 |
+| `NetMediate.FluentValidation` | Adapts `IValidator<T>` into the NetMediate validation pipeline (requires net8+) |
+| `NetMediate.SourceGeneration` | Generates `AddNetMediateGenerated()` at compile time — zero startup reflection, AOT-safe |
+| `NetMediate.InternalNotifier` | Channel + `BackgroundService` worker for fire-and-forget notification dispatch |
+| `NetMediate.InternalNotifier.Test` | Inline synchronous notification dispatch for unit tests (no `Task.Delay` needed) |
+| `NetMediate.Notifications` | `NotificationProviderBase` abstract class for building custom notification providers |
+| `NetMediate.DataDog.OpenTelemetry` | Wires NetMediate traces/metrics to DataDog via OTLP exporters |
+| `NetMediate.DataDog.Serilog` | DataDog Serilog sink configuration with NetMediate observability enrichers |
+| `NetMediate.DataDog.ILogger` | ILogger scope helpers with DataDog-compatible fields and NetMediate correlation values |
 
 ## Quick Start
 
@@ -208,30 +247,72 @@ await mediator.Notify(notification, cancellationToken);
 
 Batch notifications in one call:
 ```csharp
-var notifications = [
+var notifications = new[]
+{
     new UserRegistered("user123", "user@example.com", DateTime.UtcNow),
-	new UserRegistered("user321", "user2@example.com", DateTime.UtcNow)
-];
+    new UserRegistered("user321", "user2@example.com", DateTime.UtcNow)
+};
 await mediator.Notify(notifications, cancellationToken);
 ```
 
-Error handling
+### Notification Providers
+
+The built-in default dispatches notifications **inline** (same call stack).  Choose an
+alternative provider to change the dispatch strategy without touching handler code.
+
+#### Channel-based fire-and-forget (background worker)
+
+Install `NetMediate.InternalNotifier` and call `AddNetMediateInternalNotifier()`:
+
 ```csharp
-await mediator.Notify(
-    notification,
-    (handlerType, message, exception) =>
+using NetMediate.InternalNotifier;
+
+builder.Services
+    .AddNetMediate(typeof(MyHandler).Assembly)
+    .UseNotificationProvider<ChannelNotificationProvider>(); // declared below
+
+builder.Services.AddNetMediateInternalNotifier(); // registers ChannelNotificationProvider + BackgroundNotificationWorker
+```
+
+Notifications are written to an unbounded `Channel<T>` and consumed by a dedicated
+`BackgroundService` worker — the caller returns immediately without waiting for handlers
+to finish.
+
+#### Inline synchronous provider for unit tests
+
+Install `NetMediate.InternalNotifier.Test` to remove the need for `Task.Delay` in tests:
+
+```csharp
+using NetMediate.InternalNotifier.Test;
+
+services
+    .AddNetMediate(typeof(MyHandler).Assembly)
+    .AddNetMediateTestNotifier(); // registers TestNotificationProvider (inline + synchronous)
+```
+
+#### Custom notification provider
+
+Install `NetMediate.Notifications` and derive from `NotificationProviderBase<T>`:
+
+```csharp
+using NetMediate.Notifications;
+
+public class MyQueueNotificationProvider : NotificationProviderBase<MyQueueNotificationProvider>
+{
+    protected override Task DispatchAsync(
+        INotificationDispatcher dispatcher,
+        INotificationPacket packet,
+        CancellationToken cancellationToken)
     {
-        logger.LogError(exception, "Publish failed for {MessageType} at {HandlerType}", message?.GetType().Name, handlerType?.Name);
-    },
-    cancellationToken);
-	
-await mediator.Notify(
-    notifications,
-    (handlerType, message, exception) =>
-    {
-        logger.LogError(exception, "Publish failed for {MessageType} at {HandlerType}", message?.GetType().Name, handlerType?.Name);
-    },
-    cancellationToken);
+        // enqueue to your own queue / bus and dispatch later
+        return Task.CompletedTask;
+    }
+}
+
+// Registration
+builder.Services
+    .AddNetMediate()
+    .UseCustomNotificationProvider<MyQueueNotificationProvider>();
 ```
 
 ### Commands
@@ -536,30 +617,36 @@ All runtime packages (`NetMediate`, `NetMediate.Compat`, `NetMediate.Moq`, `NetM
 - `netstandard2.0`
 - `netstandard2.1`
 
-`NetMediate.SourceGeneration` remains an analyzer package (`netstandard2.0`) and works from all supported host TFMs.
+`NetMediate.SourceGeneration` is an analyzer package (`netstandard2.0`) and works from all supported host TFMs.
 
 ### Application types covered
 
 Because packages expose `netstandard2.0` and `netstandard2.1` assets, they can be consumed by:
 
-- desktop applications
+- desktop applications (WPF, WinForms, Avalonia)
 - CLI applications
 - mobile applications
 - MAUI applications
-- server/web applications
+- server/web applications (ASP.NET Core, Worker Service, gRPC)
 
 Always validate your specific app stack (DI host model, platform runtime, and trimming/AOT profile) in your CI pipeline.
 
 ### Benchmark note by target
 
-Performance scenarios are measured from runnable host runtimes. Current benchmark executions are reported for `net10.0`.
-For `netstandard2.0`/`netstandard2.1`, throughput is determined by the concrete runtime hosting those assets (desktop/CLI/mobile/MAUI).
+Performance scenarios are measured from runnable host runtimes.  Current benchmark executions are reported for `net10.0`.
+For `netstandard2.0`/`netstandard2.1`, throughput is determined by the concrete runtime hosting those assets.
 
 <!-- PERF_START -->
 ## Performance
 
 > Last benchmarked: **2026-04-29 00:05 UTC** on `.NETCoreApp,Version=v10.0` (sequential, no-op handlers, Warning log, telemetry+validation disabled).
 > Full details in [docs/BENCHMARK_COMPARISON.md](docs/BENCHMARK_COMPARISON.md).
+
+> **How to read these numbers:** NetMediate deliberately runs with a dedicated DI scope per
+> dispatch (isolation guarantee) and includes built-in validation + telemetry hooks even when
+> disabled for the benchmark.  Source-generated libraries (martinothamar/Mediator, TurboMediator)
+> skip DI resolution entirely via switch-generated dispatch, which explains their much higher
+> raw throughput.  Enabling `NetMediate.SourceGeneration` narrows the gap significantly.
 
 ### Command ops/s (higher is better)
 
@@ -579,10 +666,23 @@ For `netstandard2.0`/`netstandard2.1`, throughput is determined by the concrete 
 | martinothamar/Mediator 3 | NOT SUPPORTED | 20,738,283 | ≈ Code Gen |
 | TurboMediator | NOT SUPPORTED | 17,301,038 *(net8.0)* | ≈ Code Gen *(net8.0)* |
 
-> NetMediate benchmarks run with telemetry and validation disabled.
+> NetMediate benchmarks run with telemetry and validation disabled for a fair baseline.
 > TurboMediator *(net8.0)* — source generator incompatible with net10.0 (v0.9.3).
 
 <!-- PERF_END -->
+
+## Companion Guides
+
+- [MediatR migration guide](docs/MEDIATR_MIGRATION_GUIDE.md)
+- [NetMediate.Moq recipes](docs/NETMEDIATE_MOQ_RECIPES.md)
+- [API/Worker/Minimal API samples](docs/SAMPLES.md)
+- [Diagnostics (structured logs + metrics)](docs/DIAGNOSTICS.md)
+- [Resilience package guide and load capacity](docs/RESILIENCE.md)
+- [Source generation guide](docs/SOURCE_GENERATION.md)
+- [DataDog integrations guide](docs/DATADOG.md)
+- [Library comparison (NetMediate vs MediatR vs others)](docs/LIBRARY_COMPARISON.md)
+- [Benchmark comparison](docs/BENCHMARK_COMPARISON.md)
+- [Wiki index](docs/WIKI.md)
 
 ## Contributing
 
@@ -605,10 +705,3 @@ For critical situations requiring immediate package publishing, see the [Emergen
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Fixed problems
-
-- Prevented notification exceptions from stopping execution by introducing a dedicated onError callback.
-- Added batch publishing support for notifications.
-- Improved consistency across handler interfaces via the IHandler base.
-- Refactored internals for clearer, more maintainable code.

@@ -109,13 +109,13 @@ var result = await mediator.Send(new GetOrderQuery(id), ct);
 
 ### Notifications
 
-**NetMediate** supports an optional per-handler error callback to allow fan-out to
-continue even when one handler throws:
+**NetMediate** dispatches to all handlers.  The dispatch strategy is pluggable via
+`INotificationProvider` (inline by default; channel-based or custom via companion packages):
 ```csharp
-await mediator.Notify(
-    new OrderShipped(orderId),
-    (handlerType, message, ex) => logger.LogError(ex, "Handler {H} failed", handlerType.Name),
-    ct);
+await mediator.Notify(new OrderShipped(orderId), ct);
+
+// Batch dispatch
+await mediator.Notify(new[] { new OrderShipped(id1), new OrderShipped(id2) }, ct);
 ```
 
 **MediatR** propagates exceptions from the first failing handler by default (configurable
@@ -150,14 +150,59 @@ source-generation alternative.
 
 ## Notification Dispatch
 
-NetMediate dispatches notifications **asynchronously** through a channel + background
-worker (`NotificationWorker`).  This decouples the caller from the fan-out latency and
-allows multiple notifications to be queued while handlers run in the background.
+NetMediate ships with a **pluggable notification dispatch strategy** via the `INotificationProvider` interface.
+
+### Default (inline) dispatch
+
+Out of the box, notifications are dispatched **inline** in the same call stack via the built-in
+`BuiltInNotificationProvider`.  The caller awaits all handlers before returning.  This is the
+simplest and most predictable behavior.
+
+```csharp
+// Default — no extra configuration needed
+await mediator.Notify(new OrderShipped(orderId), ct);
+```
+
+### Channel-based fire-and-forget (`NetMediate.InternalNotifier`)
+
+Install `NetMediate.InternalNotifier` to decouple the caller from handler latency.
+Notifications are enqueued to an unbounded `Channel<T>` and drained by a dedicated
+`BackgroundService` worker:
+
+```csharp
+builder.Services.AddNetMediateInternalNotifier();
+```
+
+### Inline synchronous provider for unit tests (`NetMediate.InternalNotifier.Test`)
+
+```csharp
+services.AddNetMediateTestNotifier();
+```
+
+### Custom provider (`NetMediate.Notifications`)
+
+Derive from `NotificationProviderBase<T>` to implement your own strategy (outbox, message
+bus, distributed queue, etc.):
+
+```csharp
+public class MyBusNotificationProvider : NotificationProviderBase<MyBusNotificationProvider>
+{
+    protected override Task DispatchAsync(
+        INotificationDispatcher dispatcher,
+        INotificationPacket packet,
+        CancellationToken ct)
+    {
+        // write to your bus, return immediately
+        return Task.CompletedTask;
+    }
+}
+```
 
 MediatR dispatches notifications **synchronously** within the call to `Publish`, using
-the registered `INotificationPublisher` strategy (sequential or parallel).
+the registered `INotificationPublisher` strategy (sequential or parallel).  The strategy
+is not pluggable via a separate DI registration by default.
 
-Wolverine uses a full message-bus model (in-process and/or out-of-process) which is more
+Wolverine uses a full message-bus model (in-process and/or out-of-process) that is better
 suited to distributed systems.
 
 ---
@@ -300,15 +345,18 @@ instructions.
 
 | Scenario | Recommended |
 |----------|-------------|
-| New .NET 8+ project, want zero-reflection startup | **NetMediate** (with SourceGeneration) or **martinothamar/Mediator** |
+| New .NET 8+ project, want zero-reflection startup | **NetMediate** (with `SourceGeneration`) or **martinothamar/Mediator** |
 | Existing MediatR codebase, incremental migration | **NetMediate** + `NetMediate.Compat` |
 | Need netstandard2.0 support (desktop, MAUI, Xamarin) | **NetMediate** |
 | Distributed messaging / service bus needed | **Wolverine** |
-| Minimal dependencies, community ecosystem matters | **MediatR** |
-| Need built-in resilience without extra packages | **NetMediate.Resilience** |
+| Minimal dependencies, largest community ecosystem | **MediatR** |
+| Need built-in resilience without extra packages | **NetMediate** + `NetMediate.Resilience` |
 | Need FluentValidation integration | **NetMediate.FluentValidation** or **TurboMediator.FluentValidation** |
-| Maximum throughput, source-generated dispatch, .NET 8/9 | **martinothamar/Mediator** or **TurboMediator** (check .NET 10 compat) |
+| Maximum raw throughput, source-generated dispatch, .NET 8/9 | **martinothamar/Mediator** or **TurboMediator** (verify .NET 10 compat) |
 | Large ecosystem of optional modules (scheduling, sagas…) | **TurboMediator** (20+ packages) or **Wolverine** |
+| Need built-in OpenTelemetry tracing + metrics | **NetMediate** (built-in) or **Wolverine** |
+| Want pluggable notification dispatch (inline / channel / custom) | **NetMediate** |
+| Need keyed DI service routing | **NetMediate** |
 
 ### About TurboMediator
 

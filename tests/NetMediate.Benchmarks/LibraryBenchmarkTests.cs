@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using MediatR;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,25 +11,16 @@ namespace NetMediate.Benchmarks;
 
 /// <summary>
 /// Throughput benchmarks comparing NetMediate, MediatR 14, and martinothamar/Mediator 3
-/// across four registration + AOT modes:
-/// <list type="number">
-///   <item><b>No Code Gen + No AOT</b>: reflection-based assembly scan, runtime DI dispatch.</item>
-///   <item><b>Code Gen + No AOT</b>: source-generated or explicit handler registration, runtime dispatch.</item>
-///   <item><b>No Code Gen + AOT</b>: not benchmarkable at test time (AOT is a publish step); marked NOT SUPPORTED.</item>
-///   <item><b>Code Gen + AOT</b>: same runtime throughput as Code Gen; support annotated in the docs.</item>
-/// </list>
+/// across four registration + AOT modes.
 /// <para>
-/// Only features that are <b>common across ALL included libraries</b> are benchmarked:
-/// fire-and-forget command dispatch and request/response dispatch with no-op handlers.
+/// TurboMediator (v0.9.*) benchmarks live in the companion project
+/// <c>tests/NetMediate.Benchmarks.TurboMediator</c> (targets net8.0 only) because
+/// its source generator emits code that does not compile on net10.0.  Running that
+/// project with <c>NETMEDIATE_RUN_PERFORMANCE_TESTS=true</c> writes
+/// <c>docs/.turbo-bench-results.json</c>; this test reads that file and folds
+/// TurboMediator into the same <c>BENCHMARK_COMPARISON.md</c> table.
 /// </para>
-/// <para>
-/// Gated by <c>NETMEDIATE_RUN_PERFORMANCE_TESTS=true</c>.  Docs are auto-written on completion.
-/// </para>
-/// <para>
-/// <b>TurboMediator</b> (v0.9.3) is excluded from live benchmarks: its source generator emits
-/// code that does not compile on .NET 10 (<c>ValueTask → ValueTask&lt;Unit&gt;</c> implicit
-/// conversion missing).  It is documented in <c>LIBRARY_COMPARISON.md</c>.
-/// </para>
+/// <para>Gated by <c>NETMEDIATE_RUN_PERFORMANCE_TESTS=true</c>.</para>
 /// </summary>
 public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
 {
@@ -43,6 +35,10 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     private static readonly string SolutionRoot = FindSolutionRoot();
     private static readonly string BenchmarkDocPath = Path.Combine(SolutionRoot, "docs", "BENCHMARK_COMPARISON.md");
     private static readonly string ReadMePath = Path.Combine(SolutionRoot, "README.md");
+
+    // Sidecar written by tests/NetMediate.Benchmarks.TurboMediator on net8.0
+    private static readonly string TurboResultsPath =
+        Path.Combine(SolutionRoot, "docs", ".turbo-bench-results.json");
 
     // ─────────────────────────────────────────────────────────────────────────
     // ── NetMediate: Mode 1 – No Code Gen, No AOT (assembly scan)
@@ -86,7 +82,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // ── NetMediate: Mode 3 – Code Gen (explicit registration, AOT-safe startup)
+    // ── NetMediate: Mode 3 – Code Gen (explicit registration, AOT-safe)
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -127,7 +123,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // ── MediatR 14: Only Mode 1 supported (no source gen, no AOT)
+    // ── MediatR 14: reflection only (no source gen, no AOT)
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -168,7 +164,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // ── martinothamar/Mediator 3: Only Mode 3/4 supported (source gen required)
+    // ── martinothamar/Mediator 3: source gen required
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -209,7 +205,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // ── Comparison summary – writes docs
+    // ── Comparison summary – writes unified BENCHMARK_COMPARISON.md
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -221,7 +217,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
         var tfm = AppContext.TargetFrameworkName ?? "net10.0";
         var timestamp = DateTimeOffset.UtcNow.ToString("yyyy-MM-dd HH:mm UTC");
 
-        // NetMediate – Mode 1 (reflection / No Code Gen)
+        // ── NetMediate – reflection (No Code Gen) ────────────────────────────
         using var nmRefHost = await CreateNetMediateReflectionHostAsync();
         var nmRefMediator = nmRefHost.Services.GetRequiredService<NetMediate.IMediator>();
         var nmRefCmd = await MeasureAsync(async () =>
@@ -233,7 +229,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
             for (var i = 0; i < RequestOps; i++) await nmRefMediator.Request<NmRequest, int>(new NmRequest(i), ct);
         }, RequestOps);
 
-        // NetMediate – Mode 3 (explicit/code-gen, AOT-safe)
+        // ── NetMediate – explicit / Code Gen ────────────────────────────────
         using var nmExpHost = await CreateNetMediateExplicitHostAsync();
         var nmExpMediator = nmExpHost.Services.GetRequiredService<NetMediate.IMediator>();
         var nmExpCmd = await MeasureAsync(async () =>
@@ -245,7 +241,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
             for (var i = 0; i < RequestOps; i++) await nmExpMediator.Request<NmRequest, int>(new NmRequest(i), ct);
         }, RequestOps);
 
-        // MediatR – Mode 1 only
+        // ── MediatR 14 ───────────────────────────────────────────────────────
         using var mrHost = await CreateMediatRHostAsync();
         var mrMediator = mrHost.Services.GetRequiredService<global::MediatR.IMediator>();
         var mrCmd = await MeasureAsync(async () =>
@@ -257,7 +253,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
             for (var i = 0; i < RequestOps; i++) await mrMediator.Send(new MrRequest(i), ct);
         }, RequestOps);
 
-        // martinothamar/Mediator – Mode 3 only
+        // ── martinothamar/Mediator 3 ─────────────────────────────────────────
         using var mtHost = await CreateMartinMediatorHostAsync();
         var mtMediator = mtHost.Services.GetRequiredService<global::Mediator.IMediator>();
         var mtCmd = await MeasureAsync(async () =>
@@ -269,11 +265,15 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
             for (var i = 0; i < RequestOps; i++) await mtMediator.Send(new MtQuery(i), ct);
         }, RequestOps);
 
+        // ── TurboMediator – read sidecar JSON (written by the net8.0 project) ─
+        var turbo = TryReadTurboResults();
+
         WriteComparisonDocs(timestamp, tfm,
             nmRefCmd, nmRefReq,
             nmExpCmd, nmExpReq,
             mrCmd, mrReq,
-            mtCmd, mtReq);
+            mtCmd, mtReq,
+            turbo);
 
         output.WriteLine($"Benchmark docs written to {BenchmarkDocPath}");
     }
@@ -282,10 +282,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     // Host factories
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// NetMediate – Mode 1: reflection-based assembly scan (No Code Gen, No AOT).
-    /// Telemetry and validation are disabled to measure pure dispatch overhead.
-    /// </summary>
+    /// <summary>NetMediate – Mode 1: reflection scan (No Code Gen, No AOT).</summary>
     private static async Task<IHost> CreateNetMediateReflectionHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
@@ -301,10 +298,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
         return host;
     }
 
-    /// <summary>
-    /// NetMediate – Mode 3: explicit handler registration (Code Gen / AOT-safe path).
-    /// Identical dispatch path but no assembly scan at startup.
-    /// </summary>
+    /// <summary>NetMediate – Mode 3: explicit registration (Code Gen / AOT-safe).</summary>
     private static async Task<IHost> CreateNetMediateExplicitHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
@@ -341,6 +335,32 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
         var host = builder.Build();
         await host.StartAsync();
         return host;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // TurboMediator sidecar JSON reader
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Attempts to read TurboMediator benchmark results from the sidecar JSON file
+    /// produced by <c>tests/NetMediate.Benchmarks.TurboMediator</c>.
+    /// Returns <see langword="null"/> if the file does not exist or cannot be parsed.
+    /// </summary>
+    private static TurboBenchResults? TryReadTurboResults()
+    {
+        if (!File.Exists(TurboResultsPath))
+            return null;
+
+        try
+        {
+            var json = File.ReadAllText(TurboResultsPath);
+            return JsonSerializer.Deserialize<TurboBenchResults>(json,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -384,127 +404,131 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
         BenchResult nmRefCmd, BenchResult nmRefReq,
         BenchResult nmExpCmd, BenchResult nmExpReq,
         BenchResult mrCmd, BenchResult mrReq,
-        BenchResult mtCmd, BenchResult mtReq)
+        BenchResult mtCmd, BenchResult mtReq,
+        TurboBenchResults? turbo)
     {
         const string ns = "NOT SUPPORTED";
 
+        // TurboMediator cells: real numbers when sidecar is available, placeholder otherwise.
+        var tmCmdCell = turbo is not null
+            ? $"{turbo.CommandOpsPerSec:N0} *(net8.0)*"
+            : $"{ns} *(run `dotnet test` on `tests/NetMediate.Benchmarks.TurboMediator` to populate)*";
+        var tmReqCell = turbo is not null
+            ? $"{turbo.RequestOpsPerSec:N0} *(net8.0)*"
+            : $"{ns} *(run `dotnet test` on `tests/NetMediate.Benchmarks.TurboMediator` to populate)*";
+        var tmAotCell = turbo is not null
+            ? $"≈ Code Gen *(net8.0)*"
+            : $"{ns}";
+        var tmNote = turbo is not null
+            ? $"TurboMediator benchmarked on **{turbo.TargetFramework}** at {turbo.Timestamp}."
+            : "TurboMediator results not yet available.  " +
+              "Run `NETMEDIATE_RUN_PERFORMANCE_TESTS=true dotnet test tests/NetMediate.Benchmarks.TurboMediator/` " +
+              "then re-run this test to populate the TurboMediator column.";
+
         var sb = new StringBuilder();
-        sb.AppendLine("# Benchmark Comparison: NetMediate, MediatR 14 & martinothamar/Mediator 3");
+        sb.AppendLine("# Benchmark Comparison: NetMediate · MediatR 14 · martinothamar/Mediator 3 · TurboMediator");
         sb.AppendLine();
         sb.AppendLine("> **Auto-generated** by `LibraryBenchmarkTests.Comparison_WritesBenchmarkDocs`.");
         sb.AppendLine("> Re-run with `NETMEDIATE_RUN_PERFORMANCE_TESTS=true` to refresh.");
         sb.AppendLine();
         sb.AppendLine($"**Last run:** {timestamp}  ");
-        sb.AppendLine($"**Target framework:** `{tfm}`");
+        sb.AppendLine($"**Target framework (main run):** `{tfm}`");
+        sb.AppendLine();
+        sb.AppendLine($"> {tmNote}");
         sb.AppendLine();
         sb.AppendLine("## Benchmark Modes");
-        sb.AppendLine();
-        sb.AppendLine("Each library is benchmarked across up to four **registration + AOT** modes.  ");
-        sb.AppendLine("_Only features common to all included libraries are tested_ (command dispatch and");
-        sb.AppendLine("request/response dispatch with no-op handlers). Telemetry and validation are");
-        sb.AppendLine("disabled for NetMediate in all modes to isolate pure dispatch overhead.  ");
-        sb.AppendLine("Logging is set to `Warning` level for all libraries.");
         sb.AppendLine();
         sb.AppendLine("| Mode | Description |");
         sb.AppendLine("|------|-------------|");
         sb.AppendLine("| **No Code Gen · No AOT** | Reflection-based assembly scan at startup, DI dispatch at runtime |");
         sb.AppendLine("| **Code Gen · No AOT** | Explicit / source-generated handler registration, DI or switch-gen dispatch |");
-        sb.AppendLine("| **No Code Gen · AOT** | AOT publishing without source gen — no library supports this |");
-        sb.AppendLine("| **Code Gen · AOT** | Source-gen registration + AOT publishing — same runtime throughput as Code Gen |");
+        sb.AppendLine("| **No Code Gen · AOT** | AOT publishing without a source generator — no library supports this |");
+        sb.AppendLine("| **Code Gen · AOT** | Source-gen registration + Native AOT publishing; same runtime throughput as Code Gen |");
         sb.AppendLine();
         sb.AppendLine("## Command Dispatch Throughput (ops/s — higher is better)");
         sb.AppendLine();
         sb.AppendLine("| Library | No Code Gen · No AOT | Code Gen · No AOT | No Code Gen · AOT | Code Gen · AOT |");
         sb.AppendLine("|---------|:--------------------:|:-----------------:|:-----------------:|:--------------:|");
-        sb.AppendLine($"| NetMediate | {nmRefCmd.OpsPerSec:N0} | {nmExpCmd.OpsPerSec:N0} | {ns} | ≈ Code Gen |");
-        sb.AppendLine($"| MediatR 14 | {mrCmd.OpsPerSec:N0} | {ns} | {ns} | {ns} |");
-        sb.AppendLine($"| martinothamar/Mediator 3 | {ns} | {mtCmd.OpsPerSec:N0} | {ns} | ≈ Code Gen |");
-        sb.AppendLine($"| TurboMediator | {ns} | ⚠️ .NET 10 issue | {ns} | ⚠️ .NET 10 issue |");
+        sb.AppendLine($"| **NetMediate** | {nmRefCmd.OpsPerSec:N0} | {nmExpCmd.OpsPerSec:N0} | {ns} | ≈ Code Gen |");
+        sb.AppendLine($"| **MediatR 14** | {mrCmd.OpsPerSec:N0} | {ns} | {ns} | {ns} |");
+        sb.AppendLine($"| **martinothamar/Mediator 3** | {ns} | {mtCmd.OpsPerSec:N0} | {ns} | ≈ Code Gen |");
+        sb.AppendLine($"| **TurboMediator** | {ns} | {tmCmdCell} | {ns} | {tmAotCell} |");
         sb.AppendLine();
         sb.AppendLine("## Request/Response Throughput (ops/s — higher is better)");
         sb.AppendLine();
         sb.AppendLine("| Library | No Code Gen · No AOT | Code Gen · No AOT | No Code Gen · AOT | Code Gen · AOT |");
         sb.AppendLine("|---------|:--------------------:|:-----------------:|:-----------------:|:--------------:|");
-        sb.AppendLine($"| NetMediate | {nmRefReq.OpsPerSec:N0} | {nmExpReq.OpsPerSec:N0} | {ns} | ≈ Code Gen |");
-        sb.AppendLine($"| MediatR 14 | {mrReq.OpsPerSec:N0} | {ns} | {ns} | {ns} |");
-        sb.AppendLine($"| martinothamar/Mediator 3 | {ns} | {mtReq.OpsPerSec:N0} | {ns} | ≈ Code Gen |");
-        sb.AppendLine($"| TurboMediator | {ns} | ⚠️ .NET 10 issue | {ns} | ⚠️ .NET 10 issue |");
+        sb.AppendLine($"| **NetMediate** | {nmRefReq.OpsPerSec:N0} | {nmExpReq.OpsPerSec:N0} | {ns} | ≈ Code Gen |");
+        sb.AppendLine($"| **MediatR 14** | {mrReq.OpsPerSec:N0} | {ns} | {ns} | {ns} |");
+        sb.AppendLine($"| **martinothamar/Mediator 3** | {ns} | {mtReq.OpsPerSec:N0} | {ns} | ≈ Code Gen |");
+        sb.AppendLine($"| **TurboMediator** | {ns} | {tmReqCell} | {ns} | {tmAotCell} |");
         sb.AppendLine();
-        sb.AppendLine("## Mode Definitions");
+        sb.AppendLine("## Mode Support Matrix");
         sb.AppendLine();
-        sb.AppendLine("### No Code Gen · No AOT");
-        sb.AppendLine("Assembly scanning at startup (reflection), DI-based handler resolution at runtime.");
-        sb.AppendLine("Supported by: **NetMediate**, **MediatR 14**.");
+        sb.AppendLine("| Library | No Code Gen · No AOT | Code Gen · No AOT | No Code Gen · AOT | Code Gen · AOT |");
+        sb.AppendLine("|---------|:--------------------:|:-----------------:|:-----------------:|:--------------:|");
+        sb.AppendLine("| **NetMediate** | ✅ | ✅ | ❌ | ✅ |");
+        sb.AppendLine("| **MediatR 14** | ✅ | ❌ | ❌ | ❌ |");
+        sb.AppendLine("| **martinothamar/Mediator 3** | ❌ (source gen required) | ✅ | ❌ | ✅ |");
+        sb.AppendLine("| **TurboMediator** | ❌ (source gen required) | ✅ *(net8.0)* | ❌ | ✅ *(net8.0)* |");
         sb.AppendLine();
-        sb.AppendLine("### Code Gen · No AOT");
-        sb.AppendLine("Source generator or explicit registration eliminates startup reflection.");
-        sb.AppendLine("- **NetMediate**: `AddNetMediate(builder => { builder.Register...() })` — AOT-safe startup, DI dispatch.");
-        sb.AppendLine("- **martinothamar/Mediator 3**: always source-generated; generates a `switch`-expression dispatcher.");
-        sb.AppendLine("Supported by: **NetMediate**, **martinothamar/Mediator 3**.");
+        sb.AppendLine("## Per-dispatch Feature Comparison");
         sb.AppendLine();
-        sb.AppendLine("### No Code Gen · AOT");
-        sb.AppendLine("AOT publishing without a source generator.  No library in this comparison supports this.");
-        sb.AppendLine("The `[RequiresUnreferencedCode]` attributes on NetMediate scan paths correctly report this.");
+        sb.AppendLine("| Feature | NetMediate *(benchmarked)* | MediatR 14 | martinothamar/Mediator 3 | TurboMediator |");
+        sb.AppendLine("|---|:---:|:---:|:---:|:---:|");
+        sb.AppendLine("| New DI scope per dispatch | ✅ always | ❌ no | ❌ no | ❌ no |");
+        sb.AppendLine("| Validation pipeline | ✅ disabled for bench | ❌ no | ❌ no | ✅ optional |");
+        sb.AppendLine("| OpenTelemetry activity | ✅ disabled for bench | ❌ no | ❌ no | ✅ optional package |");
+        sb.AppendLine("| Background async logging | ✅ channel-queued | varies | varies | varies |");
+        sb.AppendLine("| Source-generated switch dispatch | ❌ DI-based | ❌ DI-based | ✅ | ✅ |");
+        sb.AppendLine("| .NET 10 compatible | ✅ | ✅ | ✅ | ⚠️ issue v0.9.3 |");
+        sb.AppendLine("| netstandard2.0 support | ✅ | ❌ | ❌ | ❌ |");
         sb.AppendLine();
-        sb.AppendLine("### Code Gen · AOT");
-        sb.AppendLine("Source-generated registration + Native AOT publishing.  Runtime dispatch throughput is");
-        sb.AppendLine("identical to the _Code Gen · No AOT_ numbers (AOT affects startup and binary size, not");
-        sb.AppendLine("per-call dispatch overhead).  Supported by: **NetMediate** (✅), **martinothamar/Mediator 3** (✅).");
-        sb.AppendLine();
-        sb.AppendLine("## What the numbers mean");
-        sb.AppendLine();
-        sb.AppendLine("**martinothamar/Mediator** typically leads in Code Gen mode because the source generator");
-        sb.AppendLine("produces a compile-time `switch`-expression dispatcher with zero DI resolution overhead.");
-        sb.AppendLine();
-        sb.AppendLine("**MediatR 14** leads in No Code Gen mode: minimal per-dispatch overhead (no scoping,");
-        sb.AppendLine("no validation, no telemetry), just a handler-type dictionary lookup.");
-        sb.AppendLine();
-        sb.AppendLine("**NetMediate** benchmarks have telemetry and validation disabled (`DisableTelemetry() +");
-        sb.AppendLine("DisableValidation()`) to isolate pure dispatch overhead.  When these features are");
-        sb.AppendLine("enabled (production default), they add listener-gated overhead that is negligible");
-        sb.AppendLine("for I/O-bound handlers.");
-        sb.AppendLine();
-        sb.AppendLine("| Per-dispatch feature | NetMediate (benchmarked) | MediatR 14 | martinothamar/Mediator 3 |");
-        sb.AppendLine("|---|:---:|:---:|:---:|");
-        sb.AppendLine("| New DI scope (handler isolation) | ✅ always | ❌ no | ❌ no |");
-        sb.AppendLine("| Validation pipeline | ✅ disabled for bench | ❌ no | ❌ no |");
-        sb.AppendLine("| OpenTelemetry activity | ✅ disabled for bench | ❌ no | ❌ no |");
-        sb.AppendLine("| Background async logging | ✅ channel-queued | ✅ varies | ✅ varies |");
-        sb.AppendLine("| Source-generated dispatch | ❌ DI-based | ❌ DI-based | ✅ switch-gen |");
-        sb.AppendLine();
-        sb.AppendLine("## Measurement details");
+        sb.AppendLine("## Measurement Details");
         sb.AppendLine();
         sb.AppendLine("| Metric | Command | Request |");
         sb.AppendLine("|--------|---------|---------|");
-        sb.AppendLine($"| Operations per timed run | {CommandOps:N0} | {RequestOps:N0} |");
+        sb.AppendLine($"| Operations per timed pass | {CommandOps:N0} | {RequestOps:N0} |");
         sb.AppendLine($"| NetMediate (No Code Gen) elapsed | {nmRefCmd.Elapsed.TotalMilliseconds:F1} ms | {nmRefReq.Elapsed.TotalMilliseconds:F1} ms |");
         sb.AppendLine($"| NetMediate (Code Gen) elapsed | {nmExpCmd.Elapsed.TotalMilliseconds:F1} ms | {nmExpReq.Elapsed.TotalMilliseconds:F1} ms |");
-        sb.AppendLine($"| MediatR elapsed | {mrCmd.Elapsed.TotalMilliseconds:F1} ms | {mrReq.Elapsed.TotalMilliseconds:F1} ms |");
+        sb.AppendLine($"| MediatR 14 elapsed | {mrCmd.Elapsed.TotalMilliseconds:F1} ms | {mrReq.Elapsed.TotalMilliseconds:F1} ms |");
         sb.AppendLine($"| martinothamar/Mediator elapsed | {mtCmd.Elapsed.TotalMilliseconds:F1} ms | {mtReq.Elapsed.TotalMilliseconds:F1} ms |");
+
+        if (turbo is not null)
+        {
+            sb.AppendLine($"| TurboMediator elapsed *(net8.0)* | {turbo.CommandElapsedMs:F1} ms | {turbo.RequestElapsedMs:F1} ms |");
+        }
+        else
+        {
+            sb.AppendLine("| TurboMediator elapsed | — (not yet benchmarked) | — |");
+        }
+
         sb.AppendLine();
-        sb.AppendLine("## Test environment");
+        sb.AppendLine("## Test Environment");
         sb.AppendLine();
-        sb.AppendLine($"- **OS:** {System.Runtime.InteropServices.RuntimeInformation.OSDescription}");
-        sb.AppendLine($"- **Processor count:** {Environment.ProcessorCount}");
-        sb.AppendLine($"- **Runtime:** {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription}");
+        sb.AppendLine($"| | Main run (net10.0) | TurboMediator run (net8.0) |");
+        sb.AppendLine("|---|---|---|");
+        sb.AppendLine($"| OS | {System.Runtime.InteropServices.RuntimeInformation.OSDescription} | {turbo?.Os ?? "—"} |");
+        sb.AppendLine($"| Processors | {Environment.ProcessorCount} | — |");
+        sb.AppendLine($"| Runtime | {System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription} | {turbo?.Runtime ?? "—"} |");
         sb.AppendLine();
         sb.AppendLine("## Methodology");
         sb.AppendLine();
-        sb.AppendLine("One warm-up pass (JIT compile) followed by a single timed pass.  Operations run");
-        sb.AppendLine("**sequentially** to measure single-thread throughput.  Handlers are no-op stubs.");
-        sb.AppendLine("Logging is set to `Warning` for all libraries.  NetMediate runs with telemetry");
-        sb.AppendLine("and validation disabled via `DisableTelemetry()` + `DisableValidation()` to");
-        sb.AppendLine("provide the most comparable baseline against libraries that have no such features.");
+        sb.AppendLine("One warm-up pass (JIT) followed by a single timed sequential pass.");
+        sb.AppendLine("No-op handlers.  Logging set to `Warning` for all libraries.");
+        sb.AppendLine("NetMediate benchmarks run with `DisableTelemetry() + DisableValidation()` for a fair baseline.");
+        sb.AppendLine("TurboMediator is benchmarked in a separate `net8.0` project due to a source-generator");
+        sb.AppendLine("incompatibility with net10.0 (v0.9.3); results are merged via a JSON sidecar file.");
         sb.AppendLine();
-        sb.AppendLine("See `tests/NetMediate.Benchmarks/LibraryBenchmarkTests.cs` for the full source.");
+        sb.AppendLine("See `tests/NetMediate.Benchmarks/LibraryBenchmarkTests.cs` and");
+        sb.AppendLine("`tests/NetMediate.Benchmarks.TurboMediator/TurboMediatorBenchmarkTests.cs` for the full source.");
 
         Directory.CreateDirectory(Path.GetDirectoryName(BenchmarkDocPath)!);
         File.WriteAllText(BenchmarkDocPath, sb.ToString());
 
-        // Update README Performance section
         UpdateReadmePerformanceSection(timestamp, tfm,
             nmRefCmd, nmRefReq, nmExpCmd, nmExpReq,
-            mrCmd, mrReq, mtCmd, mtReq);
+            mrCmd, mrReq, mtCmd, mtReq, turbo);
     }
 
     private void UpdateReadmePerformanceSection(
@@ -512,9 +536,14 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
         BenchResult nmRefCmd, BenchResult nmRefReq,
         BenchResult nmExpCmd, BenchResult nmExpReq,
         BenchResult mrCmd, BenchResult mrReq,
-        BenchResult mtCmd, BenchResult mtReq)
+        BenchResult mtCmd, BenchResult mtReq,
+        TurboBenchResults? turbo)
     {
         if (!File.Exists(ReadMePath)) return;
+
+        const string ns = "NOT SUPPORTED";
+        var tmCmd = turbo is not null ? $"{turbo.CommandOpsPerSec:N0} *(net8.0)*" : ns;
+        var tmReq = turbo is not null ? $"{turbo.RequestOpsPerSec:N0} *(net8.0)*" : ns;
 
         var section = new StringBuilder();
         section.AppendLine("## Performance");
@@ -527,19 +556,21 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
         section.AppendLine("| Library | No Code Gen · No AOT | Code Gen · No AOT | Code Gen · AOT |");
         section.AppendLine("|---------|:--------------------:|:-----------------:|:--------------:|");
         section.AppendLine($"| NetMediate | {nmRefCmd.OpsPerSec:N0} | {nmExpCmd.OpsPerSec:N0} | ≈ Code Gen |");
-        section.AppendLine($"| MediatR 14 | {mrCmd.OpsPerSec:N0} | NOT SUPPORTED | NOT SUPPORTED |");
-        section.AppendLine($"| martinothamar/Mediator 3 | NOT SUPPORTED | {mtCmd.OpsPerSec:N0} | ≈ Code Gen |");
+        section.AppendLine($"| MediatR 14 | {mrCmd.OpsPerSec:N0} | {ns} | {ns} |");
+        section.AppendLine($"| martinothamar/Mediator 3 | {ns} | {mtCmd.OpsPerSec:N0} | ≈ Code Gen |");
+        section.AppendLine($"| TurboMediator | {ns} | {tmCmd} | {(turbo is not null ? "≈ Code Gen *(net8.0)*" : ns)} |");
         section.AppendLine();
         section.AppendLine("### Request ops/s (higher is better)");
         section.AppendLine();
         section.AppendLine("| Library | No Code Gen · No AOT | Code Gen · No AOT | Code Gen · AOT |");
         section.AppendLine("|---------|:--------------------:|:-----------------:|:--------------:|");
         section.AppendLine($"| NetMediate | {nmRefReq.OpsPerSec:N0} | {nmExpReq.OpsPerSec:N0} | ≈ Code Gen |");
-        section.AppendLine($"| MediatR 14 | {mrReq.OpsPerSec:N0} | NOT SUPPORTED | NOT SUPPORTED |");
-        section.AppendLine($"| martinothamar/Mediator 3 | NOT SUPPORTED | {mtReq.OpsPerSec:N0} | ≈ Code Gen |");
+        section.AppendLine($"| MediatR 14 | {mrReq.OpsPerSec:N0} | {ns} | {ns} |");
+        section.AppendLine($"| martinothamar/Mediator 3 | {ns} | {mtReq.OpsPerSec:N0} | ≈ Code Gen |");
+        section.AppendLine($"| TurboMediator | {ns} | {tmReq} | {(turbo is not null ? "≈ Code Gen *(net8.0)*" : ns)} |");
         section.AppendLine();
-        section.AppendLine("> NetMediate benchmarks run with telemetry and validation disabled (`DisableTelemetry() + DisableValidation()`).");
-        section.AppendLine("> For I/O-bound real handlers the extra per-dispatch semantics are negligible vs actual I/O latency.");
+        section.AppendLine("> NetMediate benchmarks run with telemetry and validation disabled.");
+        section.AppendLine("> TurboMediator *(net8.0)* — source generator incompatible with net10.0 (v0.9.3).");
         section.AppendLine();
 
         output.WriteLine("=== Performance Summary ===");
@@ -547,6 +578,8 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
         output.WriteLine($"NetMediate (CG):     cmd={nmExpCmd.OpsPerSec:N0}  req={nmExpReq.OpsPerSec:N0}");
         output.WriteLine($"MediatR:             cmd={mrCmd.OpsPerSec:N0}  req={mrReq.OpsPerSec:N0}");
         output.WriteLine($"martinMediator (CG): cmd={mtCmd.OpsPerSec:N0}  req={mtReq.OpsPerSec:N0}");
+        if (turbo is not null)
+            output.WriteLine($"TurboMediator (net8): cmd={turbo.CommandOpsPerSec:N0}  req={turbo.RequestOpsPerSec:N0}");
 
         const string startMarker = "<!-- PERF_START -->";
         const string endMarker = "<!-- PERF_END -->";
@@ -576,7 +609,7 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Result record
+    // Result types
     // ─────────────────────────────────────────────────────────────────────────
 
     private readonly record struct BenchResult(int Ops, TimeSpan Elapsed)
@@ -585,6 +618,23 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
         public override string ToString() =>
             $"{OpsPerSec:N0} ops/s ({Ops:N0} ops in {Elapsed.TotalMilliseconds:F1} ms)";
     }
+
+    /// <summary>
+    /// Mirrors <c>TurboBenchResults</c> from the TurboMediator benchmark project.
+    /// Defined here so the main project has no project reference to TurboMediator.
+    /// </summary>
+    internal sealed record TurboBenchResults(
+        string Timestamp,
+        string TargetFramework,
+        string Os,
+        string Runtime,
+        int CommandOps,
+        double CommandElapsedMs,
+        double CommandOpsPerSec,
+        int RequestOps,
+        double RequestElapsedMs,
+        double RequestOpsPerSec
+    );
 
     // ─────────────────────────────────────────────────────────────────────────
     // NetMediate message / handler definitions
@@ -627,8 +677,8 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // martinothamar/Mediator 3 message / handler definitions
-    // Must be internal (not nested private) so the source generator can access them.
+    // martinothamar/Mediator 3 message definitions
+    // Must be accessible (public) so the source generator can build the switch-gen.
     // ─────────────────────────────────────────────────────────────────────────
 
     /// <summary>Fire-and-forget command for martinothamar/Mediator benchmarks.</summary>
@@ -638,15 +688,20 @@ public sealed class LibraryBenchmarkTests(ITestOutputHelper output)
     public sealed record MtQuery(int Value) : global::Mediator.IQuery<int>;
 }
 
-// martinothamar/Mediator handlers must be internal (not nested) for the source generator.
-internal sealed class MtCommandHandler : global::Mediator.ICommandHandler<NetMediate.Benchmarks.LibraryBenchmarkTests.MtCommand>
+// ─────────────────────────────────────────────────────────────────────────────
+// martinothamar/Mediator handler types must be at namespace level (not nested)
+// so the source generator discovers them.
+// ─────────────────────────────────────────────────────────────────────────────
+internal sealed class MtCommandHandler
+    : global::Mediator.ICommandHandler<NetMediate.Benchmarks.LibraryBenchmarkTests.MtCommand>
 {
     public ValueTask<global::Mediator.Unit> Handle(
         NetMediate.Benchmarks.LibraryBenchmarkTests.MtCommand command, CancellationToken ct) =>
         ValueTask.FromResult(global::Mediator.Unit.Value);
 }
 
-internal sealed class MtQueryHandler : global::Mediator.IQueryHandler<NetMediate.Benchmarks.LibraryBenchmarkTests.MtQuery, int>
+internal sealed class MtQueryHandler
+    : global::Mediator.IQueryHandler<NetMediate.Benchmarks.LibraryBenchmarkTests.MtQuery, int>
 {
     public ValueTask<int> Handle(
         NetMediate.Benchmarks.LibraryBenchmarkTests.MtQuery query, CancellationToken ct) =>

@@ -558,17 +558,29 @@ For `netstandard2.0`/`netstandard2.1`, throughput is determined by the concrete 
 <!-- PERF_START -->
 ## Performance
 
-> Last benchmarked: **2026-04-28 22:40 UTC** on `.NETCoreApp,Version=v10.0` (sequential, no-op handlers).
-> Full details & tradeoff analysis in [docs/BENCHMARK_COMPARISON.md](docs/BENCHMARK_COMPARISON.md).
+> Last benchmarked: **2026-04-29 00:05 UTC** on `.NETCoreApp,Version=v10.0` (sequential, no-op handlers, Warning log, telemetry+validation disabled).
+> Full details in [docs/BENCHMARK_COMPARISON.md](docs/BENCHMARK_COMPARISON.md).
 
-| Scenario | NetMediate | MediatR 14 | Note |
-|----------|------------|------------|------|
-| Command | 243,879 | 1,399,110 | 83% slower |
-| Request | 246,861 | 1,747,091 | 86% slower |
+### Command ops/s (higher is better)
 
-> NetMediate includes per-dispatch DI scoping, message validation, and
-> OpenTelemetry activity tracking that MediatR omits.  For I/O-bound handlers
-> the overhead is negligible compared to actual I/O latency.
+| Library | No Code Gen · No AOT | Code Gen · No AOT | Code Gen · AOT |
+|---------|:--------------------:|:-----------------:|:--------------:|
+| NetMediate | 452,842 | 504,204 | ≈ Code Gen |
+| MediatR 14 | 2,004,611 | NOT SUPPORTED | NOT SUPPORTED |
+| martinothamar/Mediator 3 | NOT SUPPORTED | 23,691,068 | ≈ Code Gen |
+| TurboMediator | NOT SUPPORTED | 19,749,185 *(net8.0)* | ≈ Code Gen *(net8.0)* |
+
+### Request ops/s (higher is better)
+
+| Library | No Code Gen · No AOT | Code Gen · No AOT | Code Gen · AOT |
+|---------|:--------------------:|:-----------------:|:--------------:|
+| NetMediate | 496,433 | 485,769 | ≈ Code Gen |
+| MediatR 14 | 2,562,788 | NOT SUPPORTED | NOT SUPPORTED |
+| martinothamar/Mediator 3 | NOT SUPPORTED | 20,738,283 | ≈ Code Gen |
+| TurboMediator | NOT SUPPORTED | 17,301,038 *(net8.0)* | ≈ Code Gen *(net8.0)* |
+
+> NetMediate benchmarks run with telemetry and validation disabled.
+> TurboMediator *(net8.0)* — source generator incompatible with net10.0 (v0.9.3).
 
 <!-- PERF_END -->
 

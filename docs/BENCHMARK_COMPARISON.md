@@ -1,59 +1,87 @@
-# Benchmark Comparison: NetMediate vs MediatR
+# Benchmark Comparison: NetMediate · MediatR 14 · martinothamar/Mediator 3 · TurboMediator
 
 > **Auto-generated** by `LibraryBenchmarkTests.Comparison_WritesBenchmarkDocs`.
 > Re-run with `NETMEDIATE_RUN_PERFORMANCE_TESTS=true` to refresh.
 
-**Last run:** 2026-04-28 22:40 UTC  
-**Target framework:** `.NETCoreApp,Version=v10.0`
+**Last run:** 2026-04-29 00:05 UTC  
+**Target framework (main run):** `.NETCoreApp,Version=v10.0`
 
-## Throughput (operations / second, higher is better)
+> TurboMediator benchmarked on **.NETCoreApp,Version=v8.0** at 2026-04-29 00:05 UTC.
 
-| Scenario | NetMediate | MediatR 14 | Comparison |
-|----------|------------|------------|------------|
-| Command (fire & forget) | 243,879 | 1,399,110 | 83% slower |
-| Request (query/response) | 246,861 | 1,747,091 | 86% slower |
+## Benchmark Modes
 
-## What the numbers mean
+| Mode | Description |
+|------|-------------|
+| **No Code Gen · No AOT** | Reflection-based assembly scan at startup, DI dispatch at runtime |
+| **Code Gen · No AOT** | Explicit / source-generated handler registration, DI or switch-gen dispatch |
+| **No Code Gen · AOT** | AOT publishing without a source generator — no library supports this |
+| **Code Gen · AOT** | Source-gen registration + Native AOT publishing; same runtime throughput as Code Gen |
 
-MediatR 14 is faster in raw sequential throughput because it focuses exclusively
-on message dispatch with minimal overhead.  NetMediate deliberately includes a
-richer feature set per dispatch cycle:
+## Command Dispatch Throughput (ops/s — higher is better)
 
-| Per-dispatch cost | NetMediate | MediatR 14 |
-|-------------------|-----------|-----------|
-| New DI scope (isolation) | ✅ yes | ❌ no |
-| Message validation | ✅ yes (no-op if no validator) | ❌ no |
-| OpenTelemetry activity | ✅ yes (always) | ❌ no |
-| Debug log per dispatch | ✅ yes | ❌ no |
-| Pipeline behaviour resolution | ✅ yes | ✅ yes |
+| Library | No Code Gen · No AOT | Code Gen · No AOT | No Code Gen · AOT | Code Gen · AOT |
+|---------|:--------------------:|:-----------------:|:-----------------:|:--------------:|
+| **NetMediate** | 452,842 | 504,204 | NOT SUPPORTED | ≈ Code Gen |
+| **MediatR 14** | 2,004,611 | NOT SUPPORTED | NOT SUPPORTED | NOT SUPPORTED |
+| **martinothamar/Mediator 3** | NOT SUPPORTED | 23,691,068 | NOT SUPPORTED | ≈ Code Gen |
+| **TurboMediator** | NOT SUPPORTED | 19,749,185 *(net8.0)* | NOT SUPPORTED | ≈ Code Gen *(net8.0)* |
 
-For handlers that perform any real I/O (database, HTTP, etc.) these costs are
-completely dominated by the I/O latency.  The difference only becomes noticeable
-in tight micro-benchmark loops with no-op handlers.
+## Request/Response Throughput (ops/s — higher is better)
 
-If raw throughput is the primary concern you can disable the Activity creation
-by not registering the `ActivitySource`, and reduce scope overhead by reusing
-the root service provider or supplying handlers as singletons.
+| Library | No Code Gen · No AOT | Code Gen · No AOT | No Code Gen · AOT | Code Gen · AOT |
+|---------|:--------------------:|:-----------------:|:-----------------:|:--------------:|
+| **NetMediate** | 496,433 | 485,769 | NOT SUPPORTED | ≈ Code Gen |
+| **MediatR 14** | 2,562,788 | NOT SUPPORTED | NOT SUPPORTED | NOT SUPPORTED |
+| **martinothamar/Mediator 3** | NOT SUPPORTED | 20,738,283 | NOT SUPPORTED | ≈ Code Gen |
+| **TurboMediator** | NOT SUPPORTED | 17,301,038 *(net8.0)* | NOT SUPPORTED | ≈ Code Gen *(net8.0)* |
 
-## Measurement details
+## Mode Support Matrix
+
+| Library | No Code Gen · No AOT | Code Gen · No AOT | No Code Gen · AOT | Code Gen · AOT |
+|---------|:--------------------:|:-----------------:|:-----------------:|:--------------:|
+| **NetMediate** | ✅ | ✅ | ❌ | ✅ |
+| **MediatR 14** | ✅ | ❌ | ❌ | ❌ |
+| **martinothamar/Mediator 3** | ❌ (source gen required) | ✅ | ❌ | ✅ |
+| **TurboMediator** | ❌ (source gen required) | ✅ *(net8.0)* | ❌ | ✅ *(net8.0)* |
+
+## Per-dispatch Feature Comparison
+
+| Feature | NetMediate *(benchmarked)* | MediatR 14 | martinothamar/Mediator 3 | TurboMediator |
+|---|:---:|:---:|:---:|:---:|
+| New DI scope per dispatch | ✅ always | ❌ no | ❌ no | ❌ no |
+| Validation pipeline | ✅ disabled for bench | ❌ no | ❌ no | ✅ optional |
+| OpenTelemetry activity | ✅ disabled for bench | ❌ no | ❌ no | ✅ optional package |
+| Background async logging | ✅ channel-queued | varies | varies | varies |
+| Source-generated switch dispatch | ❌ DI-based | ❌ DI-based | ✅ | ✅ |
+| .NET 10 compatible | ✅ | ✅ | ✅ | ⚠️ issue v0.9.3 |
+| netstandard2.0 support | ✅ | ❌ | ❌ | ❌ |
+
+## Measurement Details
 
 | Metric | Command | Request |
 |--------|---------|---------|
-| Operations | 20,000 | 10,000 |
-| NetMediate elapsed | 82.0 ms | 40.5 ms |
-| MediatR elapsed    | 14.3 ms | 5.7 ms |
+| Operations per timed pass | 20,000 | 10,000 |
+| NetMediate (No Code Gen) elapsed | 44.2 ms | 20.1 ms |
+| NetMediate (Code Gen) elapsed | 39.7 ms | 20.6 ms |
+| MediatR 14 elapsed | 10.0 ms | 3.9 ms |
+| martinothamar/Mediator elapsed | 0.8 ms | 0.5 ms |
+| TurboMediator elapsed *(net8.0)* | 1.0 ms | 0.6 ms |
 
-## Test environment
+## Test Environment
 
-- **OS:** Ubuntu 24.04.4 LTS
-- **Processor count:** 4
-- **Runtime:** .NET 10.0.5
+| | Main run (net10.0) | TurboMediator run (net8.0) |
+|---|---|---|
+| OS | Ubuntu 24.04.4 LTS | Ubuntu 24.04.4 LTS |
+| Processors | 4 | — |
+| Runtime | .NET 10.0.5 | .NET 8.0.25 |
 
 ## Methodology
 
-Each scenario runs one warm-up pass (to JIT compile the path) followed by a
-single timed pass.  All operations run **sequentially** to measure single-thread
-throughput rather than parallelism.  Both libraries share the same handler
-implementation and the same DI host.
+One warm-up pass (JIT) followed by a single timed sequential pass.
+No-op handlers.  Logging set to `Warning` for all libraries.
+NetMediate benchmarks run with `DisableTelemetry() + DisableValidation()` for a fair baseline.
+TurboMediator is benchmarked in a separate `net8.0` project due to a source-generator
+incompatibility with net10.0 (v0.9.3); results are merged via a JSON sidecar file.
 
-See `tests/NetMediate.Benchmarks/LibraryBenchmarkTests.cs` for the full source.
+See `tests/NetMediate.Benchmarks/LibraryBenchmarkTests.cs` and
+`tests/NetMediate.Benchmarks.TurboMediator/TurboMediatorBenchmarkTests.cs` for the full source.

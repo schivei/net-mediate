@@ -15,6 +15,7 @@ This page is the wiki entry point for the repository documentation set.
 - [Samples (API / Worker / Minimal API)](SAMPLES.md)
 - [Library comparison](LIBRARY_COMPARISON.md)
 - [Benchmark comparison](BENCHMARK_COMPARISON.md)
+- [Performance action plan (15 M ops/s roadmap)](PERFORMANCE_ACTION_PLAN.md)
 
 ## Package overview
 

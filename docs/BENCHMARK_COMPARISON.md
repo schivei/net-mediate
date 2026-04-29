@@ -106,3 +106,9 @@ incompatibility with net10.0 (v0.9.3); results are merged via a JSON sidecar fil
 
 See `tests/NetMediate.Benchmarks/LibraryBenchmarkTests.cs` and
 `tests/NetMediate.Benchmarks.TurboMediator/TurboMediatorBenchmarkTests.cs` for the full source.
+
+## Performance Roadmap
+
+The current `NetMediate` numbers reflect a reflection-based DI dispatch path.  A detailed analysis
+of every hot-path allocation and a phased action plan to reach **≥ 15 M ops/s** is documented in
+[docs/PERFORMANCE_ACTION_PLAN.md](PERFORMANCE_ACTION_PLAN.md).

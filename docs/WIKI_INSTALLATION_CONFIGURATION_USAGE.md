@@ -158,15 +158,15 @@ dotnet add package NetMediate.Notifications
 ```csharp
 using NetMediate.Notifications;
 
-public class MyBusNotificationProvider : NotificationProviderBase<MyBusNotificationProvider>
+public class MyBusNotificationProvider : NotificationProviderBase
 {
-    protected override Task DispatchAsync(
-        INotificationDispatcher dispatcher,
-        INotificationPacket packet,
+    public override ValueTask EnqueueAsync<TMessage>(
+        TMessage message,
         CancellationToken ct)
     {
         // publish to your own bus, outbox, etc.
-        return Task.CompletedTask;
+        // inject INotificationDispatcher to dispatch to handlers when the message is consumed
+        return ValueTask.CompletedTask;
     }
 }
 

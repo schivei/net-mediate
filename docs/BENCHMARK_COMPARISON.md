@@ -16,8 +16,9 @@ library look bad.
 
 **Important caveats:**
 
-- **NetMediate** runs with a dedicated DI scope per dispatch (isolation guarantee), built-in
-  validation hooks, and OpenTelemetry activity creation — all disabled in these benchmarks
+- **NetMediate** creates a DI scope **only when pipeline behaviors are registered** for the
+  message type; otherwise handlers are resolved from the root provider.  Built-in
+  validation hooks and OpenTelemetry activity creation are all disabled in these benchmarks
   to produce a comparable baseline.  With `NetMediate.SourceGeneration` the startup
   reflection cost is eliminated.
 - **MediatR 14** is the most widely used mediator library and provides an excellent, stable
@@ -69,7 +70,7 @@ library look bad.
 
 | Feature | NetMediate *(benchmarked)* | MediatR 14 | martinothamar/Mediator 3 | TurboMediator |
 |---|:---:|:---:|:---:|:---:|
-| New DI scope per dispatch | ✅ always | ❌ no | ❌ no | ❌ no |
+| New DI scope per dispatch | ⚡ only when behaviors registered | ❌ no | ❌ no | ❌ no |
 | Validation pipeline | ✅ disabled for bench | ❌ no | ❌ no | ✅ optional |
 | OpenTelemetry activity | ✅ disabled for bench | ❌ no | ❌ no | ✅ optional package |
 | Background async logging | ✅ channel-queued | varies | varies | varies |

@@ -269,9 +269,7 @@ using NetMediate.InternalNotifier;
 
 builder.Services
     .AddNetMediate(typeof(MyHandler).Assembly)
-    .UseNotificationProvider<ChannelNotificationProvider>(); // declared below
-
-builder.Services.AddNetMediateInternalNotifier(); // registers ChannelNotificationProvider + BackgroundNotificationWorker
+    .AddNetMediateInternalNotifier(); // registers ChannelNotificationProvider + BackgroundNotificationWorker
 ```
 
 Notifications are written to an unbounded `Channel<T>` and consumed by a dedicated
@@ -292,20 +290,19 @@ services
 
 #### Custom notification provider
 
-Install `NetMediate.Notifications` and derive from `NotificationProviderBase<T>`:
+Install `NetMediate.Notifications` and derive from `NotificationProviderBase`:
 
 ```csharp
 using NetMediate.Notifications;
 
-public class MyQueueNotificationProvider : NotificationProviderBase<MyQueueNotificationProvider>
+public class MyQueueNotificationProvider : NotificationProviderBase
 {
-    protected override Task DispatchAsync(
-        INotificationDispatcher dispatcher,
-        INotificationPacket packet,
+    public override ValueTask EnqueueAsync<TMessage>(
+        TMessage message,
         CancellationToken cancellationToken)
     {
-        // enqueue to your own queue / bus and dispatch later
-        return Task.CompletedTask;
+        // enqueue to your own queue / bus; inject INotificationDispatcher to dispatch later
+        return ValueTask.CompletedTask;
     }
 }
 

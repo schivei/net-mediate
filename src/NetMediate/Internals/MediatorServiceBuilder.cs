@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace NetMediate.Internals;
@@ -24,6 +25,7 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         Services.TryAddSingleton<INotificationProvider, BuiltInNotificationProvider>();
         Services.TryAddSingleton<INotificationDispatcher>(sp =>
             (INotificationDispatcher)sp.GetRequiredService<IMediator>());
+        Services.AddHostedService<Workers.NotificationWorker>();
     }
 
     public IServiceCollection Services { get; }
@@ -86,6 +88,7 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
     public IMediatorServiceBuilder UseNotificationProvider<TProvider>()
         where TProvider : class, INotificationProvider
     {
+        _configuration.EnableBuiltInWorker = false;
         Services.Replace(ServiceDescriptor.Singleton<INotificationProvider, TProvider>());
         return this;
     }
@@ -200,6 +203,16 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         // Mark the message type as validatable so the dispatch fast-path knows to run validation.
         _configuration.MarkAsValidatable(typeof(TMessage));
         return Register(typeof(TMessage), typeof(THandler));
+    }
+
+    public IMediatorServiceBuilder RegisterValidationHandler(Type messageType, Type handlerType)
+    {
+        Guard.ThrowIfNull(messageType);
+        Guard.ThrowIfNull(handlerType);
+
+        // Mark the message type as validatable so the dispatch fast-path knows to run validation.
+        _configuration.MarkAsValidatable(messageType);
+        return Register(messageType, handlerType);
     }
 
     public IMediatorServiceBuilder Register(Type messageType, Type handlerType)

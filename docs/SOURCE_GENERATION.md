@@ -39,14 +39,14 @@ The source generator scans your project at compile time for all classes that imp
 - `INotificationHandler<TMessage>`
 - `IStreamHandler<TMessage, TResponse>`
 - `IValidationHandler<TMessage>`
-- `ICommandBehavior<TMessage>`
-- `IRequestBehavior<TMessage, TResponse>`
-- `INotificationBehavior<TMessage>`
-- `IStreamBehavior<TMessage, TResponse>`
 
 It emits an `AddNetMediateGenerated(IServiceCollection services)` extension method with
 explicit `services.AddSingleton<ICommandHandler<MyCmd>, MyCmdHandler>()` calls — no
 reflection, no assembly scanning.
+
+> **Note:** Pipeline behavior types (`ICommandBehavior`, `IRequestBehavior`, etc.) are
+> registered manually via `AddSingleton` or `AddScoped` directly in DI — the source
+> generator does not emit behavior registrations.
 
 ### Excluding generated code from coverage
 
@@ -68,11 +68,12 @@ builder.Services.AddNetMediate(registration =>
 });
 ```
 
-## Disabling validation and telemetry at compile time
+## Disabling validation and telemetry at runtime
 
-The source generator respects `DisableTelemetry()` and `DisableValidation()` on the builder.
-When disabled, the generated code does not emit the corresponding pipeline hooks, reducing
-the per-dispatch call overhead to near-zero:
+`AddNetMediateGenerated()` returns an `IMediatorServiceBuilder`, so you can chain
+`DisableTelemetry()` and `DisableValidation()` to disable the corresponding pipeline hooks
+at startup.  When disabled, the runtime guard checks are bypassed on every dispatch call,
+reducing per-dispatch overhead:
 
 ```csharp
 builder.Services.AddNetMediateGenerated()
@@ -86,6 +87,6 @@ Source generation is orthogonal to notification dispatch strategy.  You can use
 `AddNetMediateGenerated()` with any `INotificationProvider` registration:
 
 ```csharp
-builder.Services.AddNetMediateGenerated();
-builder.Services.AddNetMediateInternalNotifier(); // channel-based, optional
+builder.Services.AddNetMediateGenerated()
+    .AddNetMediateInternalNotifier(); // channel-based, optional
 ```

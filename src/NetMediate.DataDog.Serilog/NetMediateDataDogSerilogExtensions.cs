@@ -37,7 +37,7 @@ public static class NetMediateDataDogSerilogExtensions
         {
             throw new ArgumentException(
                 "DataDog API key must be provided when EnableSink is true.",
-                nameof(configure)
+                "options.ApiKey"
             );
         }
 

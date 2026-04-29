@@ -208,4 +208,13 @@ public interface IMediatorServiceBuilder
     /// <param name="handlerType">The handler type.</param>
     /// <returns>This builder for chaining.</returns>
     IMediatorServiceBuilder Register(Type messageType, Type handlerType);
+
+    /// <summary>
+    /// Registers a validation handler for <paramref name="messageType"/> and marks the
+    /// message type as requiring validation in the dispatch hot-path.
+    /// </summary>
+    /// <param name="messageType">The message type validated.</param>
+    /// <param name="handlerType">The handler type implementing <see cref="IValidationHandler{TMessage}"/>.</param>
+    /// <returns>This builder for chaining.</returns>
+    IMediatorServiceBuilder RegisterValidationHandler(Type messageType, Type handlerType);
 }

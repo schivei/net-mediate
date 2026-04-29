@@ -75,9 +75,10 @@ public static class FluentValidationMediatorExtensions
         foreach (var messageType in validatorRegistrations)
         {
             var handlerType = typeof(FluentValidationHandler<>).MakeGenericType(messageType);
-            var handlerInterfaceType = typeof(IValidationHandler<>).MakeGenericType(messageType);
 
-            builder.Services.AddScoped(handlerInterfaceType, handlerType);
+            // RegisterValidationHandler marks the message type as validatable so that
+            // Mediator.ValidateMessage() does not short-circuit and skip FluentValidation.
+            builder.RegisterValidationHandler(messageType, handlerType);
             builder.Services.AddScoped(handlerType);
         }
 

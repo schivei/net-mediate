@@ -36,6 +36,13 @@ internal sealed class Configuration(Channel<INotificationPacket> channel) : IAsy
     /// </summary>
     public bool EnableValidation { get; set; } = true;
 
+    /// <summary>
+    /// When <see langword="false"/> the built-in <c>NotificationWorker</c> background service
+    /// exits immediately on start-up, because a custom <see cref="INotificationProvider"/> is
+    /// responsible for draining the queue.  Defaults to <see langword="true"/>.
+    /// </summary>
+    public bool EnableBuiltInWorker { get; set; } = true;
+
     /// <summary>Marks a message type as requiring validation (has at least one registered <see cref="IValidationHandler{TMessage}"/>).</summary>
     internal void MarkAsValidatable(Type messageType) => _validatableTypes.Add(messageType);
 
@@ -43,7 +50,7 @@ internal sealed class Configuration(Channel<INotificationPacket> channel) : IAsy
     /// Returns <see langword="true"/> if the message type has registered validation handlers
     /// OR implements <see cref="IValidatable"/> (self-validation).
     /// </summary>
-    internal bool NeedsValidation<TMessage>(TMessage? message)
+    internal bool NeedsValidation<TMessage>()
     {
         var type = typeof(TMessage);
         return _validatableTypes.Contains(type)

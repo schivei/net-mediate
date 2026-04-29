@@ -7,6 +7,136 @@ public interface IMediator
 {
     /// <summary>
     /// Publishes a notification message to all registered handlers.
+    /// Any exceptions thrown by handlers propagate as <see cref="AggregateException"/>.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of the notification message.</typeparam>
+    /// <param name="message">The notification message to publish.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Publishes a notification to all registered handlers.
+    /// Any exceptions thrown by handlers propagate as <see cref="AggregateException"/>.
+    /// </summary>
+    Task Notify<TMessage>(
+        INotification<TMessage> notification,
+        CancellationToken cancellationToken = default
+    ) where TMessage : INotification<TMessage>
+#if NETSTANDARD2_0
+    ;
+#else
+        => Notify((TMessage)notification, cancellationToken);
+#endif
+
+    /// <summary>
+    /// Publishes a collection of notification messages to all registered handlers.
+    /// Any exceptions thrown by handlers propagate as <see cref="AggregateException"/>.
+    /// </summary>
+    Task Notify<TMessage>(
+        IEnumerable<TMessage> messages,
+        CancellationToken cancellationToken = default
+    )
+#if NETSTANDARD2_0
+    ;
+#else
+    {
+        if (messages is null)
+            return Task.CompletedTask;
+
+        var bufferedMessages = messages as TMessage[] ?? messages.ToArray();
+        if (bufferedMessages.Length == 0)
+            return Task.CompletedTask;
+
+        return Task.WhenAll(
+            bufferedMessages.Select(message => Notify(message, cancellationToken))
+        );
+    }
+#endif
+
+    /// <summary>
+    /// Publishes a collection of notifications to all registered handlers.
+    /// Any exceptions thrown by handlers propagate as <see cref="AggregateException"/>.
+    /// </summary>
+    Task Notify<TMessage>(
+        IEnumerable<INotification<TMessage>> notifications,
+        CancellationToken cancellationToken = default
+    ) where TMessage : INotification<TMessage>
+#if NETSTANDARD2_0
+    ;
+#else
+    {
+        if (notifications is null)
+            return Task.CompletedTask;
+        var bufferedNotifications =
+            notifications as INotification<TMessage>[] ?? notifications.ToArray();
+        if (bufferedNotifications.Length == 0)
+            return Task.CompletedTask;
+
+        return Task.WhenAll(
+            bufferedNotifications.Select(notification =>
+                Notify(notification, cancellationToken))
+        );
+    }
+#endif
+
+    /// <summary>
+    /// Sends a command message to a single handler.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of the command message.</typeparam>
+    /// <param name="message">The command message to send.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    Task Send<TMessage>(TMessage message, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a command to a single handler.
+    /// </summary>
+    Task Send<TMessage>(
+        ICommand<TMessage> command,
+        CancellationToken cancellationToken = default
+    ) where TMessage : ICommand<TMessage>;
+
+    /// <summary>
+    /// Sends a request message to a handler and awaits a response.
+    /// </summary>
+    Task<TResponse> Request<TMessage, TResponse>(
+        TMessage message,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
+    /// Sends a request to a handler and awaits a response.
+    /// </summary>
+    Task<TResponse> Request<TMessage, TResponse>(
+        IRequest<TMessage, TResponse> request,
+        CancellationToken cancellationToken = default
+    ) where TMessage : IRequest<TMessage, TResponse>;
+
+    /// <summary>
+    /// Sends a request message to a handler and receives a stream of responses asynchronously.
+    /// </summary>
+    IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
+        TMessage message,
+        CancellationToken cancellationToken = default
+    );
+
+    /// <summary>
+    /// Sends a request to a handler and receives a stream of responses asynchronously.
+    /// </summary>
+    IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
+        IStream<TMessage, TResponse> request,
+        CancellationToken cancellationToken = default
+    ) where TMessage : IStream<TMessage, TResponse>;
+}
+
+/// <summary>
+/// Defines a mediator for sending messages, notifications, and requests between components.
+/// </summary>
+public interface IMediator
+{
+    /// <summary>
+    /// Publishes a notification message to all registered handlers.
     /// </summary>
     /// <typeparam name="TMessage">The type of the notification message.</typeparam>
     /// <param name="message">The notification message to publish.</param>

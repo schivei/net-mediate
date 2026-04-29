@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -10,12 +10,21 @@ namespace NetMediate.Internals;
 internal class Mediator(
     ILogger<Mediator> logger,
     Configuration configuration,
-    IServiceScopeFactory serviceScopeFactory
-) : IMediator, INotifiable
+    IServiceProvider serviceProvider,
+    IServiceScopeFactory serviceScopeFactory,
+    INotificationProvider notificationProvider
+) : IMediator, INotifiable, INotificationDispatcher
 {
+    // ── Cached type names (avoids repeated .Name allocations in log calls) ────
+    private static readonly ConcurrentDictionary<Type, string> s_typeNames = new();
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static string GetTypeName<TMessage>() =>
+        s_typeNames.GetOrAdd(typeof(TMessage), static t => t.Name);
+
+    // ── Notification publish (IMediator.Notify) ───────────────────────────────
     public async Task Notify<TMessage>(
         TMessage message,
-        NotificationErrorDelegate<TMessage> onError,
         CancellationToken cancellationToken = default
     )
     {
@@ -25,11 +34,8 @@ internal class Mediator(
 
         try
         {
-            await configuration
-                .ChannelWriter.WriteAsync(
-                    new NotificationPacket<TMessage>(message, onError),
-                    cancellationToken
-                )
+            await notificationProvider
+                .EnqueueAsync(message, cancellationToken)
                 .ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -44,31 +50,27 @@ internal class Mediator(
         }
     }
 
-    // ── Cached type names ─────────────────────────────────────────────────────
-    // Avoids repeated `typeof(TMessage).Name` string allocations in log calls.
-    private static readonly ConcurrentDictionary<Type, string> s_typeNames = new();
+    // ── INotificationDispatcher ───────────────────────────────────────────────
+    public Task DispatchAsync<TMessage>(
+        TMessage message,
+        CancellationToken cancellationToken = default) =>
+        NotifiesTyped(new NotificationPacket<TMessage>(message), cancellationToken);
 
-    private static string GetTypeName<TMessage>() =>
-        s_typeNames.GetOrAdd(typeof(TMessage), static t => t.Name);
-
+    // ── Validation ────────────────────────────────────────────────────────────
     private async Task ValidateMessage<TMessage>(
-        IServiceScope scope,
+        IServiceProvider sp,
         TMessage message,
         CancellationToken cancellationToken
     )
     {
-        // Fast path: validation disabled entirely at builder level.
         if (!configuration.EnableValidation)
             return;
 
-        // Fast path: skip all validation DI resolution when no IValidationHandler<TMessage>
-        // is registered at startup AND the message is not self-validating (IValidatable).
-        // This eliminates one full DI enumerable resolution per dispatch in the common case.
-        if (!configuration.NeedsValidation(message))
+        if (!configuration.NeedsValidation<TMessage>())
             return;
 
         await configuration.ValidateMessageAsync(
-            scope,
+            sp,
             message,
             logger,
             Resolve<IValidationHandler<TMessage>>,
@@ -76,13 +78,14 @@ internal class Mediator(
         );
     }
 
-    private bool AssertHandler<TMessage, THandler>(IEnumerable<THandler> handlers)
+    // ── Handler assertion ─────────────────────────────────────────────────────
+    private bool AssertHandler<TMessage, THandler>(THandler[] handlers)
         where THandler : IHandler
     {
-        if (handlers is not null && handlers.Any() && handlers.All(o => o is not null))
+        if (handlers.Length > 0)
             return true;
 
-        return AssertHandler<TMessage>(handlers.FirstOrDefault());
+        return AssertHandler<TMessage>(default(THandler));
     }
 
     private bool AssertHandler<TMessage>(IHandler? handler)
@@ -105,6 +108,20 @@ internal class Mediator(
         return false;
     }
 
+    // ── Behavior check (lazy scope creation) ─────────────────────────────────
+    /// <summary>
+    /// Returns <see langword="true"/> when behaviors of <typeparamref name="TBehavior"/> are
+    /// registered.  When the provider does not expose <see cref="IServiceProviderIsService"/>
+    /// (e.g. test mocks) it conservatively returns <see langword="true"/> so the mock's setup
+    /// is honoured.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool HasBehaviors<TBehavior>() =>
+        serviceProvider is not IServiceProviderIsService iss
+        || iss.IsService(typeof(TBehavior))
+        || iss.IsService(typeof(IEnumerable<TBehavior>));
+
+    // ── Send (command) ────────────────────────────────────────────────────────
     public async Task Send<TMessage>(
         TMessage message,
         CancellationToken cancellationToken = default
@@ -113,21 +130,35 @@ internal class Mediator(
         using var activity = configuration.EnableTelemetry
             ? NetMediateDiagnostics.StartActivity<TMessage>("Send")
             : null;
-        using var scope = serviceScopeFactory.CreateScope();
 
         try
         {
-            await ValidateMessage(scope, message, cancellationToken);
+            await ValidateMessage(serviceProvider, message, cancellationToken);
 
-            logger.LogDebug("Sending message of type {MessageType}", GetTypeName<TMessage>());
+            if (logger.IsEnabled(LogLevel.Debug))
+                logger.LogDebug("Sending message of type {MessageType}", GetTypeName<TMessage>());
 
-            var handler = Resolve<ICommandHandler<TMessage>>(scope, message).FirstOrDefault();
+            var handlers = Resolve<ICommandHandler<TMessage>>(serviceProvider, message);
 
-            if (!AssertHandler<TMessage>(handler))
+            if (!AssertHandler<TMessage>(handlers.Length > 0 ? handlers[0] : null))
                 return;
 
-            await ExecuteCommandPipeline(scope, message, handler, cancellationToken)
-                .ConfigureAwait(false);
+            var handler = handlers[0];
+
+            if (HasBehaviors<ICommandBehavior<TMessage>>())
+            {
+                using var scope = serviceScopeFactory.CreateScope();
+                await ExecuteCommandPipeline(
+                    scope.ServiceProvider,
+                    message,
+                    handler,
+                    cancellationToken
+                ).ConfigureAwait(false);
+            }
+            else
+            {
+                await handler.Handle(message, cancellationToken).ConfigureAwait(false);
+            }
         }
         catch (Exception ex)
         {
@@ -141,6 +172,7 @@ internal class Mediator(
         }
     }
 
+    // ── Request ───────────────────────────────────────────────────────────────
     public async Task<TResponse> Request<TMessage, TResponse>(
         TMessage message,
         CancellationToken cancellationToken = default
@@ -149,22 +181,36 @@ internal class Mediator(
         using var activity = configuration.EnableTelemetry
             ? NetMediateDiagnostics.StartActivity<TMessage>("Request")
             : null;
-        using var scope = serviceScopeFactory.CreateScope();
 
         try
         {
-            await ValidateMessage(scope, message, cancellationToken);
+            await ValidateMessage(serviceProvider, message, cancellationToken);
 
-            logger.LogDebug("Sending message of type {MessageType}", GetTypeName<TMessage>());
+            if (logger.IsEnabled(LogLevel.Debug))
+                logger.LogDebug("Sending message of type {MessageType}", GetTypeName<TMessage>());
 
-            var handler = Resolve<IRequestHandler<TMessage, TResponse>>(scope, message)
-                .FirstOrDefault();
+            var handlers = Resolve<IRequestHandler<TMessage, TResponse>>(
+                serviceProvider,
+                message
+            );
 
-            if (!AssertHandler<TMessage>(handler))
+            if (!AssertHandler<TMessage>(handlers.Length > 0 ? handlers[0] : null))
                 return default!;
 
-            return await ExecuteRequestPipeline(scope, message, handler, cancellationToken)
-                .ConfigureAwait(false);
+            var handler = handlers[0];
+
+            if (HasBehaviors<IRequestBehavior<TMessage, TResponse>>())
+            {
+                using var scope = serviceScopeFactory.CreateScope();
+                return await ExecuteRequestPipeline(
+                    scope.ServiceProvider,
+                    message,
+                    handler,
+                    cancellationToken
+                ).ConfigureAwait(false);
+            }
+
+            return await handler.Handle(message, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -178,6 +224,7 @@ internal class Mediator(
         }
     }
 
+    // ── RequestStream ─────────────────────────────────────────────────────────
     public async IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
         TMessage message,
         [EnumeratorCancellation] CancellationToken cancellationToken = default
@@ -186,24 +233,47 @@ internal class Mediator(
         using var activity = configuration.EnableTelemetry
             ? NetMediateDiagnostics.StartActivity<TMessage>("RequestStream")
             : null;
-        using var scope = serviceScopeFactory.CreateScope();
+
         IAsyncEnumerable<TResponse> stream = EmptyAsyncEnumerable<TResponse>();
+        // Scope is only created when behaviors are registered; kept alive for entire enumeration.
+        IServiceScope? behaviorScope = null;
 
         try
         {
             try
             {
-                await ValidateMessage(scope, message, cancellationToken);
+                await ValidateMessage(serviceProvider, message, cancellationToken);
 
-                logger.LogDebug("Sending message of type {MessageType}", GetTypeName<TMessage>());
+                if (logger.IsEnabled(LogLevel.Debug))
+                    logger.LogDebug(
+                        "Sending message of type {MessageType}",
+                        GetTypeName<TMessage>()
+                    );
 
-                var handler = Resolve<IStreamHandler<TMessage, TResponse>>(scope, message)
-                    .FirstOrDefault();
+                var handlers = Resolve<IStreamHandler<TMessage, TResponse>>(
+                    serviceProvider,
+                    message
+                );
 
-                if (!AssertHandler<TMessage>(handler))
+                if (!AssertHandler<TMessage>(handlers.Length > 0 ? handlers[0] : null))
                     yield break;
 
-                stream = ExecuteStreamPipeline(scope, message, handler, cancellationToken);
+                var handler = handlers[0];
+
+                if (HasBehaviors<IStreamBehavior<TMessage, TResponse>>())
+                {
+                    behaviorScope = serviceScopeFactory.CreateScope();
+                    stream = ExecuteStreamPipeline(
+                        behaviorScope.ServiceProvider,
+                        message,
+                        handler,
+                        cancellationToken
+                    );
+                }
+                else
+                {
+                    stream = handler.Handle(message, cancellationToken);
+                }
             }
             catch (Exception ex)
             {
@@ -236,9 +306,12 @@ internal class Mediator(
         {
             if (configuration.EnableTelemetry)
                 NetMediateDiagnostics.RecordStream<TMessage>();
+
+            behaviorScope?.Dispose();
         }
     }
 
+    // ── INotifiable (called by NotificationWorker) ────────────────────────────
     public Task Notifies(
         INotificationPacket packet,
         CancellationToken cancellationToken = default
@@ -249,32 +322,53 @@ internal class Mediator(
         CancellationToken cancellationToken = default
     )
     {
-        using var scope = serviceScopeFactory.CreateScope();
+        await ValidateMessage(serviceProvider, packet.Message, cancellationToken);
 
-        await ValidateMessage(scope, packet.Message, cancellationToken);
+        if (logger.IsEnabled(LogLevel.Debug))
+            logger.LogDebug("Notifying message of type {MessageType}", GetTypeName<TMessage>());
 
-        logger.LogDebug("Notifying message of type {MessageType}", GetTypeName<TMessage>());
-
-        var handlers = Resolve<INotificationHandler<TMessage>>(scope, packet.Message);
+        var handlers = Resolve<INotificationHandler<TMessage>>(serviceProvider, packet.Message);
 
         if (!AssertHandler<TMessage, INotificationHandler<TMessage>>(handlers))
             return;
 
-        await ExecuteNotificationPipeline(scope, packet, handlers, cancellationToken).ConfigureAwait(
-            false
-        );
+        if (HasBehaviors<INotificationBehavior<TMessage>>())
+        {
+            using var scope = serviceScopeFactory.CreateScope();
+            await ExecuteNotificationPipeline(
+                scope.ServiceProvider,
+                packet,
+                handlers,
+                cancellationToken
+            ).ConfigureAwait(false);
+        }
+        else
+        {
+            await ExecuteNotificationPipeline(
+                serviceProvider,
+                packet,
+                handlers,
+                cancellationToken
+            ).ConfigureAwait(false);
+        }
     }
 
+    // ── Pipeline helpers ──────────────────────────────────────────────────────
     private static async Task ExecuteCommandPipeline<TMessage>(
-        IServiceScope scope,
+        IServiceProvider behaviorProvider,
         TMessage message,
         ICommandHandler<TMessage> handler,
-        CancellationToken cancellationToken
+        CancellationToken ct
     )
     {
-        var behaviors = ResolveBehaviors<ICommandBehavior<TMessage>>(scope.ServiceProvider);
-        CommandHandlerDelegate next = token => handler.Handle(message, token);
+        var behaviors = ResolveBehaviors<ICommandBehavior<TMessage>>(behaviorProvider);
+        if (behaviors.Length == 0)
+        {
+            await handler.Handle(message, ct).ConfigureAwait(false);
+            return;
+        }
 
+        CommandHandlerDelegate next = token => handler.Handle(message, token);
         for (var i = behaviors.Length - 1; i >= 0; i--)
         {
             var behavior = behaviors[i];
@@ -282,19 +376,21 @@ internal class Mediator(
             next = token => behavior.Handle(message, current, token);
         }
 
-        await next(cancellationToken).ConfigureAwait(false);
+        await next(ct).ConfigureAwait(false);
     }
 
     private static async Task<TResponse> ExecuteRequestPipeline<TMessage, TResponse>(
-        IServiceScope scope,
+        IServiceProvider behaviorProvider,
         TMessage message,
         IRequestHandler<TMessage, TResponse> handler,
-        CancellationToken cancellationToken
+        CancellationToken ct
     )
     {
-        var behaviors = ResolveBehaviors<IRequestBehavior<TMessage, TResponse>>(scope.ServiceProvider);
-        RequestHandlerDelegate<TResponse> next = token => handler.Handle(message, token);
+        var behaviors = ResolveBehaviors<IRequestBehavior<TMessage, TResponse>>(behaviorProvider);
+        if (behaviors.Length == 0)
+            return await handler.Handle(message, ct).ConfigureAwait(false);
 
+        RequestHandlerDelegate<TResponse> next = token => handler.Handle(message, token);
         for (var i = behaviors.Length - 1; i >= 0; i--)
         {
             var behavior = behaviors[i];
@@ -302,19 +398,21 @@ internal class Mediator(
             next = token => behavior.Handle(message, current, token);
         }
 
-        return await next(cancellationToken).ConfigureAwait(false);
+        return await next(ct).ConfigureAwait(false);
     }
 
     private static IAsyncEnumerable<TResponse> ExecuteStreamPipeline<TMessage, TResponse>(
-        IServiceScope scope,
+        IServiceProvider behaviorProvider,
         TMessage message,
         IStreamHandler<TMessage, TResponse> handler,
-        CancellationToken cancellationToken
+        CancellationToken ct
     )
     {
-        var behaviors = ResolveBehaviors<IStreamBehavior<TMessage, TResponse>>(scope.ServiceProvider);
-        StreamHandlerDelegate<TResponse> next = token => handler.Handle(message, token);
+        var behaviors = ResolveBehaviors<IStreamBehavior<TMessage, TResponse>>(behaviorProvider);
+        if (behaviors.Length == 0)
+            return handler.Handle(message, ct);
 
+        StreamHandlerDelegate<TResponse> next = token => handler.Handle(message, token);
         for (var i = behaviors.Length - 1; i >= 0; i--)
         {
             var behavior = behaviors[i];
@@ -322,18 +420,17 @@ internal class Mediator(
             next = token => behavior.Handle(message, current, token);
         }
 
-        return next(cancellationToken);
+        return next(ct);
     }
 
     private static async Task ExecuteNotificationPipeline<TMessage>(
-        IServiceScope scope,
+        IServiceProvider behaviorProvider,
         NotificationPacket<TMessage> packet,
-        IEnumerable<INotificationHandler<TMessage>> handlers,
-        CancellationToken cancellationToken
+        INotificationHandler<TMessage>[] handlers,
+        CancellationToken ct
     )
     {
-        var behaviors = ResolveBehaviors<INotificationBehavior<TMessage>>(scope.ServiceProvider);
-        var shouldPropagateExceptions = behaviors.Length > 0;
+        var behaviors = ResolveBehaviors<INotificationBehavior<TMessage>>(behaviorProvider);
         NotificationHandlerDelegate next = async token =>
         {
             List<Exception>? exceptions = null;
@@ -346,8 +443,10 @@ internal class Mediator(
                 }
                 catch (Exception ex)
                 {
-                    await packet.OnErrorAsync(handler.GetType(), ex).ConfigureAwait(false);
-                    var sync = LazyInitializer.EnsureInitialized(ref exceptionSync, static () => new object());
+                    var sync = LazyInitializer.EnsureInitialized(
+                        ref exceptionSync,
+                        static () => new object()
+                    );
                     lock (sync)
                     {
                         exceptions ??= [];
@@ -357,11 +456,8 @@ internal class Mediator(
             });
             await Task.WhenAll(tasks).ConfigureAwait(false);
 
-            if (
-                shouldPropagateExceptions
-                && exceptions is not null
-                && exceptions.Count > 0
-            )
+            // Always propagate handler exceptions in cascade (same behaviour as MediatR).
+            if (exceptions is { Count: > 0 })
                 throw new AggregateException(exceptions);
         };
 
@@ -372,7 +468,7 @@ internal class Mediator(
             next = token => behavior.Handle(packet.Message, current, token);
         }
 
-        await next(cancellationToken).ConfigureAwait(false);
+        await next(ct).ConfigureAwait(false);
     }
 
     private static async IAsyncEnumerable<T> EmptyAsyncEnumerable<T>()
@@ -381,85 +477,76 @@ internal class Mediator(
     }
 
     private static TBehavior[] ResolveBehaviors<TBehavior>(IServiceProvider serviceProvider) =>
-        // Fast path for the common case where no behaviors are registered for this message flow.
-        // This avoids per-call IEnumerable resolution/allocation in high-throughput paths.
         serviceProvider is IServiceProviderIsService isService
             && !isService.IsService(typeof(TBehavior))
             && !isService.IsService(typeof(IEnumerable<TBehavior>))
             ? []
             : serviceProvider.GetService<IEnumerable<TBehavior>>()?.ToArray() ?? [];
 
-    // Cache KeyedMessageAttribute lookups by type to avoid per-call reflection in the hot path.
+    // ── Service-key cache ─────────────────────────────────────────────────────
     private static readonly ConcurrentDictionary<Type, string?> s_serviceKeyCache = new();
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static string? GetServiceKey(Type messageType) =>
         s_serviceKeyCache.GetOrAdd(
             messageType,
             static t => t.GetCustomAttribute<KeyedMessageAttribute>(false)?.ServiceKey
         );
 
-    private IEnumerable<T> Resolve<T>(IServiceScope scope, object message, bool ignore = false)
+    // ── Resolve ───────────────────────────────────────────────────────────────
+    private T[] Resolve<T>(IServiceProvider sp, object message, bool ignore = false)
     {
-        // Use cached type name to avoid repeated GetType().Name allocations.
-        // The IsEnabled check is deferred to the BackgroundLogger, but we cache the
-        // name here to avoid the allocation even before the logger check.
         var messageType = message.GetType();
-        var typeName = s_typeNames.GetOrAdd(messageType, static t => t.Name);
 
-        logger.LogDebug(
-            "Resolving handlers for message of type {MessageType}",
-            typeName
-        );
+        if (logger.IsEnabled(LogLevel.Debug))
+            logger.LogDebug(
+                "Resolving handlers for message of type {MessageType}",
+                s_typeNames.GetOrAdd(messageType, static t => t.Name)
+            );
 
         var serviceKey = GetServiceKey(messageType);
 
-        IEnumerable<T> handlers = [];
+        T[] handlers;
         try
         {
             handlers = serviceKey is not null
-                ? scope.ServiceProvider.GetKeyedServices<T>(serviceKey)
-                : scope.ServiceProvider.GetServices<T>();
+                ? sp.GetKeyedServices<T>(serviceKey).ToArray()
+                : sp.GetServices<T>().ToArray();
         }
         catch (InvalidOperationException ex)
         {
-            handlers = ResolvesCatching(messageType, ex, ignore, handlers);
+            return ResolvesCatching<T>(messageType, ex, ignore) ?? [];
         }
 
         handlers = FilterResolves(message, handlers);
 
-        logger.LogDebug(
-            "Resolved {HandlerCount} handlers for message of type {MessageType}",
-            handlers.Count(),
-            typeName
-        );
+        if (logger.IsEnabled(LogLevel.Debug))
+            logger.LogDebug(
+                "Resolved {HandlerCount} handlers for message of type {MessageType}",
+                handlers.Length,
+                s_typeNames.GetOrAdd(messageType, static t => t.Name)
+            );
 
         return handlers;
     }
 
     [ExcludeFromCodeCoverage]
-    private IEnumerable<T> FilterResolves<T>(object message, IEnumerable<T> handlers)
+    private T[] FilterResolves<T>(object message, T[] handlers)
     {
-        var typeName = s_typeNames.GetOrAdd(message.GetType(), static t => t.Name);
-        logger.LogDebug(
-            "Filtering handlers for message of type {MessageType}",
-            typeName
-        );
+        if (logger.IsEnabled(LogLevel.Debug))
+            logger.LogDebug(
+                "Filtering handlers for message of type {MessageType}",
+                s_typeNames.GetOrAdd(message.GetType(), static t => t.Name)
+            );
 
         if (configuration.TryGetHandlerTypeByMessageFilter(message, out var type))
-        {
             return [handlers.First(h => h.GetType() == type)];
-        }
 
         return handlers;
     }
 
     [ExcludeFromCodeCoverage]
-    private IEnumerable<T> ResolvesCatching<T>(
-        Type messageType,
-        Exception ex,
-        bool ignore,
-        IEnumerable<T> handlers
-    )
+    private T[]? ResolvesCatching<T>(Type messageType, Exception ex, bool ignore)
     {
         if (ignore)
             return [];
@@ -477,81 +564,54 @@ internal class Mediator(
                 messageType.Name
             );
 
-        return handlers;
+        return null;
     }
 
-    Task IMediator.Notify<TMessage>(INotification<TMessage> notification, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken) =>
-        Notify((TMessage)notification, onError, cancellationToken);
+    // ── IMediator explicit implementations (netstandard2.0 + DIM fallbacks) ──
+    Task IMediator.Notify<TMessage>(
+        INotification<TMessage> notification,
+        CancellationToken cancellationToken
+    ) => Notify((TMessage)notification, cancellationToken);
 
-    Task IMediator.Notify<TMessage>(IEnumerable<TMessage> messages, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken)
+    Task IMediator.Notify<TMessage>(
+        IEnumerable<TMessage> messages,
+        CancellationToken cancellationToken
+    )
     {
         if (messages is null)
             return Task.CompletedTask;
-        var bufferedMessages = messages as TMessage[] ?? messages.ToArray();
-        if (bufferedMessages.Length == 0)
+        var buffered = messages as TMessage[] ?? messages.ToArray();
+        if (buffered.Length == 0)
             return Task.CompletedTask;
-
-        return Task.WhenAll(
-            bufferedMessages.Select(message => Notify(message, onError, cancellationToken))
-        );
+        return Task.WhenAll(buffered.Select(m => Notify(m, cancellationToken)));
     }
 
-    Task IMediator.Notify<TMessage>(IEnumerable<INotification<TMessage>> notifications, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken)
+    Task IMediator.Notify<TMessage>(
+        IEnumerable<INotification<TMessage>> notifications,
+        CancellationToken cancellationToken
+    )
     {
         if (notifications is null)
             return Task.CompletedTask;
-        var bufferedNotifications =
+        var buffered =
             notifications as INotification<TMessage>[] ?? notifications.ToArray();
-        if (bufferedNotifications.Length == 0)
+        if (buffered.Length == 0)
             return Task.CompletedTask;
-
-        return Task.WhenAll(
-            bufferedNotifications.Select(notification =>
-                Notify((TMessage)notification, onError, cancellationToken))
-        );
+        return Task.WhenAll(buffered.Select(n => Notify((TMessage)n, cancellationToken)));
     }
 
-    Task IMediator.Notify<TMessage>(TMessage message, CancellationToken cancellationToken) =>
-        Notify(message, (_, _, _) => Task.CompletedTask, cancellationToken);
+    Task IMediator.Send<TMessage>(
+        ICommand<TMessage> command,
+        CancellationToken cancellationToken
+    ) => Send((TMessage)command, cancellationToken);
 
-    Task IMediator.Notify<TMessage>(INotification<TMessage> notification, CancellationToken cancellationToken) =>
-        Notify((TMessage)notification, (_, _, _) => Task.CompletedTask, cancellationToken);
+    Task<TResponse> IMediator.Request<TMessage, TResponse>(
+        IRequest<TMessage, TResponse> request,
+        CancellationToken cancellationToken
+    ) => Request<TMessage, TResponse>((TMessage)request, cancellationToken);
 
-    Task IMediator.Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken)
-    {
-        if (messages is null)
-            return Task.CompletedTask;
-        var bufferedMessages = messages as TMessage[] ?? messages.ToArray();
-        if (bufferedMessages.Length == 0)
-            return Task.CompletedTask;
-
-        return Task.WhenAll(
-            bufferedMessages.Select(message =>
-                Notify(message, (_, _, _) => Task.CompletedTask, cancellationToken))
-        );
-    }
-
-    Task IMediator.Notify<TMessage>(IEnumerable<INotification<TMessage>> notifications, CancellationToken cancellationToken)
-    {
-        if (notifications is null)
-            return Task.CompletedTask;
-        var bufferedNotifications =
-            notifications as INotification<TMessage>[] ?? notifications.ToArray();
-        if (bufferedNotifications.Length == 0)
-            return Task.CompletedTask;
-
-        return Task.WhenAll(
-            bufferedNotifications.Select(notification =>
-                Notify((TMessage)notification, (_, _, _) => Task.CompletedTask, cancellationToken))
-        );
-    }
-
-    Task IMediator.Send<TMessage>(ICommand<TMessage> command, CancellationToken cancellationToken) =>
-        Send((TMessage)command, cancellationToken);
-
-    Task<TResponse> IMediator.Request<TMessage, TResponse>(IRequest<TMessage, TResponse> request, CancellationToken cancellationToken) =>
-        Request<TMessage, TResponse>((TMessage)request, cancellationToken);
-
-    IAsyncEnumerable<TResponse> IMediator.RequestStream<TMessage, TResponse>(IStream<TMessage, TResponse> request, CancellationToken cancellationToken) =>
-        RequestStream<TMessage, TResponse>((TMessage)request, cancellationToken);
+    IAsyncEnumerable<TResponse> IMediator.RequestStream<TMessage, TResponse>(
+        IStream<TMessage, TResponse> request,
+        CancellationToken cancellationToken
+    ) => RequestStream<TMessage, TResponse>((TMessage)request, cancellationToken);
 }

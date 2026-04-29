@@ -3,9 +3,6 @@
 internal interface INotificationPacket
 {
     object Message { get; }
-    Delegate ErrorHandler { get; }
-
-    Task OnErrorAsync(Type handlerType, Exception exception);
 
     /// <summary>
     /// Dispatches this notification packet to the mediator without reflection.

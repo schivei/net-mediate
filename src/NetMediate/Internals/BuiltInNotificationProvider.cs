@@ -15,9 +15,8 @@ internal sealed class BuiltInNotificationProvider(Configuration configuration) :
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ValueTask EnqueueAsync<TMessage>(
         TMessage message,
-        NotificationErrorDelegate<TMessage> onError,
         CancellationToken cancellationToken) =>
         configuration.ChannelWriter.WriteAsync(
-            new NotificationPacket<TMessage>(message, onError),
+            new NotificationPacket<TMessage>(message),
             cancellationToken);
 }

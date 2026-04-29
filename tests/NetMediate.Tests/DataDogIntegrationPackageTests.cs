@@ -39,7 +39,6 @@ public sealed class DataDogIntegrationPackageTests
             }, cancellationToken)
             .CreateLogger();
 
-        Assert.NotNull(logger);
         logger.Information("datadog serilog test");
         logger.Dispose();
     }

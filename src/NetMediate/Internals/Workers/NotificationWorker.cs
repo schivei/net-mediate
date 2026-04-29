@@ -12,14 +12,6 @@ internal sealed class NotificationWorker(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!configuration.EnableBuiltInWorker)
-        {
-            logger.LogDebug(
-                "Built-in notification worker disabled; a custom INotificationProvider is active."
-            );
-            return;
-        }
-
         logger.LogDebug("Notification worker started.");
 
         try
@@ -30,16 +22,17 @@ internal sealed class NotificationWorker(
                 {
                     await ConsumeAsync(stoppingToken);
                 }
-                catch (ChannelClosedException closedEx)
+                catch (ChannelClosedException)
                 {
-                    logger.LogDebug(closedEx, "Channel was closed, stopping notification worker.");
+                    logger.LogDebug("Channel was closed, stopping notification worker.");
+                    await configuration.DisposeAsync();
                     break;
                 }
             }
         }
         catch (Exception ex) when (ex is OperationCanceledException or TaskCanceledException)
         {
-            logger.LogDebug(ex, "System operation was canceled, stopping notification worker.");
+            logger.LogDebug("System operation was canceled, stopping notification worker.");
         }
 
         await configuration.DisposeAsync();

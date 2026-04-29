@@ -104,7 +104,7 @@ public class ConfigurationTests
     {
         // Arrange
         await _configuration.ChannelWriter.WriteAsync(
-            new NotificationPacket<TestMessage>(new()),
+            new NotificationPacket<TestMessage>(new(), (_, _, _) => Task.CompletedTask),
             TestContext.Current.CancellationToken
         );
 

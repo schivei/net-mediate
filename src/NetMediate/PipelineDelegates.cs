@@ -28,6 +28,6 @@ public delegate Task NotificationHandlerDelegate(CancellationToken cancellationT
 /// <typeparam name="TResponse">The stream item type.</typeparam>
 /// <param name="cancellationToken">A token to observe while waiting for the operation to complete.</param>
 /// <returns>An asynchronous stream of items.</returns>
-public delegate IAsyncEnumerable<TResponse> StreamHandlerDelegate<out TResponse>(
+public delegate IAsyncEnumerable<TResponse> StreamHandlerDelegate<TResponse>(
     CancellationToken cancellationToken
 );

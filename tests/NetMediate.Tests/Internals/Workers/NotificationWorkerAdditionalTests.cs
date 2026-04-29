@@ -41,7 +41,7 @@ public sealed class NotificationWorkerAdditionalTests
         await worker.StartAsync(cancellationToken);
 
         // enqueue a null message packet
-        var packet = new NotificationPacket<string?>(null);
+        var packet = new NotificationPacket<string?>(null, (_, _, _) => Task.CompletedTask);
         await cfg.ChannelWriter.WriteAsync(packet, cancellationToken);
 
         // small delay to allow processing
@@ -74,7 +74,7 @@ public sealed class NotificationWorkerAdditionalTests
 
         await worker.StartAsync(cancellationToken);
 
-        var packet = new NotificationPacket<string>("msg");
+        var packet = new NotificationPacket<string>("msg", (_, _, _) => Task.CompletedTask);
         await config.ChannelWriter.WriteAsync(packet, cancellationToken);
 
         await Task.Delay(50, cancellationToken);
@@ -100,7 +100,7 @@ public sealed class NotificationWorkerAdditionalTests
 
         await worker.StartAsync(cancellationToken);
 
-        var packet = new NotificationPacket<string>("ok");
+        var packet = new NotificationPacket<string>("ok", (_, _, _) => Task.CompletedTask);
         await config.ChannelWriter.WriteAsync(packet, cancellationToken);
 
         await Task.Delay(50, cancellationToken);

@@ -38,7 +38,7 @@ public sealed class RetryRequestBehavior<TMessage, TResponse>(RetryBehaviorOptio
             }
         }
 
-        throw new InvalidOperationException("All retry attempts exhausted.");
+        return default!;
     }
 }
 

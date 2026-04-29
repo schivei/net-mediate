@@ -12,6 +12,14 @@ internal sealed class NotificationWorker(
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        if (!configuration.EnableBuiltInWorker)
+        {
+            logger.LogDebug(
+                "Built-in notification worker disabled; a custom INotificationProvider is active."
+            );
+            return;
+        }
+
         logger.LogDebug("Notification worker started.");
 
         try

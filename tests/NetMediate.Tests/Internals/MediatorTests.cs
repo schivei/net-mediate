@@ -39,7 +39,9 @@ public class MediatorTests
         _mediator = new Mediator(
             _loggerMock.Object,
             _configuration,
-            _serviceScopeFactoryMock.Object
+            _serviceProviderMock.Object,
+            _serviceScopeFactoryMock.Object,
+            new BuiltInNotificationProvider(_configuration)
         );
     }
 
@@ -54,7 +56,6 @@ public class MediatorTests
         // Act
         await _mediator.Notify(
             message,
-            (_, _, _) => Task.CompletedTask,
             TestContext.Current.CancellationToken
         );
 
@@ -64,7 +65,7 @@ public class MediatorTests
     }
 
     [Fact]
-    public async Task Notify_Enumerable_WithOnError_SinglePassEnumerable_ShouldWriteAllToChannel()
+    public async Task Notify_Enumerable_SinglePassEnumerable_ShouldWriteAllToChannel()
     {
         var messages = new SinglePassEnumerable<TestMessage>(
             [new TestMessage { Content = "1" }, new TestMessage { Content = "2" }]
@@ -72,8 +73,7 @@ public class MediatorTests
 
         await ((IMediator)_mediator).Notify(
             messages: messages,
-            (_, _, _) => Task.CompletedTask,
-            TestContext.Current.CancellationToken
+            cancellationToken: TestContext.Current.CancellationToken
         );
 
         Assert.True(_channel.Reader.TryRead(out var packet1));

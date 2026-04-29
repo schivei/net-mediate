@@ -34,10 +34,8 @@ public class NotificationWorkerTests
         );
     }
 
-    private static INotificationPacket Pack<TMessage>(
-        TMessage message,
-        NotificationErrorDelegate<TMessage>? onError = null
-    ) => new NotificationPacket<TMessage>(message, onError ?? ((_, _, _) => Task.CompletedTask));
+    private static INotificationPacket Pack<TMessage>(TMessage message) =>
+        new NotificationPacket<TMessage>(message);
 
     [Fact]
     public async Task ExecuteAsync_ProcessesMessages_Successfully()
@@ -197,7 +195,6 @@ public class NotificationWorkerTests
     {
         public Task Notify<TMessage>(
             TMessage message,
-            NotificationErrorDelegate<TMessage> onError,
             CancellationToken cancellationToken = default
         ) => Task.CompletedTask;
 
@@ -241,18 +238,8 @@ public class NotificationWorkerTests
             CancellationToken cancellationToken = default
         )
         {
-            try
-            {
-                await Handle(packet, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                await packet.OnErrorAsync(packet.Message.GetType(), ex);
-            }
+            await Handle(packet, cancellationToken);
         }
-
-        Task IMediator.Notify<TMessage>(INotification<TMessage> notification, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken) =>
-            Notify((TMessage)notification, onError, cancellationToken);
 
         Task IMediator.Send<TMessage>(ICommand<TMessage> command, CancellationToken cancellationToken) =>
             Send((TMessage)command, cancellationToken);

@@ -98,6 +98,26 @@ public interface IMediatorServiceBuilder
     IMediatorServiceBuilder DisableValidation();
 
     /// <summary>
+    /// Replaces the built-in Channel + background-worker notification pipeline with a custom
+    /// <see cref="INotificationProvider"/> implementation.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The built-in <c>NotificationWorker</c> hosted service becomes a no-op when a custom
+    /// provider is registered.  The provider is entirely responsible for delivering notifications
+    /// to their handlers.
+    /// </para>
+    /// <para>
+    /// Inject <see cref="INotificationDispatcher"/> into your custom consumer to invoke the
+    /// registered <see cref="INotificationHandler{TMessage}"/> implementations.
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="TProvider">The custom notification provider type.</typeparam>
+    /// <returns>This builder for chaining.</returns>
+    IMediatorServiceBuilder UseNotificationProvider<TProvider>()
+        where TProvider : class, INotificationProvider;
+
+    /// <summary>
     /// Registers a factory predicate that can dynamically select (instantiate) a handler type based on the message instance.
     /// </summary>
     /// <typeparam name="TMessage">The message type.</typeparam>

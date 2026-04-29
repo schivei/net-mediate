@@ -19,16 +19,12 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
 
         Services = services;
 
-        // Register background logger for the Mediator hot path so that debug log calls
-        // are non-blocking (queued to a channel and drained on a background thread).
-        Services.AddSingleton<BackgroundLogger<Mediator>>(
-            sp => new BackgroundLogger<Mediator>(sp.GetRequiredService<ILoggerFactory>()));
-        Services.AddSingleton<ILogger<Mediator>>(
-            sp => sp.GetRequiredService<BackgroundLogger<Mediator>>());
-
         Services.TryAddSingleton<IMediator, Mediator>();
         Services.TryAddSingleton<INotifiable>(sp => sp.GetRequiredService<IMediator>() as Mediator);
         Services.TryAddSingleton(_ => _configuration);
+        Services.TryAddSingleton<INotificationProvider, BuiltInNotificationProvider>();
+        Services.TryAddSingleton<INotificationDispatcher>(sp =>
+            (INotificationDispatcher)sp.GetRequiredService<IMediator>());
 
         if (!Services.Any(s => s.ServiceType == typeof(NotificationWorker)))
         {
@@ -90,6 +86,15 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
     public IMediatorServiceBuilder DisableValidation()
     {
         _configuration.EnableValidation = false;
+        return this;
+    }
+
+    /// <inheritdoc/>
+    public IMediatorServiceBuilder UseNotificationProvider<TProvider>()
+        where TProvider : class, INotificationProvider
+    {
+        _configuration.EnableBuiltInWorker = false;
+        Services.Replace(ServiceDescriptor.Singleton<INotificationProvider, TProvider>());
         return this;
     }
 
@@ -306,18 +311,18 @@ internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
         var keyed = handlerType.GetKey();
 
         if (keyed is not null)
-            Services.TryAddKeyedScoped(interfaceType, keyed, handlerType);
+            Services.TryAddKeyedSingleton(interfaceType, keyed, handlerType);
         else
-            Services.TryAddScoped(interfaceType, handlerType);
+            Services.TryAddSingleton(interfaceType, handlerType);
     }
 
     private void MultiRegisterType(Type interfaceType, Type handlerType)
     {
         var keyed = handlerType.GetKey();
         if (keyed is not null)
-            Services.AddKeyedTransient(interfaceType, keyed, handlerType);
+            Services.AddKeyedSingleton(interfaceType, keyed, handlerType);
         else
-            Services.AddTransient(interfaceType, handlerType);
+            Services.AddSingleton(interfaceType, handlerType);
     }
 
     [ExcludeFromCodeCoverage]

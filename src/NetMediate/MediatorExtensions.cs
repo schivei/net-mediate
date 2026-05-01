@@ -67,7 +67,7 @@ public static class MediatorExtensions
 
         private static Func<IMediator, object, CancellationToken, ValueTask<TResponse>> Create(Type requestType)
         {
-            var method = s_requestMethod.MakeGenericMethod(requestType);
+            var method = s_requestMethod.MakeGenericMethod(requestType, typeof(TResponse));
             return (mediator, request, cancellationToken) =>
                 (ValueTask<TResponse>)method.Invoke(mediator, [request, cancellationToken])!;
         }
@@ -86,7 +86,7 @@ public static class MediatorExtensions
 
         private static Func<IMediator, object, CancellationToken, IAsyncEnumerable<TResponse>> Create(Type requestType)
         {
-            var method = s_requestStreamMethod.MakeGenericMethod(requestType);
+            var method = s_requestStreamMethod.MakeGenericMethod(requestType, typeof(TResponse));
             return (mediator, request, cancellationToken) =>
                 (IAsyncEnumerable<TResponse>)method.Invoke(mediator, [request, cancellationToken])!;
         }

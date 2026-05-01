@@ -3,7 +3,7 @@ using NetMediate.Internals;
 
 namespace NetMediate.Moq;
 
-public sealed class Notifier(IServiceScopeFactory serviceScopeFactory) : INotifiable
+public class Notifier(IServiceScopeFactory serviceScopeFactory) : INotifiable
 {
     public ValueTask Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull, INotification =>
         DispatchNotifications(message, cancellationToken);

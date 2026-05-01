@@ -192,7 +192,7 @@ public class NotificationWorkerTests
             return ValueTask.CompletedTask;
         }
 
-        public ValueTask DispatchNotifications<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull, INotification
+        public virtual ValueTask DispatchNotifications<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull, INotification
         {
             return ValueTask.CompletedTask;
         }

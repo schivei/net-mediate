@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -6,7 +7,8 @@ using NetMediate.Internals.Workers;
 
 namespace NetMediate.Internals;
 
-internal sealed class MediatorServiceBuilder<TNotifier> : IMediatorServiceBuilder where TNotifier : class, INotifiable
+internal sealed class MediatorServiceBuilder<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TNotifier>
+    : IMediatorServiceBuilder where TNotifier : class, INotifiable
 {
     internal static readonly IReadOnlyCollection<Type> s_validInterface =
     [
@@ -51,6 +53,10 @@ internal sealed class MediatorServiceBuilder<TNotifier> : IMediatorServiceBuilde
         }
     }
 
+    [RequiresUnreferencedCode(
+        "Assembly scanning uses reflection to discover handler types and may not be compatible with trimming or NativeAOT. " +
+        "Use NetMediate.SourceGeneration for a trim-safe, AOT-compatible registration path."
+    )]
     internal IMediatorServiceBuilder MapAssemblies(params Assembly[] assemblies)
     {
         if (assemblies is null or { Length: 0 })
@@ -87,6 +93,9 @@ internal sealed class MediatorServiceBuilder<TNotifier> : IMediatorServiceBuilde
         return this;
     }
 
+    [RequiresUnreferencedCode(
+        "Assembly scanning uses reflection to discover handler types and may not be compatible with trimming or NativeAOT."
+    )]
     private static IEnumerable<(Type handlerType, Type iface)> ExtractTypes(
         Assembly[] assemblies
     ) =>

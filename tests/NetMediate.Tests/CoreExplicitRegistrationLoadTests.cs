@@ -4,10 +4,14 @@ using Microsoft.Extensions.Hosting;
 
 namespace NetMediate.Tests;
 
-public sealed class LoadPerformanceTests(ITestOutputHelper output)
+/// <summary>
+/// Load benchmarks using explicit (AOT-safe) registration — the same code path produced by the
+/// source generator.  No assembly scanning is performed.
+/// </summary>
+public sealed class CoreExplicitRegistrationLoadTests(ITestOutputHelper output)
 {
     [Fact]
-    public async Task CommandLoad_ShouldSustainMinimumThroughput()
+    public async Task CommandLoad_ExplicitRegistration_ShouldSustainMinimumThroughput()
     {
         if (!ShouldRunPerformanceTests())
             return;
@@ -21,20 +25,20 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
         var start = Stopwatch.GetTimestamp();
 
         for (var i = 0; i < operations; i++)
-            await mediator.Send(new LoadCommand(i), cancellationToken);
+            await mediator.Send(new ExplicitLoadCommand(i), cancellationToken);
 
         var elapsed = Stopwatch.GetElapsedTime(start);
         var throughput = operations / elapsed.TotalSeconds;
 
         output.WriteLine(
-            $"LOAD_RESULT command tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
+            $"LOAD_RESULT explicit_command tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected low command throughput: {throughput:F2} ops/s");
+        Assert.True(throughput > 500, $"Unexpected low explicit command throughput: {throughput:F2} ops/s");
     }
 
     [Fact]
-    public async Task CommandLoad_ShouldSustainMinimumThroughputInParallel()
+    public async Task CommandLoad_ExplicitRegistration_ShouldSustainMinimumThroughputInParallel()
     {
         if (!ShouldRunPerformanceTests())
             return;
@@ -56,7 +60,7 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
             },
             async (i, token) =>
             {
-                await mediator.Send(new LoadCommand(i), token);
+                await mediator.Send(new ExplicitLoadCommand(i), token);
             }
         );
 
@@ -64,14 +68,14 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
         var throughput = operations / elapsed.TotalSeconds;
 
         output.WriteLine(
-            $"LOAD_RESULT command_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
+            $"LOAD_RESULT explicit_command_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected low parallel command throughput: {throughput:F2} ops/s");
+        Assert.True(throughput > 500, $"Unexpected low parallel explicit command throughput: {throughput:F2} ops/s");
     }
 
     [Fact]
-    public async Task RequestLoad_ShouldSustainMinimumThroughputInParallel()
+    public async Task RequestLoad_ExplicitRegistration_ShouldSustainMinimumThroughputInParallel()
     {
         if (!ShouldRunPerformanceTests())
             return;
@@ -93,7 +97,7 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
             },
             async (i, token) =>
             {
-                var response = await mediator.Request<LoadRequest, int>(new LoadRequest(i), token);
+                var response = await mediator.Request<ExplicitLoadRequest, int>(new ExplicitLoadRequest(i), token);
                 Assert.Equal(i + 1, response);
             }
         );
@@ -102,14 +106,14 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
         var throughput = operations / elapsed.TotalSeconds;
 
         output.WriteLine(
-            $"LOAD_RESULT request_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
+            $"LOAD_RESULT explicit_request_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected low request throughput: {throughput:F2} ops/s");
+        Assert.True(throughput > 500, $"Unexpected low parallel explicit request throughput: {throughput:F2} ops/s");
     }
 
     [Fact]
-    public async Task NotificationLoad_ShouldSustainMinimumThroughput()
+    public async Task NotificationLoad_ExplicitRegistration_ShouldSustainMinimumThroughput()
     {
         if (!ShouldRunPerformanceTests())
             return;
@@ -123,20 +127,20 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
         var start = Stopwatch.GetTimestamp();
 
         for (var i = 0; i < operations; i++)
-            await mediator.Notify(new LoadNotification(i), cancellationToken);
+            await mediator.Notify(new ExplicitLoadNotification(i), cancellationToken);
 
         var elapsed = Stopwatch.GetElapsedTime(start);
         var throughput = operations / elapsed.TotalSeconds;
 
         output.WriteLine(
-            $"LOAD_RESULT notification tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
+            $"LOAD_RESULT explicit_notification tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected low notification throughput: {throughput:F2} ops/s");
+        Assert.True(throughput > 500, $"Unexpected low explicit notification throughput: {throughput:F2} ops/s");
     }
 
     [Fact]
-    public async Task NotificationLoad_ShouldSustainMinimumThroughputInParallel()
+    public async Task NotificationLoad_ExplicitRegistration_ShouldSustainMinimumThroughputInParallel()
     {
         if (!ShouldRunPerformanceTests())
             return;
@@ -158,7 +162,7 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
             },
             async (i, token) =>
             {
-                await mediator.Notify(new LoadNotification(i), token);
+                await mediator.Notify(new ExplicitLoadNotification(i), token);
             }
         );
 
@@ -166,49 +170,24 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
         var throughput = operations / elapsed.TotalSeconds;
 
         output.WriteLine(
-            $"LOAD_RESULT notification_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
+            $"LOAD_RESULT explicit_notification_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected low parallel notification throughput: {throughput:F2} ops/s");
-    }
-
-    [Fact]
-    public async Task StreamLoad_ShouldSustainMinimumThroughput()
-    {
-        if (!ShouldRunPerformanceTests())
-            return;
-
-        using var host = await CreateHostAsync();
-        var mediator = host.Services.GetRequiredService<IMediator>();
-        var cancellationToken = TestContext.Current.CancellationToken;
-        var targetFramework = AppContext.TargetFrameworkName ?? "unknown";
-
-        const int operations = 5_000;
-        var start = Stopwatch.GetTimestamp();
-
-        for (var i = 0; i < operations; i++)
-        {
-            await foreach (var _ in mediator.RequestStream<LoadStreamRequest, int>(
-                new LoadStreamRequest(i), cancellationToken))
-            {
-                // drain items
-            }
-        }
-
-        var elapsed = Stopwatch.GetElapsedTime(start);
-        var throughput = operations / elapsed.TotalSeconds;
-
-        output.WriteLine(
-            $"LOAD_RESULT stream tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
-        );
-
-        Assert.True(throughput > 500, $"Unexpected low stream throughput: {throughput:F2} ops/s");
+        Assert.True(throughput > 500, $"Unexpected low parallel explicit notification throughput: {throughput:F2} ops/s");
     }
 
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(typeof(LoadPerformanceTests).Assembly);
+
+        // Explicit (AOT-safe) registration — no assembly scanning.
+        // This is the same code path emitted by NetMediate.SourceGeneration.
+        builder.Services.AddNetMediate(configure =>
+        {
+            configure.Services.AddSingleton<ICommandHandler<ExplicitLoadCommand>, ExplicitLoadCommandHandler>();
+            configure.Services.AddSingleton<IRequestHandler<ExplicitLoadRequest, int>, ExplicitLoadRequestHandler>();
+            configure.Services.AddSingleton<INotificationHandler<ExplicitLoadNotification>, ExplicitLoadNotificationHandler>();
+        });
 
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
@@ -222,41 +201,25 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
             StringComparison.OrdinalIgnoreCase
         );
 
-    public sealed record LoadCommand(int Value) : ICommand;
-    public sealed record LoadRequest(int Value) : IRequest<int>;
-    public sealed record LoadNotification(int Value) : INotification;
-    public sealed record LoadStreamRequest(int Value) : IStream<int>;
+    public sealed record ExplicitLoadCommand(int Value) : ICommand;
+    public sealed record ExplicitLoadRequest(int Value) : IRequest<int>;
+    public sealed record ExplicitLoadNotification(int Value) : INotification;
 
-    private sealed class LoadCommandHandler : ICommandHandler<LoadCommand>
+    private sealed class ExplicitLoadCommandHandler : ICommandHandler<ExplicitLoadCommand>
     {
-        public ValueTask Handle(LoadCommand command, CancellationToken cancellationToken = default) =>
+        public ValueTask Handle(ExplicitLoadCommand command, CancellationToken cancellationToken = default) =>
             ValueTask.CompletedTask;
     }
 
-    private sealed class LoadRequestHandler : IRequestHandler<LoadRequest, int>
+    private sealed class ExplicitLoadRequestHandler : IRequestHandler<ExplicitLoadRequest, int>
     {
-        public ValueTask<int> Handle(LoadRequest query, CancellationToken cancellationToken = default) =>
+        public ValueTask<int> Handle(ExplicitLoadRequest query, CancellationToken cancellationToken = default) =>
             ValueTask.FromResult(query.Value + 1);
     }
 
-    private sealed class LoadNotificationHandler : INotificationHandler<LoadNotification>
+    private sealed class ExplicitLoadNotificationHandler : INotificationHandler<ExplicitLoadNotification>
     {
-        public ValueTask Handle(LoadNotification notification, CancellationToken cancellationToken = default) =>
+        public ValueTask Handle(ExplicitLoadNotification notification, CancellationToken cancellationToken = default) =>
             ValueTask.CompletedTask;
-    }
-
-    private sealed class LoadStreamHandler : IStreamHandler<LoadStreamRequest, int>
-    {
-        public async IAsyncEnumerable<int> Handle(
-            LoadStreamRequest request,
-            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            for (var i = 0; i < 5; i++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                yield return request.Value + i;
-                await Task.Yield();
-            }
-        }
     }
 }

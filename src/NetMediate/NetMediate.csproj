@@ -11,6 +11,10 @@
     <!-- Make missing XML documentation a warning that gets promoted to error in CI -->
     <GenerateDocumentationFileInReleaseBuild>true</GenerateDocumentationFileInReleaseBuild>
 	<NoWarn>$(NoWarn);CA1873</NoWarn>
+    <!-- Trimming / AOT: declare trim-safety for net5+ TFMs only.
+         Reflection-heavy APIs are annotated with [RequiresUnreferencedCode] / [RequiresDynamicCode].
+         For netstandard2.x trimming analysis is unavailable but the attributes still compile via polyfill. -->
+    <IsTrimmable Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net5.0'))">true</IsTrimmable>
   </PropertyGroup>
   <!-- Enable XML documentation warnings as errors only in Release mode for stricter CI enforcement -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">

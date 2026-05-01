@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace NetMediate.Internals.Workers;
@@ -16,7 +16,7 @@ internal sealed class NotificationWorker(Configuration configuration, ILogger<No
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
-            // Normal host shutdown — do not terminate
+            return;
         }
         finally
         {

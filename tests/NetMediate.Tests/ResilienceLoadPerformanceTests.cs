@@ -95,13 +95,13 @@ public sealed class ResilienceLoadPerformanceTests(ITestOutputHelper output)
             ? 30_000d
             : 50_000d;
 
-    public sealed record ResilienceLoadRequest(int Value);
+    public sealed record ResilienceLoadRequest(int Value) : IRequest<int>;
 
     private sealed class ResilienceLoadRequestHandler : IRequestHandler<ResilienceLoadRequest, int>
     {
-        public Task<int> Handle(
+        public ValueTask<int> Handle(
             ResilienceLoadRequest query,
             CancellationToken cancellationToken = default
-        ) => Task.FromResult(query.Value + 1);
+        ) => ValueTask.FromResult(query.Value + 1);
     }
 }

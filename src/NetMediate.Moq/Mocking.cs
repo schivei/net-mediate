@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NetMediate;
 
 namespace NetMediate.Moq;
 
@@ -82,10 +81,10 @@ public static class Mocking
     /// <param name="services">Service collection.</param>
     /// <param name="behavior">Optional mock behavior.</param>
     /// <returns>The created mediator mock instance.</returns>
-    public static global::Moq.Mock<global::NetMediate.IMediator> AddMediatorMock(
+    public static global::Moq.Mock<IMediator> AddMediatorMock(
         this IServiceCollection services,
         global::Moq.MockBehavior behavior = global::Moq.MockBehavior.Default
-    ) => services.AddMockSingleton<global::NetMediate.IMediator>(behavior);
+    ) => services.AddMockSingleton<IMediator>(behavior);
 
     private static void ReplaceWithMock<TService>(
         this IServiceCollection services,

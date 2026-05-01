@@ -1,300 +1,102 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
 using NetMediate.Internals.Workers;
 
 namespace NetMediate.Internals;
 
-internal sealed class MediatorServiceBuilder : IMediatorServiceBuilder
+internal sealed class MediatorServiceBuilder<TNotifier> : IMediatorServiceBuilder where TNotifier : class, INotifiable
 {
-    private readonly Configuration _configuration;
-    private readonly HashSet<int> _assemblyHashCodes = [];
-
-    internal MediatorServiceBuilder(IServiceCollection services)
-    {
-        _configuration = new Configuration(Channel.CreateUnbounded<INotificationPacket>());
-
-        Services = services;
-
-        Services.TryAddSingleton<IMediator, Mediator>();
-        Services.TryAddSingleton<INotifiable>(sp => sp.GetRequiredService<IMediator>() as Mediator);
-        Services.TryAddSingleton(_ => _configuration);
-
-        if (!Services.Any(s => s.ServiceType == typeof(NotificationWorker)))
-        {
-            Services.TryAddSingleton<NotificationWorker>();
-            Services.AddHostedService(sp => sp.GetRequiredService<NotificationWorker>());
-        }
-    }
-
-    public IServiceCollection Services { get; }
-
-    internal IMediatorServiceBuilder MapAssemblies(params Assembly[] assemblies)
-    {
-        var assemblyHashCodes = assemblies
-            .Where(a => !_assemblyHashCodes.Contains(a.GetHashCode()))
-            .ToArray();
-        if (assemblyHashCodes.Length == 0)
-            return this;
-
-        foreach (var assembly in assemblyHashCodes)
-            _assemblyHashCodes.Add(assembly.GetHashCode());
-
-        var types = ExtractTypes(assemblies);
-
-        MapValidationHandlers(types);
-        MapNotificationHandlers(types);
-        MapCommandHandlers(types);
-        MapRequestHandlers(types);
-        MapStreamHandlers(types);
-
-        return this;
-    }
-
-    public IMediatorServiceBuilder IgnoreUnhandledMessages(
-        bool ignore = true,
-        bool log = true,
-        LogLevel logLevel = LogLevel.Error
-    )
-    {
-        _configuration.IgnoreUnhandledMessages = ignore;
-        _configuration.LogUnhandledMessages = log;
-        _configuration.UnhandledMessagesLogLevel = logLevel;
-
-        return this;
-    }
-
-    private MediatorServiceBuilder Filter<TMessage, THandler, TBase>(Func<TMessage, bool> filter)
-    {
-        RegisterType(typeof(TBase), typeof(THandler));
-
-        _configuration.InstantiateHandlerByMessageFilter<TMessage>(message =>
-        {
-            if (filter(message))
-                return typeof(THandler);
-            return null;
-        });
-
-        return this;
-    }
-
-    public IMediatorServiceBuilder FilterNotification<TMessage, THandler>(
-        Func<TMessage, bool> filter
-    )
-        where THandler : class, INotificationHandler<TMessage> =>
-        Filter<TMessage, THandler, INotificationHandler<TMessage>>(filter);
-
-    public IMediatorServiceBuilder FilterCommand<TMessage, THandler>(Func<TMessage, bool> filter)
-        where THandler : class, ICommandHandler<TMessage> =>
-        Filter<TMessage, THandler, ICommandHandler<TMessage>>(filter);
-
-    public IMediatorServiceBuilder FilterRequest<TMessage, TResponse, THandler>(
-        Func<TMessage, bool> filter
-    )
-        where THandler : class, IRequestHandler<TMessage, TResponse> =>
-        Filter<TMessage, THandler, IRequestHandler<TMessage, TResponse>>(filter);
-
-    public IMediatorServiceBuilder FilterStream<TMessage, TResponse, THandler>(
-        Func<TMessage, bool> filter
-    )
-        where THandler : class, IStreamHandler<TMessage, TResponse> =>
-        Filter<TMessage, THandler, IStreamHandler<TMessage, TResponse>>(filter);
-
-    public IMediatorServiceBuilder InstantiateHandlerByMessageFilter<TMessage>(
-        Func<TMessage, Type?> filter
-    )
-    {
-        _configuration.InstantiateHandlerByMessageFilter(filter);
-
-        return this;
-    }
-
-    private static readonly Type[] s_validInterface =
+    internal static readonly IReadOnlyCollection<Type> s_validInterface =
     [
         typeof(IValidationHandler<>),
         typeof(INotificationHandler<>),
         typeof(IRequestHandler<,>),
         typeof(ICommandHandler<>),
         typeof(IStreamHandler<,>),
+        typeof(INotificationBehavior<>),
+        typeof(IRequestBehavior<,>),
+        typeof(ICommandBehavior<>),
+        typeof(IStreamBehavior<,>)
     ];
 
-    private void MapValidationHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
-        Map(types, typeof(IValidationHandler<>));
+    private readonly Configuration _configuration;
 
-    private void MapNotificationHandlers(
-        IEnumerable<(Type handlerType, Type[] interfaces)> types
-    ) => Map(types, typeof(INotificationHandler<>));
+    public IServiceCollection Services { get; }
 
-    private void MapRequestHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
-        Map(types, typeof(IRequestHandler<,>));
-
-    private void MapCommandHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
-        Map(types, typeof(ICommandHandler<>));
-
-    private void MapStreamHandlers(IEnumerable<(Type handlerType, Type[] interfaces)> types) =>
-        Map(types, typeof(IStreamHandler<,>));
-
-    public IMediatorServiceBuilder RegisterNotificationHandler<TMessage, THandler>()
-        where THandler : class, INotificationHandler<TMessage> =>
-        Register(typeof(TMessage), typeof(THandler));
-
-    public IMediatorServiceBuilder RegisterCommandHandler<TMessage, THandler>()
-        where THandler : class, ICommandHandler<TMessage> =>
-        Register(typeof(TMessage), typeof(THandler));
-
-    public IMediatorServiceBuilder RegisterRequestHandler<TMessage, TResponse, THandler>()
-        where THandler : class, IRequestHandler<TMessage, TResponse> =>
-        Register(typeof(TMessage), typeof(THandler));
-
-    public IMediatorServiceBuilder RegisterStreamHandler<TMessage, TResponse, THandler>()
-        where THandler : class, IStreamHandler<TMessage, TResponse> =>
-        Register(typeof(TMessage), typeof(THandler));
-
-    public IMediatorServiceBuilder RegisterValidationHandler<TMessage, THandler>()
-        where THandler : class, IValidationHandler<TMessage> =>
-        Register(typeof(TMessage), typeof(THandler));
-
-    public IMediatorServiceBuilder Register(Type messageType, Type handlerType)
+    internal MediatorServiceBuilder(IServiceCollection services)
     {
-        Guard.ThrowIfNull(messageType);
-        Guard.ThrowIfNull(handlerType);
+        _configuration = new Configuration(Channel.CreateUnbounded<IPack>());
 
-        var interfaces = GetInterfaces(handlerType, messageType);
-        Map([(handlerType, interfaces)]);
+        Services = services;
+
+        Services.TryAddSingleton<ITerminator>(new Terminator(() => Environment.Exit(1)));
+        Services.TryAddSingleton<Mediator>();
+        Services.TryAddSingleton<IMediator>(sp => sp.GetRequiredService<Mediator>());
+        Services.TryAddSingleton(_ => _configuration);
+
+        if (Services.Any(s => s.ServiceType == typeof(INotifiable)))
+        {
+            Services.Replace(ServiceDescriptor.Singleton<INotifiable, TNotifier>());
+        }
+        else
+        {
+            Services.AddSingleton<INotifiable, TNotifier>();
+        }
+
+        if (typeof(TNotifier) == typeof(Notifier))
+        {
+            Services.TryAddSingleton<NotificationWorker>();
+            Services.AddHostedService(sp => sp.GetRequiredService<NotificationWorker>());
+        }
+    }
+
+    internal IMediatorServiceBuilder MapAssemblies(params Assembly[] assemblies)
+    {
+        if (HasAlreadyRegisterd())
+        {
+            return this;
+        }
+
+        if (assemblies is null or { Length: 0 })
+        {
+            assemblies = [.. AppDomain
+                    .CurrentDomain.GetAssemblies()
+                    .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))];
+        }
+
+        var types = ExtractTypes(assemblies);
+
+        foreach (var (handlerType, iface) in types)
+        {
+            Services.AddSingleton(iface, handlerType);
+        }
 
         return this;
     }
 
-    private static Type[] GetInterfaces(Type handlerType, Type messageType)
-    {
-        if (!handlerType.IsClass || handlerType.IsAbstract)
-        {
-            throw new ArgumentException(
-                $"Handler type '{handlerType.FullName}' must be a non-abstract class.",
-                nameof(handlerType)
-            );
-        }
+    private bool HasAlreadyRegisterd() =>
+        s_validInterface.Any(iface => Services.Any(s =>
+            s.ServiceType.IsGenericType
+            && s.ServiceType.GetGenericTypeDefinition() == iface));
 
-        var interfaces = handlerType
-            .GetInterfaces()
-            .Where(i =>
-                i.IsGenericType
-                && s_validInterface.Contains(i.GetGenericTypeDefinition())
-                && i.GenericTypeArguments.Length >= 1
-                && i.GenericTypeArguments[0] == messageType
-            )
-            .ToArray();
-
-        if (interfaces.Length == 0)
-        {
-            throw new ArgumentException(
-                $"Handler type '{handlerType.FullName}' does not implement any valid handler interfaces.",
-                nameof(handlerType)
-            );
-        }
-
-        return interfaces;
-    }
-
-    private void Map(
-        IEnumerable<(Type handlerType, Type[] interfaces)> types,
-        Type? handlerInterface = null
+    public IMediatorServiceBuilder IgnoreUnhandledMessages(
+        bool ignore = true
     )
     {
-        handlerInterface ??= types
-            .Select(type =>
-                type.interfaces.FirstOrDefault(ifce =>
-                    s_validInterface.Contains(ifce.GetGenericTypeDefinition())
-                )
-            )
-            .FirstOrDefault(t => t is not null)
-            ?.GetGenericTypeDefinition();
+        _configuration.IgnoreUnhandledMessages = ignore;
 
-        if (handlerInterface is null)
-        {
-            throw new ArgumentException(
-                "No valid handler interface found in the provided types.",
-                nameof(handlerInterface)
-            );
-        }
-
-        var handlerTypes = types
-            .Where(type =>
-                type.interfaces.Any(i =>
-                    i.IsGenericType && i.GetGenericTypeDefinition() == handlerInterface
-                )
-            )
-            .Select(type =>
-                (
-                    type.handlerType,
-                    interfaceType: type.interfaces.First(x =>
-                        x.IsGenericType && x.GetGenericTypeDefinition() == handlerInterface
-                    )
-                )
-            )
-            .ToList();
-
-        foreach (var (handlerType, interfaceType) in handlerTypes)
-            RegisterType(interfaceType, handlerType);
+        return this;
     }
 
-    private void RegisterType(Type interfaceType, Type handlerType)
-    {
-        var unique =
-            interfaceType.GetGenericTypeDefinition() != typeof(INotificationHandler<>)
-            && interfaceType.GetGenericTypeDefinition() != typeof(IValidationHandler<>);
-
-        if (unique)
-            UniqueRegisterType(interfaceType, handlerType);
-        else
-            MultiRegisterType(interfaceType, handlerType);
-    }
-
-    private void UniqueRegisterType(Type interfaceType, Type handlerType)
-    {
-        var keyed = handlerType.GetKey();
-
-        if (keyed is not null)
-            Services.TryAddKeyedScoped(interfaceType, keyed, handlerType);
-        else
-            Services.TryAddScoped(interfaceType, handlerType);
-    }
-
-    private void MultiRegisterType(Type interfaceType, Type handlerType)
-    {
-        var keyed = handlerType.GetKey();
-        if (keyed is not null)
-            Services.AddKeyedTransient(interfaceType, keyed, handlerType);
-        else
-            Services.AddTransient(interfaceType, handlerType);
-    }
-
-    [ExcludeFromCodeCoverage]
-    private static IEnumerable<(Type handlerType, Type[] interfaces)> ExtractTypes(
+    private static IEnumerable<(Type handlerType, Type iface)> ExtractTypes(
         Assembly[] assemblies
     ) =>
         assemblies
             .SelectMany(assembly => assembly.GetTypes())
-            .Where(type =>
-                type.IsClass
-                && !type.IsAbstract
-                && type.GetInterfaces()
-                    .Any(i =>
-                        i.IsGenericType && s_validInterface.Contains(i.GetGenericTypeDefinition())
-                    )
-            )
-            .Select(type =>
-                (
-                    handlerType: type,
-                    interfaces: type.GetInterfaces()
-                        .Where(i =>
-                            i.IsGenericType
-                            && s_validInterface.Contains(i.GetGenericTypeDefinition())
-                        )
-                        .ToArray()
-                )
-            );
+            .SelectMany(type =>
+                type.FindInterfaces((type, criteria) => type.IsGenericType && s_validInterface.Contains(type.GetGenericTypeDefinition()), null)
+                    .Select(iface => (handlerType: type, iface))
+            ).Distinct();
 }

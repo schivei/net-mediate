@@ -10,9 +10,10 @@ namespace NetMediate.Tests.Internals.Workers;
 public class NotificationWorkerTests
 {
     private readonly Mock<MediatorTest> _mediatorMock;
+    private readonly ITerminator _terminator;
     private readonly Mock<ILogger<NotificationWorker>> _loggerMock;
-    private readonly Channel<INotificationPacket> _channel;
-    private readonly Channel<INotificationPacket> _channel2;
+    private readonly Channel<IPack> _channel;
+    private readonly Channel<IPack> _channel2;
     private readonly Configuration _configuration;
     private readonly Configuration _configuration2;
     private readonly NotificationWorker _worker;
@@ -21,23 +22,24 @@ public class NotificationWorkerTests
     public NotificationWorkerTests()
     {
         _loggerMock = new Mock<ILogger<NotificationWorker>>();
-        _channel = Channel.CreateUnbounded<INotificationPacket>();
-        _channel2 = Channel.CreateUnbounded<INotificationPacket>();
+        _channel = Channel.CreateUnbounded<IPack>();
+        _channel2 = Channel.CreateUnbounded<IPack>();
         _configuration = new Configuration(_channel);
         _configuration2 = new Configuration(_channel2);
         _mediatorMock = new Mock<MediatorTest>() { CallBase = true };
-        _worker = new NotificationWorker(_mediatorMock.Object, _configuration, _loggerMock.Object);
+        _terminator = Mock.Of<ITerminator>();
+        _worker = new NotificationWorker(_configuration, _terminator, _loggerMock.Object);
         _worker2 = new NotificationWorker(
-            _mediatorMock.Object,
             _configuration2,
+            _terminator,
             _loggerMock.Object
         );
     }
 
-    private static INotificationPacket Pack<TMessage>(
+    private static Pack<TMessage> Pack<TMessage>(
         TMessage message,
-        NotificationErrorDelegate<TMessage>? onError = null
-    ) => new NotificationPacket<TMessage>(message, onError ?? ((_, _, _) => Task.CompletedTask));
+        NotificationHandlerDelegate<TMessage> notifier
+    ) where TMessage : notnull, INotification => new(message, notifier);
 
     [Fact]
     public async Task ExecuteAsync_ProcessesMessages_Successfully()
@@ -45,7 +47,7 @@ public class NotificationWorkerTests
         var testCancellationToken = TestContext.Current.CancellationToken;
         // Arrange
         var message = new TestMessage { Id = 1 };
-        var pack = Pack(message);
+        var pack = Pack(message, _mediatorMock.Object.DispatchNotifications);
         await _channel.Writer.WriteAsync(pack, testCancellationToken);
         _channel.Writer.Complete();
         var cts = new CancellationTokenSource();
@@ -56,7 +58,7 @@ public class NotificationWorkerTests
         await _worker.StopAsync(testCancellationToken);
 
         // Assert
-        _mediatorMock.Verify(m => m.Notifies(pack, It.IsAny<CancellationToken>()), Times.Once);
+        _mediatorMock.Verify(m => m.DispatchNotifications(message, It.IsAny<CancellationToken>()), Times.Once);
         VerifyDebugLog("Processing message of type TestMessage", Times.Once());
     }
 
@@ -76,7 +78,7 @@ public class NotificationWorkerTests
 
         // Assert
         _mediatorMock.Verify(
-            m => m.Notifies(It.IsAny<INotificationPacket>(), It.IsAny<CancellationToken>()),
+            m => m.DispatchNotifications(It.IsAny<INotification>(), It.IsAny<CancellationToken>()),
             Times.Never
         );
     }
@@ -87,9 +89,9 @@ public class NotificationWorkerTests
         var testCancellationToken = TestContext.Current.CancellationToken;
         // Arrange
         var message = new TestMessage { Id = 1 };
-        var pack = Pack(message);
+        var pack = Pack(message, _mediatorMock.Object.DispatchNotifications);
         _mediatorMock
-            .Setup(m => m.Notifies(pack, It.IsAny<CancellationToken>()))
+            .Setup(m => m.DispatchNotifications(message, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new OperationCanceledException());
         var cts = new CancellationTokenSource();
 
@@ -114,9 +116,9 @@ public class NotificationWorkerTests
         var testCancellationToken = TestContext.Current.CancellationToken;
         // Arrange
         var message = new TestMessage { Id = 1 };
-        var pack = Pack(message);
+        var pack = Pack(message, _mediatorMock.Object.DispatchNotifications);
         _mediatorMock
-            .Setup(m => m.Notifies(pack, It.IsAny<CancellationToken>()))
+            .Setup(m => m.DispatchNotifications(message, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new ChannelClosedException());
         var cts = new CancellationTokenSource();
 
@@ -141,7 +143,7 @@ public class NotificationWorkerTests
         var testCancellationToken = TestContext.Current.CancellationToken;
         // Arrange
         var message = new TestMessage { Id = 1 };
-        var pack = Pack(message);
+        var pack = Pack(message, _mediatorMock.Object.DispatchNotifications);
         await _channel2.Writer.WriteAsync(pack, testCancellationToken);
         var cts = new CancellationTokenSource();
         cts.CancelAfter(50);
@@ -173,89 +175,41 @@ public class NotificationWorkerTests
         );
     }
 
-    private void VerifyLog(LogLevel level, string messageContains, Times times)
-    {
-        _loggerMock.Verify(
-            x =>
-                x.Log(
-                    level,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains(messageContains)),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
-                ),
-            times
-        );
-    }
-
-    public class TestMessage
+    public class TestMessage : INotification
     {
         public int Id { get; set; }
     }
 
     public class MediatorTest : IMediator, INotifiable
     {
-        public Task Notify<TMessage>(
-            TMessage message,
-            NotificationErrorDelegate<TMessage> onError,
-            CancellationToken cancellationToken = default
-        ) => Task.CompletedTask;
-
-        public virtual Task<TResponse> Request<TMessage, TResponse>(
-            TMessage message,
-            CancellationToken cancellationToken = default
-        ) => Task.FromResult<TResponse>(default!);
-
-        public virtual async IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
-            TMessage message,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default
-        )
+        public async ValueTask Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull, INotification
         {
-            await Task.Yield();
+            await Task.WhenAll(messages.Select(m => Notify(m, cancellationToken).AsTask()));
+        }
 
+        ValueTask IMediator.Send<TMessage>(TMessage command, CancellationToken cancellationToken)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask DispatchNotifications<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull, INotification
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        public ValueTask Notify<TMessage>(TMessage notification, CancellationToken cancellationToken = default) where TMessage : notnull, INotification
+        {
+            return DispatchNotifications(notification, cancellationToken);
+        }
+
+        public ValueTask<TResponse> Request<TMessage, TResponse>(TMessage request, CancellationToken cancellationToken = default) where TMessage : notnull, IRequest<TResponse>
+        {
+            return ValueTask.FromResult(default(TResponse)!);
+        }
+
+        public async IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(TMessage request, [EnumeratorCancellation] CancellationToken cancellationToken = default) where TMessage : notnull, IStream<TResponse>
+        {
             yield break;
         }
-
-        public virtual Task Send<TMessage>(
-            TMessage message,
-            CancellationToken cancellationToken = default
-        ) => Task.CompletedTask;
-
-        internal virtual Task Handle(
-            INotificationPacket packet,
-            CancellationToken cancellationToken = default
-        ) => Task.CompletedTask;
-
-        Task INotifiable.Notifies(
-            INotificationPacket packet,
-            CancellationToken cancellationToken
-        ) => Notifies(packet, cancellationToken);
-
-        internal virtual async Task Notifies(
-            INotificationPacket packet,
-            CancellationToken cancellationToken = default
-        )
-        {
-            try
-            {
-                await Handle(packet, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                await packet.OnErrorAsync(packet.Message.GetType(), ex);
-            }
-        }
-
-        Task IMediator.Notify<TMessage>(INotification<TMessage> notification, NotificationErrorDelegate<TMessage> onError, CancellationToken cancellationToken) =>
-            Notify((TMessage)notification, onError, cancellationToken);
-
-        Task IMediator.Send<TMessage>(ICommand<TMessage> command, CancellationToken cancellationToken) =>
-            Send((TMessage)command, cancellationToken);
-
-        Task<TResponse> IMediator.Request<TMessage, TResponse>(IRequest<TMessage, TResponse> request, CancellationToken cancellationToken) =>
-            Request<TMessage, TResponse>((TMessage)request, cancellationToken);
-
-        IAsyncEnumerable<TResponse> IMediator.RequestStream<TMessage, TResponse>(IStream<TMessage, TResponse> request, CancellationToken cancellationToken) =>
-            RequestStream<TMessage, TResponse>((TMessage)request, cancellationToken);
     }
 }

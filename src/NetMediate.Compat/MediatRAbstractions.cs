@@ -12,7 +12,7 @@ public interface ISender
     /// <param name="request">Request instance.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Response from handler.</returns>
-    Task<TResponse> Send<TResponse>(
+    ValueTask<TResponse?> Send<TResponse>(
         IRequest<TResponse> request,
         CancellationToken cancellationToken = default
     );
@@ -24,16 +24,7 @@ public interface ISender
     /// <param name="request">Request instance.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Task completion.</returns>
-    Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default)
-        where TRequest : IRequest;
-
-    /// <summary>
-    /// Sends a request as object.
-    /// </summary>
-    /// <param name="request">Request instance.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Response object when available.</returns>
-    Task<object?> Send(object request, CancellationToken cancellationToken = default);
+    ValueTask Send(IRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Sends a stream request and returns an asynchronous response stream.
@@ -46,17 +37,6 @@ public interface ISender
         IStreamRequest<TResponse> request,
         CancellationToken cancellationToken = default
     );
-
-    /// <summary>
-    /// Sends a stream request as object.
-    /// </summary>
-    /// <param name="request">Request instance.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Asynchronous stream of object responses.</returns>
-    IAsyncEnumerable<object?> CreateStream(
-        object request,
-        CancellationToken cancellationToken = default
-    );
 }
 
 /// <summary>
@@ -65,21 +45,13 @@ public interface ISender
 public interface IPublisher
 {
     /// <summary>
-    /// Publishes a notification by object instance.
-    /// </summary>
-    /// <param name="notification">Notification instance.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Task completion.</returns>
-    Task Publish(object notification, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Publishes a notification by type.
     /// </summary>
     /// <typeparam name="TNotification">Notification type.</typeparam>
     /// <param name="notification">Notification instance.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Task completion.</returns>
-    Task Publish<TNotification>(
+    ValueTask Publish<TNotification>(
         TNotification notification,
         CancellationToken cancellationToken = default
     ) where TNotification : INotification;

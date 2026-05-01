@@ -1,23 +1,27 @@
 ﻿namespace NetMediate.Resilience;
 
 /// <summary>
-/// Request pipeline timeout behavior.
+/// Provides a request behavior that enforces a timeout for request handling operations.
 /// </summary>
-/// <typeparam name="TMessage">Request message type.</typeparam>
-/// <typeparam name="TResponse">Request response type.</typeparam>
+/// <remarks>If the request handler does not complete within the specified timeout, a <see
+/// cref="TimeoutException"/> is thrown. The timeout is not enforced if the configured duration is zero or
+/// infinite.</remarks>
+/// <typeparam name="TMessage">The type of the request message. Must implement <see cref="IRequest{TResponse}"/> and not be null.</typeparam>
+/// <typeparam name="TResponse">The type of the response returned by the request handler.</typeparam>
+/// <param name="options">The options that configure the timeout duration for request processing.</param>
 public sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehaviorOptions options)
-    : IRequestBehavior<TMessage, TResponse>
+    : IRequestBehavior<TMessage, TResponse> where TMessage : notnull, IRequest<TResponse>
 {
     /// <inheritdoc />
-    public async Task<TResponse> Handle(
+    public async ValueTask<TResponse> Handle(
         TMessage message,
-        RequestHandlerDelegate<TResponse> next,
+        RequestHandlerDelegate<TMessage, TResponse> next,
         CancellationToken cancellationToken = default
     )
     {
         var timeout = options.RequestTimeout;
         if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
-            return await next(cancellationToken).ConfigureAwait(false);
+            return await next(message, cancellationToken).ConfigureAwait(false);
 
         using var timeoutTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken
@@ -26,7 +30,7 @@ public sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehaviorO
 
         try
         {
-            return await next(timeoutTokenSource.Token).ConfigureAwait(false);
+            return await next(message, timeoutTokenSource.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException ex)
             when (
@@ -34,7 +38,7 @@ public sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehaviorO
             )
         {
             throw new TimeoutException(
-                $"Request '{typeof(TMessage).Name}' exceeded timeout '{timeout}'.",
+                $"Request exceeded timeout '{timeout}'.",
                 ex
             );
         }
@@ -42,23 +46,27 @@ public sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehaviorO
 }
 
 /// <summary>
-/// Notification pipeline timeout behavior.
+/// Provides a notification behavior that enforces a timeout for notification handlers.
 /// </summary>
-/// <typeparam name="TMessage">Notification message type.</typeparam>
+/// <remarks>If the notification handler does not complete within the specified timeout, a <see
+/// cref="TimeoutException"/> is thrown. The timeout is not enforced if the configured duration is zero or
+/// infinite.</remarks>
+/// <typeparam name="TMessage">The type of notification message to handle. Must implement <see cref="INotification"/> and be non-nullable.</typeparam>
+/// <param name="options">The options that configure the timeout duration for notification handling.</param>
 public sealed class TimeoutNotificationBehavior<TMessage>(TimeoutBehaviorOptions options)
-    : INotificationBehavior<TMessage>
+    : INotificationBehavior<TMessage> where TMessage : notnull, INotification
 {
     /// <inheritdoc />
-    public async Task Handle(
+    public async ValueTask Handle(
         TMessage message,
-        NotificationHandlerDelegate next,
+        NotificationHandlerDelegate<TMessage> next,
         CancellationToken cancellationToken = default
     )
     {
         var timeout = options.NotificationTimeout;
         if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
         {
-            await next(cancellationToken).ConfigureAwait(false);
+            await next(message, cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -69,7 +77,7 @@ public sealed class TimeoutNotificationBehavior<TMessage>(TimeoutBehaviorOptions
 
         try
         {
-            await next(timeoutTokenSource.Token).ConfigureAwait(false);
+            await next(message, timeoutTokenSource.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException ex)
             when (
@@ -77,7 +85,7 @@ public sealed class TimeoutNotificationBehavior<TMessage>(TimeoutBehaviorOptions
             )
         {
             throw new TimeoutException(
-                $"Notification '{typeof(TMessage).Name}' exceeded timeout '{timeout}'.",
+                $"Notification exceeded timeout '{timeout}'.",
                 ex
             );
         }

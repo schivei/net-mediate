@@ -6,6 +6,7 @@
     <Description>Compatibility layer to migrate from MediatR to NetMediate without changing contracts.</Description>
     <PackageTags>Mediator;MediatR;Compatibility</PackageTags>
     <NoWarn>$(NoWarn);CA1852</NoWarn>
+	<RootNamespace>MediatR</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />

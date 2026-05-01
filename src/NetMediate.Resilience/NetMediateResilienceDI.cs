@@ -41,10 +41,10 @@ public static class NetMediateResilienceDI
     {
         var options = new RetryBehaviorOptions();
         configure?.Invoke(options);
-        services.AddSingleton(options);
-        services.AddScoped(typeof(IRequestBehavior<,>), typeof(RetryRequestBehavior<,>));
-        services.AddScoped(typeof(INotificationBehavior<>), typeof(RetryNotificationBehavior<>));
-        return services;
+        return services
+            .AddSingleton(options)
+            .AddSingleton(typeof(IRequestBehavior<,>), typeof(RetryRequestBehavior<,>))
+            .AddSingleton(typeof(INotificationBehavior<>), typeof(RetryNotificationBehavior<>));
     }
 
     /// <summary>
@@ -60,10 +60,9 @@ public static class NetMediateResilienceDI
     {
         var options = new TimeoutBehaviorOptions();
         configure?.Invoke(options);
-        services.AddSingleton(options);
-        services.AddScoped(typeof(IRequestBehavior<,>), typeof(TimeoutRequestBehavior<,>));
-        services.AddScoped(typeof(INotificationBehavior<>), typeof(TimeoutNotificationBehavior<>));
-        return services;
+        return services.AddSingleton(options)
+            .AddSingleton(typeof(IRequestBehavior<,>), typeof(TimeoutRequestBehavior<,>))
+            .AddSingleton(typeof(INotificationBehavior<>), typeof(TimeoutNotificationBehavior<>));
     }
 
     /// <summary>
@@ -79,15 +78,8 @@ public static class NetMediateResilienceDI
     {
         var options = new CircuitBreakerBehaviorOptions();
         configure?.Invoke(options);
-        services.AddSingleton(options);
-        services.AddScoped(
-            typeof(IRequestBehavior<,>),
-            typeof(CircuitBreakerRequestBehavior<,>)
-        );
-        services.AddScoped(
-            typeof(INotificationBehavior<>),
-            typeof(CircuitBreakerNotificationBehavior<>)
-        );
-        return services;
+        return services.AddSingleton(options)
+            .AddSingleton(typeof(IRequestBehavior<,>), typeof(CircuitBreakerRequestBehavior<,>))
+            .AddSingleton(typeof(INotificationBehavior<>), typeof(CircuitBreakerNotificationBehavior<>));
     }
 }

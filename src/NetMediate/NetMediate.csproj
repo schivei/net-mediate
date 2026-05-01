@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\pack.props" />
   <PropertyGroup>
     <!-- XML Documentation Generation -->
@@ -22,6 +22,8 @@
     <InternalsVisibleTo Include="NetMediate.Compat" />
     <InternalsVisibleTo Include="NetMediate.Moq" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
+	<InternalsVisibleTo Include="SharedParity.NetMediate.Tests"/>
+	<InternalsVisibleTo Include="SharedParity.MediatRCompat.Tests"/>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />

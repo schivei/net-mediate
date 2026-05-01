@@ -2,7 +2,7 @@
 
 namespace NetMediate.Tests.Messages;
 
-internal record SimpleValidatableMessage([Required] string Name) : BaseMessage, IValidatable
+internal record SimpleValidatableMessage([Required] string Name) : BaseMessage, IValidatable, INotification
 {
     public Task<ValidationResult> ValidateAsync() =>
         Task.FromResult(

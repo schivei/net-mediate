@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using System.Threading.Channels;
 
 namespace NetMediate.Internals;
@@ -9,10 +9,20 @@ internal static class Extensions
     {
         channel.Writer.TryComplete();
 
-        await foreach (var _ in channel.Reader.ReadAllAsync().ConfigureAwait(false))
-            /* ignore */;
+        await foreach (var _ in channel.Reader.ReadAllAsync().ConfigureAwait(false)) { }
     }
 
-    public static string? GetKey(this Type type) =>
-        type.GetCustomAttribute<KeyedMessageAttribute>(false)?.ServiceKey;
+    public static IEnumerable<T> GetAllServices<T>(this IServiceProvider serviceProvider)
+    {
+        try
+        {
+            return serviceProvider is IServiceProviderIsService isService && !isService.IsService(typeof(T)) && !isService.IsService(typeof(IEnumerable<T>))
+            ? []
+            : serviceProvider.GetServices<T>();
+        }
+        catch
+        {
+            return [];
+        }
+    }
 }

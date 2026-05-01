@@ -26,18 +26,9 @@ public static class MediatRServiceCollectionExtensions
         Guard.ThrowIfNull(services);
         Guard.ThrowIfNull(assemblies);
 
-        var selectedAssemblies = assemblies.Length == 0
-            ? [
-                .. AppDomain
-                    .CurrentDomain.GetAssemblies()
-                    .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location)),
-            ]
-            : assemblies;
-
-        services.AddNetMediate(selectedAssemblies);
-        services.TryAddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-
+        services.AddNetMediate(assemblies);
         services.TryAddSingleton<IMediator, MediatorAdapter>();
+        services.TryAddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         services.TryAddSingleton<ISender>(sp => sp.GetRequiredService<IMediator>());
         services.TryAddSingleton<IPublisher>(sp => sp.GetRequiredService<IMediator>());
 

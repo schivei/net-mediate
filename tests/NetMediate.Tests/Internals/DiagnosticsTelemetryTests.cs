@@ -20,7 +20,7 @@ public sealed class DiagnosticsTelemetryTests
         using var activityListener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == NetMediateDiagnostics.ActivitySourceName,
-            Sample = static (ref ActivityCreationOptions<ActivityContext> _) =>
+            Sample = static (ref _) =>
                 ActivitySamplingResult.AllDataAndRecorded,
             ActivityStarted = activity => activityNames.Enqueue(activity.OperationName),
         };
@@ -73,24 +73,24 @@ public sealed class DiagnosticsTelemetryTests
         return host;
     }
 
-    private sealed record TestMessage(string Name);
+    private sealed record TestMessage(string Name) : ICommand, INotification, IRequest<string>, IStream<string>;
 
     private sealed class TestCommandHandler : ICommandHandler<TestMessage>
     {
-        public Task Handle(TestMessage command, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public ValueTask Handle(TestMessage command, CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
     }
 
     private sealed class TestRequestHandler : IRequestHandler<TestMessage, string>
     {
-        public Task<string> Handle(TestMessage query, CancellationToken cancellationToken = default) =>
-            Task.FromResult(query.Name);
+        public ValueTask<string> Handle(TestMessage query, CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(query.Name);
     }
 
     private sealed class TestNotificationHandler : INotificationHandler<TestMessage>
     {
-        public Task Handle(TestMessage notification, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public ValueTask Handle(TestMessage notification, CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
     }
 
     private sealed class TestStreamHandler : IStreamHandler<TestMessage, string>

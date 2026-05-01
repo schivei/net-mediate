@@ -17,39 +17,57 @@ public sealed class MediatorNotifiesContinuationTests
 
     public MediatorNotifiesContinuationTests()
     {
-        _cfg = new Configuration(Channel.CreateUnbounded<INotificationPacket>())
+        _cfg = new Configuration(Channel.CreateUnbounded<IPack>())
         {
-            IgnoreUnhandledMessages = false,
-            LogUnhandledMessages = true,
+            IgnoreUnhandledMessages = true,
         };
 
         _scopeFactory.Setup(f => f.CreateScope()).Returns(_scope.Object);
         _scope.Setup(s => s.ServiceProvider).Returns(_provider.Object);
 
-        _sut = new Mediator(_logger.Object, _cfg, _scopeFactory.Object);
+        _sut = new Mediator(_cfg, _scopeFactory.Object, new Moq.Notifier(_scopeFactory.Object));
     }
 
-    public sealed class Msg { }
+    public sealed class Msg : INotification
+    {
+        public bool Maked { get; private set; }
+
+        public bool Checked { get; private set; }
+
+        public Msg Mark()
+        {
+            Maked = true;
+            return this;
+        }
+
+        public void Check()
+        {
+            Checked = true;
+        }
+    }
 
     private sealed class OkHandler : INotificationHandler<Msg>
     {
-        public Task Handle(Msg notification, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public async ValueTask Handle(Msg notification, CancellationToken cancellationToken = default)
+        {
+            notification.Check();
+            await Task.CompletedTask;
+        }
     }
 
     private sealed class FaultHandler : INotificationHandler<Msg>
     {
-        public Task Handle(Msg notification, CancellationToken cancellationToken = default) =>
-            Task.FromException(new InvalidOperationException("x"));
+        public ValueTask Handle(Msg notification, CancellationToken cancellationToken = default) =>
+            ValueTask.FromException(new InvalidOperationException("x"));
     }
 
     private sealed class PassThroughBehavior : INotificationBehavior<Msg>
     {
-        public Task Handle(
+        public ValueTask Handle(
             Msg message,
-            NotificationHandlerDelegate next,
+            NotificationHandlerDelegate<Msg> next,
             CancellationToken cancellationToken = default
-        ) => next(cancellationToken);
+        ) => next(message.Mark(), cancellationToken);
     }
 
     [Fact]
@@ -60,21 +78,13 @@ public sealed class MediatorNotifiesContinuationTests
             .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
             .Returns(new[] { new OkHandler() });
 
-        var called = false;
-        Task onError(Type _, Msg __, Exception ___)
-        {
-            called = true;
-            return Task.CompletedTask;
-        }
-
-        await _sut.Notifies(
-            new NotificationPacket<Msg>(message, onError),
+        await _sut.Notify(
+            message,
             TestContext.Current.CancellationToken
         );
-        // Give time for continuation (even though it won't run)
-        await Task.Delay(20, TestContext.Current.CancellationToken);
 
-        Assert.False(called);
+        Assert.False(message.Maked);
+        Assert.True(message.Checked);
     }
 
     [Fact]
@@ -85,26 +95,16 @@ public sealed class MediatorNotifiesContinuationTests
             .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
             .Returns(new[] { new FaultHandler() });
 
-        var tcs = new TaskCompletionSource<bool>(
-            TaskCreationOptions.RunContinuationsAsynchronously
-        );
-        Task onError(Type _, Msg __, Exception ___)
+        await Assert.ThrowsAnyAsync<Exception>(async () =>
         {
-            tcs.TrySetResult(true);
-            return Task.CompletedTask;
-        }
+            await _sut.Notify(
+                message,
+                TestContext.Current.CancellationToken
+            );
+        });
 
-        await _sut.Notifies(
-            new NotificationPacket<Msg>(message, onError),
-            TestContext.Current.CancellationToken
-        );
-
-        var completed = await Task.WhenAny(
-            tcs.Task,
-            Task.Delay(500, TestContext.Current.CancellationToken)
-        );
-        Assert.Same(tcs.Task, completed);
-        Assert.True(await tcs.Task);
+        Assert.False(message.Maked);
+        Assert.False(message.Checked);
     }
 
     [Fact]
@@ -118,26 +118,35 @@ public sealed class MediatorNotifiesContinuationTests
             .Setup(p => p.GetService(typeof(IEnumerable<INotificationBehavior<Msg>>)))
             .Returns(new[] { new PassThroughBehavior() });
 
-        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        Task onError(Type _, Msg __, Exception ___)
+        await Assert.ThrowsAnyAsync<Exception>(async () =>
         {
-            tcs.TrySetResult(true);
-            return Task.CompletedTask;
-        }
-
-        var exception = await Assert.ThrowsAsync<AggregateException>(() =>
-            _sut.Notifies(
-                new NotificationPacket<Msg>(message, onError),
+            await _sut.Notify(
+                message,
                 TestContext.Current.CancellationToken
-            )
-        );
-        Assert.Contains(exception.InnerExceptions, e => e is InvalidOperationException);
+            );
+        });
 
-        var completed = await Task.WhenAny(
-            tcs.Task,
-            Task.Delay(500, TestContext.Current.CancellationToken)
+        Assert.True(message.Maked);
+        Assert.False(message.Checked);
+    }
+
+    [Fact]
+    public async Task Notifies_HandlerFaulted_WithNotificationBehavior_SuccessCallback()
+    {
+        var message = new Msg();
+        _provider
+            .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
+            .Returns(new[] { new OkHandler() });
+        _provider
+            .Setup(p => p.GetService(typeof(IEnumerable<INotificationBehavior<Msg>>)))
+            .Returns(new[] { new PassThroughBehavior() });
+
+        await _sut.Notify(
+            message,
+            TestContext.Current.CancellationToken
         );
-        Assert.Same(tcs.Task, completed);
-        Assert.True(await tcs.Task);
+
+        Assert.True(message.Maked);
+        Assert.True(message.Checked);
     }
 }

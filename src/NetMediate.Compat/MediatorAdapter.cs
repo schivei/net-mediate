@@ -18,13 +18,13 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
     private static readonly MethodInfo s_streamMethod = typeof(MediatorAdapter)
         .GetMethod(nameof(CreateStreamInvokerCore), BindingFlags.NonPublic | BindingFlags.Static)!;
 
-    private static readonly ConcurrentDictionary<Type, Func<NetMediate.IMediator, object, CancellationToken, Task<object?>>> s_sendWithResponseInvokers =
+    private static readonly ConcurrentDictionary<Type, Func<NetMediate.IMediator, object, CancellationToken, ValueTask<object?>>> s_sendWithResponseInvokers =
         new();
 
-    private static readonly ConcurrentDictionary<Type, Func<NetMediate.IMediator, object, CancellationToken, Task>> s_sendWithoutResponseInvokers =
+    private static readonly ConcurrentDictionary<Type, Func<NetMediate.IMediator, object, CancellationToken, ValueTask>> s_sendWithoutResponseInvokers =
         new();
 
-    private static readonly ConcurrentDictionary<Type, Func<NetMediate.IMediator, object, CancellationToken, Task>> s_publishInvokers =
+    private static readonly ConcurrentDictionary<Type, Func<NetMediate.IMediator, object, CancellationToken, ValueTask>> s_publishInvokers =
         new();
 
     private static readonly ConcurrentDictionary<Type, Func<NetMediate.IMediator, object, CancellationToken, IAsyncEnumerable<object?>>> s_streamInvokers =
@@ -32,7 +32,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
 
     private readonly NetMediate.IMediator _mediator = mediator;
 
-    public async Task<TResponse> Send<TResponse>(
+    public async ValueTask<TResponse?> Send<TResponse>(
         IRequest<TResponse> request,
         CancellationToken cancellationToken = default
     )
@@ -45,15 +45,14 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
             : (TResponse)response;
     }
 
-    public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default)
-        where TRequest : IRequest
+    public ValueTask Send(IRequest request, CancellationToken cancellationToken = default)
     {
         Guard.ThrowIfNull(request);
 
         return SendWithoutResponse(_mediator, request, cancellationToken);
     }
 
-    public async Task<object?> Send(object request, CancellationToken cancellationToken = default)
+    public async ValueTask<object?> Send(object request, CancellationToken cancellationToken = default)
     {
         Guard.ThrowIfNull(request);
 
@@ -66,15 +65,10 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
         var requestType = request.GetType();
         var requestInterface = requestType
             .GetInterfaces()
-            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequest<>));
-
-        if (requestInterface is null)
-        {
-            throw new ArgumentException(
+            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IRequest<>)) ?? throw new ArgumentException(
                 $"The object '{requestType.FullName}' does not implement IRequest.",
                 nameof(request)
             );
-        }
 
         return await SendWithResponse(
             _mediator,
@@ -92,7 +86,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
     {
         Guard.ThrowIfNull(request);
 
-        return CreateTypedStream<TResponse>(request, cancellationToken);
+        return CreateTypedStream(request, cancellationToken);
     }
 
     public IAsyncEnumerable<object?> CreateStream(
@@ -105,15 +99,10 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
         var requestType = request.GetType();
         var requestInterface = requestType
             .GetInterfaces()
-            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IStreamRequest<>));
-
-        if (requestInterface is null)
-        {
-            throw new ArgumentException(
+            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(IStreamRequest<>)) ?? throw new ArgumentException(
                 $"The object '{requestType.FullName}' does not implement IStreamRequest<TResponse>.",
                 nameof(request)
             );
-        }
 
         return CreateStreamInvoker(
             _mediator,
@@ -124,7 +113,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
         );
     }
 
-    public Task Publish(object notification, CancellationToken cancellationToken = default)
+    public ValueTask Publish(object notification, CancellationToken cancellationToken = default)
     {
         Guard.ThrowIfNull(notification);
 
@@ -139,7 +128,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
         return Publish(_mediator, notification, cancellationToken);
     }
 
-    public Task Publish<TNotification>(
+    public ValueTask Publish<TNotification>(
         TNotification notification,
         CancellationToken cancellationToken = default
     ) where TNotification : INotification
@@ -149,7 +138,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
         return Publish((object)notification, cancellationToken);
     }
 
-    private static Task<object?> SendWithResponse(
+    private static ValueTask<object?> SendWithResponse(
         NetMediate.IMediator mediator,
         object request,
         Type requestType,
@@ -161,12 +150,43 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
             _ =>
             {
                 var method = s_sendWithResponseMethod.MakeGenericMethod(requestType, responseType);
-                return (innerMediator, message, token) =>
-                    (Task<object?>)method.Invoke(null, [innerMediator, message, token])!;
+                return (innerMediator, message, token) => FromValue(method.Invoke(null, [innerMediator, message, token]));
             }
         )(mediator, request, cancellationToken);
 
-    private static Task SendWithoutResponse(
+    private static async ValueTask<object?> FromValue(object? unknownInvokeResult)
+    {
+        if (unknownInvokeResult == null)
+        {
+            return null;
+        }
+
+        var invokeResultType = unknownInvokeResult.GetType();
+
+        if (invokeResultType == typeof(void))
+        {
+            return null;
+        }
+
+        if (invokeResultType.IsGenericType && invokeResultType.GetGenericTypeDefinition() == typeof(ValueTask<>))
+        {
+            var resultProperty = invokeResultType.GetProperty("Result")!;
+            await (ValueTask)unknownInvokeResult;
+            return resultProperty.GetValue(unknownInvokeResult);
+        }
+
+        if (invokeResultType == typeof(ValueTask))
+        {
+            await (ValueTask)unknownInvokeResult;
+            return null;
+        }
+
+        throw new InvalidOperationException(
+            $"Unexpected return type from handler invocation: {invokeResultType.FullName}. Expected ValueTask or ValueTask<T>."
+        );
+    }
+
+    private static ValueTask SendWithoutResponse(
         NetMediate.IMediator mediator,
         object request,
         CancellationToken cancellationToken
@@ -179,13 +199,12 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
             static type =>
             {
                 var method = s_sendWithoutResponseMethod.MakeGenericMethod(type);
-                return (innerMediator, message, token) =>
-                    (Task)method.Invoke(null, [innerMediator, message, token])!;
+                return (innerMediator, message, token) => (ValueTask)method.Invoke(null, [innerMediator, message, token])!;
             }
         )(mediator, request, cancellationToken);
     }
 
-    private static Task Publish(
+    private static ValueTask Publish(
         NetMediate.IMediator mediator,
         object notification,
         CancellationToken cancellationToken
@@ -199,7 +218,7 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
             {
                 var method = s_publishMethod.MakeGenericMethod(type);
                 return (innerMediator, message, token) =>
-                    (Task)method.Invoke(null, [innerMediator, message, token])!;
+                    (ValueTask)method.Invoke(null, [innerMediator, message, token])!;
             }
         )(mediator, notification, cancellationToken);
     }
@@ -221,11 +240,11 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
             }
         )(mediator, request, cancellationToken);
 
-    private static async Task<object?> SendWithResponseCore<TRequest, TResponse>(
+    private static async ValueTask<object?> SendWithResponseCore<TRequest, TResponse>(
         NetMediate.IMediator mediator,
         object request,
         CancellationToken cancellationToken
-    )
+    ) where TRequest : IRequest<TResponse>
     {
         var response = await mediator.Request<TRequest, TResponse>(
             (TRequest)request,
@@ -234,24 +253,26 @@ internal sealed class MediatorAdapter(NetMediate.IMediator mediator) : IMediator
         return response;
     }
 
-    private static Task SendWithoutResponseCore<TRequest>(
+    private static ValueTask SendWithoutResponseCore<TRequest>(
         NetMediate.IMediator mediator,
         object request,
         CancellationToken cancellationToken
-    ) => mediator.Send((TRequest)request, cancellationToken);
+    ) where TRequest : IRequest =>
+        mediator.Send((TRequest)request, cancellationToken);
 
-    private static Task PublishCore<TNotification>(
+    private static ValueTask PublishCore<TNotification>(
         NetMediate.IMediator mediator,
         object notification,
         CancellationToken cancellationToken
-    ) => mediator.Notify((TNotification)notification, cancellationToken);
+    ) where TNotification : INotification =>
+        mediator.Notify((TNotification)notification, cancellationToken);
 
     private static async IAsyncEnumerable<object?> CreateStreamInvokerCore<TRequest, TResponse>(
         NetMediate.IMediator mediator,
         object request,
         [System.Runtime.CompilerServices.EnumeratorCancellation]
             CancellationToken cancellationToken
-    )
+    ) where TRequest : IStreamRequest<TResponse>
     {
         await foreach (var item in mediator.RequestStream<TRequest, TResponse>(
                            (TRequest)request,

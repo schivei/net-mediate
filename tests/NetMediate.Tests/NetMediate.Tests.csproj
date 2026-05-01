@@ -1,29 +1,20 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <LangVersion>14</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <NoWarn>CS1066;CA1859;$(NoWarn)</NoWarn>
-  </PropertyGroup>
-  <!-- Per-TFM Microsoft.Extensions version selection -->
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
-    <ExtensionsVersion>8.*</ExtensionsVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0'">
-    <ExtensionsVersion>9.*</ExtensionsVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <ExtensionsVersion>10.*</ExtensionsVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="10.*">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="$(ExtensionsVersion)" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="$(ExtensionsVersion)" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="$(ExtensionsVersion)" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.*" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
     <PackageReference Include="xunit.v3" Version="3.*" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.*">
@@ -33,6 +24,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
+    <ProjectReference Include="..\..\src\NetMediate.Adapters\NetMediate.Adapters.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.Moq\NetMediate.Moq.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.Resilience\NetMediate.Resilience.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.DataDog.OpenTelemetry\NetMediate.DataDog.OpenTelemetry.csproj" />

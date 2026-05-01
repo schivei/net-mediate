@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
+using NetMediate;
 using NetMediate.Internals;
 
 using Notifier = NetMediate.Moq.Notifier;
@@ -88,5 +89,51 @@ public class MediatorServiceBuilderTests
         var builder = new MediatorServiceBuilder<Notifier>(services);
         var result = builder.IgnoreUnhandledMessages(false);
         Assert.Same(builder, result);
+    }
+
+    [Fact]
+    public void Constructor_WhenINotifiableAlreadyRegistered_ReplacesExistingRegistration()
+    {
+        // Arrange — pre-register a different INotifiable implementation
+        var services = new ServiceCollection();
+        services.AddSingleton<INotifiable, Notifier>(sp => null!); // placeholder
+
+        // Act — constructor should Replace rather than Add
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+
+        // Assert — only one INotifiable is registered and it is Notifier
+        var registrations = services.Where(s => s.ServiceType == typeof(INotifiable)).ToList();
+        Assert.Single(registrations);
+        Assert.Equal(typeof(Notifier), registrations[0].ImplementationType);
+    }
+
+    [Fact]
+    public void Guard_ThrowIfNull_WithNull_ThrowsArgumentNullException()
+    {
+        // Guard.ThrowIfNull must throw when the argument is null
+        object? value = null;
+        Assert.Throws<ArgumentNullException>(() => Guard.ThrowIfNull(value));
+    }
+
+    [Fact]
+    public void Guard_ThrowIfNull_WithNonNull_DoesNotThrow()
+    {
+        // Guard.ThrowIfNull must not throw for a non-null argument
+        object value = new();
+        Guard.ThrowIfNull(value); // no exception
+    }
+
+    [Fact]
+    public void GetAllServices_WhenProviderImplementsIServiceProviderIsService_AndTypeNotRegistered_ReturnsEmpty()
+    {
+        // Arrange — a service provider that reports a type as NOT registered
+        var services = new ServiceCollection();
+        var provider = services.BuildServiceProvider(); // real DI provider (implements IServiceProviderIsService)
+
+        // Act — type not registered so GetAllServices returns []
+        var result = provider.GetAllServices<DummyNotification>();
+
+        // Assert
+        Assert.Empty(result);
     }
 }

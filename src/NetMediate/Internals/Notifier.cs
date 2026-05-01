@@ -28,12 +28,9 @@ internal sealed class Notifier(Configuration configuration, IServiceScopeFactory
                serviceProvider,
                (validations, handlers) => async (message, token) =>
                {
-                   foreach (var validation in validations)
-                   {
-                       await validation.ValidateAsync(message, token).ConfigureAwait(false);
-                   }
-
-                   await Task.WhenAll(handlers.Select(async handler => await handler.Handle(message, token).ConfigureAwait(false))).ConfigureAwait(false);
+                   await Mediator.ValidateMessageAsync(message, validations, token).ConfigureAwait(false);
+                   foreach (var handler in handlers)
+                       await handler.Handle(message, token).ConfigureAwait(false);
                },
                (behavior, next) => (message, token) => behavior.Handle(message, next, token)
             );

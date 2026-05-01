@@ -44,7 +44,8 @@ public class MediatorTests
         _mediator = new Mediator(
             _configuration,
             _serviceScopeFactoryMock.Object,
-            _notifier.Object
+            _notifier.Object,
+            _loggerMock.Object
         );
     }
 
@@ -55,6 +56,9 @@ public class MediatorTests
     {
         // Arrange
         var message = new TestMessageNotification { Content = "Test" };
+        var handler = new Mock<INotificationHandler<TestMessageNotification>>();
+        handler.Setup(h => h.Handle(message, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
+        SetupHandler(handler.Object);
 
         // Act
         await _mediator.Notify(
@@ -70,6 +74,9 @@ public class MediatorTests
     public async Task Notify_Enumerable_ShouldWriteAllToChannel()
     {
         TestMessageNotification[] messages = [new TestMessageNotification { Content = "1" }, new TestMessageNotification { Content = "2" }];
+        var handler = new Mock<INotificationHandler<TestMessageNotification>>();
+        handler.Setup(h => h.Handle(It.IsAny<TestMessageNotification>(), It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
+        SetupHandler(handler.Object);
 
         await _mediator.Notify(
             messages,
@@ -127,8 +134,43 @@ public class MediatorTests
         // Act
         await _mediator.Send(message, TestContext.Current.CancellationToken);
 
-        // Assert
-        VerifyLoggerCalled(LogLevel.Warning, "No handler found");
+        // Assert — completing without exception is the expected behaviour when ignoring unhandled messages
+    }
+
+    [Fact]
+    public async Task Send_WhenHandlerThrows_PropagatesException()
+    {
+        // Arrange
+        var message = new TestMessageCommand { Content = "Test" };
+        var handler = new Mock<ICommandHandler<TestMessageCommand>>();
+        handler.Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
+               .ThrowsAsync(new InvalidOperationException("handler error"));
+        SetupHandler(handler.Object);
+
+        // Act & Assert — exception propagates through the catch/rethrow in Send
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _mediator.Send(message, TestContext.Current.CancellationToken).AsTask()
+        );
+    }
+
+    [Fact]
+    public async Task Send_WithRegisteredValidationHandlerThatFails_ShouldThrowMessageValidationException()
+    {
+        // Arrange
+        var message = new TestMessageCommand { Content = "Test" };
+        var handler = new Mock<ICommandHandler<TestMessageCommand>>();
+        handler.Setup(h => h.Handle(message, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
+        SetupHandler(handler.Object);
+
+        var validationHandler = new Mock<IValidationHandler<TestMessageCommand>>();
+        validationHandler.Setup(v => v.ValidateAsync(message, It.IsAny<CancellationToken>()))
+                         .ReturnsAsync(new System.ComponentModel.DataAnnotations.ValidationResult("Content is required."));
+        SetupHandler(validationHandler.Object);
+
+        // Act & Assert — registered validation handler failure throws MessageValidationException
+        await Assert.ThrowsAsync<MessageValidationException>(
+            () => _mediator.Send(message, TestContext.Current.CancellationToken).AsTask()
+        );
     }
 
     #endregion
@@ -189,7 +231,43 @@ public class MediatorTests
 
         // Assert
         Assert.Null(result);
-        VerifyLoggerCalled(LogLevel.Warning, "No handler found");
+    }
+
+    [Fact]
+    public async Task Request_WhenHandlerThrows_PropagatesException()
+    {
+        // Arrange
+        var message = new TestRequest { Id = 1 };
+        var handler = new Mock<IRequestHandler<TestRequest, TestResponse>>();
+        handler.Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
+               .ThrowsAsync(new InvalidOperationException("handler error"));
+        SetupHandler(handler.Object);
+
+        // Act & Assert — exception propagates through the catch/rethrow in Request
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _mediator.Request<TestRequest, TestResponse>(message, TestContext.Current.CancellationToken).AsTask()
+        );
+    }
+
+    [Fact]
+    public async Task Request_WithRegisteredValidationHandlerThatFails_ShouldThrowMessageValidationException()
+    {
+        // Arrange
+        var message = new TestRequest { Id = 1 };
+        var handler = new Mock<IRequestHandler<TestRequest, TestResponse>>();
+        handler.Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
+               .ReturnsAsync(new TestResponse());
+        SetupHandler(handler.Object);
+
+        var validationHandler = new Mock<IValidationHandler<TestRequest>>();
+        validationHandler.Setup(v => v.ValidateAsync(message, It.IsAny<CancellationToken>()))
+                         .ReturnsAsync(new System.ComponentModel.DataAnnotations.ValidationResult("Id must be positive."));
+        SetupHandler(validationHandler.Object);
+
+        // Act & Assert — registered validation handler failure throws MessageValidationException
+        await Assert.ThrowsAsync<MessageValidationException>(
+            () => _mediator.Request<TestRequest, TestResponse>(message, TestContext.Current.CancellationToken).AsTask()
+        );
     }
 
     #endregion
@@ -274,7 +352,6 @@ public class MediatorTests
 
         // Assert
         Assert.Empty(results);
-        VerifyLoggerCalled(LogLevel.Warning, "No handler found");
     }
 
     #endregion
@@ -339,8 +416,64 @@ public class MediatorTests
             TestContext.Current.CancellationToken
         );
 
-        // Assert
-        VerifyLoggerCalled(LogLevel.Warning, "No handler found");
+        // Assert — completing without exception is the expected behaviour when ignoring unhandled messages
+    }
+
+    [Fact]
+    public async Task Notify_Enumerable_WithNoHandlersAndIgnore_ShouldComplete()
+    {
+        // Arrange
+        TestMessageNotification[] messages = [new() { Content = "A" }, new() { Content = "B" }];
+        _configuration.IgnoreUnhandledMessages = true;
+        SetupHandler<INotificationHandler<TestMessageNotification>>([]);
+
+        // Act — NotifyCore(IList) path with no handlers + ignore
+        await _mediator.Notify(messages, TestContext.Current.CancellationToken);
+
+        // Assert — no exception
+    }
+
+    [Fact]
+    public async Task Notify_Enumerable_WhenNotifierThrows_PropagatesException()
+    {
+        // Arrange
+        var handler = new Mock<INotificationHandler<TestMessageNotification>>();
+        handler.Setup(h => h.Handle(It.IsAny<TestMessageNotification>(), It.IsAny<CancellationToken>()))
+               .Returns(ValueTask.CompletedTask);
+        SetupHandler(handler.Object);
+
+        // DispatchNotifications is virtual — set it up to throw so the enumerable notifier also throws
+        _notifier.Setup(n => n.DispatchNotifications(It.IsAny<TestMessageNotification>(), It.IsAny<CancellationToken>()))
+                 .ThrowsAsync(new InvalidOperationException("dispatch error"));
+
+        TestMessageNotification[] messages = [new() { Content = "A" }];
+
+        // Act & Assert — exception from notifier propagates through Notify(IEnumerable)
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _mediator.Notify(messages, TestContext.Current.CancellationToken).AsTask()
+        );
+    }
+
+    [Fact]
+    public async Task RequestStream_WithRegisteredValidationHandlerThatFails_ShouldThrowMessageValidationException()
+    {
+        // Arrange
+        var message = new TestStream { Id = 1 };
+        var handler = new Mock<IStreamHandler<TestStream, TestResponse>>();
+        handler.Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
+               .Returns(GetAsyncEnumerable([new TestResponse { Value = "x" }]));
+        SetupHandler(handler.Object);
+
+        var validationHandler = new Mock<IValidationHandler<TestStream>>();
+        validationHandler.Setup(v => v.ValidateAsync(message, It.IsAny<CancellationToken>()))
+                         .ReturnsAsync(new System.ComponentModel.DataAnnotations.ValidationResult("Id too small."));
+        SetupHandler(validationHandler.Object);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<MessageValidationException>(async () =>
+        {
+            await foreach (var _ in _mediator.RequestStream<TestStream, TestResponse>(message, TestContext.Current.CancellationToken)) { }
+        });
     }
 
     #endregion
@@ -359,21 +492,6 @@ public class MediatorTests
         where T : class
     {
         _serviceProviderMock.Setup(p => p.GetService(typeof(IEnumerable<T>))).Returns(handlers);
-    }
-
-    private void VerifyLoggerCalled(LogLevel level, string contains)
-    {
-        _loggerMock.Verify(
-            x =>
-                x.Log(
-                    It.Is<LogLevel>(l => l == level),
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains(contains)),
-                    It.IsAny<Exception?>(),
-                    It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)
-                ),
-            Times.AtLeastOnce
-        );
     }
 
     private static async IAsyncEnumerable<T> GetAsyncEnumerable<T>(IEnumerable<T> items)

@@ -11,7 +11,7 @@ public class Notifier(IServiceScopeFactory serviceScopeFactory) : INotifiable
     public async ValueTask Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull, INotification =>
         await Task.WhenAll(messages.Select(async message => await DispatchNotifications(message, cancellationToken))).ConfigureAwait(false);
 
-    public async ValueTask DispatchNotifications<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+    public virtual async ValueTask DispatchNotifications<TMessage>(TMessage message, CancellationToken cancellationToken = default)
         where TMessage : notnull, INotification
     {
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Dispatch");
@@ -29,18 +29,15 @@ public class Notifier(IServiceScopeFactory serviceScopeFactory) : INotifiable
                serviceProvider,
                (validations, handlers) => async (message, token) =>
                {
-                   foreach (var validation in validations)
-                   {
-                       await validation.ValidateAsync(message, token);
-                   }
-
+                   await Mediator.ValidateMessageAsync(message, validations, token).ConfigureAwait(false);
                    foreach (var handler in handlers)
-                   {
-                       await handler.Handle(message, token);
-                   }
+                       await handler.Handle(message, token).ConfigureAwait(false);
                },
                (behavior, next) => (message, token) => behavior.Handle(message, next, token)
             );
+
+            if (pipeline is null)
+                return;
 
             await pipeline.Invoke(message, cancellationToken);
         }

@@ -144,8 +144,8 @@ public sealed class PipelineBehaviorTests
     private static async Task<IHost> CreateHostAsync(Action<IServiceCollection> configure)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(typeof(PipelineBehaviorTests).Assembly);
         configure(builder.Services);
+        builder.Services.AddNetMediate(typeof(PipelineBehaviorTests).Assembly);
 
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);

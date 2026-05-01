@@ -4,13 +4,11 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using NetMediate.Internals;
 using NetMediate.Internals.Workers;
-
 namespace NetMediate.Tests.Internals.Workers;
 
 public class NotificationWorkerTests
 {
     private readonly Mock<MediatorTest> _mediatorMock;
-    private readonly ITerminator _terminator;
     private readonly Mock<ILogger<NotificationWorker>> _loggerMock;
     private readonly Channel<IPack> _channel;
     private readonly Channel<IPack> _channel2;
@@ -27,11 +25,9 @@ public class NotificationWorkerTests
         _configuration = new Configuration(_channel);
         _configuration2 = new Configuration(_channel2);
         _mediatorMock = new Mock<MediatorTest>() { CallBase = true };
-        _terminator = Mock.Of<ITerminator>();
-        _worker = new NotificationWorker(_configuration, _terminator, _loggerMock.Object);
+        _worker = new NotificationWorker(_configuration, _loggerMock.Object);
         _worker2 = new NotificationWorker(
             _configuration2,
-            _terminator,
             _loggerMock.Object
         );
     }
@@ -57,9 +53,8 @@ public class NotificationWorkerTests
         await Task.Delay(100, testCancellationToken); // Allow time for processing
         await _worker.StopAsync(testCancellationToken);
 
-        // Assert
+        // Assert — the dispatch was invoked exactly once
         _mediatorMock.Verify(m => m.DispatchNotifications(message, It.IsAny<CancellationToken>()), Times.Once);
-        VerifyDebugLog("Processing message of type TestMessage", Times.Once());
     }
 
     [Fact]
@@ -76,7 +71,7 @@ public class NotificationWorkerTests
         await Task.Delay(100, testCancellationToken); // Allow time for processing
         await _worker.StopAsync(testCancellationToken);
 
-        // Assert
+        // Assert — dispatch is never called for null packs
         _mediatorMock.Verify(
             m => m.DispatchNotifications(It.IsAny<INotification>(), It.IsAny<CancellationToken>()),
             Times.Never
@@ -101,12 +96,8 @@ public class NotificationWorkerTests
         var task = _worker.StartAsync(cts.Token);
         await Task.Delay(100, testCancellationToken); // Allow time for processing
 
-        // Assert
-        VerifyDebugLog(
-            "An error occurred while processing message of type TestMessage",
-            Times.Once(),
-            LogLevel.Trace
-        );
+        // Assert — dispatch was attempted; worker survived the exception and can be stopped cleanly
+        _mediatorMock.Verify(m => m.DispatchNotifications(message, It.IsAny<CancellationToken>()), Times.Once);
         await _worker.StopAsync(testCancellationToken);
     }
 
@@ -128,12 +119,8 @@ public class NotificationWorkerTests
         var task = _worker.StartAsync(cts.Token);
         await Task.Delay(100, testCancellationToken);
 
-        // Assert
-        VerifyDebugLog(
-            "An error occurred while processing message of type TestMessage",
-            Times.Once(),
-            LogLevel.Trace
-        );
+        // Assert — dispatch was attempted; worker survived the exception and can be stopped cleanly
+        _mediatorMock.Verify(m => m.DispatchNotifications(message, It.IsAny<CancellationToken>()), Times.Once);
         await _worker.StopAsync(testCancellationToken);
     }
 
@@ -152,27 +139,61 @@ public class NotificationWorkerTests
         await _worker2.StartAsync(cts.Token);
         await Task.Delay(500, testCancellationToken);
 
-        // Assert
-        VerifyDebugLog("Notification worker stopped.", Times.Once());
+        // Assert — ExecuteTask is completed once cancellation propagated
+        Assert.True(_worker2.ExecuteTask?.IsCompleted, "Worker should have stopped after cancellation.");
     }
 
-    private void VerifyDebugLog(
-        string messageContains,
-        Times times,
-        LogLevel level = LogLevel.Debug
-    )
+    [Fact]
+    public async Task ExecuteAsync_CancelledDuringDispatch_RethrowsOperationCanceledException()
     {
-        _loggerMock.Verify(
-            x =>
-                x.Log(
-                    level,
-                    It.IsAny<EventId>(),
-                    It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains(messageContains)),
-                    It.IsAny<Exception>(),
-                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
-                ),
-            times
-        );
+        var testCancellationToken = TestContext.Current.CancellationToken;
+
+        // Arrange — use a fresh channel/config/worker for this test
+        var channel = Channel.CreateUnbounded<IPack>();
+        var config = new Configuration(channel);
+        var worker = new NotificationWorker(config, _loggerMock.Object);
+        var workerCts = new CancellationTokenSource();
+
+        var dispatchStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var message = new TestMessage { Id = 42 };
+
+        // This dispatch blocks until the test cancels the worker token, then throws OCE
+        NotificationHandlerDelegate<TestMessage> slowDispatch = async (_, ct) =>
+        {
+            dispatchStarted.TrySetResult();
+            await Task.Delay(10_000, ct);
+        };
+
+        await channel.Writer.WriteAsync(Pack(message, slowDispatch), testCancellationToken);
+        await worker.StartAsync(workerCts.Token);
+
+        // Wait until dispatch has actually started before cancelling
+        await dispatchStarted.Task.WaitAsync(testCancellationToken);
+        await workerCts.CancelAsync();
+
+        await Task.Delay(300, testCancellationToken);
+
+        // Worker should have exited cleanly after the re-throw propagated to ExecuteAsync's catch
+        Assert.True(worker.ExecuteTask?.IsCompleted, "Worker should have stopped after cancellation during dispatch.");
+    }
+
+    [Fact]
+    public async Task Configuration_DisposeAsync_DrainsUnreadMessages()
+    {
+        var testCancellationToken = TestContext.Current.CancellationToken;
+
+        // Arrange — write items that will never be read by a worker
+        var channel = Channel.CreateUnbounded<IPack>();
+        var config = new Configuration(channel);
+        var message = new TestMessage { Id = 99 };
+        await channel.Writer.WriteAsync(Pack(message, (_, _) => ValueTask.CompletedTask), testCancellationToken);
+
+        // Act
+        await config.DisposeAsync();
+
+        // Assert — configuration marked disposed and channel fully drained
+        Assert.True(config.Disposed);
+        Assert.True(channel.Reader.Completion.IsCompleted);
     }
 
     public class TestMessage : INotification

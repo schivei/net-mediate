@@ -31,7 +31,6 @@ internal sealed class MediatorServiceBuilder<TNotifier> : IMediatorServiceBuilde
 
         Services = services;
 
-        Services.TryAddSingleton<ITerminator>(new Terminator(() => Environment.Exit(1)));
         Services.TryAddSingleton<Mediator>();
         Services.TryAddSingleton<IMediator>(sp => sp.GetRequiredService<Mediator>());
         Services.TryAddSingleton(_ => _configuration);
@@ -54,11 +53,6 @@ internal sealed class MediatorServiceBuilder<TNotifier> : IMediatorServiceBuilde
 
     internal IMediatorServiceBuilder MapAssemblies(params Assembly[] assemblies)
     {
-        if (HasAlreadyRegisterd())
-        {
-            return this;
-        }
-
         if (assemblies is null or { Length: 0 })
         {
             assemblies = [.. AppDomain
@@ -70,16 +64,19 @@ internal sealed class MediatorServiceBuilder<TNotifier> : IMediatorServiceBuilde
 
         foreach (var (handlerType, iface) in types)
         {
-            Services.AddSingleton(iface, handlerType);
+            // When the handler is an open-generic type definition the interface returned by
+            // GetInterfaces() carries the type parameters of the containing class, NOT the
+            // generic type definition itself.  .NET DI requires the generic type definition
+            // when registering open-generic services, so normalise the service type here.
+            var serviceType = handlerType.IsGenericTypeDefinition && iface.IsGenericType
+                ? iface.GetGenericTypeDefinition()
+                : iface;
+
+            Services.TryAddEnumerable(ServiceDescriptor.Singleton(serviceType, handlerType));
         }
 
         return this;
     }
-
-    private bool HasAlreadyRegisterd() =>
-        s_validInterface.Any(iface => Services.Any(s =>
-            s.ServiceType.IsGenericType
-            && s.ServiceType.GetGenericTypeDefinition() == iface));
 
     public IMediatorServiceBuilder IgnoreUnhandledMessages(
         bool ignore = true

@@ -25,7 +25,7 @@ public sealed class MediatorNotifiesContinuationTests
         _scopeFactory.Setup(f => f.CreateScope()).Returns(_scope.Object);
         _scope.Setup(s => s.ServiceProvider).Returns(_provider.Object);
 
-        _sut = new Mediator(_cfg, _scopeFactory.Object, new Moq.Notifier(_scopeFactory.Object));
+        _sut = new Mediator(_cfg, _scopeFactory.Object, new Moq.Notifier(_scopeFactory.Object), _logger.Object);
     }
 
     public sealed class Msg : INotification

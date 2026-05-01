@@ -56,8 +56,6 @@ public static class NetMediateDI
     }
 
     /// <summary>
-    /// Adds NetMediate services to the specified service collection and allows further configuration of the mediator
-    /// service builder.
     /// </summary>
     /// <remarks>This method registers the required NetMediate services and provides a hook for additional
     /// configuration. The generic type parameter allows customization of the notification handling
@@ -74,7 +72,7 @@ public static class NetMediateDI
     {
         Guard.ThrowIfNull(configure);
 
-        var builder = NetMediate<Notifier>(services, []);
+        var builder = NetMediate<TNotifier>(services, []);
         configure(builder);
         return builder;
     }

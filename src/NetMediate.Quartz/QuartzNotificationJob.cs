@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using global::Quartz;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -20,8 +21,18 @@ namespace NetMediate.Quartz;
 /// time per job key. For high-throughput scenarios consider enabling Quartz clustering and configuring a dedicated
 /// thread pool.
 /// </para>
+/// <para>
+/// This class uses reflection (<see cref="System.Reflection.MethodInfo.MakeGenericMethod"/>) to build per-type
+/// dispatch delegates at runtime. It is not compatible with NativeAOT or trimming.
+/// </para>
 /// </remarks>
 [DisallowConcurrentExecution]
+[RequiresDynamicCode(
+    "QuartzNotificationJob uses MakeGenericMethod for per-type notification dispatch and is not compatible with NativeAOT."
+)]
+[RequiresUnreferencedCode(
+    "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
+)]
 public sealed class QuartzNotificationJob(
     IServiceProvider serviceProvider,
     INotificationSerializer serializer,

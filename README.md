@@ -88,6 +88,7 @@ dotnet add package NetMediate
 - [API/Worker/Minimal API samples](docs/SAMPLES.md)
 - [Diagnostics (structured logs + metrics)](docs/DIAGNOSTICS.md)
 - [Resilience package guide and load capacity](docs/RESILIENCE.md)
+- [Benchmark results (all scenarios)](docs/BENCHMARKS.md)
 - [Quartz persistent notifications](docs/QUARTZ.md)
 - [Notification adapters (external queues/streams)](docs/ADAPTERS.md)
 - [Source generation guide](docs/SOURCE_GENERATION.md)

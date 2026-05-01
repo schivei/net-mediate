@@ -17,7 +17,7 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 
 ## Long term
 
-- [x] Publish a benchmark suite comparing NetMediate across high-throughput scenarios. See `docs/RESILIENCE.md` for load benchmark results.
+- [x] Publish a benchmark suite comparing NetMediate across high-throughput scenarios. See `docs/BENCHMARKS.md` for full results (command, request, and resilience scenarios) and `docs/RESILIENCE.md` for resilience-specific guidance.
 - [x] Explore an AOT-friendly mode with trimming and NativeAOT optimizations. Assembly-scanning APIs annotated with `[RequiresUnreferencedCode]`/`[RequiresDynamicCode]`; explicit registration and source-generation paths are fully AOT-safe. See `docs/AOT.md`.
 - [x] Define an official ecosystem extension track (testing, diagnostics, resilience, and adapters).
 - [x] Add integration package for Quartz.NET to persist notifications and enable cluster-distributed execution (`src/NetMediate.Quartz`). See `docs/QUARTZ.md`.

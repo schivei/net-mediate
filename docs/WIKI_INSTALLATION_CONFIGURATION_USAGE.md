@@ -21,30 +21,30 @@ builder.Services.AddNetMediate(typeof(MyHandler).Assembly);
 ### Usage
 
 ```csharp
-// ICommand: single handler, no return value
+// ICommand: dispatched to all registered handlers in parallel, no return value
 await mediator.Send(new CreateUserCommand("user-1"), cancellationToken);
 
 // IRequest<TResponse>: single handler, returns a response
 var dto = await mediator.Request<GetUserRequest, UserDto>(new GetUserRequest("user-1"), cancellationToken);
 
-// INotification: dispatched to all registered handlers
+// INotification: dispatched to all registered handlers sequentially via background worker
 await mediator.Notify(new UserCreatedNotification("user-1"), cancellationToken);
 
-// IStream<TResponse>: handler yields multiple items asynchronously
+// IStream<TResponse>: all registered handlers iterated; each yields items asynchronously
 await foreach (var item in mediator.RequestStream<GetEventsQuery, EventDto>(new GetEventsQuery(), cancellationToken))
     Console.WriteLine(item);
 ```
 
-### Handler return types
+### Handler return types and dispatch semantics
 
 All handler methods return `ValueTask` (not `Task`):
 
-| Interface | `Handle` return type |
-|---|---|
-| `ICommandHandler<TMessage>` | `ValueTask` |
-| `IRequestHandler<TMessage, TResponse>` | `ValueTask<TResponse>` |
-| `INotificationHandler<TMessage>` | `ValueTask` |
-| `IStreamHandler<TMessage, TResponse>` | `IAsyncEnumerable<TResponse>` |
+| Interface | `Handle` return type | Dispatch semantics |
+|---|---|---|
+| `ICommandHandler<TMessage>` | `ValueTask` | All registered handlers, in parallel (`Task.WhenAll`) |
+| `IRequestHandler<TMessage, TResponse>` | `ValueTask<TResponse>` | First registered handler only |
+| `INotificationHandler<TMessage>` | `ValueTask` | All registered handlers, sequentially, via background worker |
+| `IStreamHandler<TMessage, TResponse>` | `IAsyncEnumerable<TResponse>` | All registered handlers iterated; results aggregated |
 
 ## 2) Pipeline behaviors
 

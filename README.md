@@ -30,7 +30,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 
 ### Key Features
 
-- **Commands**: Send one-way messages to single handlers
+- **Commands**: Send one-way messages to all registered handlers simultaneously
 - **Notifications**: Publish messages to multiple handlers simultaneously
 - **Requests**: Send messages and receive responses
 - **Streaming**: Handle requests that return multiple responses over time
@@ -159,7 +159,7 @@ var mediator = host.Services.GetRequiredService<IMediator>();
 
 ### Notifications
 
-Notifications are published to all registered handlers simultaneously.
+Notifications are written to an in-memory channel and dispatched by a background worker. All registered handlers for the same message type are called **sequentially** in registration order. `Notify` returns as soon as the message is enqueued — handler execution happens asynchronously. Exceptions thrown by notification handlers are caught by the background worker and logged as warnings.
 
 #### Define a Notification Message
 ```csharp
@@ -219,7 +219,7 @@ await mediator.Notify(notifications, cancellationToken);
 
 ### Commands
 
-Commands are sent to a single handler for processing.
+Commands are dispatched to **all** registered handlers in parallel (`Task.WhenAll`). Use `Send` when you want to trigger a side-effect across multiple consumers with no return value.
 
 #### Define a Command
 ```csharp
@@ -228,6 +228,9 @@ public record CreateUserCommand(string Email, string FirstName, string LastName)
 ```
 
 #### Create a Command Handler
+
+Multiple handlers can be registered for the same command type — all run in parallel on each `Send` call.
+
 ```csharp
 public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
 {
@@ -413,24 +416,24 @@ catch (MessageValidationException ex)
 
 NetMediate messages are plain records or classes that implement one of the four marker interfaces. There are no generic self-handler interfaces — the message type and the handler type are always separate.
 
-| Message kind | Marker interface | Handler interface |
-|---|---|---|
-| Command | `ICommand` | `ICommandHandler<TMessage>` |
-| Request | `IRequest<TResponse>` | `IRequestHandler<TMessage, TResponse>` |
-| Notification | `INotification` | `INotificationHandler<TMessage>` |
-| Stream | `IStream<TResponse>` | `IStreamHandler<TMessage, TResponse>` |
+| Message kind | Marker interface | Handler interface | Dispatch semantics |
+|---|---|---|---|
+| Command | `ICommand` | `ICommandHandler<TMessage>` | All registered handlers, in parallel (`Task.WhenAll`) |
+| Request | `IRequest<TResponse>` | `IRequestHandler<TMessage, TResponse>` | First registered handler only; returns `TResponse` |
+| Notification | `INotification` | `INotificationHandler<TMessage>` | All registered handlers, sequentially, via background worker |
+| Stream | `IStream<TResponse>` | `IStreamHandler<TMessage, TResponse>` | All registered handlers iterated; each yields items |
 
 ```csharp
-// Command — no return value, single handler
+// Command — no return value, dispatched to all registered handlers in parallel
 public record DeleteUserCommand(string UserId) : ICommand;
 
 // Request — single handler, returns a response
 public record GetUserQuery(string UserId) : IRequest<UserDto>;
 
-// Notification — dispatched to all registered handlers
+// Notification — dispatched to all registered handlers sequentially (via background worker)
 public record UserDeleted(string UserId) : INotification;
 
-// Stream — handler yields multiple results asynchronously
+// Stream — all registered handlers are iterated; each yields results asynchronously
 public record GetRecentEventsQuery(int MaxItems) : IStream<EventDto>;
 ```
 
@@ -551,7 +554,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Fixed problems
 
-- Prevented notification exceptions from stopping execution by introducing a dedicated onError callback.
+- Notification exceptions no longer stop execution: exceptions thrown by handlers inside the background notification worker are caught and logged as warnings, so other notifications continue to be dispatched.
 - Added batch publishing support for notifications.
 - Improved consistency across handler interfaces via the IHandler base.
 - Refactored internals for clearer, more maintainable code.

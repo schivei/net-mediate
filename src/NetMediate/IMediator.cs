@@ -30,8 +30,13 @@ public interface IMediator
     ) where TMessage : notnull, INotification;
 
     /// <summary>
-    /// Sends a command to a single handler.
+    /// Sends a command to all registered handlers in parallel.
     /// </summary>
+    /// <remarks>
+    /// All registered <see cref="ICommandHandler{TMessage}"/> implementations receive the command
+    /// concurrently via <c>Task.WhenAll</c>. Use this when you want to trigger an action across
+    /// multiple consumers with no return value.
+    /// </remarks>
     /// <typeparam name="TMessage">The type of the command message.</typeparam>
     /// <param name="command">The command to send.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>

@@ -20,7 +20,7 @@ app.Run();
 
 ```csharp
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddNetMediate<Worker>();
+builder.Services.AddNetMediate(typeof(Worker).Assembly);
 builder.Services.AddHostedService<Worker>();
 
 await builder.Build().RunAsync();

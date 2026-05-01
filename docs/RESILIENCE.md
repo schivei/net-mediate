@@ -10,8 +10,9 @@ This follows a UNIX-style philosophy: each package should do one thing well.
 - Timeout behaviors for request and notification pipelines
 - Circuit-breaker behaviors for request and notification pipelines
 
-> For notification flows, NetMediate still uses `onError` callbacks per handler.
-> Resilience behaviors wrap the notification pipeline execution and remain compatible with this model.
+> For notification flows, exceptions thrown by handlers are caught by the background notification worker
+> and logged as warnings (they do not propagate to the caller of `mediator.Notify`). Resilience behaviors
+> wrap the notification dispatch pipeline (validation + all handlers) executed inside the worker.
 >
 > Circuit-breaker state is intentionally isolated per message flow (closed generic behavior type),
 > so one message type opening a circuit does not block unrelated message types.

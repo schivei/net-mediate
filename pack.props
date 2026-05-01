@@ -21,6 +21,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <NoWarn>$(NoWarn);nullable</NoWarn>
-    <TargetFrameworks>net10.0;netstandard2.0;netstandard2.1</TargetFrameworks>
+    <!-- Deliver optimised TFMs for every actively supported .NET generation plus netstandard fallbacks -->
+    <TargetFrameworks>net8.0;net9.0;net10.0;netstandard2.0;netstandard2.1</TargetFrameworks>
+  </PropertyGroup>
+  <!-- Select the matching Microsoft.Extensions.* major version for each TFM so that
+       consumers on older runtimes never pull in a higher version than their host supports. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <ExtensionsVersion>8.*</ExtensionsVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <ExtensionsVersion>9.*</ExtensionsVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0' Or '$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'netstandard2.1'">
+    <ExtensionsVersion>10.*</ExtensionsVersion>
   </PropertyGroup>
 </Project>

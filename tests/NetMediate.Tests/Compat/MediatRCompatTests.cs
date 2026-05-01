@@ -124,20 +124,20 @@ public class MediatRCompatTests
 
     public sealed class PingRequestHandler : IRequestHandler<PingRequest, PingResponse>
     {
-        public Task<PingResponse> Handle(
+        public ValueTask<PingResponse> Handle(
             PingRequest request,
             CancellationToken cancellationToken = default
-        ) => Task.FromResult(new PingResponse($"{request.Value}:pong"));
+        ) => new(new PingResponse($"{request.Value}:pong"));
     }
 
     public sealed class VoidCommandHandler(DispatchRecorder recorder) : IRequestHandler<VoidCommand>
     {
         private readonly DispatchRecorder _recorder = recorder;
 
-        public Task Handle(VoidCommand request, CancellationToken cancellationToken = default)
+        public ValueTask Handle(VoidCommand request, CancellationToken cancellationToken = default)
         {
             _recorder.LastCommand = request.Value;
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
     }
 
@@ -146,13 +146,13 @@ public class MediatRCompatTests
     {
         private readonly DispatchRecorder _recorder = recorder;
 
-        public Task Handle(
+        public ValueTask Handle(
             PingNotification notification,
             CancellationToken cancellationToken = default
         )
         {
             _recorder.LastNotification = notification.Value;
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
     }
 

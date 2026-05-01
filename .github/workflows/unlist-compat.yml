@@ -32,7 +32,11 @@ jobs:
           | jq -r '.versions[]')
         echo "Found versions:"
         echo "$VERSIONS"
-        echo "versions=$VERSIONS" >> "$GITHUB_OUTPUT"
+        {
+          echo "versions<<EOF"
+          echo "$VERSIONS"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Unlist each version
       env:

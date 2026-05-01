@@ -92,6 +92,11 @@ internal sealed class Mediator(
                (behavior, next) => (message, token) => behavior.Handle(message, next, token)
             );
 
+            if (pipeline is null)
+            {
+                return;
+            }
+
             await pipeline.Invoke(command, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -135,6 +140,11 @@ internal sealed class Mediator(
                 (behavior, next) => (message, token) => behavior.Handle(message, next, token)
             );
 
+            if (pipeline is null)
+            {
+                return default!;
+            }
+
             return await pipeline.Invoke(message, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -171,6 +181,11 @@ internal sealed class Mediator(
                 (validations, handlers) => (message, token) => StreamRunnerAsync(validations, handlers, message, token),
                 (behavior, next) => (message, token) => behavior.Handle(message, next, token)
             );
+
+            if (pipeline is null)
+            {
+                return EmptyAsyncEnumerable<TResponse>();
+            }
 
             return pipeline.Invoke(message, cancellationToken);
         }

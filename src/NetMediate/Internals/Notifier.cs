@@ -38,6 +38,11 @@ internal sealed class Notifier(Configuration configuration, IServiceScopeFactory
                (behavior, next) => (message, token) => behavior.Handle(message, next, token)
             );
 
+            if (pipeline is null)
+            {
+                return;
+            }
+
             await pipeline.Invoke(message, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)

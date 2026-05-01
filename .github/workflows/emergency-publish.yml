@@ -84,6 +84,12 @@ jobs:
 
     - name: Build NetMediate.DataDog.ILogger
       run: dotnet build src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --configuration Release
+
+    - name: Build NetMediate.Adapters
+      run: dotnet build src/NetMediate.Adapters/NetMediate.Adapters.csproj --no-restore --configuration Release
+
+    - name: Build NetMediate.Quartz
+      run: dotnet build src/NetMediate.Quartz/NetMediate.Quartz.csproj --no-restore --configuration Release
       
     - name: Run Tests
       run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --no-build --configuration Release --verbosity normal
@@ -108,6 +114,12 @@ jobs:
 
     - name: Pack NetMediate.DataDog.ILogger package
       run: dotnet pack src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --configuration Release --output ./packages
+
+    - name: Pack NetMediate.Adapters package
+      run: dotnet pack src/NetMediate.Adapters/NetMediate.Adapters.csproj --configuration Release --output ./packages
+
+    - name: Pack NetMediate.Quartz package
+      run: dotnet pack src/NetMediate.Quartz/NetMediate.Quartz.csproj --configuration Release --output ./packages
       
     - name: List package contents
       run: ls -la ./packages/

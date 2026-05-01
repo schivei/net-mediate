@@ -44,17 +44,17 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@v6
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       with:
         fetch-depth: 0
         
     - name: Setup .NET SDK 10.x
-      uses: actions/setup-dotnet@v5
+      uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
       with:
         dotnet-version: '10.x'
         
     - name: Cache NuGet packages
-      uses: actions/cache@v5
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       with:
         path: ~/.nuget/packages
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
@@ -84,6 +84,12 @@ jobs:
 
     - name: Build NetMediate.DataDog.ILogger
       run: dotnet build src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --configuration Release
+
+    - name: Build NetMediate.Adapters
+      run: dotnet build src/NetMediate.Adapters/NetMediate.Adapters.csproj --no-restore --configuration Release
+
+    - name: Build NetMediate.Quartz
+      run: dotnet build src/NetMediate.Quartz/NetMediate.Quartz.csproj --no-restore --configuration Release
       
     - name: Run Tests
       run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --no-build --configuration Release --verbosity normal
@@ -108,12 +114,18 @@ jobs:
 
     - name: Pack NetMediate.DataDog.ILogger package
       run: dotnet pack src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --configuration Release --output ./packages
+
+    - name: Pack NetMediate.Adapters package
+      run: dotnet pack src/NetMediate.Adapters/NetMediate.Adapters.csproj --configuration Release --output ./packages
+
+    - name: Pack NetMediate.Quartz package
+      run: dotnet pack src/NetMediate.Quartz/NetMediate.Quartz.csproj --configuration Release --output ./packages
       
     - name: List package contents
       run: ls -la ./packages/
       
     - name: Upload package artifacts
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
       with:
         name: emergency-nuget-packages
         path: ./packages/*.nupkg

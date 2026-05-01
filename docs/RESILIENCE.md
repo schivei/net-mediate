@@ -10,8 +10,9 @@ This follows a UNIX-style philosophy: each package should do one thing well.
 - Timeout behaviors for request and notification pipelines
 - Circuit-breaker behaviors for request and notification pipelines
 
-> For notification flows, NetMediate still uses `onError` callbacks per handler.
-> Resilience behaviors wrap the notification pipeline execution and remain compatible with this model.
+> For notification flows, exceptions thrown by handlers are caught by the background notification worker
+> and logged as warnings (they do not propagate to the caller of `mediator.Notify`). Resilience behaviors
+> wrap the notification dispatch pipeline (validation + all handlers) executed inside the worker.
 >
 > Circuit-breaker state is intentionally isolated per message flow (closed generic behavior type),
 > so one message type opening a circuit does not block unrelated message types.
@@ -57,28 +58,45 @@ builder.Services.AddNetMediateCircuitBreaker();
 
 ## Load and capacity benchmark
 
-`ResilienceLoadPerformanceTests` executes a parallel request scenario with resilience behaviors enabled.
+`LoadPerformanceTests` and `ResilienceLoadPerformanceTests` exercise sequential and parallel scenarios with and without the resilience behaviors package enabled.
 
-To provide user-facing package capacity guidance, we ran 5 executions for:
+### How to reproduce
 
-- Core request flow (`LoadPerformanceTests.RequestLoad_ShouldSustainMinimumThroughputInParallel`)
-- Resilience package enabled (`ResilienceLoadPerformanceTests.RequestLoad_WithResiliencePackage_ShouldSustainMinimumThroughputInParallel`)
+```bash
+NETMEDIATE_RUN_PERFORMANCE_TESTS=true dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj \
+  --configuration Release --filter "FullyQualifiedName~LoadPerformance" \
+  --logger "console;verbosity=detailed"
+```
 
-| Scenario | Median throughput (ops/s) | Notes |
-|---|---:|---|
-| core request_parallel | 118,771.33 | 10,000 operations, parallel |
-| resilience_request_parallel | 84,607.52 | 10,000 operations, parallel |
+Each test prints a `LOAD_RESULT` line of the form:
 
-Observed delta for this environment: **-28.76%** throughput with resilience behaviors enabled.
+```
+LOAD_RESULT <scenario> tfm=<tfm> ops=<count> elapsed_ms=<ms> throughput_ops_s=<ops/s>
+```
 
-`ResilienceLoadPerformanceTests` uses environment-aware assertions:
+### Measured results (net10.0 — 5-run median, GitHub-hosted runner)
 
-- **CI (`GITHUB_ACTIONS=true`)**: minimum **30,000 ops/s** (shared-runner stability)
-- **Local/other environments**: minimum **50,000 ops/s**
+| Scenario | Operations | Mode | Median throughput (ops/s) | Notes |
+|---|---:|---|---:|---|
+| `command` | 20,000 | Sequential | 404,930 | `ICommandHandler<T>` baseline |
+| `request_parallel` | 10,000 | Parallel | 136,357 | `IRequestHandler<T,R>` parallel baseline |
+| `resilience_request_parallel` | 10,000 | Parallel | 118,867 | Same as above + all three resilience behaviors |
 
-Documented median values above should continue to be used for release-level capacity analysis.
+Observed overhead for resilience behaviors: **−12.83 %** compared to the parallel request baseline.
 
-## Target coverage for package assets
+> Absolute values depend on runner hardware and parallelism. These figures are captured on the
+> standard GitHub Actions runner (`ubuntu-latest`). Expect **2–5×** higher throughput on
+> developer workstations and production servers.
+
+### Minimum assertions
+
+`LoadPerformanceTests` uses a deliberately lenient threshold (`> 500 ops/s`) to stay green on any
+hardware. `ResilienceLoadPerformanceTests` applies an environment-aware minimum:
+
+- **CI (`GITHUB_ACTIONS=true`)**: `≥ 30,000 ops/s`
+- **Local/other**: `≥ 50,000 ops/s`
+
+### Target coverage for package assets
 
 `NetMediate.Resilience` is published for:
 
@@ -88,9 +106,3 @@ Documented median values above should continue to be used for release-level capa
 
 The measured throughput table above is produced on a `net10.0` host runtime. For `netstandard2.0`/`netstandard2.1`,
 benchmark numbers depend on the runtime that hosts the package (desktop/CLI/mobile/MAUI).
-
-Use the test output line format below to copy measured values:
-
-```
-LOAD_RESULT resilience_request_parallel tfm=<target_framework_name> ops=... elapsed_ms=... throughput_ops_s=...
-```

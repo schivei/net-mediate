@@ -31,7 +31,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 ### Key Features
 
 - **Commands**: Send one-way messages to all registered handlers simultaneously
-- **Notifications**: Publish messages to multiple handlers simultaneously
+- **Notifications**: Publish messages to multiple handlers
 - **Requests**: Send messages and receive responses
 - **Streaming**: Handle requests that return multiple responses over time
 - **Validation**: Built-in message validation support with custom validators

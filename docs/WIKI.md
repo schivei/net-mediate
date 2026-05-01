@@ -8,6 +8,8 @@ This page is the wiki entry point for the repository documentation set.
 - [Installation, configuration, and usage by resource](WIKI_INSTALLATION_CONFIGURATION_USAGE.md)
 - [Diagnostics](DIAGNOSTICS.md)
 - [Resilience](RESILIENCE.md)
+- [Quartz persistent notifications](QUARTZ.md)
+- [Notification adapters (external queues/streams)](ADAPTERS.md)
 - [Source generation](SOURCE_GENERATION.md)
 - [DataDog integrations](DATADOG.md)
 - [NetMediate.Moq recipes](NETMEDIATE_MOQ_RECIPES.md)

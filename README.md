@@ -65,6 +65,8 @@ dotnet add package NetMediate
 ```xml
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
 <PackageReference Include="NetMediate.Resilience" Version="x.x.x" />
+<PackageReference Include="NetMediate.Quartz" Version="x.x.x" />
+<PackageReference Include="NetMediate.Adapters" Version="x.x.x" />
 <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 <PackageReference Include="NetMediate.DataDog.OpenTelemetry" Version="x.x.x" />
 <PackageReference Include="NetMediate.DataDog.Serilog" Version="x.x.x" />
@@ -73,6 +75,8 @@ dotnet add package NetMediate
 
 - **NetMediate.Moq**: adds lightweight Moq helpers for cleaner unit and integration tests (`Mocking.Create`, `AddMockSingleton`, and async setup extensions).
 - **NetMediate.Resilience**: adds optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
+- **NetMediate.Quartz**: persists notifications as Quartz.NET jobs, enabling crash recovery and cluster-distributed notification execution.
+- **NetMediate.Adapters**: provides contracts, a standard envelope, and a pipeline behavior for forwarding notifications to external queues or streams (RabbitMQ, Kafka, Azure Service Bus, etc.).
 - **NetMediate.SourceGeneration**: generates `AddNetMediateGenerated(...)` to register handlers at compile-time and reduce reflection cost at startup.
 - **NetMediate.DataDog.OpenTelemetry**: wires NetMediate traces/metrics to DataDog through OpenTelemetry OTLP exporters.
 - **NetMediate.DataDog.Serilog**: adds DataDog Serilog sink configuration and NetMediate observability enrichers.
@@ -84,6 +88,8 @@ dotnet add package NetMediate
 - [API/Worker/Minimal API samples](docs/SAMPLES.md)
 - [Diagnostics (structured logs + metrics)](docs/DIAGNOSTICS.md)
 - [Resilience package guide and load capacity](docs/RESILIENCE.md)
+- [Quartz persistent notifications](docs/QUARTZ.md)
+- [Notification adapters (external queues/streams)](docs/ADAPTERS.md)
 - [Source generation guide](docs/SOURCE_GENERATION.md)
 - [DataDog integrations guide](docs/DATADOG.md)
 - [Wiki index](docs/WIKI.md)
@@ -523,7 +529,7 @@ builder.Services.AddScoped(typeof(IRequestBehavior<,>), typeof(AuditRequestBehav
 
 ### Supported package TFMs
 
-All runtime packages (`NetMediate`, `NetMediate.Moq`, `NetMediate.Resilience`) are published with:
+All runtime packages (`NetMediate`, `NetMediate.Moq`, `NetMediate.Resilience`, `NetMediate.Quartz`, `NetMediate.Adapters`) are published with:
 
 - `net10.0`
 - `netstandard2.0`

@@ -16,7 +16,7 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     CircuitBreakerBehaviorOptions options
 ) : IRequestBehavior<TMessage, TResponse> where TMessage : notnull, IRequest<TResponse>
 {
-    private static readonly Lock Sync = new();
+    private static readonly Lock s_sync = new();
     private static int s_consecutiveFailures;
     private static DateTimeOffset? s_openUntil;
 
@@ -43,7 +43,7 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 
     private static bool IsCircuitOpen()
     {
-        lock (Sync)
+        lock (s_sync)
         {
             if (s_openUntil is null)
                 return false;
@@ -61,7 +61,7 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 
     private static void RegisterSuccess()
     {
-        lock (Sync)
+        lock (s_sync)
         {
             s_consecutiveFailures = 0;
             s_openUntil = null;
@@ -76,7 +76,7 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
                 ? TimeSpan.FromSeconds(1)
                 : options.OpenDuration;
 
-        lock (Sync)
+        lock (s_sync)
         {
             s_consecutiveFailures++;
             if (s_consecutiveFailures < threshold)
@@ -102,7 +102,7 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 public sealed class CircuitBreakerNotificationBehavior<TMessage>(CircuitBreakerBehaviorOptions options)
     : INotificationBehavior<TMessage> where TMessage : notnull, INotification
 {
-    private static readonly Lock Sync = new();
+    private static readonly Lock s_sync = new();
     private static int s_consecutiveFailures;
     private static DateTimeOffset? s_openUntil;
 
@@ -132,7 +132,7 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(CircuitBreakerB
 
     private static bool IsCircuitOpen()
     {
-        lock (Sync)
+        lock (s_sync)
         {
             if (s_openUntil is null)
                 return false;
@@ -150,7 +150,7 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(CircuitBreakerB
 
     private static void RegisterSuccess()
     {
-        lock (Sync)
+        lock (s_sync)
         {
             s_consecutiveFailures = 0;
             s_openUntil = null;
@@ -165,7 +165,7 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(CircuitBreakerB
                 ? TimeSpan.FromSeconds(1)
                 : options.OpenDuration;
 
-        lock (Sync)
+        lock (s_sync)
         {
             s_consecutiveFailures++;
             if (s_consecutiveFailures < threshold)

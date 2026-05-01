@@ -55,8 +55,6 @@ public sealed class MediatorDiagnostics
 }
 ```
 
-For MediatR contracts using compat, the same approach applies with `MediatR.IMediator`.
-
 ## Performance comparison (main vs current branch)
 
 Measurements were captured with the same load scenarios used in tests, using **5 runs per branch** and reporting the **median throughput**:

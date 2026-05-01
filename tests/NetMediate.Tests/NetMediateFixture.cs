@@ -19,7 +19,7 @@ public sealed class NetMediateFixture : IDisposable
     {
         _builder = Host.CreateApplicationBuilder();
         _builder.Services.AddSingleton(this);
-        var builder = new MediatorServiceBuilder(_builder.Services);
+        var builder = new MediatorServiceBuilder<Notifier>(_builder.Services);
         builder.MapAssemblies(GetType().Assembly);
         builder.MapAssemblies();
     }

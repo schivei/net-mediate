@@ -34,6 +34,11 @@ public static class NetMediateDiagnostics
     public const string NotifyCountMetricName = "netmediate.notify.count";
 
     /// <summary>
+    /// Gets the metric name for Dispatch operation count.
+    /// </summary>
+    public const string DispatchCountMetricName = "netmediate.dispatch.count";
+
+    /// <summary>
     /// Gets the metric name for Stream operation count.
     /// </summary>
     public const string StreamCountMetricName = "netmediate.stream.count";
@@ -51,6 +56,9 @@ public static class NetMediateDiagnostics
     );
     private static readonly Counter<long> s_streamCount = s_meter.CreateCounter<long>(
         StreamCountMetricName
+    );
+    private static readonly Counter<long> s_dispatchCount = s_meter.CreateCounter<long>(
+        DispatchCountMetricName
     );
 
     internal static Activity? StartActivity<TMessage>(string operation)
@@ -83,12 +91,23 @@ public static class NetMediateDiagnostics
         );
     }
 
-    internal static void RecordNotify<TMessage>()
+    internal static void RecordNotify<TMessage>(long size = 1)
     {
         if (!s_notifyCount.Enabled)
             return;
 
         s_notifyCount.Add(
+            size,
+            new KeyValuePair<string, object?>("message_type", typeof(TMessage).Name)
+        );
+    }
+
+    internal static void RecordDispatch<TMessage>()
+    {
+        if (!s_dispatchCount.Enabled)
+            return;
+
+        s_dispatchCount.Add(
             1,
             new KeyValuePair<string, object?>("message_type", typeof(TMessage).Name)
         );

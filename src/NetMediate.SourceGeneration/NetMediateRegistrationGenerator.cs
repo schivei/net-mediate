@@ -38,8 +38,8 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             handlerTypes,
             static (sourceProductionContext, types) =>
             {
-                var registrations = BuildRegistrations(types);
-                var source = BuildSource(registrations);
+                var (registrations, notifier) = BuildRegistrations(types);
+                var source = BuildSource(registrations, notifier);
                 sourceProductionContext.AddSource(
                     "NetMediateGeneratedDI.g.cs",
                     source
@@ -48,9 +48,10 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         );
     }
 
-    private static string[] BuildRegistrations(ImmutableArray<INamedTypeSymbol> types)
+    private static (IEnumerable<string> registrations, string notifier) BuildRegistrations(ImmutableArray<INamedTypeSymbol> types)
     {
         var registrations = new HashSet<string>(StringComparer.Ordinal);
+        var notifier = "AddNetMediate";
 
         foreach (var handlerType in types)
         {
@@ -72,7 +73,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                         continue;
 
                     registrations.Add(
-                        $"builder.RegisterCommandHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
+                        $"services.AddSingleton<{@interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
                     );
                     continue;
                 }
@@ -87,7 +88,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                         continue;
 
                     registrations.Add(
-                        $"builder.RegisterNotificationHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
+                        $"services.AddSingleton<{@interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
                     );
                     continue;
                 }
@@ -98,7 +99,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                         continue;
 
                     registrations.Add(
-                        $"builder.RegisterRequestHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
+                        $"services.AddSingleton<{@interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
                     );
                     continue;
                 }
@@ -109,7 +110,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                         continue;
 
                     registrations.Add(
-                        $"builder.RegisterStreamHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
+                        $"services.AddSingleton<{@interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
                     );
                     continue;
                 }
@@ -120,44 +121,74 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                         continue;
 
                     registrations.Add(
-                        $"builder.RegisterValidationHandler<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
+                        $"services.AddSingleton<{@interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
                     );
+                }
+
+                if (definitionName == "ICommandBehavior" && definitionArity == 1 && args.Length == 1)
+                {
+                    if (!IsAccessible(args[0]))
+                        continue;
+                    registrations.Add(
+                        $"services.AddSingleton<{@interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
+                    );
+                    continue;
+                }
+
+                if (definitionName == "IRequestBehavior" && definitionArity == 2 && args.Length == 2)
+                {
+                    if (!IsAccessible(args[0]) || !IsAccessible(args[1]))
+                        continue;
+                    registrations.Add(
+                        $"services.AddSingleton<{@interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
+                    );
+                    continue;
+                }
+
+                if (definitionName == "INotificationBehavior" && definitionArity == 1 && args.Length == 1)
+                {
+                    if (!IsAccessible(args[0]))
+                        continue;
+                    registrations.Add(
+                        $"services.AddSingleton<{@interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
+                    );
+                }
+
+                if (definitionName == "IStreamBehavior" && definitionArity == 2 && args.Length == 2)
+                {
+                    if (!IsAccessible(args[0]) || !IsAccessible(args[1]))
+                        continue;
+                    registrations.Add(
+                        $"services.AddSingleton<{@interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>();"
+                    );
+                }
+
+                if (definitionName == "INotifier" && definitionArity == 0 && args.Length == 0)
+                {
+                    notifier += $"<{handlerName}>";
                 }
             }
         }
 
-        return [.. registrations.OrderBy(r => r, StringComparer.Ordinal)];
+        return (registrations, notifier);
     }
 
-    private static string BuildSource(string[] registrations)
+    private static string BuildSource(IEnumerable<string> registrations, string notifier)
     {
         var sb = new StringBuilder();
         sb.AppendLine("// <auto-generated />");
         sb.AppendLine("namespace NetMediate;");
         sb.AppendLine();
+        sb.AppendLine("[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]");
         sb.AppendLine("public static class NetMediateGeneratedDI");
         sb.AppendLine("{");
-        sb.AppendLine("    public static IMediatorServiceBuilder AddNetMediateGenerated(this Microsoft.Extensions.DependencyInjection.IServiceCollection services, bool excludeFromCodeCoverage = false)");
+        sb.AppendLine("    public static IMediatorServiceBuilder AddNetMediateGenerated(this Microsoft.Extensions.DependencyInjection.IServiceCollection services)");
         sb.AppendLine("    {");
-        sb.AppendLine("        if (excludeFromCodeCoverage)");
-        sb.AppendLine("        {");
-        sb.AppendLine("            return AddNetMediateGeneratedExcludedFromCodeCoverage(services);");
-        sb.AppendLine("        }");
-        sb.AppendLine();
-        sb.AppendLine("        var builder = services.AddNetMediate(static _ => { });");
-        sb.AppendLine("        RegisterGeneratedHandlers(builder);");
-        sb.AppendLine("        return builder;");
+        sb.AppendLine("        RegisterGeneratedHandlers(services);");
+        sb.AppendLine($"        return services.{notifier}();");
         sb.AppendLine("    }");
         sb.AppendLine();
-        sb.AppendLine("    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]");
-        sb.AppendLine("    private static IMediatorServiceBuilder AddNetMediateGeneratedExcludedFromCodeCoverage(Microsoft.Extensions.DependencyInjection.IServiceCollection services)");
-        sb.AppendLine("    {");
-        sb.AppendLine("        var builder = services.AddNetMediate(static _ => { });");
-        sb.AppendLine("        RegisterGeneratedHandlers(builder);");
-        sb.AppendLine("        return builder;");
-        sb.AppendLine("    }");
-        sb.AppendLine();
-        sb.AppendLine("    private static void RegisterGeneratedHandlers(IMediatorServiceBuilder builder)");
+        sb.AppendLine("    private static void RegisterGeneratedHandlers(Microsoft.Extensions.DependencyInjection.IServiceCollection services)");
         sb.AppendLine("    {");
 
         foreach (var registration in registrations)

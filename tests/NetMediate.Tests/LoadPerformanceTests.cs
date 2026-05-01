@@ -88,18 +88,18 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
             StringComparison.OrdinalIgnoreCase
         );
 
-    public sealed record LoadCommand(int Value);
-    public sealed record LoadRequest(int Value);
+    public sealed record LoadCommand(int Value) : ICommand;
+    public sealed record LoadRequest(int Value) : IRequest<int>;
 
     private sealed class LoadCommandHandler : ICommandHandler<LoadCommand>
     {
-        public Task Handle(LoadCommand command, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public ValueTask Handle(LoadCommand command, CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
     }
 
     private sealed class LoadRequestHandler : IRequestHandler<LoadRequest, int>
     {
-        public Task<int> Handle(LoadRequest query, CancellationToken cancellationToken = default) =>
-            Task.FromResult(query.Value + 1);
+        public ValueTask<int> Handle(LoadRequest query, CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult(query.Value + 1);
     }
 }

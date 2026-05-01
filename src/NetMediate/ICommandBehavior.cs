@@ -1,21 +1,10 @@
 ﻿namespace NetMediate;
 
 /// <summary>
-/// Defines a pipeline behavior for command messages.
+/// Defines a behavior that can be executed as part of the command handling pipeline for a specific command type.
 /// </summary>
-/// <typeparam name="TMessage">The command message type.</typeparam>
-public interface ICommandBehavior<in TMessage>
-{
-    /// <summary>
-    /// Handles a command before and/or after invoking the next delegate in the pipeline.
-    /// </summary>
-    /// <param name="message">The command message.</param>
-    /// <param name="next">The next delegate in the command pipeline.</param>
-    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
-    /// <returns>A task that represents the asynchronous operation.</returns>
-    Task Handle(
-        TMessage message,
-        CommandHandlerDelegate next,
-        CancellationToken cancellationToken = default
-    );
-}
+/// <remarks>Implement this interface to add custom logic before or after command handlers are invoked in the
+/// pipeline. Behaviors can be used for cross-cutting concerns such as validation, logging, or transaction
+/// management.</remarks>
+/// <typeparam name="TMessage">The type of command message handled by the behavior. Must implement the ICommand interface and cannot be null.</typeparam>
+public interface ICommandBehavior<TMessage> : IPipelineBehavior<TMessage, ValueTask, CommandHandlerDelegate<TMessage>> where TMessage : notnull, ICommand;

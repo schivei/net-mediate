@@ -8,8 +8,11 @@ internal sealed class MessageStreamHandler : BaseHandler, IStreamHandler<Message
     public async IAsyncEnumerable<int> Handle(MessageStream request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         for (var i = 0; i < request.CommandId; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
             yield return i;
+        }
 
-        Marks(request);
+        await Task.Run(() => Marks(request), cancellationToken);
     }
 }

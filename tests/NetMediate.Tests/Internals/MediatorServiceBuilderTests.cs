@@ -1,47 +1,47 @@
 using System.ComponentModel.DataAnnotations;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using NetMediate;
 using NetMediate.Internals;
+
+using Notifier = NetMediate.Moq.Notifier;
 
 namespace NetMediate.Tests.Internals;
 
 public class MediatorServiceBuilderTests
 {
-    public class DummyNotification
+    public class DummyNotification : INotification
     {
         public bool Valid { get; set; }
     }
 
-    public class DummyCommand { }
+    public class DummyCommand : ICommand { }
 
-    public class DummyRequest { }
+    public class DummyRequest : IRequest<object> { }
 
-    public class DummyStream { }
+    public class DummyStream : IStream<object> { }
 
-    public class DummyValidation { }
+    public class DummyValidation : IMessage { }
 
     public class DummyNotificationHandler : INotificationHandler<DummyNotification>
     {
-        public Task Handle(
+        public ValueTask Handle(
             DummyNotification notification,
             CancellationToken cancellationToken = default
-        ) => Task.CompletedTask;
+        ) => ValueTask.CompletedTask;
     }
 
     public class DummyCommandHandler : ICommandHandler<DummyCommand>
     {
-        public Task Handle(DummyCommand command, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public ValueTask Handle(DummyCommand command, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
     }
 
     public class DummyRequestHandler : IRequestHandler<DummyRequest, object>
     {
-        public Task<object> Handle(
+        public ValueTask<object> Handle(
             DummyRequest query,
             CancellationToken cancellationToken = default
-        ) => Task.FromResult<object>(null!);
+        ) => ValueTask.FromResult<object>(null!);
     }
 
     public class DummyStreamHandler : IStreamHandler<DummyStream, object>
@@ -68,7 +68,7 @@ public class MediatorServiceBuilderTests
     public void MapAssembly_CurrentAssembly()
     {
         var services = new ServiceCollection();
-        var builder = new MediatorServiceBuilder(services);
+        var builder = new MediatorServiceBuilder<Notifier>(services);
         var result = builder.MapAssemblies(typeof(DummyCommandHandler).GetType().Assembly);
         Assert.Same(builder, result);
     }
@@ -77,7 +77,7 @@ public class MediatorServiceBuilderTests
     public void MapAssemblies_EmptyArray_UsesAllAssemblies()
     {
         var services = new ServiceCollection();
-        var builder = new MediatorServiceBuilder(services);
+        var builder = new MediatorServiceBuilder<Notifier>(services);
         var result = builder.MapAssemblies();
         Assert.Same(builder, result);
     }
@@ -86,111 +86,54 @@ public class MediatorServiceBuilderTests
     public void IgnoreUnhandledMessages_SetsConfiguration()
     {
         var services = new ServiceCollection();
-        var builder = new MediatorServiceBuilder(services);
-        var result = builder.IgnoreUnhandledMessages(false, false, LogLevel.Critical);
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+        var result = builder.IgnoreUnhandledMessages(false);
         Assert.Same(builder, result);
     }
 
     [Fact]
-    public void FilterNotification_RegistersHandlerAndFilter()
+    public void Constructor_WhenINotifiableAlreadyRegistered_ReplacesExistingRegistration()
     {
+        // Arrange — pre-register a different INotifiable implementation
         var services = new ServiceCollection();
-        var builder = new MediatorServiceBuilder(services);
-        var called = false;
-        builder.FilterNotification<DummyNotification, DummyNotificationHandler>(msg =>
-        {
-            called = true;
-            return msg.Valid;
-        });
-        Assert.Contains(
-            services,
-            s => s.ServiceType == typeof(INotificationHandler<DummyNotification>)
-        );
-        var configuration = services.BuildServiceProvider().GetRequiredService<Configuration>();
-        Assert.True(
-            configuration.TryGetHandlerTypeByMessageFilter(new DummyNotification(), out var type)
-        );
-        Assert.Null(type);
-        Assert.True(called, "Filter should have been called");
-        called = false;
-        Assert.True(
-            configuration.TryGetHandlerTypeByMessageFilter(
-                new DummyNotification { Valid = true },
-                out var handlerType
-            )
-        );
-        Assert.True(called, "Filter should have been called");
-        Assert.Equal(typeof(DummyNotificationHandler), handlerType);
+        services.AddSingleton<INotifiable, Notifier>(sp => null!); // placeholder
+
+        // Act — constructor should Replace rather than Add
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+
+        // Assert — only one INotifiable is registered and it is Notifier
+        var registrations = services.Where(s => s.ServiceType == typeof(INotifiable)).ToList();
+        Assert.Single(registrations);
+        Assert.Equal(typeof(Notifier), registrations[0].ImplementationType);
     }
 
     [Fact]
-    public void FilterCommand_RegistersHandlerAndFilter()
+    public void Guard_ThrowIfNull_WithNull_ThrowsArgumentNullException()
     {
-        var services = new ServiceCollection();
-        var builder = new MediatorServiceBuilder(services);
-        builder.FilterCommand<DummyCommand, DummyCommandHandler>(msg => true);
-        // Note: Bug in original code, uses INotificationHandler instead of ICommandHandler
-        // This test will still pass as it checks registration
-        Assert.Contains(services, s => s.ImplementationType == typeof(DummyCommandHandler));
+        // Guard.ThrowIfNull must throw when the argument is null
+        object? value = null;
+        Assert.Throws<ArgumentNullException>(() => Guard.ThrowIfNull(value));
     }
 
     [Fact]
-    public void FilterRequest_RegistersHandlerAndFilter()
+    public void Guard_ThrowIfNull_WithNonNull_DoesNotThrow()
     {
-        var services = new ServiceCollection();
-        var builder = new MediatorServiceBuilder(services);
-        builder.FilterRequest<DummyRequest, object, DummyRequestHandler>(msg => true);
-        Assert.Contains(services, s => s.ImplementationType == typeof(DummyRequestHandler));
+        // Guard.ThrowIfNull must not throw for a non-null argument
+        object value = new();
+        Guard.ThrowIfNull(value); // no exception
     }
 
     [Fact]
-    public void FilterStream_RegistersHandlerAndFilter()
+    public void GetAllServices_WhenProviderImplementsIServiceProviderIsService_AndTypeNotRegistered_ReturnsEmpty()
     {
+        // Arrange — a service provider that reports a type as NOT registered
         var services = new ServiceCollection();
-        var builder = new MediatorServiceBuilder(services);
-        builder.FilterStream<DummyStream, object, DummyStreamHandler>(msg => true);
-        Assert.Contains(services, s => s.ImplementationType == typeof(DummyStreamHandler));
-    }
+        var provider = services.BuildServiceProvider(); // real DI provider (implements IServiceProviderIsService)
 
-    [Fact]
-    public void InstantiateHandlerByMessageFilter_RegistersFilter()
-    {
-        var services = new ServiceCollection();
-        var builder = new MediatorServiceBuilder(services);
-        builder.InstantiateHandlerByMessageFilter<DummyNotification>(msg =>
-            typeof(DummyNotificationHandler)
-        );
-        // No assertion, just ensure no exception
-    }
+        // Act — type not registered so GetAllServices returns []
+        var result = provider.GetAllServices<DummyNotification>();
 
-    [Fact]
-    public void Map_RegistersHandlers()
-    {
-        var services = new ServiceCollection();
-        var builder = MakeBuilder(services);
-        builder.RegisterNotificationHandler<DummyNotification, DummyNotificationHandler>();
-        builder.RegisterCommandHandler<DummyCommand, DummyCommandHandler>();
-        builder.RegisterRequestHandler<DummyRequest, object, DummyRequestHandler>();
-        builder.RegisterStreamHandler<DummyStream, object, DummyStreamHandler>();
-        builder.RegisterValidationHandler<DummyValidation, DummyValidationHandler>();
-        Assert.Contains(services, s => s.ImplementationType == typeof(DummyNotificationHandler));
-        Assert.Contains(services, s => s.ImplementationType == typeof(DummyCommandHandler));
-        Assert.Contains(services, s => s.ImplementationType == typeof(DummyRequestHandler));
-        Assert.Contains(services, s => s.ImplementationType == typeof(DummyStreamHandler));
-        Assert.Contains(services, s => s.ImplementationType == typeof(DummyValidationHandler));
-    }
-
-    private static IMediatorServiceBuilder MakeBuilder(IServiceCollection services) =>
-        new MediatorServiceBuilder(services);
-
-    [Fact]
-    public void ExtractTypes_ReturnsExpectedTypes()
-    {
-        var assemblies = new[] { typeof(DummyNotificationHandler).Assembly };
-        var result =
-            typeof(MediatorServiceBuilder)
-                .GetMethod("ExtractTypes", BindingFlags.NonPublic | BindingFlags.Static)!
-                .Invoke(null, [assemblies]) as IEnumerable<(Type, Type[])>;
-        Assert.Contains(result!, t => t.Item1 == typeof(DummyNotificationHandler));
+        // Assert
+        Assert.Empty(result);
     }
 }

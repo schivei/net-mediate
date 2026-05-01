@@ -1,16 +1,9 @@
 ﻿namespace NetMediate;
 
 /// <summary>
-/// Defines a handler for a command message.
+/// Defines a handler for processing a command message asynchronously.
 /// </summary>
-/// <typeparam name="TMessage">The type of the command message to handle.</typeparam>
-public interface ICommandHandler<in TMessage> : IHandler
-{
-    /// <summary>
-    /// Handles the specified command asynchronously.
-    /// </summary>
-    /// <param name="command">The command message to handle.</param>
-    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
-    /// <returns>A task that represents the asynchronous operation.</returns>
-    Task Handle(TMessage command, CancellationToken cancellationToken = default);
-}
+/// <remarks>Implement this interface to provide custom logic for handling command messages. The handler executes
+/// the command and returns a <see cref="ValueTask"/> representing the asynchronous operation.</remarks>
+/// <typeparam name="TMessage">The type of command message to handle. Must implement <see cref="ICommand"/> and cannot be null.</typeparam>
+public interface ICommandHandler<TMessage> : IHandler<TMessage, ValueTask> where TMessage : notnull, ICommand;

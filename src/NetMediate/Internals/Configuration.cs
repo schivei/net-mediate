@@ -1,42 +1,23 @@
 ﻿using System.Threading.Channels;
-using Microsoft.Extensions.Logging;
 
 namespace NetMediate.Internals;
 
-internal sealed class Configuration(Channel<INotificationPacket> channel) : IAsyncDisposable
+internal sealed class Configuration(Channel<IPack> channel) : IAsyncDisposable
 {
-    private readonly Dictionary<Type, Func<object, Type?>> _filters = [];
-    public ChannelWriter<INotificationPacket> ChannelWriter => channel.Writer;
-    public ChannelReader<INotificationPacket> ChannelReader => channel.Reader;
+    private int _disposed;
+
+    public ChannelWriter<IPack> ChannelWriter => channel.Writer;
+    public ChannelReader<IPack> ChannelReader => channel.Reader;
     public bool IgnoreUnhandledMessages { get; set; }
-    public bool LogUnhandledMessages { get; set; }
-    public LogLevel UnhandledMessagesLogLevel { get; set; }
+    public bool Disposed => Interlocked.CompareExchange(ref _disposed, 0, 0) == 1;
 
     public async ValueTask DisposeAsync()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
+            return;
+
         await channel.DrainAsync();
 
         GC.SuppressFinalize(this);
-    }
-
-    public void InstantiateHandlerByMessageFilter<TMessage>(Func<TMessage, Type?> filter)
-    {
-        ThrowHelper.ThrowIfNull(filter);
-
-        _filters[typeof(TMessage)] = message => filter((TMessage)message);
-    }
-
-    public bool TryGetHandlerTypeByMessageFilter<TMessage>(TMessage message, out Type? handlerType)
-    {
-        handlerType = null;
-
-        if (_filters.TryGetValue(typeof(TMessage), out var filter))
-        {
-            handlerType = filter(message);
-
-            return true;
-        }
-
-        return false;
     }
 }

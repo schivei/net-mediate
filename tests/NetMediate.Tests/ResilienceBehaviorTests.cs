@@ -21,7 +21,7 @@ public sealed class ResilienceBehaviorTests
         );
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        var response = await mediator.Request<RetryRequestMessage, string>(
+        var response = await mediator.Request(
             new RetryRequestMessage("ok"),
             TestContext.Current.CancellationToken
         );
@@ -40,12 +40,12 @@ public sealed class ResilienceBehaviorTests
 
         await behavior.Handle(
             new RetryNotificationMessage("ok"),
-            _ =>
+            (_, __) =>
             {
                 attempts++;
                 return attempts < 3
-                    ? Task.FromException(new InvalidOperationException("failed"))
-                    : Task.CompletedTask;
+                    ? ValueTask.FromException(new InvalidOperationException("failed"))
+                    : ValueTask.CompletedTask;
             },
             TestContext.Current.CancellationToken
         );
@@ -68,15 +68,9 @@ public sealed class ResilienceBehaviorTests
         );
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        var onErrorCalls = 0;
 
         await mediator.Notify(
             new RetryNotificationViaMediatorMessage("ok"),
-            (_, _, _) =>
-            {
-                Interlocked.Increment(ref onErrorCalls);
-                return Task.CompletedTask;
-            },
             TestContext.Current.CancellationToken
         );
 
@@ -86,7 +80,6 @@ public sealed class ResilienceBehaviorTests
         );
 
         Assert.Equal(3, RetryNotificationViaMediatorHandler.Attempts);
-        Assert.Equal(2, Volatile.Read(ref onErrorCalls));
     }
 
     [Fact]
@@ -104,8 +97,8 @@ public sealed class ResilienceBehaviorTests
 
         var mediator = host.Services.GetRequiredService<IMediator>();
 
-        await Assert.ThrowsAsync<TimeoutException>(() =>
-            mediator.Request<TimeoutRequestMessage, string>(
+        await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await mediator.Request(
                 new TimeoutRequestMessage("slow"),
                 TestContext.Current.CancellationToken
             )
@@ -128,25 +121,22 @@ public sealed class ResilienceBehaviorTests
 
         var mediator = host.Services.GetRequiredService<IMediator>();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            mediator.Request<CircuitBreakerRequestMessage, string>(
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await mediator.Request(
                 new CircuitBreakerRequestMessage("fail"),
                 TestContext.Current.CancellationToken
             )
         );
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            mediator.Request<CircuitBreakerRequestMessage, string>(
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await mediator.Request(
                 new CircuitBreakerRequestMessage("fail"),
                 TestContext.Current.CancellationToken
             )
         );
 
-        var circuitException = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            mediator.Request<CircuitBreakerRequestMessage, string>(
-                new CircuitBreakerRequestMessage("fail"),
-                TestContext.Current.CancellationToken
-            )
+        var circuitException = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await mediator.Request(new CircuitBreakerRequestMessage("fail"), TestContext.Current.CancellationToken)
         );
 
         Assert.Contains("Circuit open", circuitException.Message);
@@ -178,19 +168,18 @@ public sealed class ResilienceBehaviorTests
         Assert.Fail("Timed out waiting for notification processing.");
     }
 
-    public sealed record RetryRequestMessage(string Value);
-    public sealed record RetryNotificationMessage(string Value);
-    public sealed record RetryNotificationViaMediatorMessage(string Value);
-    public sealed record TimeoutRequestMessage(string Value);
-    public sealed record CircuitBreakerRequestMessage(string Value);
-
+    public sealed record RetryRequestMessage(string Value) : IRequest<string>;
+    public sealed record RetryNotificationMessage(string Value) : INotification;
+    public sealed record RetryNotificationViaMediatorMessage(string Value) : INotification;
+    public sealed record TimeoutRequestMessage(string Value) : IRequest<string>;
+    public sealed record CircuitBreakerRequestMessage(string Value) : IRequest<string>;
     private sealed class RetryRequestHandler : IRequestHandler<RetryRequestMessage, string>
     {
         private static int s_attempts;
         public static int Attempts => Volatile.Read(ref s_attempts);
         public static void Reset() => Interlocked.Exchange(ref s_attempts, 0);
 
-        public Task<string> Handle(
+        public async ValueTask<string> Handle(
             RetryRequestMessage query,
             CancellationToken cancellationToken = default
         )
@@ -198,13 +187,14 @@ public sealed class ResilienceBehaviorTests
             var attempt = Interlocked.Increment(ref s_attempts);
             if (attempt < 3)
                 throw new InvalidOperationException($"failed attempt {attempt}");
-            return Task.FromResult(query.Value);
+
+            return query.Value;
         }
     }
 
     private sealed class TimeoutRequestHandler : IRequestHandler<TimeoutRequestMessage, string>
     {
-        public async Task<string> Handle(
+        public async ValueTask<string> Handle(
             TimeoutRequestMessage query,
             CancellationToken cancellationToken = default
         )
@@ -217,7 +207,7 @@ public sealed class ResilienceBehaviorTests
     private sealed class CircuitBreakerRequestHandler
         : IRequestHandler<CircuitBreakerRequestMessage, string>
     {
-        public Task<string> Handle(
+        public async ValueTask<string> Handle(
             CircuitBreakerRequestMessage query,
             CancellationToken cancellationToken = default
         ) => throw new InvalidOperationException("request failure");
@@ -230,7 +220,7 @@ public sealed class ResilienceBehaviorTests
         public static int Attempts => Volatile.Read(ref s_attempts);
         public static void Reset() => Interlocked.Exchange(ref s_attempts, 0);
 
-        public Task Handle(
+        public async ValueTask Handle(
             RetryNotificationViaMediatorMessage notification,
             CancellationToken cancellationToken = default
         )
@@ -238,8 +228,6 @@ public sealed class ResilienceBehaviorTests
             var attempt = Interlocked.Increment(ref s_attempts);
             if (attempt < 3)
                 throw new InvalidOperationException($"failed attempt {attempt}");
-
-            return Task.CompletedTask;
         }
     }
 }

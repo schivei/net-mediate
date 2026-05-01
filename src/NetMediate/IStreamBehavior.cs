@@ -1,22 +1,12 @@
 ﻿namespace NetMediate;
 
 /// <summary>
-/// Defines a pipeline behavior for stream requests.
+/// Defines a pipeline behavior for streaming message handlers that process messages and return asynchronous streams of
+/// responses.
 /// </summary>
-/// <typeparam name="TMessage">The stream request message type.</typeparam>
-/// <typeparam name="TResponse">The stream item type.</typeparam>
-public interface IStreamBehavior<in TMessage, TResponse>
-{
-    /// <summary>
-    /// Handles a stream request before and/or after invoking the next delegate in the pipeline.
-    /// </summary>
-    /// <param name="message">The stream request message.</param>
-    /// <param name="next">The next delegate in the stream pipeline.</param>
-    /// <param name="cancellationToken">A token to observe while waiting for the operation to complete.</param>
-    /// <returns>An asynchronous stream of responses.</returns>
-    IAsyncEnumerable<TResponse> Handle(
-        TMessage message,
-        StreamHandlerDelegate<TResponse> next,
-        CancellationToken cancellationToken = default
-    );
-}
+/// <remarks>Implement this interface to add custom processing or logic to the execution pipeline for streaming
+/// handlers. Behaviors can be used to add cross-cutting concerns such as logging, validation, or authorization to
+/// streaming operations.</remarks>
+/// <typeparam name="TMessage">The type of the streaming message being handled. Must implement <see cref="IStream{TResponse}"/> and cannot be null.</typeparam>
+/// <typeparam name="TResponse">The type of the response elements produced by the stream.</typeparam>
+public interface IStreamBehavior<TMessage, TResponse> : IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>, StreamHandlerDelegate<TMessage, TResponse>> where TMessage : notnull, IStream<TResponse>;

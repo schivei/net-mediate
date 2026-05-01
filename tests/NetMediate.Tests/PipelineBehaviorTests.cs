@@ -144,51 +144,51 @@ public sealed class PipelineBehaviorTests
     private static async Task<IHost> CreateHostAsync(Action<IServiceCollection> configure)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(typeof(PipelineBehaviorTests).Assembly);
         configure(builder.Services);
+        builder.Services.AddNetMediate(typeof(PipelineBehaviorTests).Assembly);
 
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
         return host;
     }
 
-    public sealed record PipelineRequest(string Value);
-    public sealed record PipelineCommand(string Value);
-    public sealed record PipelineNotification(string Value);
-    public sealed record PipelineStream(int Count);
+    public sealed record PipelineRequest(string Value) : IRequest<string>;
+    public sealed record PipelineCommand(string Value) : ICommand;
+    public sealed record PipelineNotification(string Value) : INotification;
+    public sealed record PipelineStream(int Count) : IStream<int>;
 
     private sealed class CallTrace
     {
         private readonly ConcurrentQueue<string> _calls = new();
         public int Count => _calls.Count;
         public void Add(string value) => _calls.Enqueue(value);
-        public string[] ToArray() => _calls.ToArray();
+        public string[] ToArray() => [.. _calls];
     }
 
     private sealed class PipelineRequestHandler(CallTrace trace)
         : IRequestHandler<PipelineRequest, string>
     {
-        public Task<string> Handle(
+        public ValueTask<string> Handle(
             PipelineRequest query,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("request:handler");
-            return Task.FromResult(query.Value);
+            return ValueTask.FromResult(query.Value);
         }
     }
 
     private sealed class FirstRequestBehavior(CallTrace trace)
         : IRequestBehavior<PipelineRequest, string>
     {
-        public async Task<string> Handle(
+        public async ValueTask<string> Handle(
             PipelineRequest message,
-            RequestHandlerDelegate<string> next,
+            RequestHandlerDelegate<PipelineRequest, string> next,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("request:first:pre");
-            var response = await next(cancellationToken);
+            var response = await next(message, cancellationToken);
             trace.Add("request:first:post");
             return $"{response}:first";
         }
@@ -197,14 +197,14 @@ public sealed class PipelineBehaviorTests
     private sealed class SecondRequestBehavior(CallTrace trace)
         : IRequestBehavior<PipelineRequest, string>
     {
-        public async Task<string> Handle(
+        public async ValueTask<string> Handle(
             PipelineRequest message,
-            RequestHandlerDelegate<string> next,
+            RequestHandlerDelegate<PipelineRequest, string> next,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("request:second:pre");
-            var response = await next(cancellationToken);
+            var response = await next(message, cancellationToken);
             trace.Add("request:second:post");
             return $"{response}:second";
         }
@@ -213,24 +213,24 @@ public sealed class PipelineBehaviorTests
     private sealed class PipelineCommandHandler(CallTrace trace)
         : ICommandHandler<PipelineCommand>
     {
-        public Task Handle(PipelineCommand command, CancellationToken cancellationToken = default)
+        public ValueTask Handle(PipelineCommand command, CancellationToken cancellationToken = default)
         {
             trace.Add("command:handler");
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
     }
 
     private sealed class CommandBehavior(CallTrace trace)
         : ICommandBehavior<PipelineCommand>
     {
-        public async Task Handle(
+        public async ValueTask Handle(
             PipelineCommand message,
-            CommandHandlerDelegate next,
+            CommandHandlerDelegate<PipelineCommand> next,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("command:pre");
-            await next(cancellationToken);
+            await next(message, cancellationToken);
             trace.Add("command:post");
         }
     }
@@ -250,7 +250,6 @@ public sealed class PipelineBehaviorTests
                 yield return i;
             }
 
-            await Task.CompletedTask;
             trace.Add("stream:handler:end");
         }
     }
@@ -260,17 +259,18 @@ public sealed class PipelineBehaviorTests
     {
         public IAsyncEnumerable<int> Handle(
             PipelineStream message,
-            StreamHandlerDelegate<int> next,
+            StreamHandlerDelegate<PipelineStream, int> next,
             CancellationToken cancellationToken = default
-        ) => Execute(next, cancellationToken);
+        ) => Execute(message, next, cancellationToken);
 
         private async IAsyncEnumerable<int> Execute(
-            StreamHandlerDelegate<int> next,
+            PipelineStream message,
+            StreamHandlerDelegate<PipelineStream, int> next,
             [EnumeratorCancellation] CancellationToken cancellationToken
         )
         {
             trace.Add("stream:pre");
-            await foreach (var item in next(cancellationToken).WithCancellation(cancellationToken))
+            await foreach (var item in next(message, cancellationToken).WithCancellation(cancellationToken))
                 yield return item;
             trace.Add("stream:post");
         }
@@ -279,40 +279,40 @@ public sealed class PipelineBehaviorTests
     private sealed class PipelineNotificationHandler1(CallTrace trace)
         : INotificationHandler<PipelineNotification>
     {
-        public Task Handle(
+        public ValueTask Handle(
             PipelineNotification notification,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("notification:handler:1");
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
     }
 
     private sealed class PipelineNotificationHandler2(CallTrace trace)
         : INotificationHandler<PipelineNotification>
     {
-        public Task Handle(
+        public ValueTask Handle(
             PipelineNotification notification,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("notification:handler:2");
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
         }
     }
 
     private sealed class NotificationBehavior(CallTrace trace)
         : INotificationBehavior<PipelineNotification>
     {
-        public async Task Handle(
+        public async ValueTask Handle(
             PipelineNotification message,
-            NotificationHandlerDelegate next,
+            NotificationHandlerDelegate<PipelineNotification> next,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("notification:pre");
-            await next(cancellationToken);
+            await next(message, cancellationToken);
             trace.Add("notification:post");
             trace.Add("notification:after-await");
         }

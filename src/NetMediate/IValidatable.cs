@@ -5,7 +5,7 @@ namespace NetMediate;
 /// <summary>
 /// Represents an object that can be validated asynchronously.
 /// </summary>
-public interface IValidatable
+public interface IValidatable : IMessage
 {
     /// <summary>
     /// Validates the current object asynchronously.

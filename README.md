@@ -3,7 +3,7 @@
 [![CI/CD Pipeline](https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml)
 [![NuGet](https://img.shields.io/nuget/v/NetMediate?style=flat)](https://www.nuget.org/packages/NetMediate/)
 
-A lightweight and efficient .NET implementation of the Mediator pattern, providing a clean alternative to MediatR for in-process messaging and communication between components.
+A lightweight and efficient .NET implementation of the Mediator pattern for in-process messaging and communication between components.
 
 ## Table of Contents
 
@@ -63,7 +63,6 @@ dotnet add package NetMediate
 
 ### Optional companion packages
 ```xml
-<PackageReference Include="NetMediate.Compat" Version="x.x.x" />
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
 <PackageReference Include="NetMediate.Resilience" Version="x.x.x" />
 <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
@@ -72,7 +71,6 @@ dotnet add package NetMediate
 <PackageReference Include="NetMediate.DataDog.ILogger" Version="x.x.x" />
 ```
 
-- **NetMediate.Compat**: keeps MediatR contracts (`MediatR.IMediator`, `IRequest`, `INotification`, handlers, and `AddMediatR`) so migration to NetMediate can be done without rewriting contracts.
 - **NetMediate.Moq**: adds lightweight Moq helpers for cleaner unit and integration tests (`Mocking.Create`, `AddMockSingleton`, and async setup extensions).
 - **NetMediate.Resilience**: adds optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
 - **NetMediate.SourceGeneration**: generates `AddNetMediateGenerated(...)` to register handlers at compile-time and reduce reflection cost at startup.
@@ -82,7 +80,6 @@ dotnet add package NetMediate
 
 ## Companion Guides
 
-- [MediatR migration guide](docs/MEDIATR_MIGRATION_GUIDE.md)
 - [NetMediate.Moq recipes](docs/NETMEDIATE_MOQ_RECIPES.md)
 - [API/Worker/Minimal API samples](docs/SAMPLES.md)
 - [Diagnostics (structured logs + metrics)](docs/DIAGNOSTICS.md)
@@ -526,7 +523,7 @@ builder.Services.AddScoped(typeof(IRequestBehavior<,>), typeof(AuditRequestBehav
 
 ### Supported package TFMs
 
-All runtime packages (`NetMediate`, `NetMediate.Compat`, `NetMediate.Moq`, `NetMediate.Resilience`) are published with:
+All runtime packages (`NetMediate`, `NetMediate.Moq`, `NetMediate.Resilience`) are published with:
 
 - `net10.0`
 - `netstandard2.0`

@@ -1,21 +1,12 @@
 ﻿namespace NetMediate;
 
 /// <summary>
-/// Defines a pipeline behavior for notification messages.
+/// Defines a pipeline behavior that is executed as part of the notification handling process for a specific
+/// notification type.
 /// </summary>
-/// <typeparam name="TMessage">The notification message type.</typeparam>
-public interface INotificationBehavior<in TMessage>
-{
-    /// <summary>
-    /// Handles a notification before and/or after invoking the next delegate in the pipeline.
-    /// </summary>
-    /// <param name="message">The notification message.</param>
-    /// <param name="next">The next delegate in the notification pipeline.</param>
-    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
-    /// <returns>A task that represents the asynchronous operation.</returns>
-    Task Handle(
-        TMessage message,
-        NotificationHandlerDelegate next,
-        CancellationToken cancellationToken = default
-    );
-}
+/// <remarks>Implement this interface to add custom logic that runs before or after notification handlers are
+/// invoked. Behaviors can be used for cross-cutting concerns such as logging, validation, or instrumentation in the
+/// notification pipeline.</remarks>
+/// <typeparam name="TMessage">The type of notification message handled by this behavior. Must implement the INotification interface and cannot be
+/// null.</typeparam>
+public interface INotificationBehavior<TMessage> : IPipelineBehavior<TMessage, ValueTask, NotificationHandlerDelegate<TMessage>> where TMessage : notnull, INotification;

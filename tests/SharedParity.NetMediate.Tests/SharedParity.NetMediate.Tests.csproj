@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\NetMediate.Moq\NetMediate.Moq.csproj" />
     <ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
   </ItemGroup>
 

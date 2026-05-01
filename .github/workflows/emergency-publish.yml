@@ -67,9 +67,6 @@ jobs:
     - name: Build Release
       run: dotnet build src/NetMediate/NetMediate.csproj --no-restore --configuration Release
 
-    - name: Build NetMediate.Compat
-      run: dotnet build src/NetMediate.Compat/NetMediate.Compat.csproj --no-restore --configuration Release
-
     - name: Build NetMediate.Moq
       run: dotnet build src/NetMediate.Moq/NetMediate.Moq.csproj --no-restore --configuration Release
 
@@ -93,9 +90,6 @@ jobs:
       
     - name: Pack NetMediate package
       run: dotnet pack src/NetMediate/NetMediate.csproj --no-build --configuration Release --output ./packages
-
-    - name: Pack NetMediate.Compat package
-      run: dotnet pack src/NetMediate.Compat/NetMediate.Compat.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.Moq package
       run: dotnet pack src/NetMediate.Moq/NetMediate.Moq.csproj --configuration Release --output ./packages

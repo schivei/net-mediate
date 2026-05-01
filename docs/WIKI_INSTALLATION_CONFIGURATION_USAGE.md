@@ -99,19 +99,7 @@ dotnet add package NetMediate.DataDog.ILogger
 
 See complete guide in [DATADOG.md](DATADOG.md).
 
-## 6) Compatibility package (`NetMediate.Compat`)
-
-### Installation
-
-```bash
-dotnet add package NetMediate.Compat
-```
-
-### Usage
-
-Use MediatR-compatible contracts while delegating runtime execution to NetMediate.
-
-## 7) Moq helpers package (`NetMediate.Moq`)
+## 6) Moq helpers package (`NetMediate.Moq`)
 
 ### Installation
 

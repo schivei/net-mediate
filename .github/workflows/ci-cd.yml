@@ -48,9 +48,6 @@ jobs:
     - name: Build NetMediate
       run: dotnet build src/NetMediate/NetMediate.csproj --no-restore --configuration Release
 
-    - name: Build NetMediate.Compat
-      run: dotnet build src/NetMediate.Compat/NetMediate.Compat.csproj --no-restore --configuration Release
-
     - name: Build NetMediate.Moq
       run: dotnet build src/NetMediate.Moq/NetMediate.Moq.csproj --no-restore --configuration Release
 
@@ -74,9 +71,6 @@ jobs:
 
     - name: Test Shared Parity (NetMediate)
       run: dotnet test tests/SharedParity.NetMediate.Tests/SharedParity.NetMediate.Tests.csproj --configuration Release --verbosity normal
-
-    - name: Test Shared Parity (MediatR Compat)
-      run: dotnet test tests/SharedParity.MediatRCompat.Tests/SharedParity.MediatRCompat.Tests.csproj --configuration Release --verbosity normal
       
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v6
@@ -113,15 +107,9 @@ jobs:
 
     - name: Run Shared Parity Tests (NetMediate)
       run: dotnet test tests/SharedParity.NetMediate.Tests/SharedParity.NetMediate.Tests.csproj --configuration Release --verbosity normal
-
-    - name: Run Shared Parity Tests (MediatR Compat)
-      run: dotnet test tests/SharedParity.MediatRCompat.Tests/SharedParity.MediatRCompat.Tests.csproj --configuration Release --verbosity normal
       
     - name: Pack NetMediate package
       run: dotnet pack src/NetMediate/NetMediate.csproj --no-build --no-restore --configuration Release --output ./packages
-
-    - name: Pack NetMediate.Compat package
-      run: dotnet pack src/NetMediate.Compat/NetMediate.Compat.csproj --no-build --no-restore --configuration Release --output ./packages
 
     - name: Pack NetMediate.Moq package
       run: dotnet pack src/NetMediate.Moq/NetMediate.Moq.csproj --no-build --no-restore --configuration Release --output ./packages

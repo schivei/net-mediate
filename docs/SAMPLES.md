@@ -38,17 +38,18 @@ public sealed class Worker(IMediator mediator) : BackgroundService
 }
 ```
 
-## Minimal API sample with MediatR contracts via compat
+## Minimal API sample
 
 ```csharp
-using MediatR;
-
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<CreateOrderHandler>());
+builder.Services.AddNetMediate(typeof(CreateOrderHandler).Assembly);
 
 var app = builder.Build();
-app.MapPost("/orders", async (IMediator mediator, CreateOrder command, CancellationToken ct)
-    => Results.Ok(await mediator.Send(command, ct)));
+app.MapPost("/orders", async (IMediator mediator, CreateOrder command, CancellationToken ct) =>
+{
+    var created = await mediator.Request<CreateOrder, OrderCreated>(command, ct);
+    return Results.Ok(created);
+});
 
 app.Run();
 ```

@@ -8,10 +8,10 @@ namespace NetMediate;
 /// </summary>
 public static class MediatorExtensions
 {
-    private static readonly MethodInfo s_requestMethod = typeof(IMediator)
+    private static readonly MethodInfo? s_requestMethod = typeof(IMediator)
         .GetMethod(nameof(IMediator.Request));
 
-    private static readonly MethodInfo s_requestStreamMethod = typeof(IMediator)
+    private static readonly MethodInfo? s_requestStreamMethod = typeof(IMediator)
         .GetMethod(nameof(IMediator.RequestStream));
 
     /// <summary>
@@ -67,9 +67,17 @@ public static class MediatorExtensions
 
         private static Func<IMediator, object, CancellationToken, ValueTask<TResponse>> Create(Type requestType)
         {
+            if (s_requestMethod is null)
+                throw new InvalidOperationException("IMediator.Request method not found via reflection.");
+
             var method = s_requestMethod.MakeGenericMethod(requestType, typeof(TResponse));
             return (mediator, request, cancellationToken) =>
-                (ValueTask<TResponse>)method.Invoke(mediator, [request, cancellationToken])!;
+            {
+                var result = method.Invoke(mediator, [request, cancellationToken]);
+                if (result is null)
+                    throw new InvalidOperationException("Request method invocation returned null.");
+                return (ValueTask<TResponse>)result;
+            };
         }
     }
 
@@ -86,9 +94,17 @@ public static class MediatorExtensions
 
         private static Func<IMediator, object, CancellationToken, IAsyncEnumerable<TResponse>> Create(Type requestType)
         {
+            if (s_requestStreamMethod is null)
+                throw new InvalidOperationException("IMediator.RequestStream method not found via reflection.");
+
             var method = s_requestStreamMethod.MakeGenericMethod(requestType, typeof(TResponse));
             return (mediator, request, cancellationToken) =>
-                (IAsyncEnumerable<TResponse>)method.Invoke(mediator, [request, cancellationToken])!;
+            {
+                var result = method.Invoke(mediator, [request, cancellationToken]);
+                if (result is null)
+                    throw new InvalidOperationException("RequestStream method invocation returned null.");
+                return (IAsyncEnumerable<TResponse>)result;
+            };
         }
     }
 }

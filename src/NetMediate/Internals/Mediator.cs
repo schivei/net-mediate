@@ -121,7 +121,10 @@ internal sealed class Mediator(
                 (validations, handlers) => async (msg, token) =>
                 {
                     await ValidateMessageAsync(msg, validations, token).ConfigureAwait(false);
-                    return await handlers.First().Handle(msg, token).ConfigureAwait(false);
+                    var handler = handlers.FirstOrDefault();
+                    if (handler is null)
+                        throw new InvalidOperationException($"No handler found for message type '{typeof(TMessage).Name}'.");
+                    return await handler.Handle(msg, token).ConfigureAwait(false);
                 },
                 (behavior, next) => (msg, token) => behavior.Handle(msg, next, token)
             );
@@ -129,6 +132,8 @@ internal sealed class Mediator(
             if (pipeline is null)
             {
                 HandleMissingPipeline<TMessage>();
+                // When IgnoreUnhandledMessages is true, return default value for TResponse
+                // This may be null for reference types, but is expected behavior for missing handlers
                 return default!;
             }
 
@@ -151,8 +156,10 @@ internal sealed class Mediator(
         CancellationToken cancellationToken = default
     ) where TMessage : notnull, IStream<TResponse>
     {
-        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("RequestStream");
-        using var scope = serviceScopeFactory.CreateScope();
+        // Activity and scope cannot be disposed here because they must remain alive
+        // until the async enumerable is fully consumed by the caller
+        var activity = NetMediateDiagnostics.StartActivity<TMessage>("RequestStream");
+        var scope = serviceScopeFactory.CreateScope();
 
         try
         {
@@ -168,15 +175,41 @@ internal sealed class Mediator(
 
             if (pipeline is null)
             {
+                activity?.Dispose();
+                scope.Dispose();
                 HandleMissingPipeline<TMessage>();
                 return EmptyAsyncEnumerable<TResponse>();
             }
 
-            return pipeline.Invoke(message, cancellationToken);
+            NetMediateDiagnostics.RecordStream<TMessage>();
+            return StreamWithCleanup(pipeline.Invoke(message, cancellationToken), activity, scope);
+        }
+        catch
+        {
+            activity?.Dispose();
+            scope.Dispose();
+            throw;
+        }
+    }
+
+    private static async IAsyncEnumerable<TResponse> StreamWithCleanup<TResponse>(
+        IAsyncEnumerable<TResponse> source,
+        System.Diagnostics.Activity? activity,
+        IServiceScope scope,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
+    {
+        try
+        {
+            await foreach (var item in source.WithCancellation(cancellationToken).ConfigureAwait(false))
+            {
+                yield return item;
+            }
         }
         finally
         {
-            NetMediateDiagnostics.RecordStream<TMessage>();
+            activity?.Dispose();
+            scope.Dispose();
         }
     }
 

@@ -93,7 +93,7 @@ internal sealed class MediatorServiceBuilder<TNotifier> : IMediatorServiceBuilde
         assemblies
             .SelectMany(assembly => assembly.GetTypes())
             .SelectMany(type =>
-                type.FindInterfaces((type, criteria) => type.IsGenericType && s_validInterface.Contains(type.GetGenericTypeDefinition()), null)
+                type.FindInterfaces((iface, _) => iface.IsGenericType && s_validInterface.Contains(iface.GetGenericTypeDefinition()), null)
                     .Select(iface => (handlerType: type, iface))
             ).Distinct();
 }

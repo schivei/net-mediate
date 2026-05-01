@@ -8,10 +8,10 @@ public interface IMediator
     /// <summary>
     /// Publishes a notification to all registered handlers.
     /// </summary>
-    /// <typeparam name="TMessage"></typeparam>
-    /// <param name="notification"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
+    /// <typeparam name="TMessage">The type of the notification message.</typeparam>
+    /// <param name="notification">The notification message to publish.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     ValueTask Notify<TMessage>(
         TMessage notification,
         CancellationToken cancellationToken = default
@@ -32,10 +32,10 @@ public interface IMediator
     /// <summary>
     /// Sends a command to a single handler.
     /// </summary>
-    /// <typeparam name="TMessage"></typeparam>
-    /// <param name="command"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
+    /// <typeparam name="TMessage">The type of the command message.</typeparam>
+    /// <param name="command">The command to send.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
     ValueTask Send<TMessage>(
         TMessage command,
         CancellationToken cancellationToken = default
@@ -44,11 +44,11 @@ public interface IMediator
     /// <summary>
     /// Sends a request to a handler and awaits a response.
     /// </summary>
-    /// <typeparam name="TMessage"></typeparam>
-    /// <typeparam name="TResponse"></typeparam>
-    /// <param name="request"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
+    /// <typeparam name="TMessage">The type of the request message.</typeparam>
+    /// <typeparam name="TResponse">The type of the response.</typeparam>
+    /// <param name="request">The request to send.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns>A task that represents the asynchronous operation and contains the response.</returns>
     ValueTask<TResponse> Request<TMessage, TResponse>(
         TMessage request,
         CancellationToken cancellationToken = default
@@ -57,11 +57,11 @@ public interface IMediator
     /// <summary>
     /// Sends a request to a handler and receives a stream of responses asynchronously.
     /// </summary>
-    /// <typeparam name="TMessage"></typeparam>
-    /// <typeparam name="TResponse"></typeparam>
-    /// <param name="request"></param>
-    /// <param name="cancellationToken"></param>
-    /// <returns></returns>
+    /// <typeparam name="TMessage">The type of the request message.</typeparam>
+    /// <typeparam name="TResponse">The type of the response items in the stream.</typeparam>
+    /// <param name="request">The request to send.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the stream to complete.</param>
+    /// <returns>An asynchronous stream of responses.</returns>
     IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
         TMessage request,
         CancellationToken cancellationToken = default

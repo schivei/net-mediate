@@ -20,8 +20,14 @@ internal static class Extensions
             ? []
             : serviceProvider.GetServices<T>();
         }
-        catch
+        catch (ObjectDisposedException)
         {
+            // Service provider was disposed - return empty collection
+            return [];
+        }
+        catch (InvalidOperationException)
+        {
+            // Service resolution failed - return empty collection
             return [];
         }
     }

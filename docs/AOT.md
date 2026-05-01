@@ -55,10 +55,12 @@ use `MethodInfo.MakeGenericMethod` at runtime and are not compatible with Native
 overloads on `IMediator` directly:
 
 ```csharp
-// ❌ Not AOT-safe
+// GetUserQuery implements IRequest<UserDto>: public record GetUserQuery(string Id) : IRequest<UserDto>;
+
+// ❌ Not AOT-safe — Request<TResponse>(IRequest<TResponse>) uses MakeGenericMethod internally
 var dto = await mediator.Request(new GetUserQuery("id"), cancellationToken);
 
-// ✅ AOT-safe — both type arguments are explicit
+// ✅ AOT-safe — both type arguments are explicit; no reflection required
 var dto = await mediator.Request<GetUserQuery, UserDto>(new GetUserQuery("id"), cancellationToken);
 ```
 

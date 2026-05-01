@@ -73,6 +73,9 @@ public static class NetMediateDI
     {
         Guard.ThrowIfNull(configure);
 
+        // Direct instantiation (without MapAssemblies) is intentional: this overload is the
+        // AOT/trim-safe path. Assembly scanning is deliberately omitted so that the caller's
+        // configure callback is the sole source of handler registrations.
         var builder = new MediatorServiceBuilder<Notifier>(services);
         configure(builder);
         return builder;
@@ -98,6 +101,9 @@ public static class NetMediateDI
     {
         Guard.ThrowIfNull(configure);
 
+        // Direct instantiation (without MapAssemblies) is intentional: this overload is the
+        // AOT/trim-safe path. Assembly scanning is deliberately omitted so that the caller's
+        // configure callback is the sole source of handler registrations.
         var builder = new MediatorServiceBuilder<TNotifier>(services);
         configure(builder);
         return builder;

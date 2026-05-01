@@ -1,6 +1,6 @@
-#if NETSTANDARD || NET8_0
+#if NETSTANDARD
 #pragma warning disable IDE0130
-// System.Threading.Lock was introduced in .NET 9.  For net8.0 and netstandard targets we
+// System.Threading.Lock was introduced in .NET 9.  For netstandard targets we
 // provide a drop-in polyfill backed by Monitor so that the C# 13 `lock(obj)` statement
 // — which the compiler lowers to `obj.EnterScope()` when the type is System.Threading.Lock —
 // still provides correct mutual exclusion.

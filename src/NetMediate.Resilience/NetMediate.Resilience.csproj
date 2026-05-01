@@ -13,6 +13,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(ExtensionsVersion)" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
   </ItemGroup>
 </Project>

@@ -34,6 +34,43 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
     }
 
     [Fact]
+    public async Task CommandLoad_ShouldSustainMinimumThroughputInParallel()
+    {
+        if (!ShouldRunPerformanceTests())
+            return;
+
+        using var host = await CreateHostAsync();
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var targetFramework = AppContext.TargetFrameworkName ?? "unknown";
+
+        const int operations = 10_000;
+        var start = Stopwatch.GetTimestamp();
+
+        await Parallel.ForEachAsync(
+            Enumerable.Range(0, operations),
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Math.Max(2, Environment.ProcessorCount),
+                CancellationToken = cancellationToken,
+            },
+            async (i, token) =>
+            {
+                await mediator.Send(new LoadCommand(i), token);
+            }
+        );
+
+        var elapsed = Stopwatch.GetElapsedTime(start);
+        var throughput = operations / elapsed.TotalSeconds;
+
+        output.WriteLine(
+            $"LOAD_RESULT command_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
+        );
+
+        Assert.True(throughput > 500, $"Unexpected low parallel command throughput: {throughput:F2} ops/s");
+    }
+
+    [Fact]
     public async Task RequestLoad_ShouldSustainMinimumThroughputInParallel()
     {
         if (!ShouldRunPerformanceTests())
@@ -71,6 +108,103 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
         Assert.True(throughput > 500, $"Unexpected low request throughput: {throughput:F2} ops/s");
     }
 
+    [Fact]
+    public async Task NotificationLoad_ShouldSustainMinimumThroughput()
+    {
+        if (!ShouldRunPerformanceTests())
+            return;
+
+        using var host = await CreateHostAsync();
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var targetFramework = AppContext.TargetFrameworkName ?? "unknown";
+
+        const int operations = 20_000;
+        var start = Stopwatch.GetTimestamp();
+
+        for (var i = 0; i < operations; i++)
+            await mediator.Notify(new LoadNotification(i), cancellationToken);
+
+        var elapsed = Stopwatch.GetElapsedTime(start);
+        var throughput = operations / elapsed.TotalSeconds;
+
+        output.WriteLine(
+            $"LOAD_RESULT notification tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
+        );
+
+        Assert.True(throughput > 500, $"Unexpected low notification throughput: {throughput:F2} ops/s");
+    }
+
+    [Fact]
+    public async Task NotificationLoad_ShouldSustainMinimumThroughputInParallel()
+    {
+        if (!ShouldRunPerformanceTests())
+            return;
+
+        using var host = await CreateHostAsync();
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var targetFramework = AppContext.TargetFrameworkName ?? "unknown";
+
+        const int operations = 10_000;
+        var start = Stopwatch.GetTimestamp();
+
+        await Parallel.ForEachAsync(
+            Enumerable.Range(0, operations),
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Math.Max(2, Environment.ProcessorCount),
+                CancellationToken = cancellationToken,
+            },
+            async (i, token) =>
+            {
+                await mediator.Notify(new LoadNotification(i), token);
+            }
+        );
+
+        var elapsed = Stopwatch.GetElapsedTime(start);
+        var throughput = operations / elapsed.TotalSeconds;
+
+        output.WriteLine(
+            $"LOAD_RESULT notification_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
+        );
+
+        Assert.True(throughput > 500, $"Unexpected low parallel notification throughput: {throughput:F2} ops/s");
+    }
+
+    [Fact]
+    public async Task StreamLoad_ShouldSustainMinimumThroughput()
+    {
+        if (!ShouldRunPerformanceTests())
+            return;
+
+        using var host = await CreateHostAsync();
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        var cancellationToken = TestContext.Current.CancellationToken;
+        var targetFramework = AppContext.TargetFrameworkName ?? "unknown";
+
+        const int operations = 5_000;
+        var start = Stopwatch.GetTimestamp();
+
+        for (var i = 0; i < operations; i++)
+        {
+            await foreach (var _ in mediator.RequestStream<LoadStreamRequest, int>(
+                new LoadStreamRequest(i), cancellationToken))
+            {
+                // drain items
+            }
+        }
+
+        var elapsed = Stopwatch.GetElapsedTime(start);
+        var throughput = operations / elapsed.TotalSeconds;
+
+        output.WriteLine(
+            $"LOAD_RESULT stream tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
+        );
+
+        Assert.True(throughput > 500, $"Unexpected low stream throughput: {throughput:F2} ops/s");
+    }
+
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
@@ -90,6 +224,8 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
 
     public sealed record LoadCommand(int Value) : ICommand;
     public sealed record LoadRequest(int Value) : IRequest<int>;
+    public sealed record LoadNotification(int Value) : INotification;
+    public sealed record LoadStreamRequest(int Value) : IStream<int>;
 
     private sealed class LoadCommandHandler : ICommandHandler<LoadCommand>
     {
@@ -101,5 +237,26 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
     {
         public ValueTask<int> Handle(LoadRequest query, CancellationToken cancellationToken = default) =>
             ValueTask.FromResult(query.Value + 1);
+    }
+
+    private sealed class LoadNotificationHandler : INotificationHandler<LoadNotification>
+    {
+        public ValueTask Handle(LoadNotification notification, CancellationToken cancellationToken = default) =>
+            ValueTask.CompletedTask;
+    }
+
+    private sealed class LoadStreamHandler : IStreamHandler<LoadStreamRequest, int>
+    {
+        public async IAsyncEnumerable<int> Handle(
+            LoadStreamRequest request,
+            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        {
+            for (var i = 0; i < 5; i++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                yield return request.Value + i;
+                await Task.Yield();
+            }
+        }
     }
 }

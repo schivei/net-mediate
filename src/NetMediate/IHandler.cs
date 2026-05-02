@@ -8,7 +8,7 @@
 /// provided token.</remarks>
 /// <typeparam name="TMessage">The type of message to be handled. Must implement <see cref="IMessage"/> and cannot be null.</typeparam>
 /// <typeparam name="TResult">The type of result produced by handling the message.</typeparam>
-public interface IHandler<TMessage, TResult> : IHandler where TMessage : notnull, IMessage
+public interface IHandler<in TMessage, out TResult> : IHandler
 {
     /// <summary>
     /// Handles the specified message and returns a result of the operation.

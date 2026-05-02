@@ -14,11 +14,10 @@ public interface INotifiable
     /// </summary>
     /// <remarks>All handlers registered for the notification type will be invoked. The operation completes
     /// when all handlers have finished processing or the operation is canceled.</remarks>
-    /// <typeparam name="TMessage">The type of the notification message to dispatch.</typeparam>
-    /// <param name="message">The notification message to be dispatched to handlers. Cannot be null.</param>
+    /// <param name="pack">The notification message to be dispatched to handlers. Cannot be null.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the notification dispatch operation.</param>
     /// <returns>A ValueTask that represents the asynchronous operation of dispatching the notification to all handlers.</returns>
-    ValueTask DispatchNotifications<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull, INotification;
+    ValueTask DispatchNotifications(IPack pack, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Publishes a notification message to all registered handlers asynchronously.
@@ -29,7 +28,7 @@ public interface INotifiable
     /// <param name="message">The notification message to be published. Cannot be null.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the notification operation.</param>
     /// <returns>A <see cref="ValueTask"/> that represents the asynchronous operation.</returns>
-    ValueTask Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull, INotification;
+    ValueTask Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Publishes a collection of notification messages to all registered handlers asynchronously.
@@ -41,5 +40,5 @@ public interface INotifiable
     /// <param name="messages">The collection of notification messages to be published. Cannot be null.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
     /// <returns>A ValueTask that represents the asynchronous publish operation.</returns>
-    ValueTask Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull, INotification;
+    ValueTask Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default);
 }

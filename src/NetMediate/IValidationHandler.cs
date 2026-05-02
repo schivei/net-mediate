@@ -6,7 +6,7 @@ namespace NetMediate;
 /// Defines a handler for validating messages of type <typeparamref name="TMessage"/>.
 /// </summary>
 /// <typeparam name="TMessage">The type of the message to validate.</typeparam>
-public interface IValidationHandler<TMessage> : IValidationHandler where TMessage : notnull, IMessage
+public interface IValidationHandler<TMessage> : IValidationHandler
 {
     /// <summary>
     /// Asynchronously validates the specified message.
@@ -29,4 +29,10 @@ public interface IValidationHandler<TMessage> : IValidationHandler where TMessag
 /// <remarks>Implement this interface to provide custom validation behavior for requests processed by the
 /// pipeline. Validation handlers are typically used to enforce business rules or input constraints before further
 /// processing occurs.</remarks>
-public interface IValidationHandler : IHandler;
+public interface IValidationHandler : IHandler
+{
+    ValueTask<ValidationResult> ValidateAsync(
+        TMessage message,
+        CancellationToken cancellationToken = default
+    );
+}

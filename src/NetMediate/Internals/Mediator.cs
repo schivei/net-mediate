@@ -15,7 +15,7 @@ internal sealed class Mediator(
     public async ValueTask Notify<TMessage>(
         TMessage message,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull, INotification
+    )
     {
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Notify");
         try
@@ -37,7 +37,7 @@ internal sealed class Mediator(
     public async ValueTask Notify<TMessage>(
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull, INotification
+    )
     {
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Notify");
         // Materialize once to avoid double-enumeration
@@ -61,7 +61,7 @@ internal sealed class Mediator(
     public async ValueTask Send<TMessage>(
         TMessage command,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull, ICommand
+    )
     {
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Send");
         using var scope = serviceScopeFactory.CreateScope();
@@ -214,9 +214,7 @@ internal sealed class Mediator(
     }
 
     private async ValueTask NotifyCore<TMessage>(TMessage message, CancellationToken cancellationToken)
-        where TMessage : notnull, INotification
-    {
-        using var scope = serviceScopeFactory.CreateScope();
+    {   
         var handlers = scope.ServiceProvider.GetAllServices<INotificationHandler<TMessage>>();
 
         if (!handlers.Any())
@@ -257,8 +255,7 @@ internal sealed class Mediator(
         IServiceProvider serviceProvider,
         Func<IEnumerable<IValidationHandler<TMessage>>, IEnumerable<THandler>, TDelegate> createDelegate,
         Func<TBehavior, TDelegate, TDelegate> wrapBehavior
-    ) where TMessage : notnull, IMessage
-      where TDelegate : Delegate
+    ) where TDelegate : Delegate
       where THandler : IHandler<TMessage, TResult>
       where TBehavior : IPipelineBehavior<TMessage, TResult, TDelegate>
     {

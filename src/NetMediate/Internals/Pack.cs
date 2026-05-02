@@ -1,15 +1,21 @@
-﻿namespace NetMediate.Internals;
+﻿using System.ComponentModel.DataAnnotations;
 
-internal readonly record struct Pack<TMessage>(TMessage Message, NotificationHandlerDelegate<TMessage> Notifier) : IPack where TMessage : notnull, INotification
+namespace NetMediate.Internals;
+
+internal readonly struct Pack<TMessage>(TMessage message, MessageHandlerDelegate<TMessage> handler, MessageValidationDelegate<TMessage>? validator = null) : IPack
 {
-    public string MessageTypeName => typeof(TMessage).Name;
-
-    public ValueTask Dispatch(CancellationToken cancellationToken = default) => Notifier(Message, cancellationToken);
+    public ValueTask Dispatch(CancellationToken cancellationToken = default) =>
+        handler(message, cancellationToken);
+    
+    public ValueTask<ValidationResult> ValidateAsync(CancellationToken cancellationToken) =>
+        Extensions.ValidateAsync(message, validator, cancellationToken);
 }
 
-internal interface IPack
+internal readonly struct Pack<TMessage, TResult>(TMessage message, MessageHandlerDelegate<TMessage, TResult> handler, MessageValidationDelegate<TMessage>? validator = null) : IPack<TResult> where TResult : notnull
 {
-    string MessageTypeName { get; }
-
-    ValueTask Dispatch(CancellationToken cancellationToken);
+    public TResult Dispatch(CancellationToken cancellationToken = default) =>
+        handler(message, cancellationToken);
+    
+    public ValueTask<ValidationResult> ValidateAsync(CancellationToken cancellationToken) =>
+        Extensions.ValidateAsync(message, validator, cancellationToken);
 }

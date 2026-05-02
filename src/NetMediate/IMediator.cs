@@ -15,7 +15,7 @@ public interface IMediator
     ValueTask Notify<TMessage>(
         TMessage notification,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull, INotification;
+    );
 
     /// <summary>
     /// Publishes a collection of notification messages to all registered handlers.
@@ -27,7 +27,7 @@ public interface IMediator
     ValueTask Notify<TMessage>(
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull, INotification;
+    );
 
     /// <summary>
     /// Sends a command to all registered handlers in parallel.
@@ -44,7 +44,7 @@ public interface IMediator
     ValueTask Send<TMessage>(
         TMessage command,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull, ICommand;
+    );
 
     /// <summary>
     /// Sends a request to a handler and awaits a response.
@@ -57,7 +57,7 @@ public interface IMediator
     ValueTask<TResponse> Request<TMessage, TResponse>(
         TMessage request,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull, IRequest<TResponse>;
+    );
 
     /// <summary>
     /// Sends a request to a handler and receives a stream of responses asynchronously.
@@ -70,5 +70,5 @@ public interface IMediator
     IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
         TMessage request,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull, IStream<TResponse>;
+    );
 }

@@ -10,7 +10,7 @@
 /// <typeparam name="TMessage">The type of the message being processed. Must implement the IMessage interface and cannot be null.</typeparam>
 /// <typeparam name="TResult">The type of the result returned by the pipeline after processing the message.</typeparam>
 /// <typeparam name="TDelegate">The type of the delegate representing the next step in the pipeline.</typeparam>
-public interface IPipelineBehavior<TMessage, TResult, TDelegate> where TMessage : notnull, IMessage where TDelegate : Delegate
+public interface IPipelineBehavior<in TMessage, out TResult, in TDelegate> where TDelegate : Delegate
 {
     /// <summary>
     /// Handles the specified message by invoking the next delegate in the processing pipeline.

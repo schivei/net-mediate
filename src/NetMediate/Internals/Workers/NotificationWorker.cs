@@ -16,24 +16,18 @@ internal sealed class NotificationWorker(Configuration configuration, ILogger<No
         }
         catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
-            return;
+            logger.LogDebug("Cancellation requested.");
         }
         finally
         {
-            if (!configuration.Disposed)
-                await configuration.DisposeAsync();
+            configuration.Dispose();
         }
     }
 
     private async Task ConsumeAsync(CancellationToken cancellationToken)
     {
-        while (configuration.ChannelReader.TryRead(out var pack))
-        {
-            if (pack is null)
-                continue;
-
-            await DispatchPackAsync(pack, cancellationToken);
-        }
+        var pack = await configuration.ChannelReader.ReadAsync(cancellationToken);
+        await DispatchPackAsync(pack, cancellationToken);
     }
 
     private async Task DispatchPackAsync(IPack pack, CancellationToken cancellationToken)
@@ -48,7 +42,7 @@ internal sealed class NotificationWorker(Configuration configuration, ILogger<No
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to process message of type {MessageType}.", pack.MessageTypeName);
+            logger.LogWarning(ex, "Failed to process message.");
         }
     }
 }

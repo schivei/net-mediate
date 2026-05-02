@@ -13,5 +13,5 @@ public interface IValidatable : IMessage
     /// <returns>
     /// A <see cref="ValidationResult"/> representing the result of the validation.
     /// </returns>
-    Task<ValidationResult> ValidateAsync();
+    ValueTask<ValidationResult> ValidateAsync(CancellationToken cancellationToken);
 }

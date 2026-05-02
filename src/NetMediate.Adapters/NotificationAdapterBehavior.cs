@@ -23,12 +23,12 @@ public sealed class NotificationAdapterBehavior<TMessage>(
     IServiceProvider serviceProvider,
     NotificationAdapterOptions options,
     ILogger<NotificationAdapterBehavior<TMessage>> logger
-) : INotificationBehavior<TMessage> where TMessage : notnull, INotification
+) : IPipelineBehavior<TMessage> where TMessage : notnull
 {
     /// <inheritdoc />
-    public async ValueTask Handle(
+    public async Task Handle(
         TMessage message,
-        NotificationHandlerDelegate<TMessage> next,
+        PipelineBehaviorDelegate<TMessage, Task> next,
         CancellationToken cancellationToken = default)
     {
         // Execute the core pipeline first.

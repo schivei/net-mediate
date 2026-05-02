@@ -19,7 +19,7 @@ namespace NetMediate.Adapters;
 /// </para>
 /// </remarks>
 /// <typeparam name="TMessage">The notification message type this adapter handles.</typeparam>
-public interface INotificationAdapter<TMessage> where TMessage : notnull, INotification
+public interface INotificationAdapter<TMessage> where TMessage : notnull
 {
     /// <summary>
     /// Forwards the notification to an external destination.

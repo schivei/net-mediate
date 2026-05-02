@@ -24,7 +24,7 @@ public static class NetMediateAdaptersDI
         configureOptions?.Invoke(opts);
         services.AddSingleton(opts);
 
-        services.AddSingleton(typeof(INotificationBehavior<>), typeof(NotificationAdapterBehavior<>));
+        services.AddSingleton(typeof(IPipelineBehavior<>), typeof(NotificationAdapterBehavior<>));
 
         return services;
     }
@@ -39,7 +39,7 @@ public static class NetMediateAdaptersDI
     /// <returns>The <see cref="IServiceCollection"/> for chaining.</returns>
     public static IServiceCollection AddNotificationAdapter<TMessage, TAdapter>(
         this IServiceCollection services)
-        where TMessage : notnull, INotification
+        where TMessage : notnull
         where TAdapter : class, INotificationAdapter<TMessage>
     {
         services.TryAddEnumerable(ServiceDescriptor.Singleton<INotificationAdapter<TMessage>, TAdapter>());
@@ -57,7 +57,7 @@ public static class NetMediateAdaptersDI
     public static IServiceCollection AddNotificationAdapter<TMessage>(
         this IServiceCollection services,
         INotificationAdapter<TMessage> adapter)
-        where TMessage : notnull, INotification
+        where TMessage : notnull
     {
         services.TryAddEnumerable(ServiceDescriptor.Singleton(adapter));
         return services;

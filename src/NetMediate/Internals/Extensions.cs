@@ -1,34 +1,61 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using System.Threading.Channels;
+﻿using System.Collections.Concurrent;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace NetMediate.Internals;
 
 internal static class Extensions
 {
-    public static async ValueTask DrainAsync<T>(this Channel<T> channel)
-    {
-        channel.Writer.TryComplete();
+    private static readonly ConcurrentDictionary<Type, long> s_serviceUsage = [];
 
-        await foreach (var _ in channel.Reader.ReadAllAsync().ConfigureAwait(false)) { }
+    private static void SetUsage(Type serviceType)
+    {
+        s_serviceUsage.AddOrUpdate(serviceType, 1, (_, count) => count + 1);
     }
 
-    public static IEnumerable<T> GetAllServices<T>(this IServiceProvider serviceProvider)
+    private static TimeSpan CalculateCachePersistence(Type serviceType)
     {
-        try
+        var timeLimit = TimeSpan.FromMinutes(5);
+        if (s_serviceUsage.TryGetValue(serviceType, out var count))
         {
-            return serviceProvider is IServiceProviderIsService isService && !isService.IsService(typeof(T)) && !isService.IsService(typeof(IEnumerable<T>))
-            ? []
-            : serviceProvider.GetServices<T>();
+            timeLimit += TimeSpan.FromTicks(count * TimeSpan.TicksPerMinute);
         }
-        catch (ObjectDisposedException)
+
+        if (timeLimit <= TimeSpan.Zero)
+            timeLimit = TimeSpan.FromMinutes(5);
+
+        if (timeLimit > TimeSpan.FromHours(1))
+            timeLimit = TimeSpan.FromHours(1);
+
+        return timeLimit;
+    }
+
+    private static IMemoryCache? _sCache;
+
+    extension(IServiceProvider serviceProvider)
+    {
+        public THandler[] GetHandlers<THandler, TMessage, TResult>() where THandler : IHandler<TMessage, TResult> where TMessage : notnull where TResult : notnull
         {
-            // Service provider was disposed - return empty collection
-            return [];
+            return serviceProvider.GetCachedServices<THandler>();
         }
-        catch (InvalidOperationException)
+
+        private IMemoryCache GetCache()
         {
-            // Service resolution failed - return empty collection
-            return [];
+            return _sCache ??= serviceProvider.GetService<IMemoryCache>() ??
+                               new MemoryCache(new MemoryCacheOptions());
+        }
+
+        private T[] GetCachedServices<T>()
+        {
+            var serviceType = typeof(T);
+            
+            SetUsage(serviceType);
+
+            return serviceProvider.GetCache().GetOrCreate(serviceType, entry =>
+            {
+                entry.AbsoluteExpirationRelativeToNow = CalculateCachePersistence(serviceType);
+                return serviceProvider.GetServices<T>().ToArray();
+            });
         }
     }
 }

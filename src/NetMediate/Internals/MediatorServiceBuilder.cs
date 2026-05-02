@@ -1,108 +1,59 @@
 ﻿using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
-using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using NetMediate.Internals.Workers;
 
 namespace NetMediate.Internals;
 
-internal sealed class MediatorServiceBuilder<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TNotifier>
+internal sealed class MediatorServiceBuilder<
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+    TNotifier>
     : IMediatorServiceBuilder where TNotifier : class, INotifiable
 {
-    internal static readonly IReadOnlyCollection<Type> s_validInterface =
-    [
-        typeof(IValidationHandler<>),
-        typeof(INotificationHandler<>),
-        typeof(IRequestHandler<,>),
-        typeof(ICommandHandler<>),
-        typeof(IStreamHandler<,>),
-        typeof(INotificationBehavior<>),
-        typeof(IRequestBehavior<,>),
-        typeof(ICommandBehavior<>),
-        typeof(IStreamBehavior<,>)
-    ];
-
-    private readonly Configuration _configuration;
-
-    public IServiceCollection Services { get; }
+    private readonly IServiceCollection _services;
 
     internal MediatorServiceBuilder(IServiceCollection services)
     {
-        _configuration = new Configuration(Channel.CreateUnbounded<IPack>());
+        _services = services;
 
-        Services = services;
+        _services.TryAddSingleton<IMediator, Mediator>();
+        
+        _services.AddTransient(typeof(PipelineExecutor<,,>));
 
-        Services.TryAddSingleton<Mediator>();
-        Services.TryAddSingleton<IMediator>(sp => sp.GetRequiredService<Mediator>());
-        Services.TryAddSingleton(_ => _configuration);
-
-        if (Services.Any(s => s.ServiceType == typeof(INotifiable)))
+        if (_services.Any(s => s.ServiceType == typeof(INotifiable)))
         {
-            Services.Replace(ServiceDescriptor.Singleton<INotifiable, TNotifier>());
+            _services.Replace(ServiceDescriptor.Singleton<INotifiable, TNotifier>());
         }
         else
         {
-            Services.AddSingleton<INotifiable, TNotifier>();
-        }
-
-        if (typeof(TNotifier) == typeof(Notifier))
-        {
-            Services.TryAddSingleton<NotificationWorker>();
-            Services.AddHostedService(sp => sp.GetRequiredService<NotificationWorker>());
+            _services.AddSingleton<INotifiable, TNotifier>();
         }
     }
 
-    [RequiresUnreferencedCode(
-        "Assembly scanning uses reflection to discover handler types and may not be compatible with trimming or NativeAOT. " +
-        "Use NetMediate.SourceGeneration for a trim-safe, AOT-compatible registration path."
-    )]
-    internal IMediatorServiceBuilder MapAssemblies(params Assembly[] assemblies)
+    public IMediatorServiceBuilder RegisterHandler<
+        TInterface,
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        THandler,
+        TMessage,
+        TResult>()
+        where TInterface : class, IHandler<TMessage, TResult>
+        where THandler : class, TInterface
+        where TMessage : notnull
+        where TResult : notnull
     {
-        if (assemblies is null or { Length: 0 })
-        {
-            assemblies = [.. AppDomain
-                    .CurrentDomain.GetAssemblies()
-                    .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))];
-        }
-
-        var types = ExtractTypes(assemblies);
-
-        foreach (var (handlerType, iface) in types)
-        {
-            // When the handler is an open-generic type definition the interface returned by
-            // GetInterfaces() carries the type parameters of the containing class, NOT the
-            // generic type definition itself.  .NET DI requires the generic type definition
-            // when registering open-generic services, so normalise the service type here.
-            var serviceType = handlerType.IsGenericTypeDefinition && iface.IsGenericType
-                ? iface.GetGenericTypeDefinition()
-                : iface;
-
-            Services.TryAddEnumerable(ServiceDescriptor.Singleton(serviceType, handlerType));
-        }
-
+        _services.AddSingleton<TInterface, THandler>();
         return this;
     }
 
-    public IMediatorServiceBuilder IgnoreUnhandledMessages(
-        bool ignore = true
-    )
+    public IMediatorServiceBuilder RegisterBehavior<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        TBehavior,
+        TMessage,
+        TResult>()
+        where TBehavior : class, IPipelineBehavior<TMessage, TResult>
+        where TMessage : notnull
+        where TResult : notnull
     {
-        _configuration.IgnoreUnhandledMessages = ignore;
-
+        _services.AddTransient<IPipelineBehavior<TMessage, TResult>, TBehavior>();
         return this;
     }
-
-    [RequiresUnreferencedCode(
-        "Assembly scanning uses reflection to discover handler types and may not be compatible with trimming or NativeAOT."
-    )]
-    private static IEnumerable<(Type handlerType, Type iface)> ExtractTypes(
-        Assembly[] assemblies
-    ) =>
-        assemblies
-            .SelectMany(assembly => assembly.GetTypes())
-            .SelectMany(type =>
-                type.FindInterfaces((iface, _) => iface.IsGenericType && s_validInterface.Contains(iface.GetGenericTypeDefinition()), null)
-                    .Select(iface => (handlerType: type, iface))
-            ).Distinct();
 }

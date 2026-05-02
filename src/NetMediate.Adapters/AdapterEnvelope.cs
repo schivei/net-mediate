@@ -13,7 +13,7 @@ public sealed record AdapterEnvelope<TMessage>(
     string MessageType,
     DateTimeOffset OccurredAt,
     TMessage Message
-) where TMessage : notnull, INotification
+) where TMessage : notnull
 {
     /// <summary>
     /// Creates a new <see cref="AdapterEnvelope{TMessage}"/> with a generated <see cref="MessageId"/> and the

@@ -1,55 +1,35 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace NetMediate.Internals;
 
-internal sealed class Notifier(Configuration configuration, IServiceScopeFactory serviceScopeFactory) : INotifiable
+internal class Notifier(IServiceProvider serviceProvider, ILogger<Notifier> logger) : INotifiable
 {
-    public ValueTask Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull, INotification =>
-        configuration.ChannelWriter.WriteAsync(new Pack<TMessage>(message, DispatchNotifications), cancellationToken);
-
-    public async ValueTask Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull, INotification =>
-        await Task.WhenAll(messages.Select(async message => await Notify(message, cancellationToken))).ConfigureAwait(false);
-
-    public async ValueTask DispatchNotifications<TMessage>(TMessage message, CancellationToken cancellationToken = default)
-        where TMessage : notnull, INotification
+    public virtual Task DispatchNotifications<TMessage>(TMessage message, INotificationHandler<TMessage>[] handlers,
+        CancellationToken cancellationToken = default) where TMessage : notnull
     {
-        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Dispatch");
-        using var scope = serviceScopeFactory.CreateScope();
-        var serviceProvider = scope.ServiceProvider;
-
-        try
-        {
-            var pipeline = Mediator.MountPipeline<
-               TMessage,
-               ValueTask,
-               NotificationHandlerDelegate<TMessage>,
-               INotificationHandler<TMessage>,
-               INotificationBehavior<TMessage>>(
-               serviceProvider,
-               (validations, handlers) => async (message, token) =>
-               {
-                   await Mediator.ValidateMessageAsync(message, validations, token).ConfigureAwait(false);
-                   foreach (var handler in handlers)
-                       await handler.Handle(message, token).ConfigureAwait(false);
-               },
-               (behavior, next) => (message, token) => behavior.Handle(message, next, token)
-            );
-
-            if (pipeline is null)
+        Task.WhenAll(handlers.Select(handler => handler.Handle(message, cancellationToken)))
+            .ContinueWith(t =>
             {
-                return;
-            }
+                if (!t.IsFaulted) return;
+                
+                logger.LogError(t.Exception, "{Message}", t.Exception!.Message);
+            }, TaskContinuationOptions.OnlyOnFaulted)
+            .ConfigureAwait(false);
+        
+        return Task.CompletedTask;
+    }
 
-            await pipeline.Invoke(message, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-            throw;
-        }
-        finally
-        {
-            NetMediateDiagnostics.RecordDispatch<TMessage>();
-        }
+    public Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull
+    {
+        var pipeline = serviceProvider
+            .GetRequiredService<PipelineExecutor<TMessage, Task, INotificationHandler<TMessage>>>();
+        
+        return pipeline.Handle(message, DispatchNotifications, cancellationToken);
+    }
+
+    public Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
+    {
+        return Task.WhenAll(messages.Select(message => Notify(message, cancellationToken)));
     }
 }

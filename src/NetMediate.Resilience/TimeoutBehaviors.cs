@@ -1,21 +1,12 @@
 ﻿namespace NetMediate.Resilience;
 
-/// <summary>
-/// Provides a request behavior that enforces a timeout for request handling operations.
-/// </summary>
-/// <remarks>If the request handler does not complete within the specified timeout, a <see
-/// cref="TimeoutException"/> is thrown. The timeout is not enforced if the configured duration is zero or
-/// infinite.</remarks>
-/// <typeparam name="TMessage">The type of the request message. Must implement <see cref="IRequest{TResponse}"/> and not be null.</typeparam>
-/// <typeparam name="TResponse">The type of the response returned by the request handler.</typeparam>
-/// <param name="options">The options that configure the timeout duration for request processing.</param>
-public sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehaviorOptions options)
-    : IRequestBehavior<TMessage, TResponse> where TMessage : notnull, IRequest<TResponse>
+internal sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehaviorOptions options)
+    : IPipelineRequestBehavior<TMessage, TResponse> where TMessage : notnull
 {
     /// <inheritdoc />
-    public async ValueTask<TResponse> Handle(
+    public async Task<TResponse> Handle(
         TMessage message,
-        RequestHandlerDelegate<TMessage, TResponse> next,
+        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
         CancellationToken cancellationToken = default
     )
     {
@@ -45,21 +36,13 @@ public sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehaviorO
     }
 }
 
-/// <summary>
-/// Provides a notification behavior that enforces a timeout for notification handlers.
-/// </summary>
-/// <remarks>If the notification handler does not complete within the specified timeout, a <see
-/// cref="TimeoutException"/> is thrown. The timeout is not enforced if the configured duration is zero or
-/// infinite.</remarks>
-/// <typeparam name="TMessage">The type of notification message to handle. Must implement <see cref="INotification"/> and be non-nullable.</typeparam>
-/// <param name="options">The options that configure the timeout duration for notification handling.</param>
-public sealed class TimeoutNotificationBehavior<TMessage>(TimeoutBehaviorOptions options)
-    : INotificationBehavior<TMessage> where TMessage : notnull, INotification
+internal sealed class TimeoutNotificationBehavior<TMessage>(TimeoutBehaviorOptions options)
+    : IPipelineBehavior<TMessage> where TMessage : notnull
 {
     /// <inheritdoc />
-    public async ValueTask Handle(
+    public async Task Handle(
         TMessage message,
-        NotificationHandlerDelegate<TMessage> next,
+        PipelineBehaviorDelegate<TMessage, Task> next,
         CancellationToken cancellationToken = default
     )
     {

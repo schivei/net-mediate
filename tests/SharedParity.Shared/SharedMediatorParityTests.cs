@@ -114,7 +114,7 @@ public class SharedMediatorParityTests
     public sealed class PingRequestHandler : IRequestHandler<PingRequest, PingResponse>
 #endif
     {
-        public static Task<PingResponse> Handle(PingRequest request, CancellationToken cancellationToken = default)
+        public Task<PingResponse> Handle(PingRequest request, CancellationToken cancellationToken = default) // NOSONAR S2325
             => Task.FromResult(new PingResponse($"{request.Value}:pong"));
     }
 

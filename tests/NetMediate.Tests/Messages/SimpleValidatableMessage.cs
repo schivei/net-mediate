@@ -7,7 +7,7 @@ internal record SimpleValidatableMessage([Required] string Name) : BaseMessage, 
     public Task<ValidationResult> ValidateAsync() =>
         Task.FromResult(
             Name != "right"
-                ? new ValidationResult("Name is required", [nameof(Name)])
+                ? new("Name is required", [nameof(Name)])
                 : ValidationResult.Success!
         );
 }

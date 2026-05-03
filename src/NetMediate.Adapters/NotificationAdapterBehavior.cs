@@ -51,7 +51,7 @@ public sealed class NotificationAdapterBehavior<TMessage>(
         }
     }
 
-    private async ValueTask InvokeSequentialAsync(
+    private async Task InvokeSequentialAsync(
         IEnumerable<INotificationAdapter<TMessage>> adapters,
         AdapterEnvelope<TMessage> envelope,
         CancellationToken cancellationToken)
@@ -62,7 +62,7 @@ public sealed class NotificationAdapterBehavior<TMessage>(
         }
     }
 
-    private async ValueTask InvokeParallelAsync(
+    private async Task InvokeParallelAsync(
         IEnumerable<INotificationAdapter<TMessage>> adapters,
         AdapterEnvelope<TMessage> envelope,
         CancellationToken cancellationToken)
@@ -73,7 +73,7 @@ public sealed class NotificationAdapterBehavior<TMessage>(
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }
 
-    private async ValueTask InvokeAdapterAsync(
+    private async Task InvokeAdapterAsync(
         INotificationAdapter<TMessage> adapter,
         AdapterEnvelope<TMessage> envelope,
         CancellationToken cancellationToken)

@@ -29,6 +29,6 @@ public interface INotificationAdapter<TMessage> where TMessage : notnull
     /// and the UTC creation timestamp.
     /// </param>
     /// <param name="cancellationToken">A cancellation token for the operation.</param>
-    /// <returns>A <see cref="ValueTask"/> representing the asynchronous forward operation.</returns>
-    ValueTask ForwardAsync(AdapterEnvelope<TMessage> envelope, CancellationToken cancellationToken = default);
+    /// <returns>A <see cref="Task"/> representing the asynchronous forward operation.</returns>
+    Task ForwardAsync(AdapterEnvelope<TMessage> envelope, CancellationToken cancellationToken = default);
 }

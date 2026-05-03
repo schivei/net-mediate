@@ -25,23 +25,23 @@ public class MediatorServiceBuilderTests
 
     public class DummyNotificationHandler : INotificationHandler<DummyNotification>
     {
-        public ValueTask Handle(
+        public Task Handle(
             DummyNotification notification,
             CancellationToken cancellationToken = default
-        ) => ValueTask.CompletedTask;
+        ) => Task.CompletedTask;
     }
 
     public class DummyCommandHandler : ICommandHandler<DummyCommand>
     {
-        public ValueTask Handle(DummyCommand command, CancellationToken cancellationToken = default) => ValueTask.CompletedTask;
+        public Task Handle(DummyCommand command, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     public class DummyRequestHandler : IRequestHandler<DummyRequest, object>
     {
-        public ValueTask<object> Handle(
+        public Task<object> Handle(
             DummyRequest query,
             CancellationToken cancellationToken = default
-        ) => ValueTask.FromResult<object>(null!);
+        ) => Task.FromResult<object>(null!);
     }
 
     public class DummyStreamHandler : IStreamHandler<DummyStream, object>
@@ -51,17 +51,17 @@ public class MediatorServiceBuilderTests
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            yield return new object();
+            yield return new();
             await Task.CompletedTask;
         }
     }
 
     public class DummyValidationHandler : IValidationHandler<DummyValidation>
     {
-        public ValueTask<ValidationResult> ValidateAsync(
+        public Task<ValidationResult> ValidateAsync(
             DummyValidation message,
             CancellationToken cancellationToken = default
-        ) => ValueTask.FromResult(new ValidationResult("Dummy validation result"));
+        ) => Task.FromResult(new ValidationResult("Dummy validation result"));
     }
 
     [Fact]

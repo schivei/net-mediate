@@ -105,7 +105,7 @@ sealed class Lock
     public Scope EnterScope()
     {
         this.Enter();
-        return new Scope(this);
+        return new(this);
     }
 
     /// <summary>

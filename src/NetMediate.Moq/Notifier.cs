@@ -11,7 +11,7 @@ public class Notifier : INotifiable
     public Notifier(IServiceProvider serviceProvider)
     {
         var logger = serviceProvider.GetService<ILogger<NetMediate.Internals.Notifier>>();
-        _notifier = new NetMediate.Internals.Notifier(serviceProvider, logger);
+        _notifier = new(serviceProvider, logger);
     }
     
     public async Task DispatchNotifications<TMessage>(TMessage message, INotificationHandler<TMessage>[] handlers,

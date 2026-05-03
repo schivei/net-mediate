@@ -29,13 +29,13 @@ public sealed class SourceGenerationSupportTests
     {
         public static int Executed;
 
-        public ValueTask Handle(
+        public Task Handle(
             ExplicitRegistrationCommand command,
             CancellationToken cancellationToken = default
         )
         {
             Interlocked.Increment(ref Executed);
-            return ValueTask.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 }

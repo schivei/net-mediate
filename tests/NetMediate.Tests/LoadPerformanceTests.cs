@@ -93,7 +93,7 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
             },
             async (i, token) =>
             {
-                var response = await mediator.Request<LoadRequest, int>(new LoadRequest(i), token);
+                var response = await mediator.Request<LoadRequest, int>(new(i), token);
                 Assert.Equal(i + 1, response);
             }
         );
@@ -189,7 +189,7 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
         for (var i = 0; i < operations; i++)
         {
             await foreach (var _ in mediator.RequestStream<LoadStreamRequest, int>(
-                new LoadStreamRequest(i), cancellationToken))
+                new(i), cancellationToken))
             {
                 // drain items
             }
@@ -229,20 +229,20 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
 
     private sealed class LoadCommandHandler : ICommandHandler<LoadCommand>
     {
-        public ValueTask Handle(LoadCommand command, CancellationToken cancellationToken = default) =>
-            ValueTask.CompletedTask;
+        public Task Handle(LoadCommand command, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class LoadRequestHandler : IRequestHandler<LoadRequest, int>
     {
-        public ValueTask<int> Handle(LoadRequest query, CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(query.Value + 1);
+        public Task<int> Handle(LoadRequest query, CancellationToken cancellationToken = default) =>
+            Task.FromResult(query.Value + 1);
     }
 
     private sealed class LoadNotificationHandler : INotificationHandler<LoadNotification>
     {
-        public ValueTask Handle(LoadNotification notification, CancellationToken cancellationToken = default) =>
-            ValueTask.CompletedTask;
+        public Task Handle(LoadNotification notification, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class LoadStreamHandler : IStreamHandler<LoadStreamRequest, int>

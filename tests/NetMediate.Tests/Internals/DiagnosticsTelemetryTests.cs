@@ -40,9 +40,9 @@ public sealed class DiagnosticsTelemetryTests
         var ct = TestContext.Current.CancellationToken;
 
         await mediator.Send(new TestMessage("ok"), ct);
-        _ = await mediator.Request<TestMessage, string>(new TestMessage("ok"), ct);
+        _ = await mediator.Request<TestMessage, string>(new("ok"), ct);
         await mediator.Notify(new TestMessage("ok"), ct);
-        _ = await mediator.RequestStream<TestMessage, string>(new TestMessage("ok"), ct)
+        _ = await mediator.RequestStream<TestMessage, string>(new("ok"), ct)
             .AsyncToSync();
 
         var activityNamesSnapshot = activityNames.ToArray();
@@ -73,24 +73,24 @@ public sealed class DiagnosticsTelemetryTests
         return host;
     }
 
-    private sealed record TestMessage(string Name) : ICommand, INotification, IRequest<string>, IStream<string>;
+    private sealed record TestMessage(string Name);
 
     private sealed class TestCommandHandler : ICommandHandler<TestMessage>
     {
-        public ValueTask Handle(TestMessage command, CancellationToken cancellationToken = default) =>
-            ValueTask.CompletedTask;
+        public Task Handle(TestMessage command, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class TestRequestHandler : IRequestHandler<TestMessage, string>
     {
-        public ValueTask<string> Handle(TestMessage query, CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(query.Name);
+        public Task<string> Handle(TestMessage query, CancellationToken cancellationToken = default) =>
+            Task.FromResult(query.Name);
     }
 
     private sealed class TestNotificationHandler : INotificationHandler<TestMessage>
     {
-        public ValueTask Handle(TestMessage notification, CancellationToken cancellationToken = default) =>
-            ValueTask.CompletedTask;
+        public Task Handle(TestMessage notification, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class TestStreamHandler : IStreamHandler<TestMessage, string>

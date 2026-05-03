@@ -31,7 +31,7 @@ public sealed class ResilienceLoadPerformanceTests(ITestOutputHelper output)
             async (i, token) =>
             {
                 var response = await mediator.Request<ResilienceLoadRequest, int>(
-                    new ResilienceLoadRequest(i),
+                    new(i),
                     token
                 );
                 Assert.Equal(i + 1, response);
@@ -99,9 +99,9 @@ public sealed class ResilienceLoadPerformanceTests(ITestOutputHelper output)
 
     private sealed class ResilienceLoadRequestHandler : IRequestHandler<ResilienceLoadRequest, int>
     {
-        public ValueTask<int> Handle(
+        public Task<int> Handle(
             ResilienceLoadRequest query,
             CancellationToken cancellationToken = default
-        ) => ValueTask.FromResult(query.Value + 1);
+        ) => Task.FromResult(query.Value + 1);
     }
 }

@@ -34,18 +34,18 @@ public sealed class ResilienceBehaviorTests
     public async Task RetryNotificationBehavior_ShouldRetryUntilSuccess()
     {
         var behavior = new RetryNotificationBehavior<RetryNotificationMessage>(
-            new RetryBehaviorOptions { MaxRetryCount = 3, Delay = TimeSpan.Zero }
+            new() { MaxRetryCount = 3, Delay = TimeSpan.Zero }
         );
         var attempts = 0;
 
         await behavior.Handle(
-            new RetryNotificationMessage("ok"),
+            new("ok"),
             (_, __) =>
             {
                 attempts++;
                 return attempts < 3
-                    ? ValueTask.FromException(new InvalidOperationException("failed"))
-                    : ValueTask.CompletedTask;
+                    ? Task.FromException(new InvalidOperationException("failed"))
+                    : Task.CompletedTask;
             },
             TestContext.Current.CancellationToken
         );
@@ -179,7 +179,7 @@ public sealed class ResilienceBehaviorTests
         public static int Attempts => Volatile.Read(ref s_attempts);
         public static void Reset() => Interlocked.Exchange(ref s_attempts, 0);
 
-        public async ValueTask<string> Handle(
+        public async Task<string> Handle(
             RetryRequestMessage query,
             CancellationToken cancellationToken = default
         )
@@ -194,7 +194,7 @@ public sealed class ResilienceBehaviorTests
 
     private sealed class TimeoutRequestHandler : IRequestHandler<TimeoutRequestMessage, string>
     {
-        public async ValueTask<string> Handle(
+        public async Task<string> Handle(
             TimeoutRequestMessage query,
             CancellationToken cancellationToken = default
         )
@@ -207,7 +207,7 @@ public sealed class ResilienceBehaviorTests
     private sealed class CircuitBreakerRequestHandler
         : IRequestHandler<CircuitBreakerRequestMessage, string>
     {
-        public async ValueTask<string> Handle(
+        public async Task<string> Handle(
             CircuitBreakerRequestMessage query,
             CancellationToken cancellationToken = default
         ) => throw new InvalidOperationException("request failure");
@@ -220,7 +220,7 @@ public sealed class ResilienceBehaviorTests
         public static int Attempts => Volatile.Read(ref s_attempts);
         public static void Reset() => Interlocked.Exchange(ref s_attempts, 0);
 
-        public async ValueTask Handle(
+        public async Task Handle(
             RetryNotificationViaMediatorMessage notification,
             CancellationToken cancellationToken = default
         )

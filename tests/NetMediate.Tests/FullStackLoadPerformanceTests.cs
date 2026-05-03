@@ -36,7 +36,7 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
             },
             async (i, token) =>
             {
-                var response = await mediator.Request<FullStackRequest, int>(new FullStackRequest(i), token);
+                var response = await mediator.Request<FullStackRequest, int>(new(i), token);
                 Assert.Equal(i + 1, response);
             }
         );
@@ -168,13 +168,13 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
 
     private sealed class FullStackRequestHandler : IRequestHandler<FullStackRequest, int>
     {
-        public ValueTask<int> Handle(FullStackRequest query, CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(query.Value + 1);
+        public Task<int> Handle(FullStackRequest query, CancellationToken cancellationToken = default) =>
+            Task.FromResult(query.Value + 1);
     }
 
     private sealed class FullStackNotificationHandler : INotificationHandler<FullStackNotification>
     {
-        public ValueTask Handle(FullStackNotification notification, CancellationToken cancellationToken = default) =>
-            ValueTask.CompletedTask;
+        public Task Handle(FullStackNotification notification, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }

@@ -48,7 +48,7 @@ public sealed class MediatorNotifiesContinuationTests
 
     private sealed class OkHandler : INotificationHandler<Msg>
     {
-        public async ValueTask Handle(Msg notification, CancellationToken cancellationToken = default)
+        public async Task Handle(Msg notification, CancellationToken cancellationToken = default)
         {
             notification.Check();
             await Task.CompletedTask;
@@ -57,13 +57,13 @@ public sealed class MediatorNotifiesContinuationTests
 
     private sealed class FaultHandler : INotificationHandler<Msg>
     {
-        public ValueTask Handle(Msg notification, CancellationToken cancellationToken = default) =>
-            ValueTask.FromException(new InvalidOperationException("x"));
+        public Task Handle(Msg notification, CancellationToken cancellationToken = default) =>
+            Task.FromException(new InvalidOperationException("x"));
     }
 
     private sealed class PassThroughBehavior : INotificationBehavior<Msg>
     {
-        public ValueTask Handle(
+        public Task Handle(
             Msg message,
             NotificationHandlerDelegate<Msg> next,
             CancellationToken cancellationToken = default

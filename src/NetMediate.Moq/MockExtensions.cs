@@ -33,11 +33,11 @@ public static class MockExtensions
     /// </summary>
     /// <typeparam name="TMock">Mock target type.</typeparam>
     /// <typeparam name="TResult">Result type returned by the setup.</typeparam>
-    /// <param name="setup">ValueTask setup expression.</param>
+    /// <param name="setup">Task setup expression.</param>
     /// <param name="value">Value to return.</param>
     /// <returns>Setup continuation for fluent assertions.</returns>
-    public static global::Moq.Language.Flow.IReturnsResult<TMock> ReturnsValueTask<TMock, TResult>(
-        this global::Moq.Language.Flow.ISetup<TMock, ValueTask<TResult>> setup,
+    public static global::Moq.Language.Flow.IReturnsResult<TMock> ReturnsTask<TMock, TResult>(
+        this global::Moq.Language.Flow.ISetup<TMock, Task<TResult>> setup,
         TResult value
-    ) where TMock : class => setup.Returns(new ValueTask<TResult>(value));
+    ) where TMock : class => setup.Returns(new Task<TResult>(value));
 }

@@ -21,10 +21,10 @@ public class MediatorTests
 
     public MediatorTests()
     {
-        _loggerMock = new Mock<ILogger<Mediator>>();
-        _serviceScopeFactoryMock = new Mock<IServiceScopeFactory>();
-        _serviceScopeMock = new Mock<IServiceScope>();
-        _serviceProviderMock = new Mock<IServiceProvider>();
+        _loggerMock = new();
+        _serviceScopeFactoryMock = new();
+        _serviceScopeMock = new();
+        _serviceProviderMock = new();
         _terminator = Mock.Of<ITerminator>();
 
         _configuration = new Configuration(Channel.CreateUnbounded<IPack>())
@@ -36,7 +36,7 @@ public class MediatorTests
         _serviceScopeMock.Setup(s => s.ServiceProvider).Returns(_serviceProviderMock.Object);
         _serviceScopeMock.Setup(s => s.Dispose());
 
-        _notifier = new Mock<Notifier>(_serviceScopeFactoryMock.Object)
+        _notifier = new(_serviceScopeFactoryMock.Object)
         {
             CallBase = true
         };
@@ -57,7 +57,7 @@ public class MediatorTests
         // Arrange
         var message = new TestMessageNotification { Content = "Test" };
         var handler = new Mock<INotificationHandler<TestMessageNotification>>();
-        handler.Setup(h => h.Handle(message, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
+        handler.Setup(h => h.Handle(message, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         SetupHandler(handler.Object);
 
         // Act
@@ -73,9 +73,9 @@ public class MediatorTests
     [Fact]
     public async Task Notify_Enumerable_ShouldWriteAllToChannel()
     {
-        TestMessageNotification[] messages = [new TestMessageNotification { Content = "1" }, new TestMessageNotification { Content = "2" }];
+        TestMessageNotification[] messages = [new() { Content = "1" }, new() { Content = "2" }];
         var handler = new Mock<INotificationHandler<TestMessageNotification>>();
-        handler.Setup(h => h.Handle(It.IsAny<TestMessageNotification>(), It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
+        handler.Setup(h => h.Handle(It.IsAny<TestMessageNotification>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         SetupHandler(handler.Object);
 
         await _mediator.Notify(
@@ -99,7 +99,7 @@ public class MediatorTests
         var handler = new Mock<ICommandHandler<TestMessageCommand>>();
         handler
             .Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.CompletedTask);
+            .Returns(Task.CompletedTask);
 
         SetupHandler(handler.Object);
 
@@ -159,7 +159,7 @@ public class MediatorTests
         // Arrange
         var message = new TestMessageCommand { Content = "Test" };
         var handler = new Mock<ICommandHandler<TestMessageCommand>>();
-        handler.Setup(h => h.Handle(message, It.IsAny<CancellationToken>())).Returns(ValueTask.CompletedTask);
+        handler.Setup(h => h.Handle(message, It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         SetupHandler(handler.Object);
 
         var validationHandler = new Mock<IValidationHandler<TestMessageCommand>>();
@@ -368,10 +368,10 @@ public class MediatorTests
 
         handler1
             .Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.CompletedTask);
+            .Returns(Task.CompletedTask);
         handler2
             .Setup(h => h.Handle(message, It.IsAny<CancellationToken>()))
-            .Returns(ValueTask.CompletedTask);
+            .Returns(Task.CompletedTask);
 
         SetupHandler([handler1.Object, handler2.Object]);
 
@@ -439,7 +439,7 @@ public class MediatorTests
         // Arrange
         var handler = new Mock<INotificationHandler<TestMessageNotification>>();
         handler.Setup(h => h.Handle(It.IsAny<TestMessageNotification>(), It.IsAny<CancellationToken>()))
-               .Returns(ValueTask.CompletedTask);
+               .Returns(Task.CompletedTask);
         SetupHandler(handler.Object);
 
         // DispatchNotifications is virtual — set it up to throw so the enumerable notifier also throws
@@ -541,7 +541,7 @@ public class MediatorTests
 
         public Task<ValidationResult> ValidateAsync() =>
             Task.FromResult(
-                ShouldFail ? new ValidationResult("Validation failed") : ValidationResult.Success!
+                ShouldFail ? new("Validation failed") : ValidationResult.Success!
             );
     }
 

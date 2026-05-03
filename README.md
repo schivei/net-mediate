@@ -115,13 +115,13 @@ builder.Services.AddNetMediate();
 // 3. Define a notification (must implement INotification)
 public record UserCreated(string UserId, string Email) : INotification;
 
-// 4. Create a handler (Handle returns ValueTask, not Task)
+// 4. Create a handler (Handle returns Task, not Task)
 public class UserCreatedHandler : INotificationHandler<UserCreated>
 {
-    public ValueTask Handle(UserCreated notification, CancellationToken cancellationToken = default)
+    public Task Handle(UserCreated notification, CancellationToken cancellationToken = default)
     {
         Console.WriteLine($"User {notification.UserId} was created!");
-        return ValueTask.CompletedTask;
+        return Task.CompletedTask;
     }
 }
 
@@ -178,8 +178,8 @@ public class EmailNotificationHandler : INotificationHandler<UserRegistered>
         _emailService = emailService;
     }
 
-    // Handle must return ValueTask, not Task
-    public async ValueTask Handle(UserRegistered notification, CancellationToken cancellationToken = default)
+    // Handle must return Task, not Task
+    public async Task Handle(UserRegistered notification, CancellationToken cancellationToken = default)
     {
         await _emailService.SendWelcomeEmailAsync(notification.Email, cancellationToken);
     }
@@ -194,7 +194,7 @@ public class AuditLogHandler : INotificationHandler<UserRegistered>
         _auditService = auditService;
     }
 
-    public async ValueTask Handle(UserRegistered notification, CancellationToken cancellationToken = default)
+    public async Task Handle(UserRegistered notification, CancellationToken cancellationToken = default)
     {
         await _auditService.LogEventAsync($"User {notification.UserId} registered", cancellationToken);
     }
@@ -241,8 +241,8 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
         _userRepository = userRepository;
     }
 
-    // Handle must return ValueTask, not Task
-    public async ValueTask Handle(CreateUserCommand command, CancellationToken cancellationToken = default)
+    // Handle must return Task, not Task
+    public async Task Handle(CreateUserCommand command, CancellationToken cancellationToken = default)
     {
         var user = new User
         {
@@ -284,8 +284,8 @@ public class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserDto>
         _userRepository = userRepository;
     }
 
-    // Handle must return ValueTask<TResponse>, not Task<TResponse>
-    public async ValueTask<UserDto> Handle(GetUserQuery query, CancellationToken cancellationToken = default)
+    // Handle must return Task<TResponse>, not Task<TResponse>
+    public async Task<UserDto> Handle(GetUserQuery query, CancellationToken cancellationToken = default)
     {
         var user = await _userRepository.GetByIdAsync(query.UserId, cancellationToken);
 
@@ -383,7 +383,7 @@ public class CreateUserCommandValidator : IValidationHandler<CreateUserCommand>
         _userRepository = userRepository;
     }
     
-    public async ValueTask<ValidationResult> ValidateAsync(
+    public async Task<ValidationResult> ValidateAsync(
         CreateUserCommand message, 
         CancellationToken cancellationToken = default)
     {
@@ -468,8 +468,8 @@ public sealed class AuditRequestBehavior<TMessage, TResponse>
     : IRequestBehavior<TMessage, TResponse>
     where TMessage : notnull, IRequest<TResponse>
 {
-    // Handle returns ValueTask<TResponse>; next delegate accepts (message, cancellationToken)
-    public async ValueTask<TResponse> Handle(
+    // Handle returns Task<TResponse>; next delegate accepts (message, cancellationToken)
+    public async Task<TResponse> Handle(
         TMessage message,
         RequestHandlerDelegate<TMessage, TResponse> next,
         CancellationToken cancellationToken = default)
@@ -489,7 +489,7 @@ public sealed class LogNotificationBehavior<TMessage>
     : INotificationBehavior<TMessage>
     where TMessage : notnull, INotification
 {
-    public async ValueTask Handle(
+    public async Task Handle(
         TMessage message,
         NotificationHandlerDelegate<TMessage> next,
         CancellationToken cancellationToken = default)

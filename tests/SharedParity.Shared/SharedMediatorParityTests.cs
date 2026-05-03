@@ -44,7 +44,7 @@ public class SharedMediatorParityTests
         ) streamed.Add(item);
 #else
         var reply = await mediator.Request<PingRequest, PingResponse>(
-            new PingRequest("ping"),
+            new("ping"),
             TestContext.Current.CancellationToken
         );
 
@@ -58,7 +58,7 @@ public class SharedMediatorParityTests
         var streamed = new List<int>();
         await foreach (
             var item in mediator.RequestStream<CounterStream, int>(
-                new CounterStream(3),
+                new(3),
                 TestContext.Current.CancellationToken
             )
         )
@@ -108,7 +108,7 @@ public class SharedMediatorParityTests
     public sealed class PingRequestHandler : IRequestHandler<PingRequest, PingResponse>
 #endif
     {
-        public ValueTask<PingResponse> Handle(PingRequest request, CancellationToken cancellationToken = default)
+        public Task<PingResponse> Handle(PingRequest request, CancellationToken cancellationToken = default)
             => new(new PingResponse($"{request.Value}:pong"));
     }
 
@@ -122,10 +122,10 @@ public class SharedMediatorParityTests
     {
         private readonly DispatchRecorder _recorder = recorder;
 
-        public ValueTask Handle(AuditCommand request, CancellationToken cancellationToken = default)
+        public Task Handle(AuditCommand request, CancellationToken cancellationToken = default)
         {
             _recorder.LastCommand = request.Value;
-            return ValueTask.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 
@@ -139,13 +139,13 @@ public class SharedMediatorParityTests
     {
         private readonly DispatchRecorder _recorder = recorder;
 
-        public ValueTask Handle(
+        public Task Handle(
             PingNotification notification,
             CancellationToken cancellationToken = default
         )
         {
             _recorder.LastNotification = notification.Value;
-            return ValueTask.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 

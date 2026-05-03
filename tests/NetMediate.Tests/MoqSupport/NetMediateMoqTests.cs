@@ -30,14 +30,14 @@ public class NetMediateMoqTests
 
         mock.Setup(service => service.Execute()).ReturnsCompletedTask();
         mock.Setup(service => service.Get()).ReturnsTaskResult("ok");
-        mock.Setup(service => service.GetValueTask()).ReturnsValueTask("ok-vt");
+        mock.Setup(service => service.GetTask()).ReturnsTask("ok-vt");
 
         await mock.Object.Execute();
         var response = await mock.Object.Get();
-        var valueTaskResponse = await mock.Object.GetValueTask();
+        var TaskResponse = await mock.Object.GetTask();
 
         Assert.Equal("ok", response);
-        Assert.Equal("ok-vt", valueTaskResponse);
+        Assert.Equal("ok-vt", TaskResponse);
     }
 
     public interface ISampleService
@@ -56,6 +56,6 @@ public class NetMediateMoqTests
 
         Task<string> Get();
 
-        ValueTask<string> GetValueTask();
+        Task<string> GetTask();
     }
 }

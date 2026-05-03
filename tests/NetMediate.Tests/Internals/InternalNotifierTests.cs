@@ -11,7 +11,7 @@ namespace NetMediate.Tests.Internals;
 /// </summary>
 public class InternalNotifierTests
 {
-    public record TestNotification : INotification;
+    public record TestNotification;
 
     private static (Notifier notifier, Channel<IPack> channel) BuildNotifier(
         INotificationHandler<TestNotification>[] handlers,
@@ -43,7 +43,7 @@ public class InternalNotifierTests
         // Arrange
         var handlerMock = new Mock<INotificationHandler<TestNotification>>();
         handlerMock.Setup(h => h.Handle(It.IsAny<TestNotification>(), It.IsAny<CancellationToken>()))
-                   .Returns(ValueTask.CompletedTask);
+                   .Returns(Task.CompletedTask);
 
         var (notifier, _) = BuildNotifier([handlerMock.Object], []);
         var message = new TestNotification();
@@ -89,7 +89,7 @@ public class InternalNotifierTests
         // Arrange — production Notifier.Notify(IEnumerable) writes to the channel; no worker is running
         var handlerMock = new Mock<INotificationHandler<TestNotification>>();
         handlerMock.Setup(h => h.Handle(It.IsAny<TestNotification>(), It.IsAny<CancellationToken>()))
-                   .Returns(ValueTask.CompletedTask);
+                   .Returns(Task.CompletedTask);
 
         var (notifier, channel) = BuildNotifier([handlerMock.Object], []);
         TestNotification[] messages = [new(), new()];

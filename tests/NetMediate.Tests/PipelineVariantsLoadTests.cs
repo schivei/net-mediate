@@ -517,84 +517,84 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
 
     // Section A
     private sealed class CmdNoValidHandler : ICommandHandler<CmdNoValid>
-    { public ValueTask Handle(CmdNoValid m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(CmdNoValid m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class CmdSelfValidHandler : ICommandHandler<CmdSelfValid>
-    { public ValueTask Handle(CmdSelfValid m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(CmdSelfValid m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class CmdHandlerValidHandler : ICommandHandler<CmdHandlerValid>
-    { public ValueTask Handle(CmdHandlerValid m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(CmdHandlerValid m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class CmdHandlerValidValidator : IValidationHandler<CmdHandlerValid>
     {
-        public ValueTask<ValidationResult> ValidateAsync(CmdHandlerValid m, CancellationToken ct = default) =>
-            ValueTask.FromResult(ValidationResult.Success!);
+        public Task<ValidationResult> ValidateAsync(CmdHandlerValid m, CancellationToken ct = default) =>
+            Task.FromResult(ValidationResult.Success!);
     }
 
     private sealed class NotifNoValidHandler : INotificationHandler<NotifNoValid>
-    { public ValueTask Handle(NotifNoValid m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(NotifNoValid m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class NotifSelfValidHandler : INotificationHandler<NotifSelfValid>
-    { public ValueTask Handle(NotifSelfValid m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(NotifSelfValid m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class NotifHandlerValidHandler : INotificationHandler<NotifHandlerValid>
-    { public ValueTask Handle(NotifHandlerValid m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(NotifHandlerValid m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class NotifHandlerValidValidator : IValidationHandler<NotifHandlerValid>
     {
-        public ValueTask<ValidationResult> ValidateAsync(NotifHandlerValid m, CancellationToken ct = default) =>
-            ValueTask.FromResult(ValidationResult.Success!);
+        public Task<ValidationResult> ValidateAsync(NotifHandlerValid m, CancellationToken ct = default) =>
+            Task.FromResult(ValidationResult.Success!);
     }
 
     // Section B
     private sealed class CmdNoBehHandler : ICommandHandler<CmdNoBeh>
-    { public ValueTask Handle(CmdNoBeh m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(CmdNoBeh m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class CmdOneBehHandler : ICommandHandler<CmdOneBeh>
-    { public ValueTask Handle(CmdOneBeh m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(CmdOneBeh m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class CmdTwoBehHandler : ICommandHandler<CmdTwoBeh>
-    { public ValueTask Handle(CmdTwoBeh m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(CmdTwoBeh m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class NotifNoBehHandler : INotificationHandler<NotifNoBeh>
-    { public ValueTask Handle(NotifNoBeh m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(NotifNoBeh m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class NotifOneBehHandler : INotificationHandler<NotifOneBeh>
-    { public ValueTask Handle(NotifOneBeh m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(NotifOneBeh m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class NotifTwoBehHandler : INotificationHandler<NotifTwoBeh>
-    { public ValueTask Handle(NotifTwoBeh m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(NotifTwoBeh m, CancellationToken ct = default) => Task.CompletedTask; }
 
     // Section C
     private sealed class CmdFanout1HandlerA : ICommandHandler<CmdFanout1>
-    { public ValueTask Handle(CmdFanout1 m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(CmdFanout1 m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class CmdFanout2HandlerA : ICommandHandler<CmdFanout2>
-    { public ValueTask Handle(CmdFanout2 m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(CmdFanout2 m, CancellationToken ct = default) => Task.CompletedTask; }
     private sealed class CmdFanout2HandlerB : ICommandHandler<CmdFanout2>
-    { public ValueTask Handle(CmdFanout2 m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(CmdFanout2 m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class CmdFanout3HandlerA : ICommandHandler<CmdFanout3>
-    { public ValueTask Handle(CmdFanout3 m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(CmdFanout3 m, CancellationToken ct = default) => Task.CompletedTask; }
     private sealed class CmdFanout3HandlerB : ICommandHandler<CmdFanout3>
-    { public ValueTask Handle(CmdFanout3 m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(CmdFanout3 m, CancellationToken ct = default) => Task.CompletedTask; }
     private sealed class CmdFanout3HandlerC : ICommandHandler<CmdFanout3>
-    { public ValueTask Handle(CmdFanout3 m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(CmdFanout3 m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class NotifFanout1HandlerA : INotificationHandler<NotifFanout1>
-    { public ValueTask Handle(NotifFanout1 m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(NotifFanout1 m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class NotifFanout2HandlerA : INotificationHandler<NotifFanout2>
-    { public ValueTask Handle(NotifFanout2 m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(NotifFanout2 m, CancellationToken ct = default) => Task.CompletedTask; }
     private sealed class NotifFanout2HandlerB : INotificationHandler<NotifFanout2>
-    { public ValueTask Handle(NotifFanout2 m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(NotifFanout2 m, CancellationToken ct = default) => Task.CompletedTask; }
 
     private sealed class NotifFanout3HandlerA : INotificationHandler<NotifFanout3>
-    { public ValueTask Handle(NotifFanout3 m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(NotifFanout3 m, CancellationToken ct = default) => Task.CompletedTask; }
     private sealed class NotifFanout3HandlerB : INotificationHandler<NotifFanout3>
-    { public ValueTask Handle(NotifFanout3 m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(NotifFanout3 m, CancellationToken ct = default) => Task.CompletedTask; }
     private sealed class NotifFanout3HandlerC : INotificationHandler<NotifFanout3>
-    { public ValueTask Handle(NotifFanout3 m, CancellationToken ct = default) => ValueTask.CompletedTask; }
+    { public Task Handle(NotifFanout3 m, CancellationToken ct = default) => Task.CompletedTask; }
 
     // =========================================================================
     // No-op behaviors — pass-through wrappers for overhead measurement
@@ -603,28 +603,28 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     private sealed class NoOpCommandBehavior<TMessage> : ICommandBehavior<TMessage>
         where TMessage : notnull, ICommand
     {
-        public ValueTask Handle(TMessage msg, CommandHandlerDelegate<TMessage> next, CancellationToken ct = default) =>
+        public Task Handle(TMessage msg, CommandHandlerDelegate<TMessage> next, CancellationToken ct = default) =>
             next(msg, ct);
     }
 
     private sealed class NoOpCommandBehavior2<TMessage> : ICommandBehavior<TMessage>
         where TMessage : notnull, ICommand
     {
-        public ValueTask Handle(TMessage msg, CommandHandlerDelegate<TMessage> next, CancellationToken ct = default) =>
+        public Task Handle(TMessage msg, CommandHandlerDelegate<TMessage> next, CancellationToken ct = default) =>
             next(msg, ct);
     }
 
     private sealed class NoOpNotificationBehavior<TMessage> : INotificationBehavior<TMessage>
         where TMessage : notnull, INotification
     {
-        public ValueTask Handle(TMessage msg, NotificationHandlerDelegate<TMessage> next, CancellationToken ct = default) =>
+        public Task Handle(TMessage msg, NotificationHandlerDelegate<TMessage> next, CancellationToken ct = default) =>
             next(msg, ct);
     }
 
     private sealed class NoOpNotificationBehavior2<TMessage> : INotificationBehavior<TMessage>
         where TMessage : notnull, INotification
     {
-        public ValueTask Handle(TMessage msg, NotificationHandlerDelegate<TMessage> next, CancellationToken ct = default) =>
+        public Task Handle(TMessage msg, NotificationHandlerDelegate<TMessage> next, CancellationToken ct = default) =>
             next(msg, ct);
     }
 }

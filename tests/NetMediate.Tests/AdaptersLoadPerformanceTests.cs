@@ -98,7 +98,7 @@ public sealed class AdaptersLoadPerformanceTests(ITestOutputHelper output)
 
     private sealed class AdapterLoadNotificationHandler : INotificationHandler<AdapterLoadNotification>
     {
-        public ValueTask Handle(AdapterLoadNotification notification, CancellationToken cancellationToken = default) =>
-            ValueTask.CompletedTask;
+        public Task Handle(AdapterLoadNotification notification, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }

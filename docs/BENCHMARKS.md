@@ -40,7 +40,7 @@ No `MakeGenericType`, no `typeof(TResult) switch`, no assembly scanning — full
 |---|---|---|
 | `Send` | `IMediator.Send<TMsg>` | All `ICommandHandler<TMsg>` instances iterated sequentially |
 | `Request` | `IMediator.Request<TMsg, TResp>` | Single `IRequestHandler<TMsg, TResp>` (first registered) |
-| `Notify` | `IMediator.Notify<TMsg>` | Fire-and-forget; all `INotificationHandler<TMsg>` iterated sequentially; exceptions logged |
+| `Notify` | `IMediator.Notify<TMsg>` | Fire-and-forget per handler; all `INotificationHandler<TMsg>` instances started individually; exceptions logged |
 | `RequestStream` | `IMediator.RequestStream<TMsg, TResp>` | Single `IStreamHandler<TMsg, TResp>`; yields items lazily |
 
 ---
@@ -75,7 +75,7 @@ Resolves both:
 
 ## Handler cache
 
-Resolved handler arrays are cached per service type in a `MemoryCache` instance shared across the application lifetime. The cache expiry is adaptive: it starts at 5 minutes and grows by 1 minute per access, capped at 1 hour. This means a frequently-called handler's array is kept resident with no DI lookup cost.
+Resolved handler arrays are cached permanently per service type using a `ConcurrentDictionary<Type, Lazy<T[]>>`. Once a handler array is resolved from DI for a given message type, it is stored and reused for every subsequent call — no further DI resolution or allocation on the hot path.
 
 ---
 

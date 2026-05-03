@@ -31,7 +31,7 @@ builder.Services.AddNetMediateGenerated();
 ```
 
 The source generator discovers handler types in your project and generates an `AddNetMediateGenerated()` extension
-method that registers them explicitly using `RegisterHandler<>` calls — fully AOT-safe.
+method that registers them explicitly using `Register*Handler<>` calls — fully AOT-safe.
 
 ### Option 2: Manual explicit registration
 

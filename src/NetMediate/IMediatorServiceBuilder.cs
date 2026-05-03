@@ -42,12 +42,24 @@ public interface IMediatorServiceBuilder
         where TMessage : notnull;
 
     /// <summary>
+    /// Registers a specific command handler instance and its closed-type pipeline executor.
+    /// </summary>
+    IMediatorServiceBuilder RegisterCommandHandler<TMessage>(ICommandHandler<TMessage> handler)
+        where TMessage : notnull;
+
+    /// <summary>
     /// Registers a notification handler and its closed-type pipeline executor.
     /// </summary>
     IMediatorServiceBuilder RegisterNotificationHandler<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THandler,
         TMessage>()
         where THandler : class, INotificationHandler<TMessage>
+        where TMessage : notnull;
+
+    /// <summary>
+    /// Registers a specific notification handler instance and its closed-type pipeline executor.
+    /// </summary>
+    IMediatorServiceBuilder RegisterNotificationHandler<TMessage>(INotificationHandler<TMessage> handler)
         where TMessage : notnull;
 
     /// <summary>
@@ -61,6 +73,12 @@ public interface IMediatorServiceBuilder
         where TMessage : notnull;
 
     /// <summary>
+    /// Registers a specific request handler instance and its closed-type pipeline executor.
+    /// </summary>
+    IMediatorServiceBuilder RegisterRequestHandler<TMessage, TResponse>(IRequestHandler<TMessage, TResponse> handler)
+        where TMessage : notnull;
+
+    /// <summary>
     /// Registers a stream handler and its closed-type pipeline executor.
     /// </summary>
     IMediatorServiceBuilder RegisterStreamHandler<
@@ -68,26 +86,6 @@ public interface IMediatorServiceBuilder
         TMessage,
         TResponse>()
         where THandler : class, IStreamHandler<TMessage, TResponse>
-        where TMessage : notnull;
-
-    // ── Instance-based registration (useful for testing and dynamic scenarios) ──
-
-    /// <summary>
-    /// Registers a specific command handler instance and its closed-type pipeline executor.
-    /// </summary>
-    IMediatorServiceBuilder RegisterCommandHandler<TMessage>(ICommandHandler<TMessage> handler)
-        where TMessage : notnull;
-
-    /// <summary>
-    /// Registers a specific notification handler instance and its closed-type pipeline executor.
-    /// </summary>
-    IMediatorServiceBuilder RegisterNotificationHandler<TMessage>(INotificationHandler<TMessage> handler)
-        where TMessage : notnull;
-
-    /// <summary>
-    /// Registers a specific request handler instance and its closed-type pipeline executor.
-    /// </summary>
-    IMediatorServiceBuilder RegisterRequestHandler<TMessage, TResponse>(IRequestHandler<TMessage, TResponse> handler)
         where TMessage : notnull;
 
     /// <summary>

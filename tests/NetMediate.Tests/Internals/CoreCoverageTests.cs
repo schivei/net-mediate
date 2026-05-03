@@ -66,7 +66,9 @@ public sealed class CoreCoverageTests
     {
         // When no MeterListener subscribes to DispatchCount, Enabled==false and
         // the guard returns early without throwing. This covers the early-return branch.
-        NetMediateDiagnostics.RecordDispatch<object>();
+        var ex = Record.Exception(() => NetMediateDiagnostics.RecordDispatch<object>());
+
+        Assert.Null(ex);
     }
 
     [Fact]

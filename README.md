@@ -15,8 +15,6 @@ A lightweight and efficient .NET implementation of the Mediator pattern for in-p
   - [Commands](#commands)
   - [Requests](#requests)
   - [Streams](#streams)
-  - [Validations](#validations)
-  - [Simplified Messages](#simplified-messages)
   - [Advanced Configuration](#advanced-configuration)
 - [Framework Support](#framework-support)
 - [Companion Guides](#companion-guides)
@@ -34,7 +32,6 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Notifications**: Publish messages to multiple handlers
 - **Requests**: Send messages and receive responses
 - **Streaming**: Handle requests that return multiple responses over time
-- **Validation**: Built-in message validation support with custom validators
 - **Pipeline Behaviors**: Interceptors with pre/post flow for Send/Request/Notify/Stream
 - **Optional resilience package**: Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience`
 - **OpenTelemetry-ready diagnostics**: Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream
@@ -353,27 +350,6 @@ await foreach (var activity in mediator.RequestStream<GetUserActivityQuery, Acti
 }
 ```
 
-### Validations
-
-NetMediate previously supported message validation through `IValidatable` and `IValidationHandler<T>`. These interfaces have been removed in the current version. Validation should now be handled using pipeline behaviors.
-
-#### Validation via Pipeline Behavior
-```csharp
-public sealed class ValidationBehavior<TMessage, TResult>(IValidator<TMessage> validator)
-    : IPipelineBehavior<TMessage, TResult>
-    where TMessage : notnull
-    where TResult : notnull
-{
-    public TResult Handle(TMessage message, PipelineBehaviorDelegate<TMessage, TResult> next, CancellationToken cancellationToken)
-    {
-        var result = validator.Validate(message);
-        if (!result.IsValid)
-            throw new ValidationException(result.Errors);
-        return next(message, cancellationToken);
-    }
-}
-```
-
 ### Message type summary
 
 NetMediate messages are plain records or classes — **no marker interfaces are required**. The message type and the handler type are always separate.
@@ -428,7 +404,7 @@ builder.Services.AddSingleton(typeof(IPipelineBehavior<>), typeof(LogNotificatio
 // Closed-generic via builder: runs only for a specific message type
 builder.Services.AddNetMediate(configure =>
 {
-    configure.RegisterBehavior<ValidationCommandBehavior, CreateUserCommand, Task>();
+    configure.RegisterBehavior<AuditCommandBehavior, CreateUserCommand, Task>();
 });
 ```
 

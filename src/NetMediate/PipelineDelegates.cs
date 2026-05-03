@@ -12,6 +12,6 @@
 /// <returns>A TResult that represents the asynchronous handling operation.</returns>
 public delegate TResult PipelineBehaviorDelegate<in TMessage, out TResult>(TMessage message, CancellationToken cancellationToken) where TResult : notnull where TMessage : notnull;
 
-internal delegate TResult HandlerExecutionDelegate<in THandler, in TMessage, out TResult>(TMessage message, THandler[] handlers, CancellationToken cancellationToken)
+internal delegate TResult HandlerExecutionDelegate<in THandler, in TMessage, out TResult>(TMessage message, THandler[] handlers, CancellationToken cancellationToken) // NOSONAR S2436
     where TMessage : notnull
     where TResult : notnull;

@@ -27,7 +27,7 @@ internal sealed class MediatorServiceBuilder<
         }
     }
 
-    public IMediatorServiceBuilder RegisterHandler<
+    public IMediatorServiceBuilder RegisterHandler< // NOSONAR S2436
         TInterface,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
         THandler,

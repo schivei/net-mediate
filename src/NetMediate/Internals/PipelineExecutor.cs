@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
 
-internal class PipelineExecutor<TMessage, TResult, THandler>(IServiceProvider serviceProvider)
+internal class PipelineExecutor<TMessage, TResult, THandler>(IServiceProvider serviceProvider) // NOSONAR S2436
     where TMessage : notnull
     where TResult : notnull
     where THandler : class, IHandler<TMessage, TResult>

@@ -80,7 +80,10 @@ public class MediatorTests
         await using var provider = BuildProvider(_ => { });
         var mediator = BuildMediator(provider);
 
-        await mediator.Notify(new TestMessageNotification { Content = "Test" }, TestContext.Current.CancellationToken);
+        var task = mediator.Notify(new TestMessageNotification { Content = "Test" }, TestContext.Current.CancellationToken);
+        await task;
+
+        Assert.True(task.IsCompletedSuccessfully);
     }
 
     [Fact]
@@ -131,7 +134,10 @@ public class MediatorTests
         var mediator = BuildMediator(provider);
 
         // No throw — Send is a no-op when no executor is registered for the message type
-        await mediator.Send(new TestMessageCommand { Content = "Test" }, TestContext.Current.CancellationToken);
+        var task = mediator.Send(new TestMessageCommand { Content = "Test" }, TestContext.Current.CancellationToken);
+        await task;
+
+        Assert.True(task.IsCompletedSuccessfully);
     }
 
     [Fact]

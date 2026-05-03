@@ -89,6 +89,31 @@ public class InternalNotifierTests
         Assert.True(tcs.Task.IsCompletedSuccessfully);
     }
 
+    [Fact]
+    public void Notify_Enumerable_WhenNotifyThrowsSynchronously_CatchesAndLogs()
+    {
+        // A service provider that always throws forces Notify(TMessage) to throw
+        // synchronously inside the foreach loop, exercising the catch branch.
+        var services = new ServiceCollection();
+        services.AddLogging();
+        using var logProvider = services.BuildServiceProvider();
+        var logger = logProvider.GetRequiredService<ILogger<Notifier>>();
+
+        var notifier = new Notifier(new ThrowingServiceProvider(), logger);
+        var messages = new[] { new TestNotification(), new TestNotification() };
+
+        var task = notifier.Notify<TestNotification>(messages, CancellationToken.None);
+
+        // Must complete synchronously and not throw — exceptions are caught and logged.
+        Assert.True(task.IsCompletedSuccessfully);
+    }
+
+    private sealed class ThrowingServiceProvider : IServiceProvider
+    {
+        public object? GetService(Type serviceType) =>
+            throw new InvalidOperationException("test-throw");
+    }
+
     private sealed class TcsNotificationHandler<T>(TaskCompletionSource<bool> tcs) : INotificationHandler<T>
         where T : notnull
     {

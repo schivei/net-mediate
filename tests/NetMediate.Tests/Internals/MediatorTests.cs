@@ -231,6 +231,53 @@ public class MediatorTests
 
     #endregion
 
+    #region Send Enumerable Tests
+
+    [Fact]
+    public async Task Send_Enumerable_ShouldInvokeAllHandlers()
+    {
+        var handler = new TrackingCommandHandler<TestMessageCommand>();
+        await using var provider = BuildProvider(b => b.RegisterCommandHandler<TestMessageCommand>(handler));
+        var mediator = BuildMediator(provider);
+        TestMessageCommand[] commands = [new() { Content = "A" }, new() { Content = "B" }];
+
+        await mediator.Send((IEnumerable<TestMessageCommand>)commands, TestContext.Current.CancellationToken);
+
+        Assert.Contains(commands[0], handler.Invocations);
+        Assert.Contains(commands[1], handler.Invocations);
+    }
+
+    #endregion
+
+    #region Notify Error-Path Tests
+
+    [Fact]
+    public async Task Notify_WhenNotifierThrows_PropagatesException()
+    {
+        await using var provider = BuildProvider(_ => { });
+        var mediator = new Mediator(provider, new ThrowingNotifier());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => mediator.Notify(new TestMessageNotification { Content = "Test" }, TestContext.Current.CancellationToken)
+        );
+    }
+
+    [Fact]
+    public async Task Notify_Enumerable_WhenNotifierThrows_PropagatesException()
+    {
+        await using var provider = BuildProvider(_ => { });
+        var mediator = new Mediator(provider, new ThrowingNotifier());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => mediator.Notify(
+                (IEnumerable<TestMessageNotification>)[new() { Content = "Test" }],
+                TestContext.Current.CancellationToken
+            )
+        );
+    }
+
+    #endregion
+
     #region Helpers
 
     private sealed class TrackingNotificationHandler<T> : INotificationHandler<T> where T : notnull
@@ -282,6 +329,19 @@ public class MediatorTests
                 await Task.Delay(1, ct);
             }
         }
+    }
+
+    private sealed class ThrowingNotifier : INotifiable
+    {
+        public Task DispatchNotifications<TMessage>(TMessage message, INotificationHandler<TMessage>[] handlers,
+            CancellationToken cancellationToken = default) where TMessage : notnull => Task.CompletedTask;
+
+        // Throws synchronously so the catch block in Mediator.Notify is exercised.
+        public Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+            where TMessage : notnull => throw new InvalidOperationException("notifier error");
+
+        public Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default)
+            where TMessage : notnull => throw new InvalidOperationException("notifier error");
     }
 
     #endregion

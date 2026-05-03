@@ -9,6 +9,14 @@ namespace NetMediate.Tests.Internals;
 
 public class MediatorTests
 {
+    public MediatorTests()
+    {
+        // Clear the static handler cache before each test to prevent cross-test contamination.
+        // Since each test builds a fresh ServiceProvider with different handler registrations,
+        // the static cache must be reset so earlier registrations don't leak into later tests.
+        Extensions.ClearCache();
+    }
+
     private static ServiceProvider BuildProvider(Action<IServiceCollection> configure)
     {
         var services = new ServiceCollection();

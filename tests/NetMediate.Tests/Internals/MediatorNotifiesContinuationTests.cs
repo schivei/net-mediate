@@ -6,6 +6,12 @@ namespace NetMediate.Tests.Internals;
 
 public sealed class MediatorNotifiesContinuationTests
 {
+    public MediatorNotifiesContinuationTests()
+    {
+        // Clear the static handler cache before each test to prevent cross-test contamination.
+        Extensions.ClearCache();
+    }
+
     public sealed class Msg
     {
         public bool Maked { get; private set; }

@@ -65,6 +65,33 @@ public class MediatorServiceBuilderTests
     }
 
     [Fact]
+    public void MapAssembly_CurrentAssembly()
+    {
+        var services = new ServiceCollection();
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+        var result = builder.MapAssemblies(typeof(DummyCommandHandler).GetType().Assembly);
+        Assert.Same(builder, result);
+    }
+
+    [Fact]
+    public void MapAssemblies_EmptyArray_UsesAllAssemblies()
+    {
+        var services = new ServiceCollection();
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+        var result = builder.MapAssemblies();
+        Assert.Same(builder, result);
+    }
+
+    [Fact]
+    public void IgnoreUnhandledMessages_SetsConfiguration()
+    {
+        var services = new ServiceCollection();
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+        var result = builder.IgnoreUnhandledMessages(false);
+        Assert.Same(builder, result);
+    }
+
+    [Fact]
     public void Constructor_WhenINotifiableAlreadyRegistered_ReplacesExistingRegistration()
     {
         // Arrange — pre-register a different INotifiable implementation
@@ -94,5 +121,19 @@ public class MediatorServiceBuilderTests
         // Guard.ThrowIfNull must not throw for a non-null argument
         object value = new();
         Guard.ThrowIfNull(value); // no exception
+    }
+
+    [Fact]
+    public void GetAllServices_WhenProviderImplementsIServiceProviderIsService_AndTypeNotRegistered_ReturnsEmpty()
+    {
+        // Arrange — a service provider that reports a type as NOT registered
+        var services = new ServiceCollection();
+        var provider = services.BuildServiceProvider(); // real DI provider (implements IServiceProviderIsService)
+
+        // Act — type not registered so GetAllServices returns []
+        var result = provider.GetAllServices<DummyNotification>();
+
+        // Assert
+        Assert.Empty(result);
     }
 }

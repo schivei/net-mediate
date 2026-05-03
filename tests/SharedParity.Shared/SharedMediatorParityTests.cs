@@ -109,7 +109,7 @@ public class SharedMediatorParityTests
 #endif
     {
         public Task<PingResponse> Handle(PingRequest request, CancellationToken cancellationToken = default)
-            => Task.FromResult(new PingResponse($"{request.Value}:pong"));
+            => new(new PingResponse($"{request.Value}:pong"));
     }
 
     public sealed record PingResponse(string Value);

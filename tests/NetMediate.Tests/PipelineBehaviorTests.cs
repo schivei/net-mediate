@@ -13,8 +13,8 @@ public sealed class PipelineBehaviorTests
         using var host = await CreateHostAsync(
             services =>
             {
-                services.AddScoped<IPipelineBehavior<PipelineRequest, Task<string>>, FirstRequestBehavior>();
-                services.AddScoped<IPipelineBehavior<PipelineRequest, Task<string>>, SecondRequestBehavior>();
+                services.AddScoped<IRequestBehavior<PipelineRequest, string>, FirstRequestBehavior>();
+                services.AddScoped<IRequestBehavior<PipelineRequest, string>, SecondRequestBehavior>();
                 services.AddSingleton<CallTrace>();
             }
         );
@@ -47,7 +47,7 @@ public sealed class PipelineBehaviorTests
         using var host = await CreateHostAsync(
             services =>
             {
-                services.AddScoped<IPipelineBehavior<PipelineCommand, Task>, CommandBehavior>();
+                services.AddScoped<ICommandBehavior<PipelineCommand>, CommandBehavior>();
                 services.AddSingleton<CallTrace>();
             }
         );
@@ -70,7 +70,7 @@ public sealed class PipelineBehaviorTests
         using var host = await CreateHostAsync(
             services =>
             {
-                services.AddScoped<IPipelineBehavior<PipelineStream, IAsyncEnumerable<int>>, StreamBehavior>();
+                services.AddScoped<IStreamBehavior<PipelineStream, int>, StreamBehavior>();
                 services.AddSingleton<CallTrace>();
             }
         );
@@ -96,7 +96,7 @@ public sealed class PipelineBehaviorTests
         using var host = await CreateHostAsync(
             services =>
             {
-                services.AddScoped<IPipelineBehavior<PipelineNotification, Task>, NotificationBehavior>();
+                services.AddScoped<INotificationBehavior<PipelineNotification>, NotificationBehavior>();
                 services.AddSingleton<CallTrace>();
             }
         );
@@ -179,11 +179,11 @@ public sealed class PipelineBehaviorTests
     }
 
     private sealed class FirstRequestBehavior(CallTrace trace)
-        : IPipelineRequestBehavior<PipelineRequest, string>
+        : IRequestBehavior<PipelineRequest, string>
     {
         public async Task<string> Handle(
             PipelineRequest message,
-            PipelineBehaviorDelegate<PipelineRequest, Task<string>> next,
+            RequestHandlerDelegate<PipelineRequest, string> next,
             CancellationToken cancellationToken = default
         )
         {
@@ -195,11 +195,11 @@ public sealed class PipelineBehaviorTests
     }
 
     private sealed class SecondRequestBehavior(CallTrace trace)
-        : IPipelineRequestBehavior<PipelineRequest, string>
+        : IRequestBehavior<PipelineRequest, string>
     {
         public async Task<string> Handle(
             PipelineRequest message,
-            PipelineBehaviorDelegate<PipelineRequest, Task<string>> next,
+            RequestHandlerDelegate<PipelineRequest, string> next,
             CancellationToken cancellationToken = default
         )
         {
@@ -221,11 +221,11 @@ public sealed class PipelineBehaviorTests
     }
 
     private sealed class CommandBehavior(CallTrace trace)
-        : IPipelineBehavior<PipelineCommand, Task>
+        : ICommandBehavior<PipelineCommand>
     {
         public async Task Handle(
             PipelineCommand message,
-            PipelineBehaviorDelegate<PipelineCommand, Task> next,
+            CommandHandlerDelegate<PipelineCommand> next,
             CancellationToken cancellationToken = default
         )
         {
@@ -255,17 +255,17 @@ public sealed class PipelineBehaviorTests
     }
 
     private sealed class StreamBehavior(CallTrace trace)
-        : IPipelineStreamBehavior<PipelineStream, int>
+        : IStreamBehavior<PipelineStream, int>
     {
         public IAsyncEnumerable<int> Handle(
             PipelineStream message,
-            PipelineBehaviorDelegate<PipelineStream, IAsyncEnumerable<int>> next,
+            StreamHandlerDelegate<PipelineStream, int> next,
             CancellationToken cancellationToken = default
         ) => Execute(message, next, cancellationToken);
 
         private async IAsyncEnumerable<int> Execute(
             PipelineStream message,
-            PipelineBehaviorDelegate<PipelineStream, IAsyncEnumerable<int>> next,
+            StreamHandlerDelegate<PipelineStream, int> next,
             [EnumeratorCancellation] CancellationToken cancellationToken
         )
         {
@@ -303,11 +303,11 @@ public sealed class PipelineBehaviorTests
     }
 
     private sealed class NotificationBehavior(CallTrace trace)
-        : IPipelineBehavior<PipelineNotification, Task>
+        : INotificationBehavior<PipelineNotification>
     {
         public async Task Handle(
             PipelineNotification message,
-            PipelineBehaviorDelegate<PipelineNotification, Task> next,
+            NotificationHandlerDelegate<PipelineNotification> next,
             CancellationToken cancellationToken = default
         )
         {

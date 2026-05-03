@@ -2,7 +2,7 @@
 
 namespace NetMediate.Resilience;
 
-public static class DependencyInjection
+internal static class DependencyInjection
 {
     /// <param name="services">The service collection.</param>
     extension(IServiceCollection services)
@@ -30,7 +30,7 @@ public static class DependencyInjection
         /// </summary>
         /// <param name="configure">Optional retry options configuration.</param>
         /// <returns>The same service collection for chaining.</returns>
-        public void AddNetMediateRetry(Action<RetryBehaviorOptions>? configure = null)
+        private void AddNetMediateRetry(Action<RetryBehaviorOptions>? configure = null)
         {
             var options = new RetryBehaviorOptions();
             configure?.Invoke(options);
@@ -45,7 +45,7 @@ public static class DependencyInjection
         /// </summary>
         /// <param name="configure">Optional timeout options configuration.</param>
         /// <returns>The same service collection for chaining.</returns>
-        public void AddNetMediateTimeout(Action<TimeoutBehaviorOptions>? configure = null)
+        private void AddNetMediateTimeout(Action<TimeoutBehaviorOptions>? configure = null)
         {
             var options = new TimeoutBehaviorOptions();
             configure?.Invoke(options);

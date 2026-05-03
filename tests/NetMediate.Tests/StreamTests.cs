@@ -19,7 +19,7 @@ public sealed class StreamTests
             {
                 var mediator = sp.GetRequiredService<IMediator>();
                 return await mediator
-                    .RequestStream<MessageStream, int>(message, fixture.CancellationTokenSource.Token)
+                    .RequestStream(message, fixture.CancellationTokenSource.Token)
                     .AsyncToSync();
             }
         );

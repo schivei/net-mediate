@@ -166,5 +166,5 @@ public static class NetMediateDI
         IServiceCollection services,
         params Assembly[] assemblies
     ) where TNotifier : class, INotifiable
-        => new MediatorServiceBuilder<TNotifier>(services).MapAssemblies(assemblies);
+        => new MediatorServiceBuilder<TNotifier>(services);
 }

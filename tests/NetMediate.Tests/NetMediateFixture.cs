@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using NetMediate.Internals;
 
 [assembly: ExcludeFromCodeCoverage]
 
@@ -18,7 +19,9 @@ public sealed class NetMediateFixture : IDisposable
     {
         _builder = Host.CreateApplicationBuilder();
         _builder.Services.AddSingleton(this);
-        _builder.Services.AddNetMediate(GetType().Assembly);
+        var builder = new MediatorServiceBuilder<Notifier>(_builder.Services);
+        builder.MapAssemblies(GetType().Assembly);
+        builder.MapAssemblies();
     }
 
     public async Task RunAsync(Func<IServiceProvider, Task> runner)

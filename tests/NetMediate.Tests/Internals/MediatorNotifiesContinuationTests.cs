@@ -1,3 +1,4 @@
+using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -7,27 +8,24 @@ namespace NetMediate.Tests.Internals;
 
 public sealed class MediatorNotifiesContinuationTests
 {
+    private readonly Mock<ILogger<Mediator>> _logger = new();
+    private readonly Mock<IServiceScopeFactory> _scopeFactory = new();
+    private readonly Mock<IServiceScope> _scope = new();
     private readonly Mock<IServiceProvider> _provider = new();
+    private readonly Configuration _cfg;
     private readonly Mediator _sut;
 
     public MediatorNotifiesContinuationTests()
     {
-        // Wire up an INotifiable that dispatches via the real Notifier (fire-and-forget)
-        var logger = Mock.Of<ILogger<Notifier>>();
+        _cfg = new Configuration(Channel.CreateUnbounded<IPack>())
+        {
+            IgnoreUnhandledMessages = true,
+        };
 
-        // Set up empty pipeline behaviors by default
-        _provider
-            .Setup(p => p.GetService(typeof(IEnumerable<IPipelineBehavior<Msg, Task>>)))
-            .Returns(Array.Empty<IPipelineBehavior<Msg, Task>>());
+        _scopeFactory.Setup(f => f.CreateScope()).Returns(_scope.Object);
+        _scope.Setup(s => s.ServiceProvider).Returns(_provider.Object);
 
-        // Provide PipelineExecutor for Notifier.Notify
-        var executor = new PipelineExecutor<Msg, Task, INotificationHandler<Msg>>(_provider.Object);
-        _provider
-            .Setup(p => p.GetService(typeof(PipelineExecutor<Msg, Task, INotificationHandler<Msg>>)))
-            .Returns(executor);
-
-        var notifier = new Notifier(_provider.Object, logger);
-        _sut = new Mediator(_provider.Object, notifier);
+        _sut = new Mediator(_cfg, _scopeFactory.Object, new Moq.Notifier(_scopeFactory.Object), _logger.Object);
     }
 
     public sealed class Msg : INotification
@@ -63,61 +61,90 @@ public sealed class MediatorNotifiesContinuationTests
             Task.FromException(new InvalidOperationException("x"));
     }
 
-    private sealed class PassThroughBehavior : IPipelineBehavior<Msg, Task>
+    private sealed class PassThroughBehavior : INotificationBehavior<Msg>
     {
         public Task Handle(
             Msg message,
-            PipelineBehaviorDelegate<Msg, Task> next,
+            NotificationHandlerDelegate<Msg> next,
             CancellationToken cancellationToken = default
         ) => next(message.Mark(), cancellationToken);
     }
 
     [Fact]
-    public async Task Notifies_HandlerSuccess_CheckedIsTrue()
+    public async Task Notifies_HandlerSuccess_DoesNotInvokeErrorCallback()
     {
         var message = new Msg();
         _provider
             .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
             .Returns(new[] { new OkHandler() });
 
-        await _sut.Notify(message, TestContext.Current.CancellationToken);
-
-        // Give the fire-and-forget dispatch time to complete
-        await Task.Delay(100, TestContext.Current.CancellationToken);
+        await _sut.Notify(
+            message,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.False(message.Maked);
         Assert.True(message.Checked);
     }
 
     [Fact]
-    public async Task Notifies_HandlerFaulted_WithoutBehavior_CheckedIsFalse()
+    public async Task Notifies_HandlerFaulted_InvokesErrorCallback_WithoutNotificationBehavior()
     {
         var message = new Msg();
         _provider
             .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
             .Returns(new[] { new FaultHandler() });
 
-        // Fire-and-forget: exception is logged but not re-thrown
-        await _sut.Notify(message, TestContext.Current.CancellationToken);
-        await Task.Delay(100, TestContext.Current.CancellationToken);
+        await Assert.ThrowsAnyAsync<Exception>(async () =>
+        {
+            await _sut.Notify(
+                message,
+                TestContext.Current.CancellationToken
+            );
+        });
 
         Assert.False(message.Maked);
         Assert.False(message.Checked);
     }
 
     [Fact]
-    public async Task Notifies_HandlerSuccess_WithPassThroughBehavior_MakedAndCheckedAreTrue()
+    public async Task Notifies_HandlerFaulted_WithNotificationBehavior_ThrowsAndInvokesErrorCallback()
+    {
+        var message = new Msg();
+        _provider
+            .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
+            .Returns(new[] { new FaultHandler() });
+        _provider
+            .Setup(p => p.GetService(typeof(IEnumerable<INotificationBehavior<Msg>>)))
+            .Returns(new[] { new PassThroughBehavior() });
+
+        await Assert.ThrowsAnyAsync<Exception>(async () =>
+        {
+            await _sut.Notify(
+                message,
+                TestContext.Current.CancellationToken
+            );
+        });
+
+        Assert.True(message.Maked);
+        Assert.False(message.Checked);
+    }
+
+    [Fact]
+    public async Task Notifies_HandlerFaulted_WithNotificationBehavior_SuccessCallback()
     {
         var message = new Msg();
         _provider
             .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
             .Returns(new[] { new OkHandler() });
         _provider
-            .Setup(p => p.GetService(typeof(IEnumerable<IPipelineBehavior<Msg, Task>>)))
+            .Setup(p => p.GetService(typeof(IEnumerable<INotificationBehavior<Msg>>)))
             .Returns(new[] { new PassThroughBehavior() });
 
-        await _sut.Notify(message, TestContext.Current.CancellationToken);
-        await Task.Delay(100, TestContext.Current.CancellationToken);
+        await _sut.Notify(
+            message,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.True(message.Maked);
         Assert.True(message.Checked);

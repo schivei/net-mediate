@@ -62,8 +62,13 @@ internal sealed class Mediator(
 
         try
         {
+            // GetService (nullable) so that a command with no registered handler is a no-op
+            // rather than throwing. Executors are only registered when a handler is registered
+            // via RegisterCommandHandler<>.
             var pipeline = serviceProvider
-                .GetRequiredService<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>();
+                .GetService<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>();
+
+            if (pipeline is null) return;
 
             await pipeline.Handle(command, CommandHandlers, cancellationToken).ConfigureAwait(false);
         }

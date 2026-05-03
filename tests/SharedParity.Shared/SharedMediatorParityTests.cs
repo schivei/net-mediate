@@ -26,10 +26,10 @@ public class SharedMediatorParityTests
 #else
         builder.Services.AddNetMediate<Notifier>(configure =>
         {
-            configure.RegisterHandler<IRequestHandler<PingRequest, PingResponse>, PingRequestHandler, PingRequest, Task<PingResponse>>();
-            configure.RegisterHandler<ICommandHandler<AuditCommand>, AuditCommandHandler, AuditCommand, Task>();
-            configure.RegisterHandler<INotificationHandler<PingNotification>, PingNotificationHandler, PingNotification, Task>();
-            configure.RegisterHandler<IStreamHandler<CounterStream, int>, CounterStreamHandler, CounterStream, IAsyncEnumerable<int>>();
+            configure.RegisterRequestHandler<PingRequestHandler, PingRequest, PingResponse>();
+            configure.RegisterCommandHandler<AuditCommandHandler, AuditCommand>();
+            configure.RegisterNotificationHandler<PingNotificationHandler, PingNotification>();
+            configure.RegisterStreamHandler<CounterStreamHandler, CounterStream, int>();
         });
 #endif
 

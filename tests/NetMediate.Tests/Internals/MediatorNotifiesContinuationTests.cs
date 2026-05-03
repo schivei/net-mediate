@@ -54,12 +54,11 @@ public sealed class MediatorNotifiesContinuationTests
         ) => next(message.Mark(), cancellationToken);
     }
 
-    private static ServiceProvider BuildProvider(Action<IServiceCollection> configure)
+    private static ServiceProvider BuildProvider(Action<IMediatorServiceBuilder> configure)
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddTransient(typeof(PipelineExecutor<,,>));
-        configure(services);
+        services.AddNetMediate(configure);
         return services.BuildServiceProvider();
     }
 
@@ -80,8 +79,8 @@ public sealed class MediatorNotifiesContinuationTests
     public async Task Notifies_HandlerSuccess_DoesNotInvokeErrorCallback()
     {
         var message = new Msg();
-        await using var provider = BuildProvider(svc =>
-            svc.AddSingleton<INotificationHandler<Msg>>(new OkHandler()));
+        await using var provider = BuildProvider(b =>
+            b.RegisterNotificationHandler<Msg>(new OkHandler()));
         var sut = BuildMediator(provider);
 
         await sut.Notify(message, TestContext.Current.CancellationToken);
@@ -95,8 +94,8 @@ public sealed class MediatorNotifiesContinuationTests
     public async Task Notifies_HandlerFaulted_InvokesErrorCallback_WithoutNotificationBehavior()
     {
         var message = new Msg();
-        await using var provider = BuildProvider(svc =>
-            svc.AddSingleton<INotificationHandler<Msg>>(new FaultHandler()));
+        await using var provider = BuildProvider(b =>
+            b.RegisterNotificationHandler<Msg>(new FaultHandler()));
         var sut = BuildMediator(provider);
 
         // Fire-and-forget: no exception propagated
@@ -111,10 +110,10 @@ public sealed class MediatorNotifiesContinuationTests
     public async Task Notifies_HandlerFaulted_WithNotificationBehavior_BehaviorRunsBeforeHandler()
     {
         var message = new Msg();
-        await using var provider = BuildProvider(svc =>
+        await using var provider = BuildProvider(b =>
         {
-            svc.AddSingleton<INotificationHandler<Msg>>(new FaultHandler());
-            svc.AddTransient<IPipelineBehavior<Msg, Task>, PassThroughBehavior>();
+            b.RegisterNotificationHandler<Msg>(new FaultHandler());
+            b.RegisterBehavior<PassThroughBehavior, Msg, Task>();
         });
         var sut = BuildMediator(provider);
 
@@ -129,10 +128,10 @@ public sealed class MediatorNotifiesContinuationTests
     public async Task Notifies_HandlerFaulted_WithNotificationBehavior_SuccessCallback()
     {
         var message = new Msg();
-        await using var provider = BuildProvider(svc =>
+        await using var provider = BuildProvider(b =>
         {
-            svc.AddSingleton<INotificationHandler<Msg>>(new OkHandler());
-            svc.AddTransient<IPipelineBehavior<Msg, Task>, PassThroughBehavior>();
+            b.RegisterNotificationHandler<Msg>(new OkHandler());
+            b.RegisterBehavior<PassThroughBehavior, Msg, Task>();
         });
         var sut = BuildMediator(provider);
 

@@ -129,10 +129,10 @@ public sealed class ResilienceBehaviorTests
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddNetMediate(configure =>
         {
-            configure.RegisterHandler<IRequestHandler<RetryRequestMessage, string>, RetryRequestHandler, RetryRequestMessage, Task<string>>();
-            configure.RegisterHandler<IRequestHandler<TimeoutRequestMessage, string>, TimeoutRequestHandler, TimeoutRequestMessage, Task<string>>();
-            configure.RegisterHandler<IRequestHandler<CircuitBreakerRequestMessage, string>, CircuitBreakerRequestHandler, CircuitBreakerRequestMessage, Task<string>>();
-            configure.RegisterHandler<INotificationHandler<RetryNotificationViaMediatorMessage>, RetryNotificationViaMediatorHandler, RetryNotificationViaMediatorMessage, Task>();
+            configure.RegisterRequestHandler<RetryRequestHandler, RetryRequestMessage, string>();
+            configure.RegisterRequestHandler<TimeoutRequestHandler, TimeoutRequestMessage, string>();
+            configure.RegisterRequestHandler<CircuitBreakerRequestHandler, CircuitBreakerRequestMessage, string>();
+            configure.RegisterNotificationHandler<RetryNotificationViaMediatorHandler, RetryNotificationViaMediatorMessage>();
         });
         configureServices(builder.Services);
 

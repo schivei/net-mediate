@@ -113,6 +113,126 @@ public class MediatorServiceBuilderTests
         );
     }
 
+    // ── Specialized type-based registration (AOT-safe) ──────────────────────────
+
+    [Fact]
+    public void RegisterCommandHandler_RegistersHandlerAndExecutor()
+    {
+        var services = new ServiceCollection();
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+
+        builder.RegisterCommandHandler<DummyCommandHandler, DummyCommand>();
+
+        Assert.Contains(services, s => s.ServiceType == typeof(ICommandHandler<DummyCommand>)
+            && s.ImplementationType == typeof(DummyCommandHandler));
+        Assert.Contains(services, s =>
+            s.ServiceType == typeof(PipelineExecutor<DummyCommand, Task, ICommandHandler<DummyCommand>>));
+    }
+
+    [Fact]
+    public void RegisterNotificationHandler_RegistersHandlerAndExecutor()
+    {
+        var services = new ServiceCollection();
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+
+        builder.RegisterNotificationHandler<DummyNotificationHandler, DummyNotification>();
+
+        Assert.Contains(services, s => s.ServiceType == typeof(INotificationHandler<DummyNotification>)
+            && s.ImplementationType == typeof(DummyNotificationHandler));
+        Assert.Contains(services, s =>
+            s.ServiceType == typeof(PipelineExecutor<DummyNotification, Task, INotificationHandler<DummyNotification>>));
+    }
+
+    [Fact]
+    public void RegisterRequestHandler_RegistersHandlerAndExecutor()
+    {
+        var services = new ServiceCollection();
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+
+        builder.RegisterRequestHandler<DummyRequestHandler, DummyRequest, object>();
+
+        Assert.Contains(services, s => s.ServiceType == typeof(IRequestHandler<DummyRequest, object>)
+            && s.ImplementationType == typeof(DummyRequestHandler));
+        Assert.Contains(services, s =>
+            s.ServiceType == typeof(RequestPipelineExecutor<DummyRequest, object>));
+    }
+
+    [Fact]
+    public void RegisterStreamHandler_RegistersHandlerAndExecutor()
+    {
+        var services = new ServiceCollection();
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+
+        builder.RegisterStreamHandler<DummyStreamHandler, DummyStream, object>();
+
+        Assert.Contains(services, s => s.ServiceType == typeof(IStreamHandler<DummyStream, object>)
+            && s.ImplementationType == typeof(DummyStreamHandler));
+        Assert.Contains(services, s =>
+            s.ServiceType == typeof(StreamPipelineExecutor<DummyStream, object>));
+    }
+
+    // ── Instance-based registration ──────────────────────────────────────────────
+
+    [Fact]
+    public void RegisterCommandHandler_Instance_RegistersHandlerAndExecutor()
+    {
+        var services = new ServiceCollection();
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+        var handler = new DummyCommandHandler();
+
+        builder.RegisterCommandHandler<DummyCommand>(handler);
+
+        Assert.Contains(services, s => s.ServiceType == typeof(ICommandHandler<DummyCommand>)
+            && s.ImplementationInstance == handler);
+        Assert.Contains(services, s =>
+            s.ServiceType == typeof(PipelineExecutor<DummyCommand, Task, ICommandHandler<DummyCommand>>));
+    }
+
+    [Fact]
+    public void RegisterNotificationHandler_Instance_RegistersHandlerAndExecutor()
+    {
+        var services = new ServiceCollection();
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+        var handler = new DummyNotificationHandler();
+
+        builder.RegisterNotificationHandler<DummyNotification>(handler);
+
+        Assert.Contains(services, s => s.ServiceType == typeof(INotificationHandler<DummyNotification>)
+            && s.ImplementationInstance == handler);
+        Assert.Contains(services, s =>
+            s.ServiceType == typeof(PipelineExecutor<DummyNotification, Task, INotificationHandler<DummyNotification>>));
+    }
+
+    [Fact]
+    public void RegisterRequestHandler_Instance_RegistersHandlerAndExecutor()
+    {
+        var services = new ServiceCollection();
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+        var handler = new DummyRequestHandler();
+
+        builder.RegisterRequestHandler<DummyRequest, object>(handler);
+
+        Assert.Contains(services, s => s.ServiceType == typeof(IRequestHandler<DummyRequest, object>)
+            && s.ImplementationInstance == handler);
+        Assert.Contains(services, s =>
+            s.ServiceType == typeof(RequestPipelineExecutor<DummyRequest, object>));
+    }
+
+    [Fact]
+    public void RegisterStreamHandler_Instance_RegistersHandlerAndExecutor()
+    {
+        var services = new ServiceCollection();
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+        var handler = new DummyStreamHandler();
+
+        builder.RegisterStreamHandler<DummyStream, object>(handler);
+
+        Assert.Contains(services, s => s.ServiceType == typeof(IStreamHandler<DummyStream, object>)
+            && s.ImplementationInstance == handler);
+        Assert.Contains(services, s =>
+            s.ServiceType == typeof(StreamPipelineExecutor<DummyStream, object>));
+    }
+
     private sealed class NoOpBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
         where TMessage : notnull
     {

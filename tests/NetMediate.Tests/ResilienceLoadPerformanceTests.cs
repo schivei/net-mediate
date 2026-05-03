@@ -57,7 +57,7 @@ public sealed class ResilienceLoadPerformanceTests(ITestOutputHelper output)
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddNetMediate(configure =>
         {
-            configure.RegisterHandler<IRequestHandler<ResilienceLoadRequest, int>, ResilienceLoadRequestHandler, ResilienceLoadRequest, Task<int>>();
+            configure.RegisterRequestHandler<ResilienceLoadRequestHandler, ResilienceLoadRequest, int>();
         });
         builder.Services.AddNetMediateResilience(
             configureRetry: options =>

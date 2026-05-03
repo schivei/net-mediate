@@ -81,7 +81,7 @@ public sealed class AdaptersLoadPerformanceTests(ITestOutputHelper output)
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddNetMediate(configure =>
         {
-            configure.RegisterHandler<INotificationHandler<AdapterLoadNotification>, AdapterLoadNotificationHandler, AdapterLoadNotification, Task>();
+            configure.RegisterNotificationHandler<AdapterLoadNotificationHandler, AdapterLoadNotification>();
         });
         builder.Services.AddNetMediateAdapters();
 

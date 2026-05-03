@@ -13,7 +13,7 @@ public sealed class SourceGenerationSupportTests
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddNetMediate(configure =>
         {
-            configure.RegisterHandler<ICommandHandler<ExplicitRegistrationCommand>, ExplicitRegistrationCommandHandler, ExplicitRegistrationCommand, Task>();
+            configure.RegisterCommandHandler<ExplicitRegistrationCommandHandler, ExplicitRegistrationCommand>();
         });
 
         using var host = builder.Build();

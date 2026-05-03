@@ -16,10 +16,6 @@ internal sealed class MediatorServiceBuilder<
         _services = services;
 
         _services.TryAddSingleton<IMediator, Mediator>();
-        
-        _services.AddTransient(typeof(PipelineExecutor<,,>));
-        _services.AddTransient(typeof(RequestPipelineExecutor<,>));
-        _services.AddTransient(typeof(StreamPipelineExecutor<,>));
 
         if (_services.Any(s => s.ServiceType == typeof(INotifiable)))
         {
@@ -43,6 +39,92 @@ internal sealed class MediatorServiceBuilder<
         where TResult : notnull
     {
         _services.AddSingleton<TInterface, THandler>();
+        return this;
+    }
+
+    // ── Type-based specialized registration (AOT-safe, used by source generator) ──
+
+    public IMediatorServiceBuilder RegisterCommandHandler<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        THandler,
+        TMessage>()
+        where THandler : class, ICommandHandler<TMessage>
+        where TMessage : notnull
+    {
+        _services.AddSingleton<ICommandHandler<TMessage>, THandler>();
+        _services.TryAddTransient<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>();
+        return this;
+    }
+
+    public IMediatorServiceBuilder RegisterNotificationHandler<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        THandler,
+        TMessage>()
+        where THandler : class, INotificationHandler<TMessage>
+        where TMessage : notnull
+    {
+        _services.AddSingleton<INotificationHandler<TMessage>, THandler>();
+        _services.TryAddTransient<PipelineExecutor<TMessage, Task, INotificationHandler<TMessage>>>();
+        return this;
+    }
+
+    public IMediatorServiceBuilder RegisterRequestHandler<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        THandler,
+        TMessage,
+        TResponse>()
+        where THandler : class, IRequestHandler<TMessage, TResponse>
+        where TMessage : notnull
+    {
+        _services.AddSingleton<IRequestHandler<TMessage, TResponse>, THandler>();
+        _services.TryAddTransient<RequestPipelineExecutor<TMessage, TResponse>>();
+        return this;
+    }
+
+    public IMediatorServiceBuilder RegisterStreamHandler<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        THandler,
+        TMessage,
+        TResponse>()
+        where THandler : class, IStreamHandler<TMessage, TResponse>
+        where TMessage : notnull
+    {
+        _services.AddSingleton<IStreamHandler<TMessage, TResponse>, THandler>();
+        _services.TryAddTransient<StreamPipelineExecutor<TMessage, TResponse>>();
+        return this;
+    }
+
+    // ── Instance-based registration (for testing and dynamic scenarios) ──
+
+    public IMediatorServiceBuilder RegisterCommandHandler<TMessage>(ICommandHandler<TMessage> handler)
+        where TMessage : notnull
+    {
+        _services.AddSingleton<ICommandHandler<TMessage>>(handler);
+        _services.TryAddTransient<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>();
+        return this;
+    }
+
+    public IMediatorServiceBuilder RegisterNotificationHandler<TMessage>(INotificationHandler<TMessage> handler)
+        where TMessage : notnull
+    {
+        _services.AddSingleton<INotificationHandler<TMessage>>(handler);
+        _services.TryAddTransient<PipelineExecutor<TMessage, Task, INotificationHandler<TMessage>>>();
+        return this;
+    }
+
+    public IMediatorServiceBuilder RegisterRequestHandler<TMessage, TResponse>(IRequestHandler<TMessage, TResponse> handler)
+        where TMessage : notnull
+    {
+        _services.AddSingleton<IRequestHandler<TMessage, TResponse>>(handler);
+        _services.TryAddTransient<RequestPipelineExecutor<TMessage, TResponse>>();
+        return this;
+    }
+
+    public IMediatorServiceBuilder RegisterStreamHandler<TMessage, TResponse>(IStreamHandler<TMessage, TResponse> handler)
+        where TMessage : notnull
+    {
+        _services.AddSingleton<IStreamHandler<TMessage, TResponse>>(handler);
+        _services.TryAddTransient<StreamPipelineExecutor<TMessage, TResponse>>();
         return this;
     }
 

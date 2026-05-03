@@ -17,14 +17,11 @@ public class MediatorTests
         Extensions.ClearCache();
     }
 
-    private static ServiceProvider BuildProvider(Action<IServiceCollection> configure)
+    private static ServiceProvider BuildProvider(Action<IMediatorServiceBuilder> configure)
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddTransient(typeof(PipelineExecutor<,,>));
-        services.AddTransient(typeof(RequestPipelineExecutor<,>));
-        services.AddTransient(typeof(StreamPipelineExecutor<,>));
-        configure(services);
+        services.AddNetMediate(configure);
         return services.BuildServiceProvider();
     }
 
@@ -50,8 +47,8 @@ public class MediatorTests
     public async Task Notify_WithValidMessage_ShouldInvokeHandler()
     {
         var handler = new TrackingNotificationHandler<TestMessageNotification>();
-        await using var provider = BuildProvider(svc =>
-            svc.AddSingleton<INotificationHandler<TestMessageNotification>>(handler));
+        await using var provider = BuildProvider(b =>
+            b.RegisterNotificationHandler<TestMessageNotification>(handler));
         var mediator = BuildMediator(provider);
         var message = new TestMessageNotification { Content = "Test" };
 
@@ -65,8 +62,8 @@ public class MediatorTests
     public async Task Notify_Enumerable_ShouldInvokeAllHandlers()
     {
         var handler = new TrackingNotificationHandler<TestMessageNotification>();
-        await using var provider = BuildProvider(svc =>
-            svc.AddSingleton<INotificationHandler<TestMessageNotification>>(handler));
+        await using var provider = BuildProvider(b =>
+            b.RegisterNotificationHandler<TestMessageNotification>(handler));
         var mediator = BuildMediator(provider);
         TestMessageNotification[] messages = [new() { Content = "1" }, new() { Content = "2" }];
 
@@ -91,10 +88,10 @@ public class MediatorTests
     {
         var handler1 = new TrackingNotificationHandler<TestMessageNotification>();
         var handler2 = new TrackingNotificationHandler<TestMessageNotification>();
-        await using var provider = BuildProvider(svc =>
+        await using var provider = BuildProvider(b =>
         {
-            svc.AddSingleton<INotificationHandler<TestMessageNotification>>(handler1);
-            svc.AddSingleton<INotificationHandler<TestMessageNotification>>(handler2);
+            b.RegisterNotificationHandler<TestMessageNotification>(handler1);
+            b.RegisterNotificationHandler<TestMessageNotification>(handler2);
         });
         var mediator = BuildMediator(provider);
         var message = new TestMessageNotification { Content = "Test" };
@@ -117,8 +114,8 @@ public class MediatorTests
     public async Task Send_WithValidMessageAndHandler_ShouldCallHandler()
     {
         var handler = new TrackingCommandHandler<TestMessageCommand>();
-        await using var provider = BuildProvider(svc =>
-            svc.AddSingleton<ICommandHandler<TestMessageCommand>>(handler));
+        await using var provider = BuildProvider(b =>
+            b.RegisterCommandHandler<TestMessageCommand>(handler));
         var mediator = BuildMediator(provider);
         var message = new TestMessageCommand { Content = "Test" };
 
@@ -133,15 +130,15 @@ public class MediatorTests
         await using var provider = BuildProvider(_ => { });
         var mediator = BuildMediator(provider);
 
-        // No throw — Send uses foreach
+        // No throw — Send is a no-op when no executor is registered for the message type
         await mediator.Send(new TestMessageCommand { Content = "Test" }, TestContext.Current.CancellationToken);
     }
 
     [Fact]
     public async Task Send_WhenHandlerThrows_PropagatesException()
     {
-        await using var provider = BuildProvider(svc =>
-            svc.AddSingleton<ICommandHandler<TestMessageCommand>>(new ThrowingCommandHandler()));
+        await using var provider = BuildProvider(b =>
+            b.RegisterCommandHandler<TestMessageCommand>(new ThrowingCommandHandler()));
         var mediator = BuildMediator(provider);
 
         await Assert.ThrowsAsync<InvalidOperationException>(
@@ -157,8 +154,8 @@ public class MediatorTests
     public async Task Request_WithValidMessageAndHandler_ShouldReturnResponse()
     {
         var expectedResponse = new TestResponse { Value = "Response" };
-        await using var provider = BuildProvider(svc =>
-            svc.AddSingleton<IRequestHandler<TestRequest, TestResponse>>(new FixedResponseHandler(expectedResponse)));
+        await using var provider = BuildProvider(b =>
+            b.RegisterRequestHandler<TestRequest, TestResponse>(new FixedResponseHandler(expectedResponse)));
         var mediator = BuildMediator(provider);
 
         var result = await mediator.Request<TestRequest, TestResponse>(
@@ -195,8 +192,8 @@ public class MediatorTests
             new TestResponse { Value = "Response1" },
             new TestResponse { Value = "Response2" },
         };
-        await using var provider = BuildProvider(svc =>
-            svc.AddSingleton<IStreamHandler<TestStream, TestResponse>>(new EnumerableStreamHandler(responses)));
+        await using var provider = BuildProvider(b =>
+            b.RegisterStreamHandler<TestStream, TestResponse>(new EnumerableStreamHandler(responses)));
         var mediator = BuildMediator(provider);
 
         var results = new List<TestResponse>();

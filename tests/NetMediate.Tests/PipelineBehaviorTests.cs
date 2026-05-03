@@ -147,11 +147,11 @@ public sealed class PipelineBehaviorTests
         setup(builder.Services);
         builder.Services.AddNetMediate(reg =>
         {
-            reg.RegisterHandler<IRequestHandler<PipelineRequest, string>, PipelineRequestHandler, PipelineRequest, Task<string>>();
-            reg.RegisterHandler<ICommandHandler<PipelineCommand>, PipelineCommandHandler, PipelineCommand, Task>();
-            reg.RegisterHandler<IStreamHandler<PipelineStream, int>, PipelineStreamHandler, PipelineStream, IAsyncEnumerable<int>>();
-            reg.RegisterHandler<INotificationHandler<PipelineNotification>, PipelineNotificationHandler1, PipelineNotification, Task>();
-            reg.RegisterHandler<INotificationHandler<PipelineNotification>, PipelineNotificationHandler2, PipelineNotification, Task>();
+            reg.RegisterRequestHandler<PipelineRequestHandler, PipelineRequest, string>();
+            reg.RegisterCommandHandler<PipelineCommandHandler, PipelineCommand>();
+            reg.RegisterStreamHandler<PipelineStreamHandler, PipelineStream, int>();
+            reg.RegisterNotificationHandler<PipelineNotificationHandler1, PipelineNotification>();
+            reg.RegisterNotificationHandler<PipelineNotificationHandler2, PipelineNotification>();
         });
 
         var host = builder.Build();

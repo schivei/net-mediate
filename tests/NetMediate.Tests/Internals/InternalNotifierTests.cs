@@ -12,12 +12,11 @@ public class InternalNotifierTests
     public record TestNotification;
 
     private static (Notifier notifier, ServiceProvider provider) BuildNotifier(
-        Action<IServiceCollection> configure)
+        Action<IMediatorServiceBuilder>? configure = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddTransient(typeof(PipelineExecutor<,,>));
-        configure(services);
+        services.AddNetMediate(configure ?? (_ => { }));
         var provider = services.BuildServiceProvider();
         var logger = provider.GetRequiredService<ILogger<Notifier>>();
         return (new Notifier(provider, logger), provider);
@@ -38,7 +37,7 @@ public class InternalNotifierTests
     {
         var tcs = new TaskCompletionSource<bool>();
         var handler = new TcsNotificationHandler<TestNotification>(tcs);
-        var (notifier, provider) = BuildNotifier(_ => { });
+        var (notifier, provider) = BuildNotifier();
         await using var _ = provider;
         var message = new TestNotification();
 
@@ -52,7 +51,7 @@ public class InternalNotifierTests
     public async Task DispatchNotifications_WhenHandlerThrows_LogsAndDoesNotThrow()
     {
         var handler = new ThrowingNotificationHandler<TestNotification>();
-        var (notifier, provider) = BuildNotifier(_ => { });
+        var (notifier, provider) = BuildNotifier();
         await using var _ = provider;
         var message = new TestNotification();
 
@@ -65,7 +64,7 @@ public class InternalNotifierTests
     [Fact]
     public async Task DispatchNotifications_WithNoHandlers_CompletesWithoutInvoking()
     {
-        var (notifier, provider) = BuildNotifier(_ => { });
+        var (notifier, provider) = BuildNotifier();
         await using var _ = provider;
         var message = new TestNotification();
 
@@ -79,8 +78,8 @@ public class InternalNotifierTests
     {
         var tcs = new TaskCompletionSource<bool>();
         var handler = new TcsNotificationHandler<TestNotification>(tcs);
-        var (notifier, provider) = BuildNotifier(svc =>
-            svc.AddSingleton<INotificationHandler<TestNotification>>(handler));
+        var (notifier, provider) = BuildNotifier(b =>
+            b.RegisterNotificationHandler<TestNotification>(handler));
         await using var _ = provider;
         var message = new TestNotification();
 

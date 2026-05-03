@@ -124,8 +124,8 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddNetMediate(configure =>
         {
-            configure.RegisterHandler<IRequestHandler<FullStackRequest, int>, FullStackRequestHandler, FullStackRequest, Task<int>>();
-            configure.RegisterHandler<INotificationHandler<FullStackNotification>, FullStackNotificationHandler, FullStackNotification, Task>();
+            configure.RegisterRequestHandler<FullStackRequestHandler, FullStackRequest, int>();
+            configure.RegisterNotificationHandler<FullStackNotificationHandler, FullStackNotification>();
         });
         builder.Services.AddNetMediateResilience(
             configureRetry: options =>

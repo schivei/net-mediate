@@ -73,9 +73,8 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                         continue;
 
                     var msgType = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    var ifaceType = @interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                     registrations.Add(
-                        $"configure.RegisterHandler<{ifaceType}, {handlerName}, {msgType}, global::System.Threading.Tasks.Task>();"
+                        $"configure.RegisterCommandHandler<{handlerName}, {msgType}>();"
                     );
                     continue;
                 }
@@ -86,9 +85,8 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                         continue;
 
                     var msgType = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    var ifaceType = @interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                     registrations.Add(
-                        $"configure.RegisterHandler<{ifaceType}, {handlerName}, {msgType}, global::System.Threading.Tasks.Task>();"
+                        $"configure.RegisterNotificationHandler<{handlerName}, {msgType}>();"
                     );
                     continue;
                 }
@@ -100,9 +98,8 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
                     var msgType = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                     var respType = args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    var ifaceType = @interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                     registrations.Add(
-                        $"configure.RegisterHandler<{ifaceType}, {handlerName}, {msgType}, global::System.Threading.Tasks.Task<{respType}>>();"
+                        $"configure.RegisterRequestHandler<{handlerName}, {msgType}, {respType}>();"
                     );
                     continue;
                 }
@@ -114,9 +111,8 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
                     var msgType = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                     var respType = args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    var ifaceType = @interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                     registrations.Add(
-                        $"configure.RegisterHandler<{ifaceType}, {handlerName}, {msgType}, global::System.Collections.Generic.IAsyncEnumerable<{respType}>>();"
+                        $"configure.RegisterStreamHandler<{handlerName}, {msgType}, {respType}>();"
                     );
                     continue;
                 }

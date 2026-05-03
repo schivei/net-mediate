@@ -22,8 +22,12 @@ internal class Notifier(IServiceProvider serviceProvider, ILogger<Notifier> logg
 
     public Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull
     {
+        // GetService (nullable) so that a notification with no registered handler is a no-op.
+        // Executors are only registered when a handler is registered via RegisterNotificationHandler<>.
         var pipeline = serviceProvider
-            .GetRequiredService<PipelineExecutor<TMessage, Task, INotificationHandler<TMessage>>>();
+            .GetService<PipelineExecutor<TMessage, Task, INotificationHandler<TMessage>>>();
+
+        if (pipeline is null) return Task.CompletedTask;
         
         return pipeline.Handle(message, DispatchNotifications, cancellationToken);
     }

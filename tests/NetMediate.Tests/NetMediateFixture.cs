@@ -26,11 +26,11 @@ public sealed class NetMediateFixture : IDisposable
         _builder.Services.AddSingleton(this);
         _builder.Services.AddNetMediate<Notifier>(configure =>
         {
-            configure.RegisterHandler<ICommandHandler<MessageCommand>, MessageCommandHandler, MessageCommand, Task>();
-            configure.RegisterHandler<INotificationHandler<MessageNotification>, MessageNotificationHandler, MessageNotification, Task>();
-            configure.RegisterHandler<INotificationHandler<SimpleValidatableMessage>, SimpleValidatableNotifyHandler, SimpleValidatableMessage, Task>();
-            configure.RegisterHandler<IRequestHandler<MessageRequest, int>, MessageRequestHandler, MessageRequest, Task<int>>();
-            configure.RegisterHandler<IStreamHandler<MessageStream, int>, MessageStreamHandler, MessageStream, IAsyncEnumerable<int>>();
+            configure.RegisterCommandHandler<MessageCommandHandler, MessageCommand>();
+            configure.RegisterNotificationHandler<MessageNotificationHandler, MessageNotification>();
+            configure.RegisterNotificationHandler<SimpleValidatableNotifyHandler, SimpleValidatableMessage>();
+            configure.RegisterRequestHandler<MessageRequestHandler, MessageRequest, int>();
+            configure.RegisterStreamHandler<MessageStreamHandler, MessageStream, int>();
         });
     }
 

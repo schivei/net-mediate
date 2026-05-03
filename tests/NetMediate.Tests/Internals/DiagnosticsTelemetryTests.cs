@@ -62,12 +62,13 @@ public sealed class DiagnosticsTelemetryTests
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(typeof(DiagnosticsTelemetryTests).Assembly);
-        builder.Services.AddScoped<ICommandHandler<TestMessage>, TestCommandHandler>();
-        builder.Services.AddScoped<IRequestHandler<TestMessage, string>, TestRequestHandler>();
-        builder.Services.AddScoped<INotificationHandler<TestMessage>, TestNotificationHandler>();
-        builder.Services.AddScoped<IStreamHandler<TestMessage, string>, TestStreamHandler>();
-
+        builder.Services.AddNetMediate(configure =>
+        {
+            configure.RegisterCommandHandler<TestCommandHandler, TestMessage>();
+            configure.RegisterRequestHandler<TestRequestHandler, TestMessage, string>();
+            configure.RegisterNotificationHandler<TestNotificationHandler, TestMessage>();
+            configure.RegisterStreamHandler<TestStreamHandler, TestMessage, string>();
+        });
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
         return host;

@@ -210,10 +210,10 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddNetMediate(configure =>
         {
-            configure.RegisterHandler<ICommandHandler<LoadCommand>, LoadCommandHandler, LoadCommand, Task>();
-            configure.RegisterHandler<IRequestHandler<LoadRequest, int>, LoadRequestHandler, LoadRequest, Task<int>>();
-            configure.RegisterHandler<INotificationHandler<LoadNotification>, LoadNotificationHandler, LoadNotification, Task>();
-            configure.RegisterHandler<IStreamHandler<LoadStreamRequest, int>, LoadStreamHandler, LoadStreamRequest, IAsyncEnumerable<int>>();
+            configure.RegisterCommandHandler<LoadCommandHandler, LoadCommand>();
+            configure.RegisterRequestHandler<LoadRequestHandler, LoadRequest, int>();
+            configure.RegisterNotificationHandler<LoadNotificationHandler, LoadNotification>();
+            configure.RegisterStreamHandler<LoadStreamHandler, LoadStreamRequest, int>();
         });
 
         var host = builder.Build();

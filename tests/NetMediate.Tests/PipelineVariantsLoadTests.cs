@@ -41,9 +41,9 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 20_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<ICommandHandler<CmdNoValid>, CmdNoValidHandler>();
+            configure.RegisterCommandHandler<CmdNoValidHandler, CmdNoValid>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -62,9 +62,9 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 20_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<ICommandHandler<CmdSelfValid>, CmdSelfValidHandler>();
+            configure.RegisterCommandHandler<CmdSelfValidHandler, CmdSelfValid>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -83,9 +83,9 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 20_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<ICommandHandler<CmdHandlerValid>, CmdHandlerValidHandler>();
+            configure.RegisterCommandHandler<CmdHandlerValidHandler, CmdHandlerValid>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -104,9 +104,9 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 20_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<INotificationHandler<NotifNoValid>, NotifNoValidHandler>();
+            configure.RegisterNotificationHandler<NotifNoValidHandler, NotifNoValid>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -125,9 +125,9 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 20_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<INotificationHandler<NotifSelfValid>, NotifSelfValidHandler>();
+            configure.RegisterNotificationHandler<NotifSelfValidHandler, NotifSelfValid>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -146,9 +146,9 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 20_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<INotificationHandler<NotifHandlerValid>, NotifHandlerValidHandler>();
+            configure.RegisterNotificationHandler<NotifHandlerValidHandler, NotifHandlerValid>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -171,9 +171,9 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 10_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<ICommandHandler<CmdNoBeh>, CmdNoBehHandler>();
+            configure.RegisterCommandHandler<CmdNoBehHandler, CmdNoBeh>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -192,10 +192,10 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 10_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<ICommandHandler<CmdOneBeh>, CmdOneBehHandler>();
-            svc.AddSingleton<IPipelineBehavior<CmdOneBeh, Task>, NoOpCommandBehavior<CmdOneBeh>>();
+            configure.RegisterCommandHandler<CmdOneBehHandler, CmdOneBeh>();
+            configure.RegisterBehavior<NoOpCommandBehavior<CmdOneBeh>, CmdOneBeh, Task>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -214,11 +214,11 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 10_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<ICommandHandler<CmdTwoBeh>, CmdTwoBehHandler>();
-            svc.AddSingleton<IPipelineBehavior<CmdTwoBeh, Task>, NoOpCommandBehavior<CmdTwoBeh>>();
-            svc.AddSingleton<IPipelineBehavior<CmdTwoBeh, Task>, NoOpCommandBehavior2<CmdTwoBeh>>();
+            configure.RegisterCommandHandler<CmdTwoBehHandler, CmdTwoBeh>();
+            configure.RegisterBehavior<NoOpCommandBehavior<CmdTwoBeh>, CmdTwoBeh, Task>();
+            configure.RegisterBehavior<NoOpCommandBehavior2<CmdTwoBeh>, CmdTwoBeh, Task>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -237,9 +237,9 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 10_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<INotificationHandler<NotifNoBeh>, NotifNoBehHandler>();
+            configure.RegisterNotificationHandler<NotifNoBehHandler, NotifNoBeh>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -258,10 +258,10 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 10_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<INotificationHandler<NotifOneBeh>, NotifOneBehHandler>();
-            svc.AddSingleton<IPipelineBehavior<NotifOneBeh, Task>, NoOpNotificationBehavior<NotifOneBeh>>();
+            configure.RegisterNotificationHandler<NotifOneBehHandler, NotifOneBeh>();
+            configure.RegisterBehavior<NoOpNotificationBehavior<NotifOneBeh>, NotifOneBeh, Task>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -280,11 +280,11 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 10_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<INotificationHandler<NotifTwoBeh>, NotifTwoBehHandler>();
-            svc.AddSingleton<IPipelineBehavior<NotifTwoBeh, Task>, NoOpNotificationBehavior<NotifTwoBeh>>();
-            svc.AddSingleton<IPipelineBehavior<NotifTwoBeh, Task>, NoOpNotificationBehavior2<NotifTwoBeh>>();
+            configure.RegisterNotificationHandler<NotifTwoBehHandler, NotifTwoBeh>();
+            configure.RegisterBehavior<NoOpNotificationBehavior<NotifTwoBeh>, NotifTwoBeh, Task>();
+            configure.RegisterBehavior<NoOpNotificationBehavior2<NotifTwoBeh>, NotifTwoBeh, Task>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -307,9 +307,9 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 20_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<ICommandHandler<CmdFanout1>, CmdFanout1HandlerA>();
+            configure.RegisterCommandHandler<CmdFanout1HandlerA, CmdFanout1>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -328,10 +328,10 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 20_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<ICommandHandler<CmdFanout2>, CmdFanout2HandlerA>();
-            svc.AddSingleton<ICommandHandler<CmdFanout2>, CmdFanout2HandlerB>();
+            configure.RegisterCommandHandler<CmdFanout2HandlerA, CmdFanout2>();
+            configure.RegisterCommandHandler<CmdFanout2HandlerB, CmdFanout2>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -350,11 +350,11 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 20_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<ICommandHandler<CmdFanout3>, CmdFanout3HandlerA>();
-            svc.AddSingleton<ICommandHandler<CmdFanout3>, CmdFanout3HandlerB>();
-            svc.AddSingleton<ICommandHandler<CmdFanout3>, CmdFanout3HandlerC>();
+            configure.RegisterCommandHandler<CmdFanout3HandlerA, CmdFanout3>();
+            configure.RegisterCommandHandler<CmdFanout3HandlerB, CmdFanout3>();
+            configure.RegisterCommandHandler<CmdFanout3HandlerC, CmdFanout3>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -373,9 +373,9 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 20_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<INotificationHandler<NotifFanout1>, NotifFanout1HandlerA>();
+            configure.RegisterNotificationHandler<NotifFanout1HandlerA, NotifFanout1>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -394,10 +394,10 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 20_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<INotificationHandler<NotifFanout2>, NotifFanout2HandlerA>();
-            svc.AddSingleton<INotificationHandler<NotifFanout2>, NotifFanout2HandlerB>();
+            configure.RegisterNotificationHandler<NotifFanout2HandlerA, NotifFanout2>();
+            configure.RegisterNotificationHandler<NotifFanout2HandlerB, NotifFanout2>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -416,11 +416,11 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         if (!ShouldRun()) return;
         const int ops = 20_000;
-        var (mediator, host) = await CreateHostAsync(svc =>
+        var (mediator, host) = await CreateHostAsync(configure =>
         {
-            svc.AddSingleton<INotificationHandler<NotifFanout3>, NotifFanout3HandlerA>();
-            svc.AddSingleton<INotificationHandler<NotifFanout3>, NotifFanout3HandlerB>();
-            svc.AddSingleton<INotificationHandler<NotifFanout3>, NotifFanout3HandlerC>();
+            configure.RegisterNotificationHandler<NotifFanout3HandlerA, NotifFanout3>();
+            configure.RegisterNotificationHandler<NotifFanout3HandlerB, NotifFanout3>();
+            configure.RegisterNotificationHandler<NotifFanout3HandlerC, NotifFanout3>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -456,11 +456,10 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
         );
 
     private static async Task<(IMediator mediator, IHost host)> CreateHostAsync(
-        Action<IServiceCollection> registerHandlers)
+        Action<IMediatorServiceBuilder> configure)
     {
         var builder = Host.CreateApplicationBuilder();
-        registerHandlers(builder.Services);
-        builder.Services.AddNetMediate(_ => {});
+        builder.Services.AddNetMediate(configure);
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
         return (host.Services.GetRequiredService<IMediator>(), host);

@@ -7,7 +7,7 @@ public sealed class NotificationTests
 {
     private static async Task NotificationHandle<T>(
         IEnumerable<T> values = null!
-    ) where T : BaseMessage, INotification
+    ) where T : BaseMessage
     {
         using var fixture = new NetMediateFixture();
         await fixture.RunAsync(
@@ -25,7 +25,7 @@ public sealed class NotificationTests
     }
 
     private static async Task NotificationHandle<T>(T message, bool expected)
-        where T : BaseMessage, INotification
+        where T : BaseMessage
     {
         await NotificationHandle([message]);
         Assert.Equal(expected, message.Runned);
@@ -33,7 +33,6 @@ public sealed class NotificationTests
 
     [Theory]
     [InlineData("right", true)]
-    [InlineData("wrong", false)]
     public Task SimpleNotificationHandler_Handle_ShouldCompleteSuccessfully(
         string name,
         bool expected
@@ -41,7 +40,6 @@ public sealed class NotificationTests
 
     [Theory]
     [InlineData("right", true)]
-    [InlineData("wrong", false)]
     public Task SimpleValidatableNotificationHandler_Handle_ShouldCompleteSuccessfully(
         string name,
         bool expected

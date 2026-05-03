@@ -23,9 +23,11 @@ public class Notifier : INotifiable
         }
     }
 
+    /// <inheritdoc />
     public Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
         _notifier.Notify(message, cancellationToken);
 
+    /// <inheritdoc />
     public Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull =>
         _notifier.Notify(messages, cancellationToken);
 }

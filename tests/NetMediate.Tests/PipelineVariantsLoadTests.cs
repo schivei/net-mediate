@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -87,7 +86,6 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
         var (mediator, host) = await CreateHostAsync(svc =>
         {
             svc.AddSingleton<ICommandHandler<CmdHandlerValid>, CmdHandlerValidHandler>();
-            svc.AddSingleton<IValidationHandler<CmdHandlerValid>, CmdHandlerValidValidator>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -151,7 +149,6 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
         var (mediator, host) = await CreateHostAsync(svc =>
         {
             svc.AddSingleton<INotificationHandler<NotifHandlerValid>, NotifHandlerValidHandler>();
-            svc.AddSingleton<IValidationHandler<NotifHandlerValid>, NotifHandlerValidValidator>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
@@ -182,7 +179,7 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
         var ct = TestContext.Current.CancellationToken;
         var tfm = Tfm;
         var sw = Stopwatch.GetTimestamp();
-        await RunParallelAsync(ops, ct, i => mediator.Send(new CmdNoBeh(i), ct).AsTask());
+        await RunParallelAsync(ops, ct, i => mediator.Send(new CmdNoBeh(i), ct));
         Emit("variant_cmd_no_beh_parallel", tfm, ops, sw);
     }
 
@@ -198,13 +195,13 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
         var (mediator, host) = await CreateHostAsync(svc =>
         {
             svc.AddSingleton<ICommandHandler<CmdOneBeh>, CmdOneBehHandler>();
-            svc.AddSingleton<ICommandBehavior<CmdOneBeh>, NoOpCommandBehavior<CmdOneBeh>>();
+            svc.AddSingleton<IPipelineBehavior<CmdOneBeh, Task>, NoOpCommandBehavior<CmdOneBeh>>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
         var tfm = Tfm;
         var sw = Stopwatch.GetTimestamp();
-        await RunParallelAsync(ops, ct, i => mediator.Send(new CmdOneBeh(i), ct).AsTask());
+        await RunParallelAsync(ops, ct, i => mediator.Send(new CmdOneBeh(i), ct));
         Emit("variant_cmd_1beh_parallel", tfm, ops, sw);
     }
 
@@ -220,14 +217,14 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
         var (mediator, host) = await CreateHostAsync(svc =>
         {
             svc.AddSingleton<ICommandHandler<CmdTwoBeh>, CmdTwoBehHandler>();
-            svc.AddSingleton<ICommandBehavior<CmdTwoBeh>, NoOpCommandBehavior<CmdTwoBeh>>();
-            svc.AddSingleton<ICommandBehavior<CmdTwoBeh>, NoOpCommandBehavior2<CmdTwoBeh>>();
+            svc.AddSingleton<IPipelineBehavior<CmdTwoBeh, Task>, NoOpCommandBehavior<CmdTwoBeh>>();
+            svc.AddSingleton<IPipelineBehavior<CmdTwoBeh, Task>, NoOpCommandBehavior2<CmdTwoBeh>>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
         var tfm = Tfm;
         var sw = Stopwatch.GetTimestamp();
-        await RunParallelAsync(ops, ct, i => mediator.Send(new CmdTwoBeh(i), ct).AsTask());
+        await RunParallelAsync(ops, ct, i => mediator.Send(new CmdTwoBeh(i), ct));
         Emit("variant_cmd_2beh_parallel", tfm, ops, sw);
     }
 
@@ -248,7 +245,7 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
         var ct = TestContext.Current.CancellationToken;
         var tfm = Tfm;
         var sw = Stopwatch.GetTimestamp();
-        await RunParallelAsync(ops, ct, i => mediator.Notify(new NotifNoBeh(i), ct).AsTask());
+        await RunParallelAsync(ops, ct, i => mediator.Notify(new NotifNoBeh(i), ct));
         Emit("variant_notif_no_beh_parallel", tfm, ops, sw);
     }
 
@@ -264,13 +261,13 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
         var (mediator, host) = await CreateHostAsync(svc =>
         {
             svc.AddSingleton<INotificationHandler<NotifOneBeh>, NotifOneBehHandler>();
-            svc.AddSingleton<INotificationBehavior<NotifOneBeh>, NoOpNotificationBehavior<NotifOneBeh>>();
+            svc.AddSingleton<IPipelineBehavior<NotifOneBeh, Task>, NoOpNotificationBehavior<NotifOneBeh>>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
         var tfm = Tfm;
         var sw = Stopwatch.GetTimestamp();
-        await RunParallelAsync(ops, ct, i => mediator.Notify(new NotifOneBeh(i), ct).AsTask());
+        await RunParallelAsync(ops, ct, i => mediator.Notify(new NotifOneBeh(i), ct));
         Emit("variant_notif_1beh_parallel", tfm, ops, sw);
     }
 
@@ -286,14 +283,14 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
         var (mediator, host) = await CreateHostAsync(svc =>
         {
             svc.AddSingleton<INotificationHandler<NotifTwoBeh>, NotifTwoBehHandler>();
-            svc.AddSingleton<INotificationBehavior<NotifTwoBeh>, NoOpNotificationBehavior<NotifTwoBeh>>();
-            svc.AddSingleton<INotificationBehavior<NotifTwoBeh>, NoOpNotificationBehavior2<NotifTwoBeh>>();
+            svc.AddSingleton<IPipelineBehavior<NotifTwoBeh, Task>, NoOpNotificationBehavior<NotifTwoBeh>>();
+            svc.AddSingleton<IPipelineBehavior<NotifTwoBeh, Task>, NoOpNotificationBehavior2<NotifTwoBeh>>();
         });
         using var _ = host;
         var ct = TestContext.Current.CancellationToken;
         var tfm = Tfm;
         var sw = Stopwatch.GetTimestamp();
-        await RunParallelAsync(ops, ct, i => mediator.Notify(new NotifTwoBeh(i), ct).AsTask());
+        await RunParallelAsync(ops, ct, i => mediator.Notify(new NotifTwoBeh(i), ct));
         Emit("variant_notif_2beh_parallel", tfm, ops, sw);
     }
 
@@ -462,7 +459,8 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
         Action<IServiceCollection> registerHandlers)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(configure => registerHandlers(configure.Services));
+        registerHandlers(builder.Services);
+        builder.Services.AddNetMediate(_ => {});
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
         return (host.Services.GetRequiredService<IMediator>(), host);
@@ -477,39 +475,31 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     // =========================================================================
 
     // Section A – validation variants
-    public sealed record CmdNoValid(int V) : ICommand;
-    public sealed record CmdSelfValid(int V) : ICommand, IValidatable
-    {
-        public Task<ValidationResult> ValidateAsync() =>
-            Task.FromResult(ValidationResult.Success!);
-    }
-    public sealed record CmdHandlerValid(int V) : ICommand;
+    public sealed record CmdNoValid(int V);
+    public sealed record CmdSelfValid(int V);
+    public sealed record CmdHandlerValid(int V);
 
-    public sealed record NotifNoValid(int V) : INotification;
-    public sealed record NotifSelfValid(int V) : INotification, IValidatable
-    {
-        public Task<ValidationResult> ValidateAsync() =>
-            Task.FromResult(ValidationResult.Success!);
-    }
-    public sealed record NotifHandlerValid(int V) : INotification;
+    public sealed record NotifNoValid(int V);
+    public sealed record NotifSelfValid(int V);
+    public sealed record NotifHandlerValid(int V);
 
     // Section B – behavior variants
-    public sealed record CmdNoBeh(int V) : ICommand;
-    public sealed record CmdOneBeh(int V) : ICommand;
-    public sealed record CmdTwoBeh(int V) : ICommand;
+    public sealed record CmdNoBeh(int V);
+    public sealed record CmdOneBeh(int V);
+    public sealed record CmdTwoBeh(int V);
 
-    public sealed record NotifNoBeh(int V) : INotification;
-    public sealed record NotifOneBeh(int V) : INotification;
-    public sealed record NotifTwoBeh(int V) : INotification;
+    public sealed record NotifNoBeh(int V);
+    public sealed record NotifOneBeh(int V);
+    public sealed record NotifTwoBeh(int V);
 
     // Section C – fan-out variants
-    public sealed record CmdFanout1(int V) : ICommand;
-    public sealed record CmdFanout2(int V) : ICommand;
-    public sealed record CmdFanout3(int V) : ICommand;
+    public sealed record CmdFanout1(int V);
+    public sealed record CmdFanout2(int V);
+    public sealed record CmdFanout3(int V);
 
-    public sealed record NotifFanout1(int V) : INotification;
-    public sealed record NotifFanout2(int V) : INotification;
-    public sealed record NotifFanout3(int V) : INotification;
+    public sealed record NotifFanout1(int V);
+    public sealed record NotifFanout2(int V);
+    public sealed record NotifFanout3(int V);
 
     // =========================================================================
     // Handlers
@@ -525,11 +515,7 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     private sealed class CmdHandlerValidHandler : ICommandHandler<CmdHandlerValid>
     { public Task Handle(CmdHandlerValid m, CancellationToken ct = default) => Task.CompletedTask; }
 
-    private sealed class CmdHandlerValidValidator : IValidationHandler<CmdHandlerValid>
-    {
-        public Task<ValidationResult> ValidateAsync(CmdHandlerValid m, CancellationToken ct = default) =>
-            Task.FromResult(ValidationResult.Success!);
-    }
+    private sealed class CmdHandlerValidValidator { }
 
     private sealed class NotifNoValidHandler : INotificationHandler<NotifNoValid>
     { public Task Handle(NotifNoValid m, CancellationToken ct = default) => Task.CompletedTask; }
@@ -540,11 +526,7 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     private sealed class NotifHandlerValidHandler : INotificationHandler<NotifHandlerValid>
     { public Task Handle(NotifHandlerValid m, CancellationToken ct = default) => Task.CompletedTask; }
 
-    private sealed class NotifHandlerValidValidator : IValidationHandler<NotifHandlerValid>
-    {
-        public Task<ValidationResult> ValidateAsync(NotifHandlerValid m, CancellationToken ct = default) =>
-            Task.FromResult(ValidationResult.Success!);
-    }
+    private sealed class NotifHandlerValidValidator { }
 
     // Section B
     private sealed class CmdNoBehHandler : ICommandHandler<CmdNoBeh>
@@ -600,31 +582,31 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     // No-op behaviors — pass-through wrappers for overhead measurement
     // =========================================================================
 
-    private sealed class NoOpCommandBehavior<TMessage> : ICommandBehavior<TMessage>
-        where TMessage : notnull, ICommand
+    private sealed class NoOpCommandBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
+        where TMessage : notnull
     {
-        public Task Handle(TMessage msg, CommandHandlerDelegate<TMessage> next, CancellationToken ct = default) =>
+        public Task Handle(TMessage msg, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
             next(msg, ct);
     }
 
-    private sealed class NoOpCommandBehavior2<TMessage> : ICommandBehavior<TMessage>
-        where TMessage : notnull, ICommand
+    private sealed class NoOpCommandBehavior2<TMessage> : IPipelineBehavior<TMessage, Task>
+        where TMessage : notnull
     {
-        public Task Handle(TMessage msg, CommandHandlerDelegate<TMessage> next, CancellationToken ct = default) =>
+        public Task Handle(TMessage msg, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
             next(msg, ct);
     }
 
-    private sealed class NoOpNotificationBehavior<TMessage> : INotificationBehavior<TMessage>
-        where TMessage : notnull, INotification
+    private sealed class NoOpNotificationBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
+        where TMessage : notnull
     {
-        public Task Handle(TMessage msg, NotificationHandlerDelegate<TMessage> next, CancellationToken ct = default) =>
+        public Task Handle(TMessage msg, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
             next(msg, ct);
     }
 
-    private sealed class NoOpNotificationBehavior2<TMessage> : INotificationBehavior<TMessage>
-        where TMessage : notnull, INotification
+    private sealed class NoOpNotificationBehavior2<TMessage> : IPipelineBehavior<TMessage, Task>
+        where TMessage : notnull
     {
-        public Task Handle(TMessage msg, NotificationHandlerDelegate<TMessage> next, CancellationToken ct = default) =>
+        public Task Handle(TMessage msg, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
             next(msg, ct);
     }
 }

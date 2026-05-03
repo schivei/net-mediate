@@ -9,7 +9,7 @@ internal sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     private static DateTimeOffset? s_openUntil;
 
     /// <inheritdoc />
-    public async Task<TResponse> Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task<TResponse>> next, CancellationToken cancellationToken = default)
+    public async Task<TResponse> Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task<TResponse>> next, CancellationToken cancellationToken)
     {
         if (IsCircuitOpen())
             throw new InvalidOperationException(
@@ -87,7 +87,7 @@ internal sealed class CircuitBreakerNotificationBehavior<TMessage>(CircuitBreake
     public async Task Handle(
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task> next,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
     {
         if (IsCircuitOpen())

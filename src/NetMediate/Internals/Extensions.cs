@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -7,6 +8,7 @@ namespace NetMediate.Internals;
 internal static class Extensions
 {
     private static readonly ConcurrentDictionary<Type, long> s_serviceUsage = [];
+    private static readonly ConditionalWeakTable<IServiceProvider, IMemoryCache> s_caches = new();
 
     private static void SetUsage(Type serviceType)
     {
@@ -30,8 +32,6 @@ internal static class Extensions
         return timeLimit;
     }
 
-    private static IMemoryCache? _sCache;
-
     extension(IServiceProvider serviceProvider)
     {
         public THandler[] GetHandlers<THandler, TMessage, TResult>() where THandler : IHandler<TMessage, TResult> where TMessage : notnull where TResult : notnull
@@ -41,8 +41,8 @@ internal static class Extensions
 
         private IMemoryCache GetCache()
         {
-            return _sCache ??= serviceProvider.GetService<IMemoryCache>() ??
-                               new MemoryCache(new MemoryCacheOptions());
+            return s_caches.GetValue(serviceProvider, static sp =>
+                sp.GetService<IMemoryCache>() ?? new MemoryCache(new MemoryCacheOptions()));
         }
 
         private T[] GetCachedServices<T>()

@@ -79,7 +79,10 @@ public sealed class AdaptersLoadPerformanceTests(ITestOutputHelper output)
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(typeof(AdaptersLoadPerformanceTests).Assembly);
+        builder.Services.AddNetMediate(configure =>
+        {
+            configure.RegisterHandler<INotificationHandler<AdapterLoadNotification>, AdapterLoadNotificationHandler, AdapterLoadNotification, Task>();
+        });
         builder.Services.AddNetMediateAdapters();
 
         var host = builder.Build();
@@ -94,7 +97,7 @@ public sealed class AdaptersLoadPerformanceTests(ITestOutputHelper output)
             StringComparison.OrdinalIgnoreCase
         );
 
-    public sealed record AdapterLoadNotification(int Value) : INotification;
+    public sealed record AdapterLoadNotification(int Value);
 
     private sealed class AdapterLoadNotificationHandler : INotificationHandler<AdapterLoadNotification>
     {

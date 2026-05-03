@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate;
@@ -10,16 +9,13 @@ namespace NetMediate.Tests.Internals;
 
 public class MediatorServiceBuilderTests
 {
-    public class DummyNotification : INotification
-    {
-        public bool Valid { get; set; }
-    }
+    public class DummyNotification { public bool Valid { get; set; } }
 
-    public class DummyCommand : ICommand { }
+    public class DummyCommand { }
 
-    public class DummyRequest : IRequest<object> { }
+    public class DummyRequest { }
 
-    public class DummyStream : IStream<object> { }
+    public class DummyStream { }
 
     public class DummyValidation : IMessage { }
 
@@ -56,41 +52,6 @@ public class MediatorServiceBuilderTests
         }
     }
 
-    public class DummyValidationHandler : IValidationHandler<DummyValidation>
-    {
-        public Task<ValidationResult> ValidateAsync(
-            DummyValidation message,
-            CancellationToken cancellationToken = default
-        ) => Task.FromResult(new ValidationResult("Dummy validation result"));
-    }
-
-    [Fact]
-    public void MapAssembly_CurrentAssembly()
-    {
-        var services = new ServiceCollection();
-        var builder = new MediatorServiceBuilder<Notifier>(services);
-        var result = builder.MapAssemblies(typeof(DummyCommandHandler).GetType().Assembly);
-        Assert.Same(builder, result);
-    }
-
-    [Fact]
-    public void MapAssemblies_EmptyArray_UsesAllAssemblies()
-    {
-        var services = new ServiceCollection();
-        var builder = new MediatorServiceBuilder<Notifier>(services);
-        var result = builder.MapAssemblies();
-        Assert.Same(builder, result);
-    }
-
-    [Fact]
-    public void IgnoreUnhandledMessages_SetsConfiguration()
-    {
-        var services = new ServiceCollection();
-        var builder = new MediatorServiceBuilder<Notifier>(services);
-        var result = builder.IgnoreUnhandledMessages(false);
-        Assert.Same(builder, result);
-    }
-
     [Fact]
     public void Constructor_WhenINotifiableAlreadyRegistered_ReplacesExistingRegistration()
     {
@@ -124,16 +85,39 @@ public class MediatorServiceBuilderTests
     }
 
     [Fact]
-    public void GetAllServices_WhenProviderImplementsIServiceProviderIsService_AndTypeNotRegistered_ReturnsEmpty()
+    public void RegisterHandler_AddsHandlerToServiceCollection()
     {
-        // Arrange — a service provider that reports a type as NOT registered
         var services = new ServiceCollection();
-        var provider = services.BuildServiceProvider(); // real DI provider (implements IServiceProviderIsService)
+        var builder = new MediatorServiceBuilder<Notifier>(services);
 
-        // Act — type not registered so GetAllServices returns []
-        var result = provider.GetAllServices<DummyNotification>();
+        builder.RegisterHandler<INotificationHandler<DummyNotification>, DummyNotificationHandler, DummyNotification, Task>();
 
-        // Assert
-        Assert.Empty(result);
+        Assert.Contains(
+            services,
+            s => s.ServiceType == typeof(INotificationHandler<DummyNotification>)
+                 && s.ImplementationType == typeof(DummyNotificationHandler)
+        );
+    }
+
+    [Fact]
+    public void RegisterBehavior_AddsBehaviorToServiceCollection()
+    {
+        var services = new ServiceCollection();
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+        builder.RegisterBehavior<NoOpBehavior<DummyNotification>, DummyNotification, Task>();
+
+        Assert.Contains(
+            services,
+            s => s.ServiceType == typeof(IPipelineBehavior<DummyNotification, Task>)
+                 && s.ImplementationType == typeof(NoOpBehavior<DummyNotification>)
+        );
+    }
+
+    private sealed class NoOpBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
+        where TMessage : notnull
+    {
+        public Task Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
+            next(message, ct);
     }
 }
+

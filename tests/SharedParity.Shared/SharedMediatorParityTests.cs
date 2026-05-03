@@ -24,7 +24,13 @@ public class SharedMediatorParityTests
 #if MEDIATR_COMPAT
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<SharedMediatorParityTests>());
 #else
-        builder.Services.AddNetMediate<Notifier>(typeof(SharedMediatorParityTests).Assembly);
+        builder.Services.AddNetMediate<Notifier>(configure =>
+        {
+            configure.RegisterHandler<IRequestHandler<PingRequest, PingResponse>, PingRequestHandler, PingRequest, Task<PingResponse>>();
+            configure.RegisterHandler<ICommandHandler<AuditCommand>, AuditCommandHandler, AuditCommand, Task>();
+            configure.RegisterHandler<INotificationHandler<PingNotification>, PingNotificationHandler, PingNotification, Task>();
+            configure.RegisterHandler<IStreamHandler<CounterStream, int>, CounterStreamHandler, CounterStream, IAsyncEnumerable<int>>();
+        });
 #endif
 
         using var host = builder.Build();
@@ -101,7 +107,7 @@ public class SharedMediatorParityTests
 
     public sealed record AuditCommand(string Value) : ICommand;
 
-    public sealed record PingNotification(string Value) : INotification;
+    public sealed record PingNotification(string Value);
 
     public sealed record CounterStream(int Count) : IStream<int>;
 

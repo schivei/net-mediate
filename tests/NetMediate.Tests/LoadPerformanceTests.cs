@@ -208,7 +208,13 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(typeof(LoadPerformanceTests).Assembly);
+        builder.Services.AddNetMediate(configure =>
+        {
+            configure.RegisterHandler<ICommandHandler<LoadCommand>, LoadCommandHandler, LoadCommand, Task>();
+            configure.RegisterHandler<IRequestHandler<LoadRequest, int>, LoadRequestHandler, LoadRequest, Task<int>>();
+            configure.RegisterHandler<INotificationHandler<LoadNotification>, LoadNotificationHandler, LoadNotification, Task>();
+            configure.RegisterHandler<IStreamHandler<LoadStreamRequest, int>, LoadStreamHandler, LoadStreamRequest, IAsyncEnumerable<int>>();
+        });
 
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
@@ -222,10 +228,10 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
             StringComparison.OrdinalIgnoreCase
         );
 
-    public sealed record LoadCommand(int Value) : ICommand;
-    public sealed record LoadRequest(int Value) : IRequest<int>;
-    public sealed record LoadNotification(int Value) : INotification;
-    public sealed record LoadStreamRequest(int Value) : IStream<int>;
+    public sealed record LoadCommand(int Value);
+    public sealed record LoadRequest(int Value);
+    public sealed record LoadNotification(int Value);
+    public sealed record LoadStreamRequest(int Value);
 
     private sealed class LoadCommandHandler : ICommandHandler<LoadCommand>
     {

@@ -7,10 +7,8 @@ internal sealed class RetryRequestBehavior<TMessage, TResponse>(RetryBehaviorOpt
     public async Task<TResponse> Handle(
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
-    {
-        var maxRetryCount = Math.Max(0, options.MaxRetryCount);
         var delay = options.Delay < TimeSpan.Zero ? TimeSpan.Zero : options.Delay;
 
         for (var attempt = 0; ; attempt++)
@@ -45,11 +43,8 @@ internal sealed class RetryNotificationBehavior<TMessage>(RetryBehaviorOptions o
     public async Task Handle(
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task> next,
-        CancellationToken cancellationToken = default
+        CancellationToken cancellationToken
     )
-    {
-        var maxRetryCount = Math.Max(0, options.MaxRetryCount);
-        var delay = options.Delay < TimeSpan.Zero ? TimeSpan.Zero : options.Delay;
 
         for (var attempt = 0; ; attempt++)
         {

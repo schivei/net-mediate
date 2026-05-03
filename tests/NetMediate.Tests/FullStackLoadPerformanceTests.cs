@@ -122,7 +122,11 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(typeof(FullStackLoadPerformanceTests).Assembly);
+        builder.Services.AddNetMediate(configure =>
+        {
+            configure.RegisterHandler<IRequestHandler<FullStackRequest, int>, FullStackRequestHandler, FullStackRequest, Task<int>>();
+            configure.RegisterHandler<INotificationHandler<FullStackNotification>, FullStackNotificationHandler, FullStackNotification, Task>();
+        });
         builder.Services.AddNetMediateResilience(
             configureRetry: options =>
             {
@@ -163,8 +167,8 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
             ? 20_000d
             : 40_000d;
 
-    public sealed record FullStackRequest(int Value) : IRequest<int>;
-    public sealed record FullStackNotification(int Value) : INotification;
+    public sealed record FullStackRequest(int Value);
+    public sealed record FullStackNotification(int Value);
 
     private sealed class FullStackRequestHandler : IRequestHandler<FullStackRequest, int>
     {

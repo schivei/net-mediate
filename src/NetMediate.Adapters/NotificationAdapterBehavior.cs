@@ -29,10 +29,7 @@ public sealed class NotificationAdapterBehavior<TMessage>(
     public async Task Handle(
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task> next,
-        CancellationToken cancellationToken = default)
-    {
-        // Execute the core pipeline first.
-        await next(message, cancellationToken).ConfigureAwait(false);
+        CancellationToken cancellationToken)
 
         // Then forward to external adapters.
         var adapters = serviceProvider.GetServices<INotificationAdapter<TMessage>>().ToList();

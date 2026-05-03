@@ -12,7 +12,7 @@ public sealed class ResilienceBehaviorTests
         using var host = await CreateHostAsync(
             configureServices: services =>
             {
-                services.AddNetMediateRetry(options =>
+                services.AddNetMediateResilience(configureRetry: options =>
                 {
                     options.MaxRetryCount = 3;
                     options.Delay = TimeSpan.Zero;
@@ -21,7 +21,7 @@ public sealed class ResilienceBehaviorTests
         );
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        var response = await mediator.Request(
+        var response = await mediator.Request<RetryRequestMessage, string>(
             new RetryRequestMessage("ok"),
             TestContext.Current.CancellationToken
         );
@@ -31,35 +31,12 @@ public sealed class ResilienceBehaviorTests
     }
 
     [Fact]
-    public async Task RetryNotificationBehavior_ShouldRetryUntilSuccess()
-    {
-        var behavior = new RetryNotificationBehavior<RetryNotificationMessage>(
-            new() { MaxRetryCount = 3, Delay = TimeSpan.Zero }
-        );
-        var attempts = 0;
-
-        await behavior.Handle(
-            new("ok"),
-            (_, __) =>
-            {
-                attempts++;
-                return attempts < 3
-                    ? Task.FromException(new InvalidOperationException("failed"))
-                    : Task.CompletedTask;
-            },
-            TestContext.Current.CancellationToken
-        );
-
-        Assert.Equal(3, attempts);
-    }
-
-    [Fact]
     public async Task RetryNotificationBehavior_WithMediatorNotify_ShouldRetryUntilSuccess()
     {
         using var host = await CreateHostAsync(
             configureServices: services =>
             {
-                services.AddNetMediateRetry(options =>
+                services.AddNetMediateResilience(configureRetry: options =>
                 {
                     options.MaxRetryCount = 3;
                     options.Delay = TimeSpan.Zero;
@@ -88,7 +65,7 @@ public sealed class ResilienceBehaviorTests
         using var host = await CreateHostAsync(
             configureServices: services =>
             {
-                services.AddNetMediateTimeout(options =>
+                services.AddNetMediateResilience(configureTimeout: options =>
                 {
                     options.RequestTimeout = TimeSpan.FromMilliseconds(20);
                 });
@@ -98,7 +75,7 @@ public sealed class ResilienceBehaviorTests
         var mediator = host.Services.GetRequiredService<IMediator>();
 
         await Assert.ThrowsAsync<TimeoutException>(async () =>
-            await mediator.Request(
+            await mediator.Request<TimeoutRequestMessage, string>(
                 new TimeoutRequestMessage("slow"),
                 TestContext.Current.CancellationToken
             )
@@ -122,21 +99,21 @@ public sealed class ResilienceBehaviorTests
         var mediator = host.Services.GetRequiredService<IMediator>();
 
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await mediator.Request(
+            await mediator.Request<CircuitBreakerRequestMessage, string>(
                 new CircuitBreakerRequestMessage("fail"),
                 TestContext.Current.CancellationToken
             )
         );
 
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await mediator.Request(
+            await mediator.Request<CircuitBreakerRequestMessage, string>(
                 new CircuitBreakerRequestMessage("fail"),
                 TestContext.Current.CancellationToken
             )
         );
 
         var circuitException = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await mediator.Request(new CircuitBreakerRequestMessage("fail"), TestContext.Current.CancellationToken)
+            await mediator.Request<CircuitBreakerRequestMessage, string>(new CircuitBreakerRequestMessage("fail"), TestContext.Current.CancellationToken)
         );
 
         Assert.Contains("Circuit open", circuitException.Message);
@@ -147,7 +124,13 @@ public sealed class ResilienceBehaviorTests
         RetryRequestHandler.Reset();
         RetryNotificationViaMediatorHandler.Reset();
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(typeof(ResilienceBehaviorTests).Assembly);
+        builder.Services.AddNetMediate(configure =>
+        {
+            configure.RegisterHandler<IRequestHandler<RetryRequestMessage, string>, RetryRequestHandler, RetryRequestMessage, Task<string>>();
+            configure.RegisterHandler<IRequestHandler<TimeoutRequestMessage, string>, TimeoutRequestHandler, TimeoutRequestMessage, Task<string>>();
+            configure.RegisterHandler<IRequestHandler<CircuitBreakerRequestMessage, string>, CircuitBreakerRequestHandler, CircuitBreakerRequestMessage, Task<string>>();
+            configure.RegisterHandler<INotificationHandler<RetryNotificationViaMediatorMessage>, RetryNotificationViaMediatorHandler, RetryNotificationViaMediatorMessage, Task>();
+        });
         configureServices(builder.Services);
 
         var host = builder.Build();
@@ -168,11 +151,11 @@ public sealed class ResilienceBehaviorTests
         Assert.Fail("Timed out waiting for notification processing.");
     }
 
-    public sealed record RetryRequestMessage(string Value) : IRequest<string>;
-    public sealed record RetryNotificationMessage(string Value) : INotification;
-    public sealed record RetryNotificationViaMediatorMessage(string Value) : INotification;
-    public sealed record TimeoutRequestMessage(string Value) : IRequest<string>;
-    public sealed record CircuitBreakerRequestMessage(string Value) : IRequest<string>;
+    public sealed record RetryRequestMessage(string Value);
+    public sealed record RetryNotificationViaMediatorMessage(string Value);
+    public sealed record TimeoutRequestMessage(string Value);
+    public sealed record CircuitBreakerRequestMessage(string Value);
+
     private sealed class RetryRequestHandler : IRequestHandler<RetryRequestMessage, string>
     {
         private static int s_attempts;

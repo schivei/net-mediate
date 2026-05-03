@@ -11,7 +11,10 @@ public sealed class SourceGenerationSupportTests
         ExplicitRegistrationCommandHandler.Executed = 0;
 
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(typeof(ExplicitRegistrationCommand).Assembly);
+        builder.Services.AddNetMediate(configure =>
+        {
+            configure.RegisterHandler<ICommandHandler<ExplicitRegistrationCommand>, ExplicitRegistrationCommandHandler, ExplicitRegistrationCommand, Task>();
+        });
 
         using var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
@@ -22,7 +25,7 @@ public sealed class SourceGenerationSupportTests
         Assert.Equal(1, Volatile.Read(ref ExplicitRegistrationCommandHandler.Executed));
     }
 
-    public sealed record ExplicitRegistrationCommand : ICommand;
+    public sealed record ExplicitRegistrationCommand;
 
     private sealed class ExplicitRegistrationCommandHandler
         : ICommandHandler<ExplicitRegistrationCommand>

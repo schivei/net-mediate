@@ -1,34 +1,12 @@
-using System.Threading.Channels;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Moq;
 using NetMediate.Internals;
+using MoqNotifier = NetMediate.Moq.Notifier;
 
 namespace NetMediate.Tests.Internals;
 
 public sealed class MediatorNotifiesContinuationTests
 {
-    private readonly Mock<ILogger<Mediator>> _logger = new();
-    private readonly Mock<IServiceScopeFactory> _scopeFactory = new();
-    private readonly Mock<IServiceScope> _scope = new();
-    private readonly Mock<IServiceProvider> _provider = new();
-    private readonly Configuration _cfg;
-    private readonly Mediator _sut;
-
-    public MediatorNotifiesContinuationTests()
-    {
-        _cfg = new Configuration(Channel.CreateUnbounded<IPack>())
-        {
-            IgnoreUnhandledMessages = true,
-        };
-
-        _scopeFactory.Setup(f => f.CreateScope()).Returns(_scope.Object);
-        _scope.Setup(s => s.ServiceProvider).Returns(_provider.Object);
-
-        _sut = new Mediator(_cfg, _scopeFactory.Object, new Moq.Notifier(_scopeFactory.Object), _logger.Object);
-    }
-
-    public sealed class Msg : INotification
+    public sealed class Msg
     {
         public bool Maked { get; private set; }
 
@@ -48,10 +26,10 @@ public sealed class MediatorNotifiesContinuationTests
 
     private sealed class OkHandler : INotificationHandler<Msg>
     {
-        public async Task Handle(Msg notification, CancellationToken cancellationToken = default)
+        public Task Handle(Msg notification, CancellationToken cancellationToken = default)
         {
             notification.Check();
-            await Task.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 
@@ -61,29 +39,49 @@ public sealed class MediatorNotifiesContinuationTests
             Task.FromException(new InvalidOperationException("x"));
     }
 
-    private sealed class PassThroughBehavior : INotificationBehavior<Msg>
+    private sealed class PassThroughBehavior : IPipelineBehavior<Msg, Task>
     {
         public Task Handle(
             Msg message,
-            NotificationHandlerDelegate<Msg> next,
+            PipelineBehaviorDelegate<Msg, Task> next,
             CancellationToken cancellationToken = default
         ) => next(message.Mark(), cancellationToken);
+    }
+
+    private static ServiceProvider BuildProvider(Action<IServiceCollection> configure)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddTransient(typeof(PipelineExecutor<,,>));
+        configure(services);
+        return services.BuildServiceProvider();
+    }
+
+    private static Mediator BuildMediator(IServiceProvider provider) =>
+        new(provider, new MoqNotifier(provider));
+
+    private static async Task WaitForAsync(Func<bool> predicate, CancellationToken ct)
+    {
+        for (var i = 0; i < 100; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (predicate()) return;
+            await Task.Delay(10, ct);
+        }
     }
 
     [Fact]
     public async Task Notifies_HandlerSuccess_DoesNotInvokeErrorCallback()
     {
         var message = new Msg();
-        _provider
-            .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
-            .Returns(new[] { new OkHandler() });
+        await using var provider = BuildProvider(svc =>
+            svc.AddSingleton<INotificationHandler<Msg>>(new OkHandler()));
+        var sut = BuildMediator(provider);
 
-        await _sut.Notify(
-            message,
-            TestContext.Current.CancellationToken
-        );
+        await sut.Notify(message, TestContext.Current.CancellationToken);
+        await WaitForAsync(() => message.Checked, TestContext.Current.CancellationToken);
 
-        Assert.False(message.Maked);
+        Assert.False(message.Maked); // No behavior registered
         Assert.True(message.Checked);
     }
 
@@ -91,60 +89,49 @@ public sealed class MediatorNotifiesContinuationTests
     public async Task Notifies_HandlerFaulted_InvokesErrorCallback_WithoutNotificationBehavior()
     {
         var message = new Msg();
-        _provider
-            .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
-            .Returns(new[] { new FaultHandler() });
+        await using var provider = BuildProvider(svc =>
+            svc.AddSingleton<INotificationHandler<Msg>>(new FaultHandler()));
+        var sut = BuildMediator(provider);
 
-        await Assert.ThrowsAnyAsync<Exception>(async () =>
-        {
-            await _sut.Notify(
-                message,
-                TestContext.Current.CancellationToken
-            );
-        });
+        // Fire-and-forget: no exception propagated
+        await sut.Notify(message, TestContext.Current.CancellationToken);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
 
         Assert.False(message.Maked);
-        Assert.False(message.Checked);
+        Assert.False(message.Checked); // FaultHandler threw, Check() never called
     }
 
     [Fact]
-    public async Task Notifies_HandlerFaulted_WithNotificationBehavior_ThrowsAndInvokesErrorCallback()
+    public async Task Notifies_HandlerFaulted_WithNotificationBehavior_BehaviorRunsBeforeHandler()
     {
         var message = new Msg();
-        _provider
-            .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
-            .Returns(new[] { new FaultHandler() });
-        _provider
-            .Setup(p => p.GetService(typeof(IEnumerable<INotificationBehavior<Msg>>)))
-            .Returns(new[] { new PassThroughBehavior() });
-
-        await Assert.ThrowsAnyAsync<Exception>(async () =>
+        await using var provider = BuildProvider(svc =>
         {
-            await _sut.Notify(
-                message,
-                TestContext.Current.CancellationToken
-            );
+            svc.AddSingleton<INotificationHandler<Msg>>(new FaultHandler());
+            svc.AddTransient<IPipelineBehavior<Msg, Task>, PassThroughBehavior>();
         });
+        var sut = BuildMediator(provider);
 
-        Assert.True(message.Maked);
-        Assert.False(message.Checked);
+        await sut.Notify(message, TestContext.Current.CancellationToken);
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+
+        Assert.True(message.Maked);  // Behavior ran and called Mark() before dispatching
+        Assert.False(message.Checked); // Handler faulted, Check() never called
     }
 
     [Fact]
     public async Task Notifies_HandlerFaulted_WithNotificationBehavior_SuccessCallback()
     {
         var message = new Msg();
-        _provider
-            .Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<Msg>>)))
-            .Returns(new[] { new OkHandler() });
-        _provider
-            .Setup(p => p.GetService(typeof(IEnumerable<INotificationBehavior<Msg>>)))
-            .Returns(new[] { new PassThroughBehavior() });
+        await using var provider = BuildProvider(svc =>
+        {
+            svc.AddSingleton<INotificationHandler<Msg>>(new OkHandler());
+            svc.AddTransient<IPipelineBehavior<Msg, Task>, PassThroughBehavior>();
+        });
+        var sut = BuildMediator(provider);
 
-        await _sut.Notify(
-            message,
-            TestContext.Current.CancellationToken
-        );
+        await sut.Notify(message, TestContext.Current.CancellationToken);
+        await WaitForAsync(() => message.Checked, TestContext.Current.CancellationToken);
 
         Assert.True(message.Maked);
         Assert.True(message.Checked);

@@ -55,7 +55,10 @@ public sealed class ResilienceLoadPerformanceTests(ITestOutputHelper output)
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(typeof(ResilienceLoadPerformanceTests).Assembly);
+        builder.Services.AddNetMediate(configure =>
+        {
+            configure.RegisterHandler<IRequestHandler<ResilienceLoadRequest, int>, ResilienceLoadRequestHandler, ResilienceLoadRequest, Task<int>>();
+        });
         builder.Services.AddNetMediateResilience(
             configureRetry: options =>
             {
@@ -95,7 +98,7 @@ public sealed class ResilienceLoadPerformanceTests(ITestOutputHelper output)
             ? 30_000d
             : 50_000d;
 
-    public sealed record ResilienceLoadRequest(int Value) : IRequest<int>;
+    public sealed record ResilienceLoadRequest(int Value);
 
     private sealed class ResilienceLoadRequestHandler : IRequestHandler<ResilienceLoadRequest, int>
     {

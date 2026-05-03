@@ -2,7 +2,7 @@
 
 namespace NetMediate.Resilience;
 
-internal static class DependencyInjection
+public static class DependencyInjection
 {
     /// <param name="services">The service collection.</param>
     extension(IServiceCollection services)
@@ -36,8 +36,8 @@ internal static class DependencyInjection
             configure?.Invoke(options);
             services
                 .AddSingleton(options)
-                .AddSingleton(typeof(IPipelineBehavior<,>), typeof(RetryRequestBehavior<,>))
-                .AddSingleton(typeof(IPipelineBehavior<,>), typeof(RetryNotificationBehavior<>));
+                .AddSingleton(typeof(IPipelineRequestBehavior<,>), typeof(RetryRequestBehavior<,>))
+                .AddSingleton(typeof(IPipelineBehavior<>), typeof(RetryNotificationBehavior<>));
         }
 
         /// <summary>
@@ -50,8 +50,8 @@ internal static class DependencyInjection
             var options = new TimeoutBehaviorOptions();
             configure?.Invoke(options);
             services.AddSingleton(options)
-                .AddSingleton(typeof(IPipelineBehavior<,>), typeof(TimeoutRequestBehavior<,>))
-                .AddSingleton(typeof(IPipelineBehavior<,>), typeof(TimeoutNotificationBehavior<>));
+                .AddSingleton(typeof(IPipelineRequestBehavior<,>), typeof(TimeoutRequestBehavior<,>))
+                .AddSingleton(typeof(IPipelineBehavior<>), typeof(TimeoutNotificationBehavior<>));
         }
 
         /// <summary>
@@ -64,8 +64,8 @@ internal static class DependencyInjection
             var options = new CircuitBreakerBehaviorOptions();
             configure?.Invoke(options);
             services.AddSingleton(options)
-                .AddSingleton(typeof(IPipelineBehavior<,>), typeof(CircuitBreakerRequestBehavior<,>))
-                .AddSingleton(typeof(IPipelineBehavior<,>), typeof(CircuitBreakerNotificationBehavior<>));
+                .AddSingleton(typeof(IPipelineRequestBehavior<,>), typeof(CircuitBreakerRequestBehavior<,>))
+                .AddSingleton(typeof(IPipelineBehavior<>), typeof(CircuitBreakerNotificationBehavior<>));
         }
     }
 }

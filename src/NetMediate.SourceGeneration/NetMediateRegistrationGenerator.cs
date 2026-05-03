@@ -123,7 +123,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             if (!IsAccessible(args[0]) || !IsAccessible(args[1]))
                 return null;
 
-            var msgType  = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var msgType = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             var respType = args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             return interfaceName switch
             {

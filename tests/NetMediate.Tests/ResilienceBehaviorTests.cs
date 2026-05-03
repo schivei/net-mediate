@@ -397,7 +397,7 @@ public sealed class ResilienceBehaviorTests
     }
 
     /// <summary>
-    /// Adapter that delays 500 ms, used to force notification timeout.
+    /// Adapter that delays 100 ms, used to force notification timeout.
     /// </summary>
     private sealed class SlowNotificationAdapter : INotificationAdapter<TimeoutNotificationMessage>
     {
@@ -405,7 +405,7 @@ public sealed class ResilienceBehaviorTests
             AdapterEnvelope<TimeoutNotificationMessage> envelope,
             CancellationToken cancellationToken = default)
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(500), cancellationToken);
+            await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
         }
     }
 

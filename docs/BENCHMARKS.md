@@ -95,26 +95,23 @@ built; the difference is startup-time handler discovery, not message dispatch.
 
 Compares the per-call overhead of three validation configurations, sequential, 20 k ops.
 
-### Command validation
+### Command dispatch
 
 | Configuration | Description | net8.0 | net9.0 | net10.0 |
 |---|---|---:|---:|---:|
-| No validation | Plain `ICommand` (type-check only) | 427,859 | 409,902 | 477,313 |
-| Self-validation | `ICommand + IValidatable` (always success) | 400,005 | 397,021 | 479,107 |
-| Handler validation | `IValidationHandler<T>` registered (always success) | 384,005 | 379,384 | 363,360 |
+| No pipeline behavior | Plain command dispatch | 427,859 | 409,902 | 477,313 |
+| With pipeline behavior | `IPipelineBehavior<>` registered (always success) | 384,005 | 379,384 | 363,360 |
 
-> Overhead of self-validation: **−6–7 %**.  Overhead of handler validation: **−10–24 %** —
-> because it resolves an extra service from the DI container on every call.
+> Overhead of a pipeline behavior: **−10–24 %** — because it resolves an extra service from the DI container on every call.
 
-### Notification validation
+### Notification dispatch
 
 | Configuration | Description | net8.0 | net9.0 | net10.0 |
 |---|---|---:|---:|---:|
-| No validation | Plain `INotification` | 732,923 | 654,121 | 634,148 |
-| Self-validation | `INotification + IValidatable` | 604,505 | 573,781 | 932,744 |
-| Handler validation | `IValidationHandler<T>` registered | 845,266 | 710,285 | 919,109 |
+| No pipeline behavior | Plain notification dispatch (fire-and-forget) | 732,923 | 654,121 | 634,148 |
+| With pipeline behavior | `IPipelineBehavior<>` registered | 845,266 | 710,285 | 919,109 |
 
-> For notifications the validation overhead is absorbed by the async channel dispatch;
+> For notifications, pipeline behavior overhead is absorbed by the async channel dispatch;
 > absolute differences are within normal run-to-run variance.
 
 ---
@@ -202,10 +199,8 @@ are added on top of the core configuration.  All parallel, 10 k ops.
 
 | Add-on | vs. core baseline | Notes |
 |---|---:|---|
-| Self-validation (`IValidatable`) | ≈ 0 % | within variance |
-| Handler validation (`IValidationHandler`) | − 24 % | extra DI service resolution per call |
-| +1 no-op behavior | ≈ 0 % | delegate wrap overhead is minimal |
-| +2 no-op behaviors | ≈ 0 % | within variance |
+| +1 no-op pipeline behavior | ≈ 0 % | delegate wrap overhead is minimal |
+| +2 no-op pipeline behaviors | ≈ 0 % | within variance |
 | Command fan-out ×3 vs ×1 | − 7 % | `Task.WhenAll` allocation |
 | Notification fan-out ×3 vs ×1 | + 57 % | async channel absorbed; variance-driven |
 | Resilience package (request) | − 86 % | retry + timeout + CB evaluated every call |

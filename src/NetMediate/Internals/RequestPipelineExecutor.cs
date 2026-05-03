@@ -11,7 +11,10 @@ namespace NetMediate.Internals;
 internal sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvider serviceProvider)
     where TMessage : notnull
 {
-    public Task<TResponse> Handle(TMessage message, HandlerExecutionDelegate<IRequestHandler<TMessage, TResponse>, TMessage, Task<TResponse>> exec, CancellationToken cancellationToken)
+    public Task<TResponse> Handle(
+        TMessage message,
+        HandlerExecutionDelegate<IRequestHandler<TMessage, TResponse>, TMessage, Task<TResponse>> exec,
+        CancellationToken cancellationToken)
     {
         var handlers = serviceProvider.GetHandlers<IRequestHandler<TMessage, TResponse>, TMessage, Task<TResponse>>();
 

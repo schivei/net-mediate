@@ -11,7 +11,10 @@ namespace NetMediate.Internals;
 internal sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvider serviceProvider)
     where TMessage : notnull
 {
-    public IAsyncEnumerable<TResponse> Handle(TMessage message, HandlerExecutionDelegate<IStreamHandler<TMessage, TResponse>, TMessage, IAsyncEnumerable<TResponse>> exec, CancellationToken cancellationToken)
+    public IAsyncEnumerable<TResponse> Handle(
+        TMessage message,
+        HandlerExecutionDelegate<IStreamHandler<TMessage, TResponse>, TMessage, IAsyncEnumerable<TResponse>> exec,
+        CancellationToken cancellationToken)
     {
         var handlers = serviceProvider.GetHandlers<IStreamHandler<TMessage, TResponse>, TMessage, IAsyncEnumerable<TResponse>>();
 

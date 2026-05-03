@@ -110,12 +110,15 @@ using Microsoft.Extensions.Hosting;
 using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
-builder.Services.AddNetMediate();
+builder.Services.AddNetMediate(configure =>
+{
+    configure.RegisterHandler<INotificationHandler<UserCreated>, UserCreatedHandler, UserCreated, Task>();
+});
 
-// 3. Define a notification (must implement INotification)
-public record UserCreated(string UserId, string Email) : INotification;
+// 3. Define a notification (no marker interface required)
+public record UserCreated(string UserId, string Email);
 
-// 4. Create a handler (Handle returns Task, not Task)
+// 4. Create a handler (Handle returns Task)
 public class UserCreatedHandler : INotificationHandler<UserCreated>
 {
     public Task Handle(UserCreated notification, CancellationToken cancellationToken = default)
@@ -147,11 +150,16 @@ using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
 
-// Register NetMediate and scan all loaded assemblies for handlers
-builder.Services.AddNetMediate();
+// Register NetMediate and explicitly register all handlers
+builder.Services.AddNetMediate(configure =>
+{
+    configure.RegisterHandler<INotificationHandler<MyNotification>, MyNotificationHandler, MyNotification, Task>();
+    configure.RegisterHandler<ICommandHandler<MyCommand>, MyCommandHandler, MyCommand, Task>();
+    configure.RegisterHandler<IRequestHandler<MyRequest, MyResponse>, MyRequestHandler, MyRequest, Task<MyResponse>>();
+});
 
-// Or scan specific assemblies
-builder.Services.AddNetMediate(typeof(MyHandler).Assembly);
+// Or use the source generator to auto-generate registrations (recommended for AOT)
+// Install NetMediate.SourceGeneration and use: builder.Services.AddNetMediateGenerated();
 
 var host = builder.Build();
 var mediator = host.Services.GetRequiredService<IMediator>();
@@ -163,8 +171,8 @@ Notifications are written to an in-memory channel and dispatched by a background
 
 #### Define a Notification Message
 ```csharp
-// Must implement INotification
-public record UserRegistered(string UserId, string Email, DateTime RegisteredAt) : INotification;
+// No marker interface required — any plain class or record works
+public record UserRegistered(string UserId, string Email, DateTime RegisteredAt);
 ```
 
 #### Create Notification Handlers
@@ -223,8 +231,8 @@ Commands are dispatched to **all** registered handlers in parallel (`Task.WhenAl
 
 #### Define a Command
 ```csharp
-// Must implement ICommand
-public record CreateUserCommand(string Email, string FirstName, string LastName) : ICommand;
+// No marker interface required — any plain class or record works
+public record CreateUserCommand(string Email, string FirstName, string LastName);
 ```
 
 #### Create a Command Handler
@@ -241,7 +249,7 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
         _userRepository = userRepository;
     }
 
-    // Handle must return Task, not Task
+    // Handle must return Task
     public async Task Handle(CreateUserCommand command, CancellationToken cancellationToken = default)
     {
         var user = new User
@@ -268,8 +276,8 @@ Requests are sent to a handler and return a response.
 
 #### Define a Request and Response
 ```csharp
-// Must implement IRequest<TResponse>
-public record GetUserQuery(string UserId) : IRequest<UserDto>;
+// No marker interface required
+public record GetUserQuery(string UserId);
 public record UserDto(string Id, string Email, string FirstName, string LastName);
 ```
 
@@ -284,7 +292,7 @@ public class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserDto>
         _userRepository = userRepository;
     }
 
-    // Handle must return Task<TResponse>, not Task<TResponse>
+    // Handle must return Task<TResponse>
     public async Task<UserDto> Handle(GetUserQuery query, CancellationToken cancellationToken = default)
     {
         var user = await _userRepository.GetByIdAsync(query.UserId, cancellationToken);
@@ -306,8 +314,8 @@ Streams allow handlers to return multiple responses over time.
 
 #### Define a Stream Request
 ```csharp
-// Must implement IStream<TResponse>
-public record GetUserActivityQuery(string UserId, DateTime FromDate) : IStream<ActivityDto>;
+// No marker interface required
+public record GetUserActivityQuery(string UserId, DateTime FromDate);
 public record ActivityDto(string Id, string Action, DateTime Timestamp);
 ```
 
@@ -347,94 +355,48 @@ await foreach (var activity in mediator.RequestStream<GetUserActivityQuery, Acti
 
 ### Validations
 
-NetMediate supports message validation through multiple approaches:
+NetMediate previously supported message validation through `IValidatable` and `IValidationHandler<T>`. These interfaces have been removed in the current version. Validation should now be handled using pipeline behaviors.
 
-#### Self-Validating Messages
+#### Validation via Pipeline Behavior
 ```csharp
-using System.ComponentModel.DataAnnotations;
-
-// Self-validating command: implements both ICommand and IValidatable
-public record CreateUserCommand(string Email, string FirstName, string LastName) : ICommand, IValidatable
+public sealed class ValidationBehavior<TMessage, TResult>(IValidator<TMessage> validator)
+    : IPipelineBehavior<TMessage, TResult>
+    where TMessage : notnull
+    where TResult : notnull
 {
-    public Task<ValidationResult> ValidateAsync()
+    public async TResult Handle(TMessage message, PipelineBehaviorDelegate<TMessage, TResult> next, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(Email))
-            return Task.FromResult(new ValidationResult("Email is required", new[] { nameof(Email) }));
-
-        if (!Email.Contains('@'))
-            return Task.FromResult(new ValidationResult("Invalid email format", new[] { nameof(Email) }));
-
-        if (string.IsNullOrWhiteSpace(FirstName))
-            return Task.FromResult(new ValidationResult("First name is required", new[] { nameof(FirstName) }));
-
-        return Task.FromResult(ValidationResult.Success!);
+        var result = validator.Validate(message);
+        if (!result.IsValid)
+            throw new ValidationException(result.Errors);
+        return await next(message, cancellationToken);
     }
-}
-```
-
-#### External Validation Handlers
-```csharp
-public class CreateUserCommandValidator : IValidationHandler<CreateUserCommand>
-{
-    private readonly IUserRepository _userRepository;
-    
-    public CreateUserCommandValidator(IUserRepository userRepository)
-    {
-        _userRepository = userRepository;
-    }
-    
-    public async Task<ValidationResult> ValidateAsync(
-        CreateUserCommand message, 
-        CancellationToken cancellationToken = default)
-    {
-        var existingUser = await _userRepository.GetByEmailAsync(message.Email, cancellationToken);
-        
-        if (existingUser != null)
-            return new ValidationResult("Email already exists", new[] { nameof(message.Email) });
-            
-        return ValidationResult.Success!;
-    }
-}
-```
-
-#### Validation Exceptions
-When validation fails, NetMediate throws a `MessageValidationException`:
-
-```csharp
-try
-{
-    var command = new CreateUserCommand("", "John", "Doe"); // Invalid email
-    await mediator.Send(command);
-}
-catch (MessageValidationException ex)
-{
-    Console.WriteLine($"Validation failed: {ex.Message}");
 }
 ```
 
 ### Message type summary
 
-NetMediate messages are plain records or classes that implement one of the four marker interfaces. There are no generic self-handler interfaces — the message type and the handler type are always separate.
+NetMediate messages are plain records or classes — **no marker interfaces are required**. The message type and the handler type are always separate.
 
-| Message kind | Marker interface | Handler interface | Dispatch semantics |
-|---|---|---|---|
-| Command | `ICommand` | `ICommandHandler<TMessage>` | All registered handlers, in parallel (`Task.WhenAll`) |
-| Request | `IRequest<TResponse>` | `IRequestHandler<TMessage, TResponse>` | First registered handler only; returns `TResponse` |
-| Notification | `INotification` | `INotificationHandler<TMessage>` | All registered handlers, sequentially, via background worker |
-| Stream | `IStream<TResponse>` | `IStreamHandler<TMessage, TResponse>` | All registered handlers iterated; each yields items |
+| Message kind | Handler interface | Dispatch semantics |
+|---|---|---|
+| Command | `ICommandHandler<TMessage>` | All registered handlers, in parallel (`Task.WhenAll`) |
+| Request | `IRequestHandler<TMessage, TResponse>` | First registered handler only; returns `TResponse` |
+| Notification | `INotificationHandler<TMessage>` | All registered handlers, fire-and-forget background dispatch |
+| Stream | `IStreamHandler<TMessage, TResponse>` | All registered handlers iterated; each yields items |
 
 ```csharp
 // Command — no return value, dispatched to all registered handlers in parallel
-public record DeleteUserCommand(string UserId) : ICommand;
+public record DeleteUserCommand(string UserId);
 
 // Request — single handler, returns a response
-public record GetUserQuery(string UserId) : IRequest<UserDto>;
+public record GetUserQuery(string UserId);
 
-// Notification — dispatched to all registered handlers sequentially (via background worker)
-public record UserDeleted(string UserId) : INotification;
+// Notification — dispatched to all registered handlers (fire-and-forget)
+public record UserDeleted(string UserId);
 
 // Stream — all registered handlers are iterated; each yields results asynchronously
-public record GetRecentEventsQuery(int MaxItems) : IStream<EventDto>;
+public record GetRecentEventsQuery(int MaxItems);
 ```
 
 
@@ -445,34 +407,43 @@ public record GetRecentEventsQuery(int MaxItems) : IStream<EventDto>;
 By default, NetMediate throws `InvalidOperationException` when no handler is registered for a message. To suppress this:
 
 ```csharp
-builder.Services.AddNetMediate(typeof(MyHandler).Assembly)
+builder.Services.AddNetMediate(configure =>
+{
+    // ... register your handlers ...
+})
     .IgnoreUnhandledMessages(ignore: true);
 ```
 
 #### Pipeline Behaviors / Interceptors
 
-Behaviors wrap the handler pipeline. Register them via DI using the appropriate behavior interface:
+Behaviors wrap the handler pipeline. Register them via `IMediatorServiceBuilder.RegisterBehavior<>()` or directly in the DI container using `IPipelineBehavior<TMessage, TResult>`:
 
 ```csharp
-// Open-generic: runs for every request type
-builder.Services.AddSingleton(typeof(IRequestBehavior<,>), typeof(AuditRequestBehavior<,>));
+// Open-generic: runs for every request type (register via DI)
+builder.Services.AddSingleton(typeof(IPipelineRequestBehavior<,>), typeof(AuditRequestBehavior<,>));
 
-// Closed-generic: runs only for a specific message type
-builder.Services.AddSingleton<ICommandBehavior<CreateUserCommand>, ValidationCommandBehavior>();
+// Notification-specific: runs for every notification pipeline
+builder.Services.AddSingleton(typeof(IPipelineBehavior<>), typeof(LogNotificationBehavior<>));
+
+// Closed-generic via builder: runs only for a specific message type
+builder.Services.AddNetMediate(configure =>
+{
+    configure.RegisterBehavior<ValidationCommandBehavior, CreateUserCommand, Task>();
+});
 ```
 
 Example behavior — audit timing for requests:
 
 ```csharp
 public sealed class AuditRequestBehavior<TMessage, TResponse>
-    : IRequestBehavior<TMessage, TResponse>
-    where TMessage : notnull, IRequest<TResponse>
+    : IPipelineRequestBehavior<TMessage, TResponse>
+    where TMessage : notnull
 {
     // Handle returns Task<TResponse>; next delegate accepts (message, cancellationToken)
     public async Task<TResponse> Handle(
         TMessage message,
-        RequestHandlerDelegate<TMessage, TResponse> next,
-        CancellationToken cancellationToken = default)
+        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        CancellationToken cancellationToken)
     {
         var startedAt = DateTimeOffset.UtcNow;
         var response = await next(message, cancellationToken);
@@ -486,18 +457,19 @@ Example notification behavior:
 
 ```csharp
 public sealed class LogNotificationBehavior<TMessage>
-    : INotificationBehavior<TMessage>
-    where TMessage : notnull, INotification
+    : IPipelineBehavior<TMessage>
+    where TMessage : notnull
 {
     public async Task Handle(
         TMessage message,
-        NotificationHandlerDelegate<TMessage> next,
-        CancellationToken cancellationToken = default)
+        PipelineBehaviorDelegate<TMessage, Task> next,
+        CancellationToken cancellationToken)
     {
         Console.WriteLine($"Dispatching {typeof(TMessage).Name}");
         await next(message, cancellationToken);
         Console.WriteLine($"Dispatched {typeof(TMessage).Name}");
     }
+}
 }
 ```
 

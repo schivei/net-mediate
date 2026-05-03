@@ -15,65 +15,91 @@ dotnet add package NetMediate
 ```csharp
 using NetMediate;
 
-builder.Services.AddNetMediate(typeof(MyHandler).Assembly);
+// Register handlers explicitly (required — no assembly scanning)
+builder.Services.AddNetMediate(configure =>
+{
+    configure.RegisterHandler<ICommandHandler<CreateUserCommand>, CreateUserCommandHandler, CreateUserCommand, Task>();
+    configure.RegisterHandler<IRequestHandler<GetUserRequest, UserDto>, GetUserRequestHandler, GetUserRequest, Task<UserDto>>();
+    configure.RegisterHandler<INotificationHandler<UserCreatedNotification>, UserCreatedNotificationHandler, UserCreatedNotification, Task>();
+    configure.RegisterHandler<IStreamHandler<GetEventsQuery, EventDto>, GetEventsQueryHandler, GetEventsQuery, IAsyncEnumerable<EventDto>>();
+});
+
+// Or use the source generator (recommended for AOT — install NetMediate.SourceGeneration)
+builder.Services.AddNetMediateGenerated();
 ```
 
 ### Usage
 
 ```csharp
-// ICommand: dispatched to all registered handlers in parallel, no return value
+// Command: dispatched to all registered handlers in parallel, no return value
 await mediator.Send(new CreateUserCommand("user-1"), cancellationToken);
 
-// IRequest<TResponse>: single handler, returns a response
+// Request: single handler, returns a response
 var dto = await mediator.Request<GetUserRequest, UserDto>(new GetUserRequest("user-1"), cancellationToken);
 
-// INotification: dispatched to all registered handlers sequentially via background worker
+// Notification: fire-and-forget dispatch to all registered handlers
 await mediator.Notify(new UserCreatedNotification("user-1"), cancellationToken);
 
-// IStream<TResponse>: all registered handlers iterated; each yields items asynchronously
+// Stream: all registered handlers iterated; each yields items asynchronously
 await foreach (var item in mediator.RequestStream<GetEventsQuery, EventDto>(new GetEventsQuery(), cancellationToken))
     Console.WriteLine(item);
 ```
 
+### Message types
+
+No marker interfaces are required. Any plain class or record can be a message:
+
+```csharp
+public record CreateUserCommand(string Email);        // command
+public record GetUserRequest(string UserId);          // request
+public record UserCreatedNotification(string UserId); // notification
+public record GetEventsQuery(int MaxItems);           // stream request
+```
+
 ### Handler return types and dispatch semantics
 
-All handler methods return `ValueTask` (not `Task`):
+All handler `Handle` methods return `Task` or `Task<TResponse>`:
 
 | Interface | `Handle` return type | Dispatch semantics |
 |---|---|---|
-| `ICommandHandler<TMessage>` | `ValueTask` | All registered handlers, in parallel (`Task.WhenAll`) |
-| `IRequestHandler<TMessage, TResponse>` | `ValueTask<TResponse>` | First registered handler only |
-| `INotificationHandler<TMessage>` | `ValueTask` | All registered handlers, sequentially, via background worker |
+| `ICommandHandler<TMessage>` | `Task` | All registered handlers, in parallel (`Task.WhenAll`) |
+| `IRequestHandler<TMessage, TResponse>` | `Task<TResponse>` | First registered handler only |
+| `INotificationHandler<TMessage>` | `Task` | All registered handlers, fire-and-forget background dispatch |
 | `IStreamHandler<TMessage, TResponse>` | `IAsyncEnumerable<TResponse>` | All registered handlers iterated; results aggregated |
 
 ## 2) Pipeline behaviors
 
 ### Configuration
 
-Register behavior implementations in DI:
+Register behavior implementations using the builder or directly in DI:
 
 ```csharp
-services.AddSingleton(typeof(IRequestBehavior<,>), typeof(MyRequestBehavior<,>));
-services.AddSingleton(typeof(ICommandBehavior<>), typeof(MyCommandBehavior<>));
-services.AddSingleton(typeof(INotificationBehavior<>), typeof(MyNotificationBehavior<>));
-services.AddSingleton(typeof(IStreamBehavior<,>), typeof(MyStreamBehavior<,>));
+// Via builder (closed-type, fully AOT-safe)
+builder.Services.AddNetMediate(configure =>
+{
+    configure.RegisterBehavior<AuditRequestBehavior<MyRequest, MyResponse>, MyRequest, Task<MyResponse>>();
+});
+
+// Via open-generic DI (requires JIT; not recommended for AOT)
+services.AddSingleton(typeof(IPipelineRequestBehavior<,>), typeof(AuditRequestBehavior<,>));
+services.AddSingleton(typeof(IPipelineBehavior<>), typeof(LogNotificationBehavior<>));
 ```
 
 ### Usage
 
 Behaviors are executed in registration order (outer-to-inner for pre, inner-to-outer for post).
 
-The `next` delegate always accepts `(message, cancellationToken)`:
+The `next` delegate accepts `(message, cancellationToken)`:
 
 ```csharp
-public sealed class MyRequestBehavior<TMessage, TResponse>
-    : IRequestBehavior<TMessage, TResponse>
-    where TMessage : notnull, IRequest<TResponse>
+public sealed class AuditRequestBehavior<TMessage, TResponse>
+    : IPipelineRequestBehavior<TMessage, TResponse>
+    where TMessage : notnull
 {
-    public async ValueTask<TResponse> Handle(
+    public async Task<TResponse> Handle(
         TMessage message,
-        RequestHandlerDelegate<TMessage, TResponse> next,
-        CancellationToken cancellationToken = default)
+        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        CancellationToken cancellationToken)
     {
         // pre-processing
         var result = await next(message, cancellationToken);
@@ -98,40 +124,30 @@ using NetMediate.Resilience;
 
 builder.Services.AddNetMediateResilience(
     configureRetry: retry => retry.MaxRetryCount = 2,
-    configureTimeout: timeout => timeout.RequestTimeout = TimeSpan.FromSeconds(2),
-    configureCircuitBreaker: breaker => breaker.FailureThreshold = 5
+    configureTimeout: timeout => timeout.RequestTimeout = TimeSpan.FromSeconds(30),
+    configureCircuitBreaker: cb => cb.FailureThreshold = 5
 );
 ```
 
-### Usage
-
-Resilience behavior is applied transparently through mediator pipeline execution.
-
-## 4) Quartz integration package (`NetMediate.Quartz`)
+## 4) Source generation (`NetMediate.SourceGeneration`)
 
 ### Installation
 
 ```bash
-dotnet add package NetMediate.Quartz
-dotnet add package Quartz.Extensions.DependencyInjection
-dotnet add package Quartz.Extensions.Hosting
-```
-
-### Configuration
-
-```csharp
-using NetMediate.Quartz;
-
-builder.Services.AddQuartz(q => q.UseMicrosoftDependencyInjectionJobFactory());
-builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
-builder.Services.AddNetMediateQuartz(opts => opts.GroupName = "MyApp");
+dotnet add package NetMediate.SourceGeneration
 ```
 
 ### Usage
 
-Notifications are scheduled as Quartz jobs before dispatch. Use a persistent `AdoJobStore` for crash recovery. See [QUARTZ.md](QUARTZ.md).
+Add the package and the source generator automatically produces `AddNetMediateGenerated()`:
 
-## 5) Adapters package (`NetMediate.Adapters`)
+```csharp
+builder.Services.AddNetMediateGenerated();
+```
+
+The generator scans your assembly for all `ICommandHandler<>`, `IRequestHandler<,>`, `INotificationHandler<>`, and `IStreamHandler<,>` implementations and emits strongly-typed `RegisterHandler<>` calls — no reflection, fully AOT-compatible.
+
+## 5) Adapters (`NetMediate.Adapters`)
 
 ### Installation
 
@@ -144,48 +160,28 @@ dotnet add package NetMediate.Adapters
 ```csharp
 using NetMediate.Adapters;
 
-builder.Services.AddNetMediate(typeof(MyHandler).Assembly);
-builder.Services.AddNetMediateAdapters(opts => opts.ThrowOnAdapterFailure = false);
-builder.Services.AddNotificationAdapter<OrderPlaced, ServiceBusOrderAdapter>();
+builder.Services.AddNetMediateAdapters();
+// Register adapters:
+builder.Services.AddSingleton<INotificationAdapter<UserCreatedNotification>, UserCreatedKafkaAdapter>();
 ```
 
-### Usage
-
-Implement `INotificationAdapter<TMessage>` to forward notifications to external systems. See [ADAPTERS.md](ADAPTERS.md).
-
-## 6) Source generation package (`NetMediate.SourceGeneration`)
+## 6) Quartz (`NetMediate.Quartz`)
 
 ### Installation
 
 ```bash
-dotnet add package NetMediate.SourceGeneration
+dotnet add package NetMediate.Quartz
 ```
 
 ### Configuration
 
 ```csharp
-builder.Services.AddNetMediateGenerated();
+using NetMediate.Quartz;
+
+builder.Services.AddNetMediateQuartz();
 ```
 
-### Usage
-
-Generated registration removes reflection scanning cost at startup for discovered handlers.
-
-## 7) DataDog integration packages
-
-### Installation
-
-```bash
-dotnet add package NetMediate.DataDog.OpenTelemetry
-dotnet add package NetMediate.DataDog.Serilog
-dotnet add package NetMediate.DataDog.ILogger
-```
-
-### Configuration and usage
-
-See complete guide in [DATADOG.md](DATADOG.md).
-
-## 8) Moq helpers package (`NetMediate.Moq`)
+## 7) Moq (`NetMediate.Moq`)
 
 ### Installation
 
@@ -195,5 +191,7 @@ dotnet add package NetMediate.Moq
 
 ### Usage
 
-Use helper extensions for concise test setup. See [NETMEDIATE_MOQ_RECIPES.md](NETMEDIATE_MOQ_RECIPES.md).
-
+```csharp
+var mediator = new MoqMediator(serviceProvider);
+// Stub, verify, and spy on mediator calls in unit tests.
+```

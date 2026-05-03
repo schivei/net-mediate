@@ -1,16 +1,16 @@
 # AOT / Trimming Support
 
-This document describes how to use NetMediate in NativeAOT-compiled and trimmed applications.
+NetMediate is designed to be fully compatible with NativeAOT-compiled and trimmed applications.
 
 ## Summary
 
-NetMediate supports two handler-registration paths. Only one of them is compatible with NativeAOT and trimming.
+NetMediate does **not** perform assembly scanning. All handler types must be registered explicitly, either manually via `IMediatorServiceBuilder` or automatically via the source generator.
 
-| Path | Compatible with NativeAOT / trimming | Notes |
+| Path | AOT / Trim compatible | Notes |
 |---|---|---|
-| Assembly scanning (`AddNetMediate()`, `AddNetMediate(assemblies)`) | ❌ No | Annotated with `[RequiresUnreferencedCode]` and `[RequiresDynamicCode]` |
-| Explicit registration (`AddNetMediate(configure)`, `AddNetMediateGenerated()`) | ✅ Yes | All handler types are registered explicitly at compile time |
-| `MediatorExtensions.Request<TResponse>()` / `RequestStream<TResponse>()` | ❌ No | Use the two-generic-argument overloads instead |
+| Explicit registration (`AddNetMediate(configure)`) | ✅ Yes | All handler types registered explicitly |
+| Source generation (`AddNetMediateGenerated()`) | ✅ Yes | Generated at compile time — no reflection |
+| Open-generic behaviors (`IPipelineBehavior<,>`, `IPipelineRequestBehavior<,>`) | ⚠️ Partial | Open-generic registration relies on the DI container's own reflection; use `RegisterBehavior<>` on the builder for full AOT safety |
 
 ## AOT-compatible setup
 
@@ -31,62 +31,32 @@ builder.Services.AddNetMediateGenerated();
 ```
 
 The source generator discovers handler types in your project and generates an `AddNetMediateGenerated()` extension
-method that registers them explicitly, bypassing all reflection-based scanning.
+method that registers them explicitly using `RegisterHandler<>` calls — fully AOT-safe.
 
-### Option 2: Manual explicit registration via `AddNetMediate(Action<IMediatorServiceBuilder>)`
+### Option 2: Manual explicit registration
 
 ```csharp
-builder.Services.AddNetMediate(mediator =>
+builder.Services.AddNetMediate(configure =>
 {
-    // Register each handler type directly — fully AOT-safe
-    mediator.Services.AddSingleton<ICommandHandler<CreateUserCommand>, CreateUserCommandHandler>();
-    mediator.Services.AddSingleton<INotificationHandler<UserCreated>, UserCreatedHandler>();
-    mediator.Services.AddSingleton<IRequestHandler<GetUserQuery, UserDto>, GetUserQueryHandler>();
+    configure.RegisterHandler<ICommandHandler<CreateUserCommand>, CreateUserCommandHandler, CreateUserCommand, Task>();
+    configure.RegisterHandler<INotificationHandler<UserCreated>, UserCreatedHandler, UserCreated, Task>();
+    configure.RegisterHandler<IRequestHandler<GetUserQuery, UserDto>, GetUserQueryHandler, GetUserQuery, Task<UserDto>>();
+    configure.RegisterHandler<IStreamHandler<GetEventsQuery, EventDto>, GetEventsQueryHandler, GetEventsQuery, IAsyncEnumerable<EventDto>>();
 });
 ```
 
-This overload creates the mediator infrastructure without any assembly scanning.
-Every handler type you register inside the callback is added to DI explicitly, which is fully safe for trimming and NativeAOT.
-
-### Prefer explicit generic dispatch overloads
-
-The `MediatorExtensions.Request<TResponse>` and `MediatorExtensions.RequestStream<TResponse>` helper methods
-use `MethodInfo.MakeGenericMethod` at runtime and are not compatible with NativeAOT. Use the two-argument
-overloads on `IMediator` directly:
+### Option 3: Register behaviors explicitly (fully AOT-safe)
 
 ```csharp
-// GetUserQuery implements IRequest<UserDto>: public record GetUserQuery(string Id) : IRequest<UserDto>;
-
-// ❌ Not AOT-safe — Request<TResponse>(IRequest<TResponse>) uses MakeGenericMethod internally
-var dto = await mediator.Request(new GetUserQuery("id"), cancellationToken);
-
-// ✅ AOT-safe — both type arguments are explicit; no reflection required
-var dto = await mediator.Request<GetUserQuery, UserDto>(new GetUserQuery("id"), cancellationToken);
+builder.Services.AddNetMediate(configure =>
+{
+    configure.RegisterBehavior<AuditBehavior<MyRequest, MyResponse>, MyRequest, Task<MyResponse>>();
+    // ...
+});
 ```
 
-## Trimming in publish profiles
+## AOT-unsafe patterns to avoid
 
-When publishing with `dotnet publish --self-contained -r <rid>`, add trim options to your project file:
-
-```xml
-<PropertyGroup>
-  <PublishTrimmed>true</PublishTrimmed>
-  <TrimmerRootAssembly Include="YourApp" />
-</PropertyGroup>
-```
-
-When the assembly-scanning overloads are called from code with trimming enabled, the .NET trimmer emits
-`IL2026`/`IL3050` warnings because the overloads are marked with `[RequiresUnreferencedCode]` /
-`[RequiresDynamicCode]`. Switch to the AOT-compatible registration paths above to eliminate these warnings.
-
-## `NetMediate.Quartz` and NativeAOT
-
-`QuartzNotificationJob` uses `MethodInfo.MakeGenericMethod` internally to dispatch notifications by runtime type.
-It is marked `[RequiresDynamicCode]` and `[RequiresUnreferencedCode]`. If you need NativeAOT for the host running
-Quartz-backed notifications, file an issue to discuss a code-generated dispatch path.
-
-## `NetMediate.Adapters` and NativeAOT
-
-`NetMediate.Adapters` registers adapter pipeline behaviors through standard DI generic registrations and does not
-use reflection-based scanning. It is fully compatible with NativeAOT when adapter implementations and message
-types are registered explicitly.
+- Registering behaviors as open-generic service types (`typeof(IPipelineBehavior<,>)`) — relies on DI's internal reflection
+- Calling `MakeGenericType` at runtime — not supported by NativeAOT
+- Using `Type.GetGenericArguments()` to construct service types at runtime

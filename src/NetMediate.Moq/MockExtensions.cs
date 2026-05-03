@@ -39,5 +39,5 @@ public static class MockExtensions
     public static global::Moq.Language.Flow.IReturnsResult<TMock> ReturnsTask<TMock, TResult>(
         this global::Moq.Language.Flow.ISetup<TMock, Task<TResult>> setup,
         TResult value
-    ) where TMock : class => setup.Returns(new Task<TResult>(value));
+    ) where TMock : class => setup.ReturnsTaskResult(value);
 }

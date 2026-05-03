@@ -68,7 +68,7 @@ public sealed class NotificationAdapterBehavior<TMessage>(
         CancellationToken cancellationToken)
     {
         var tasks = adapters
-            .Select(a => InvokeAdapterAsync(a, envelope, cancellationToken).AsTask());
+            .Select(a => InvokeAdapterAsync(a, envelope, cancellationToken));
 
         await Task.WhenAll(tasks).ConfigureAwait(false);
     }

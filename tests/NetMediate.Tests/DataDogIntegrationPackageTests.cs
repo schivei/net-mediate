@@ -64,6 +64,44 @@ public sealed class DataDogIntegrationPackageTests
     }
 
     [Fact]
+    public void SerilogPackage_ShouldConfigureSink_WhenEnabledWithValidApiKey()
+    {
+        // Exercises the WriteTo.DatadogLogs(...) branch (lines inside EnableSink=true path).
+        // The sink is only configured — no network connection is made during construction.
+        var options = new DataDogSerilogOptions
+        {
+            ApiKey  = "test-api-key",
+            Source  = "csharp",
+            Service = "netmediate-tests",
+            Host    = "localhost",
+            Tags    = ["env:test"],
+            EnableSink = true,
+        };
+
+        // Read back all option properties to ensure coverage of the options type.
+        Assert.Equal("test-api-key", options.ApiKey);
+        Assert.Equal("csharp", options.Source);
+        Assert.Equal("netmediate-tests", options.Service);
+        Assert.Equal("localhost", options.Host);
+        Assert.Equal("env:test", options.Tags[0]);
+
+        var loggerConfig = new LoggerConfiguration()
+            .UseNetMediateDataDogSerilog(opts =>
+            {
+                opts.ApiKey     = options.ApiKey;
+                opts.Source     = options.Source;
+                opts.Service    = options.Service;
+                opts.Host       = options.Host;
+                opts.Tags       = options.Tags;
+                opts.EnableSink = true;
+            }, TestContext.Current.CancellationToken);
+
+        // CreateLogger() triggers the full Serilog pipeline build.
+        using var logger = loggerConfig.CreateLogger();
+        Assert.NotNull(logger);
+    }
+
+    [Fact]
     public void ILoggerPackage_ShouldRegisterOptionsAndCreateScope()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -83,5 +121,27 @@ public sealed class DataDogIntegrationPackageTests
         using var scope = logger.BeginNetMediateDataDogScope(options, cancellationToken);
         Assert.NotNull(scope);
         Assert.Equal("netmediate-tests", options.Service);
+    }
+
+    [Fact]
+    public void ILoggerPackage_BeginScope_ShouldReturnNoopScope_WhenLoggerReturnsNull()
+    {
+        // Uses a custom ILogger whose BeginScope returns null to exercise the
+        // NoopScope.Instance fallback path in BeginNetMediateDataDogScope.
+        var nullScopeLogger = new NullScopeLogger();
+        var opts = new DataDogILoggerOptions { Service = "test", Environment = "ci", Version = "0" };
+
+        using var scope = nullScopeLogger.BeginNetMediateDataDogScope(opts, TestContext.Current.CancellationToken);
+        // NoopScope.Dispose must not throw.
+        Assert.NotNull(scope);
+    }
+
+    /// <summary>Logger that returns <see langword="null"/> from BeginScope, forcing NoopScope.</summary>
+    private sealed class NullScopeLogger : Microsoft.Extensions.Logging.ILogger
+    {
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => false;
+        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+            Func<TState, Exception?, string> formatter) { }
     }
 }

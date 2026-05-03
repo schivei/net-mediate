@@ -1,4 +1,4 @@
-using System.Text;
+using System.IO;
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -8,6 +8,14 @@ namespace NetMediate.SourceGeneration;
 [Generator]
 public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 {
+    // Placeholder tokens that are substituted into the embedded code template.
+    private const string NotifierToken = "{{Notifier}}";
+    private const string RegistrationsToken = "{{Registrations}}";
+
+    // Resolved once; format: <RootNamespace>.<FileName>
+    private static readonly string TemplateResourceName =
+        $"{typeof(NetMediateRegistrationGenerator).Namespace}.NetMediateGeneratedDI.template";
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var handlerTypes = context
@@ -48,7 +56,8 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         );
     }
 
-    private static (IEnumerable<string> registrations, string notifier) BuildRegistrations(ImmutableArray<INamedTypeSymbol> types)
+    private static (IEnumerable<string> registrations, string notifier) BuildRegistrations(
+        ImmutableArray<INamedTypeSymbol> types)
     {
         var registrations = new HashSet<string>(StringComparer.Ordinal);
         var notifier = "AddNetMediate";
@@ -63,93 +72,110 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 if (definition.ContainingNamespace.ToDisplayString() != "NetMediate")
                     continue;
 
-                var definitionName = definition.Name;
-                var definitionArity = definition.Arity;
+                var name = definition.Name;
+                var arity = definition.Arity;
                 var args = @interface.TypeArguments;
 
-                if (definitionName == "ICommandHandler" && definitionArity == 1 && args.Length == 1)
-                {
-                    if (!IsAccessible(args[0]))
-                        continue;
-
-                    var msgType = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    registrations.Add(
-                        $"configure.RegisterCommandHandler<{handlerName}, {msgType}>();"
-                    );
-                    continue;
-                }
-
-                if (definitionName == "INotificationHandler" && definitionArity == 1 && args.Length == 1)
-                {
-                    if (!IsAccessible(args[0]))
-                        continue;
-
-                    var msgType = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    registrations.Add(
-                        $"configure.RegisterNotificationHandler<{handlerName}, {msgType}>();"
-                    );
-                    continue;
-                }
-
-                if (definitionName == "IRequestHandler" && definitionArity == 2 && args.Length == 2)
-                {
-                    if (!IsAccessible(args[0]) || !IsAccessible(args[1]))
-                        continue;
-
-                    var msgType = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    var respType = args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    registrations.Add(
-                        $"configure.RegisterRequestHandler<{handlerName}, {msgType}, {respType}>();"
-                    );
-                    continue;
-                }
-
-                if (definitionName == "IStreamHandler" && definitionArity == 2 && args.Length == 2)
-                {
-                    if (!IsAccessible(args[0]) || !IsAccessible(args[1]))
-                        continue;
-
-                    var msgType = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    var respType = args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                    registrations.Add(
-                        $"configure.RegisterStreamHandler<{handlerName}, {msgType}, {respType}>();"
-                    );
-                    continue;
-                }
-
-                if (definitionName == "INotifier" && definitionArity == 0 && args.Length == 0)
+                if (name == "INotifier" && arity == 0)
                 {
                     notifier += $"<{handlerName}>";
+                    continue;
                 }
+
+                var registration = TryBuildHandlerRegistration(name, arity, handlerName, args);
+                if (registration is not null)
+                    registrations.Add(registration);
             }
         }
 
         return (registrations, notifier);
     }
 
+    /// <summary>
+    /// Builds a single handler registration line for 1-arg (command/notification) or
+    /// 2-arg (request/stream) handler interfaces; returns <see langword="null"/> when the
+    /// interface is not a recognised handler or any type argument is inaccessible.
+    /// </summary>
+    private static string? TryBuildHandlerRegistration(
+        string interfaceName,
+        int arity,
+        string handlerName,
+        ImmutableArray<ITypeSymbol> args)
+    {
+        if (arity == 1 && args.Length == 1)
+        {
+            if (!IsAccessible(args[0]))
+                return null;
+
+            var msgType = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            return interfaceName switch
+            {
+                "ICommandHandler" =>
+                    $"configure.RegisterCommandHandler<{handlerName}, {msgType}>();",
+                "INotificationHandler" =>
+                    $"configure.RegisterNotificationHandler<{handlerName}, {msgType}>();",
+                _ => null,
+            };
+        }
+
+        if (arity == 2 && args.Length == 2)
+        {
+            if (!IsAccessible(args[0]) || !IsAccessible(args[1]))
+                return null;
+
+            var msgType  = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var respType = args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            return interfaceName switch
+            {
+                "IRequestHandler" =>
+                    $"configure.RegisterRequestHandler<{handlerName}, {msgType}, {respType}>();",
+                "IStreamHandler" =>
+                    $"configure.RegisterStreamHandler<{handlerName}, {msgType}, {respType}>();",
+                _ => null,
+            };
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Renders the embedded code template, substituting the notifier expression and the
+    /// collected registration lines for their respective placeholder tokens.
+    /// </summary>
     private static string BuildSource(IEnumerable<string> registrations, string notifier)
     {
-        var sb = new StringBuilder();
-        sb.AppendLine("// <auto-generated />");
-        sb.AppendLine("namespace NetMediate;");
-        sb.AppendLine();
-        sb.AppendLine("/// <summary>Generated mediator handler registration extension methods.</summary>");
-        sb.AppendLine("[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]");
-        sb.AppendLine("public static class NetMediateGeneratedDI");
-        sb.AppendLine("{");
-        sb.AppendLine("    /// <summary>Registers all discovered handlers with the mediator using AOT-safe closed-type registration.</summary>");
-        sb.AppendLine("    public static global::NetMediate.IMediatorServiceBuilder AddNetMediateGenerated(this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)");
-        sb.AppendLine("    {");
-        sb.AppendLine($"        return services.{notifier}(configure =>");
-        sb.AppendLine("        {");
+        const string indent = "            "; // 12 spaces – matches the template indentation
+        var registrationsBlock = string.Join(
+            "\n",
+            registrations.Select(r => indent + r)
+        );
 
-        foreach (var registration in registrations)
-            sb.AppendLine($"            {registration}");
+        return LoadTemplate()
+            .Replace(NotifierToken, notifier)
+            .Replace(RegistrationsToken, registrationsBlock);
+    }
 
-        sb.AppendLine("        });");
-        sb.AppendLine("    }");
-        sb.AppendLine("}");
-        return sb.ToString();
+    /// <summary>
+    /// Reads the embedded template file and returns its content as a string.
+    /// Throws <see cref="InvalidOperationException"/> if the resource is missing,
+    /// which would only happen if the project was misconfigured (template file removed).
+    /// </summary>
+    private static string LoadTemplate()
+    {
+        var stream = typeof(NetMediateRegistrationGenerator)
+            .Assembly
+            .GetManifestResourceStream(TemplateResourceName);
+
+        if (stream is null)
+            throw new InvalidOperationException(
+                $"Embedded template resource '{TemplateResourceName}' was not found. " +
+                "Ensure 'NetMediateGeneratedDI.template' is included as an EmbeddedResource " +
+                "in the NetMediate.SourceGeneration project."
+            );
+
+        using (stream)
+        using (var reader = new StreamReader(stream))
+            return reader.ReadToEnd();
     }
 
     private static bool IsAccessible(ITypeSymbol typeSymbol)
@@ -187,3 +213,4 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         return true;
     }
 }
+

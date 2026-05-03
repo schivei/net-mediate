@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NetMediate.Moq;
 
 namespace NetMediate.Tests.MoqSupport;
@@ -40,6 +41,79 @@ public class NetMediateMoqTests
         Assert.Equal("ok-vt", TaskResponse);
     }
 
+    [Fact]
+    public void Mocking_Create_ShouldReturnDefaultBehaviorMock()
+    {
+        var mock = Mocking.Create<ISampleService>();
+        Assert.NotNull(mock);
+        Assert.Equal(global::Moq.MockBehavior.Default, mock.Behavior);
+    }
+
+    [Fact]
+    public void Mocking_Loose_ShouldReturnLooseMock()
+    {
+        var mock = Mocking.Loose<ISampleService>();
+        Assert.NotNull(mock);
+        Assert.Equal(global::Moq.MockBehavior.Loose, mock.Behavior);
+    }
+
+    [Fact]
+    public void AddMockSingleton_WithExistingMock_ShouldRegisterProvidedMock()
+    {
+        var services = new ServiceCollection();
+        var existing = new global::Moq.Mock<ISampleService>();
+        existing.Setup(s => s.Get()).Returns("pre-built");
+
+        var returned = services.AddMockSingleton(existing);
+
+        Assert.Same(existing, returned);
+
+        using var provider = services.BuildServiceProvider();
+        Assert.Equal("pre-built", provider.GetRequiredService<ISampleService>().Get());
+    }
+
+    [Fact]
+    public async Task MoqNotifier_DispatchNotifications_ShouldInvokeAllHandlers()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        using var provider = services.BuildServiceProvider();
+
+        var notifier = new Notifier(provider);
+
+        var h1Called = false;
+        var h2Called = false;
+
+        var h1 = new LambdaNotificationHandler<NotifierTestMessage>(
+            (_, _) => { h1Called = true; return Task.CompletedTask; });
+        var h2 = new LambdaNotificationHandler<NotifierTestMessage>(
+            (_, _) => { h2Called = true; return Task.CompletedTask; });
+
+        await notifier.DispatchNotifications(
+            new NotifierTestMessage(),
+            [h1, h2],
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.True(h1Called);
+        Assert.True(h2Called);
+    }
+
+    [Fact]
+    public void AddMediatorMock_ShouldRegisterMediatorMock()
+    {
+        var services = new ServiceCollection();
+        var mock = services.AddMediatorMock();
+
+        Assert.NotNull(mock);
+
+        using var provider = services.BuildServiceProvider();
+        var resolved = provider.GetRequiredService<IMediator>();
+        Assert.Same(mock.Object, resolved);
+    }
+
+    public sealed record NotifierTestMessage;
+
     public interface ISampleService
     {
         string Get();
@@ -58,4 +132,13 @@ public class NetMediateMoqTests
 
         Task<string> GetTask();
     }
+
+    private sealed class LambdaNotificationHandler<TMessage>(
+        Func<TMessage, CancellationToken, Task> fn
+    ) : INotificationHandler<TMessage> where TMessage : notnull
+    {
+        public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+            fn(message, cancellationToken);
+    }
 }
+

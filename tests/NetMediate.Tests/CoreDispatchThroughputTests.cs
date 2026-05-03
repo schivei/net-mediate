@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -7,14 +8,32 @@ namespace NetMediate.Tests;
 /// <summary>
 /// Measures the raw dispatch throughput (messages per second) of the core mediator for each
 /// message type — command, notification, request, and stream — with no behaviors, no resilience,
-/// and no adapters registered.  Each test dispatches a fixed number of messages sequentially and
-/// emits a <c>CORE_THROUGHPUT &lt;type&gt; msgs_per_second=&lt;n&gt;</c> line to the test output.
+/// and no adapters registered.  Each test dispatches a fixed number of messages sequentially after
+/// a warm-up phase and emits structured output lines that include the execution mode
+/// (<c>execution_mode=jit</c> or <c>execution_mode=nativeaot</c>) so that results from both
+/// runtimes can be compared directly.
 ///
-/// These numbers represent the upper bound of what the core pipeline can deliver on the current
-/// hardware.  Run with <c>NETMEDIATE_RUN_PERFORMANCE_TESTS=true</c> to enable.
+/// <para>
+/// <b>JIT run (standard):</b> <c>NETMEDIATE_RUN_PERFORMANCE_TESTS=true dotnet test</c><br/>
+/// <b>NativeAOT run:</b> publish with <c>-p:PublishAot=true</c> and run the native binary with
+/// the same environment variable set.
+/// </para>
+///
+/// Run with <c>NETMEDIATE_RUN_PERFORMANCE_TESTS=true</c> to enable.
 /// </summary>
 public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
 {
+    // ─────────────────────────────────────────────────────────────────────────
+    // Execution mode detection
+    //
+    // RuntimeFeature.IsDynamicCodeSupported returns false when the process was
+    // compiled with NativeAOT (no JIT, no dynamic IL emission).  All other
+    // runtimes (including Mono, CoreCLR with trimming, and regular JIT) return true.
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private static string ExecutionMode =>
+        RuntimeFeature.IsDynamicCodeSupported ? "jit" : "nativeaot";
+
     // ─────────────────────────────────────────────────────────────────────────
     // Command: IMediator.Send<TMsg>
     // All registered ICommandHandler<TMsg> instances are invoked sequentially.
@@ -29,10 +48,11 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         var mediator = host.Services.GetRequiredService<IMediator>();
         var ct = TestContext.Current.CancellationToken;
         var tfm = AppContext.TargetFrameworkName ?? "unknown";
+        var mode = ExecutionMode;
 
         const int ops = 50_000;
 
-        // warm-up
+        // warm-up: prime DI resolution, JIT compilation, and handler/behavior caches
         for (var i = 0; i < 500; i++)
             await mediator.Send(new CoreCmd(i), ct);
 
@@ -44,13 +64,13 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         var msgsPerSecond = ops / elapsed.TotalSeconds;
 
         output.WriteLine(
-            $"CORE_THROUGHPUT command tfm={tfm} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} msgs_per_second={msgsPerSecond:F0}"
+            $"CORE_THROUGHPUT command tfm={tfm} execution_mode={mode} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} msgs_per_second={msgsPerSecond:F0}"
         );
         output.WriteLine(
-            $"LOAD_RESULT core_command tfm={tfm} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={msgsPerSecond:F2}"
+            $"LOAD_RESULT core_command tfm={tfm} execution_mode={mode} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={msgsPerSecond:F2}"
         );
 
-        Assert.True(msgsPerSecond > 500, $"Core command throughput too low: {msgsPerSecond:F0} msgs/s");
+        Assert.True(msgsPerSecond > 500, $"Core command throughput too low: {msgsPerSecond:F0} msgs/s [{mode}]");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -68,6 +88,7 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         var mediator = host.Services.GetRequiredService<IMediator>();
         var ct = TestContext.Current.CancellationToken;
         var tfm = AppContext.TargetFrameworkName ?? "unknown";
+        var mode = ExecutionMode;
 
         const int ops = 50_000;
 
@@ -83,13 +104,13 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         var msgsPerSecond = ops / elapsed.TotalSeconds;
 
         output.WriteLine(
-            $"CORE_THROUGHPUT notification tfm={tfm} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} msgs_per_second={msgsPerSecond:F0}"
+            $"CORE_THROUGHPUT notification tfm={tfm} execution_mode={mode} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} msgs_per_second={msgsPerSecond:F0}"
         );
         output.WriteLine(
-            $"LOAD_RESULT core_notification tfm={tfm} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={msgsPerSecond:F2}"
+            $"LOAD_RESULT core_notification tfm={tfm} execution_mode={mode} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={msgsPerSecond:F2}"
         );
 
-        Assert.True(msgsPerSecond > 500, $"Core notification throughput too low: {msgsPerSecond:F0} msgs/s");
+        Assert.True(msgsPerSecond > 500, $"Core notification throughput too low: {msgsPerSecond:F0} msgs/s [{mode}]");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -106,6 +127,7 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         var mediator = host.Services.GetRequiredService<IMediator>();
         var ct = TestContext.Current.CancellationToken;
         var tfm = AppContext.TargetFrameworkName ?? "unknown";
+        var mode = ExecutionMode;
 
         const int ops = 50_000;
 
@@ -121,13 +143,13 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         var msgsPerSecond = ops / elapsed.TotalSeconds;
 
         output.WriteLine(
-            $"CORE_THROUGHPUT request tfm={tfm} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} msgs_per_second={msgsPerSecond:F0}"
+            $"CORE_THROUGHPUT request tfm={tfm} execution_mode={mode} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} msgs_per_second={msgsPerSecond:F0}"
         );
         output.WriteLine(
-            $"LOAD_RESULT core_request tfm={tfm} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={msgsPerSecond:F2}"
+            $"LOAD_RESULT core_request tfm={tfm} execution_mode={mode} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={msgsPerSecond:F2}"
         );
 
-        Assert.True(msgsPerSecond > 500, $"Core request throughput too low: {msgsPerSecond:F0} msgs/s");
+        Assert.True(msgsPerSecond > 500, $"Core request throughput too low: {msgsPerSecond:F0} msgs/s [{mode}]");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -145,6 +167,7 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         var mediator = host.Services.GetRequiredService<IMediator>();
         var ct = TestContext.Current.CancellationToken;
         var tfm = AppContext.TargetFrameworkName ?? "unknown";
+        var mode = ExecutionMode;
 
         const int ops = 10_000;
 
@@ -160,13 +183,13 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         var msgsPerSecond = ops / elapsed.TotalSeconds;
 
         output.WriteLine(
-            $"CORE_THROUGHPUT stream tfm={tfm} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} msgs_per_second={msgsPerSecond:F0}"
+            $"CORE_THROUGHPUT stream tfm={tfm} execution_mode={mode} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} msgs_per_second={msgsPerSecond:F0}"
         );
         output.WriteLine(
-            $"LOAD_RESULT core_stream tfm={tfm} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={msgsPerSecond:F2}"
+            $"LOAD_RESULT core_stream tfm={tfm} execution_mode={mode} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={msgsPerSecond:F2}"
         );
 
-        Assert.True(msgsPerSecond > 500, $"Core stream throughput too low: {msgsPerSecond:F0} msgs/s");
+        Assert.True(msgsPerSecond > 500, $"Core stream throughput too low: {msgsPerSecond:F0} msgs/s [{mode}]");
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -233,7 +256,7 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
     {
         public async IAsyncEnumerable<int> Handle(
             CoreStream request,
-            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             for (var i = 0; i < 3; i++)
             {

@@ -38,8 +38,18 @@ internal class Notifier(IServiceProvider serviceProvider, ILogger<Notifier> logg
     public Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
     {
         // Fire-and-forget each notification individually — no Task.WhenAll overhead.
+        // Wrap each call so that synchronous exceptions from the pipeline do not halt the loop.
         foreach (var message in messages)
-            _ = Notify(message, cancellationToken);
+        {
+            try
+            {
+                _ = Notify(message, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "{Message}", ex.Message);
+            }
+        }
 
         return Task.CompletedTask;
     }

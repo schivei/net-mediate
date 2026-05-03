@@ -96,19 +96,17 @@ dotnet add package NetMediate
 Here's a minimal example to get you started with NetMediate:
 
 ```csharp
-// 1. Install the package
+// 1. Install the packages
 // dotnet add package NetMediate
+// dotnet add package NetMediate.SourceGeneration  (as analyzer — see Installation)
 
-// 2. Register services
+// 2. Register services — source generator discovers all handlers automatically
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
-builder.Services.AddNetMediate(configure =>
-{
-    configure.RegisterNotificationHandler<UserCreatedHandler, UserCreated>();
-});
+builder.Services.AddNetMediateGenerated(); // all handlers in your project are registered here
 
 // 3. Define a notification (no marker interface required)
 public record UserCreated(string UserId, string Email);
@@ -136,7 +134,7 @@ For more detailed examples, see the [Usage Examples](#usage-examples) section be
 
 ### Basic Setup
 
-First, register NetMediate services in your dependency injection container:
+Register NetMediate services using the source generator:
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
@@ -145,16 +143,9 @@ using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
 
-// Register NetMediate and explicitly register all handlers
-builder.Services.AddNetMediate(configure =>
-{
-    configure.RegisterNotificationHandler<MyNotificationHandler, MyNotification>();
-    configure.RegisterCommandHandler<MyCommandHandler, MyCommand>();
-    configure.RegisterRequestHandler<MyRequestHandler, MyRequest, MyResponse>();
-});
-
-// Or use the source generator to auto-generate registrations (recommended for AOT)
-// Install NetMediate.SourceGeneration and use: builder.Services.AddNetMediateGenerated();
+// Source generation automatically discovers and registers all handlers at compile time.
+// Install NetMediate.SourceGeneration as an analyzer and call:
+builder.Services.AddNetMediateGenerated();
 
 var host = builder.Build();
 var mediator = host.Services.GetRequiredService<IMediator>();

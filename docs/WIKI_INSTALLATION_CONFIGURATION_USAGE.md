@@ -12,21 +12,14 @@ dotnet add package NetMediate
 
 ### Configuration
 
-All `AddNetMediate` overloads return an `IMediatorServiceBuilder`. Handler registration is always explicit — there is no assembly scanning.
+Handler registration is done automatically at compile time via the source generator. Install `NetMediate.SourceGeneration` as an analyzer and call the generated method:
 
 ```csharp
 using NetMediate;
 
-// Explicit registration (AOT-safe)
-builder.Services.AddNetMediate(configure =>
-{
-    configure.RegisterCommandHandler<CreateUserCommandHandler, CreateUserCommand>();
-    configure.RegisterRequestHandler<GetUserRequestHandler, GetUserRequest, UserDto>();
-    configure.RegisterNotificationHandler<UserCreatedNotificationHandler, UserCreatedNotification>();
-    configure.RegisterStreamHandler<GetEventsQueryHandler, GetEventsQuery, EventDto>();
-});
-
-// Or use the source generator (recommended for AOT)
+// Source generation discovers all ICommandHandler<>, IRequestHandler<,>,
+// INotificationHandler<>, and IStreamHandler<,> implementations in your project
+// and generates closed-type AOT-safe registrations automatically.
 builder.Services.AddNetMediateGenerated();
 ```
 

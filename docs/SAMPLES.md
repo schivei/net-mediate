@@ -3,12 +3,10 @@
 ## API sample
 
 ```csharp
+// Handlers (CreateOrderHandler, OrderCreatedEventHandler) are discovered
+// and registered automatically by the source generator.
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddNetMediate(configure =>
-{
-    configure.RegisterRequestHandler<CreateOrderHandler, CreateOrder, OrderCreated>();
-    configure.RegisterNotificationHandler<OrderCreatedEventHandler, OrderCreated>();
-});
+builder.Services.AddNetMediateGenerated();
 
 var app = builder.Build();
 app.MapPost("/orders", async (IMediator mediator, CreateOrder command, CancellationToken ct) =>
@@ -23,11 +21,9 @@ app.Run();
 ## Worker sample
 
 ```csharp
+// SyncCommandHandler is discovered and registered automatically by the source generator.
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddNetMediate(configure =>
-{
-    configure.RegisterCommandHandler<SyncCommandHandler, SyncCommand>();
-});
+builder.Services.AddNetMediateGenerated();
 builder.Services.AddHostedService<Worker>();
 
 await builder.Build().RunAsync();
@@ -48,13 +44,9 @@ public sealed class Worker(IMediator mediator) : BackgroundService
 ## Minimal API sample
 
 ```csharp
+// CreateOrderHandler is discovered and registered automatically by the source generator.
 var builder = WebApplication.CreateBuilder(args);
-// Or use the source generator (recommended for AOT)
-// builder.Services.AddNetMediateGenerated();
-builder.Services.AddNetMediate(configure =>
-{
-    configure.RegisterRequestHandler<CreateOrderHandler, CreateOrder, OrderCreated>();
-});
+builder.Services.AddNetMediateGenerated();
 
 var app = builder.Build();
 app.MapPost("/orders", async (IMediator mediator, CreateOrder command, CancellationToken ct) =>

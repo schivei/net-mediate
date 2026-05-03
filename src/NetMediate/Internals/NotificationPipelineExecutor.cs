@@ -24,11 +24,12 @@ internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider se
 
         // Combine two-param behaviors (IPipelineBehavior<TMessage, Task>) with
         // one-param behaviors (IPipelineBehavior<TMessage>, e.g. adapter and resilience
-        // notification behaviors registered via typeof(IPipelineBehavior<>)).
+        // notification behaviors registered via RegisterBehavior<>).
         // Both are AOT-safe closed-type lookups — no MakeGenericType or typeof(TResult) switch.
+        // Results are cached per type to avoid repeated DI enumeration.
         IEnumerable<IPipelineBehavior<TMessage, Task>> behaviors =
-            serviceProvider.GetServices<IPipelineBehavior<TMessage, Task>>()
-                .Concat(serviceProvider.GetServices<IPipelineBehavior<TMessage>>()
+            serviceProvider.GetCachedBehaviors<IPipelineBehavior<TMessage, Task>>()
+                .Concat(serviceProvider.GetCachedBehaviors<IPipelineBehavior<TMessage>>()
                     .Cast<IPipelineBehavior<TMessage, Task>>());
 
         var pipeline = behaviors

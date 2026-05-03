@@ -77,18 +77,14 @@ All handler `Handle` methods return `Task` or `Task<TResponse>`:
 
 ### Configuration
 
-Register behavior implementations using the builder or directly in DI:
+Register behavior implementations using the builder:
 
 ```csharp
-// Via builder (closed-type, fully AOT-safe)
+// Via builder (closed-type, fully AOT-safe — the only supported approach)
 builder.Services.AddNetMediate(configure =>
 {
     configure.RegisterBehavior<MyLoggingBehavior, MyRequest, Task<MyResponse>>();
 });
-
-// Via open-generic DI (not recommended for NativeAOT)
-services.AddSingleton(typeof(IPipelineRequestBehavior<,>), typeof(AuditRequestBehavior<,>));
-services.AddSingleton(typeof(IPipelineBehavior<>), typeof(LogNotificationBehavior<>));
 ```
 
 ### Behavior interfaces

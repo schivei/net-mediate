@@ -16,8 +16,9 @@ internal class PipelineExecutor<TMessage, TResult, THandler>(IServiceProvider se
         // Resolve behaviors — closed-type lookup, AOT-safe, no MakeGenericType or typeof(TResult) switch.
         // Notification pipelines use NotificationPipelineExecutor<TMessage> which also resolves
         // IPipelineBehavior<TMessage> (one-param) registrations. This executor is for commands only.
+        // The result is cached per message-result type to avoid repeated DI enumeration.
         IEnumerable<IPipelineBehavior<TMessage, TResult>> behaviors =
-            serviceProvider.GetServices<IPipelineBehavior<TMessage, TResult>>();
+            serviceProvider.GetCachedBehaviors<IPipelineBehavior<TMessage, TResult>>();
 
         var pipeline = behaviors
             .Reverse()

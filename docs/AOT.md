@@ -4,12 +4,12 @@ NetMediate is fully compatible with NativeAOT-compiled and trimmed applications.
 
 ## Summary
 
-Handler registration is generated at compile time by `NetMediate.SourceGeneration` — there is no assembly scanning and no reflection involved in registering handlers.
+Handler registration is generated at compile time by `NetMediate.SourceGeneration` — there is no assembly scanning and no reflection involved in registering handlers. Pipeline behaviors must be registered via `RegisterBehavior<>` on the builder; open-generic DI patterns are not supported.
 
 | Path | AOT / Trim compatible | Notes |
 |---|---|---|
 | Source generation (`AddNetMediateGenerated()`) | ✅ Yes | Generated at compile time — no reflection |
-| Open-generic behaviors (`IPipelineBehavior<,>`, `IPipelineRequestBehavior<,>`) | ⚠️ Partial | Open-generic registration relies on the DI container's own reflection; use `RegisterBehavior<>` on the builder for full AOT safety |
+| `RegisterBehavior<TBehavior, TMessage, TResult>()` | ✅ Yes | Closed-type — no reflection, fully AOT-safe |
 
 ## AOT-compatible setup
 
@@ -31,12 +31,11 @@ builder.Services.AddNetMediateGenerated();
 
 The source generator discovers all handler types in your project and emits closed-type `Register*Handler<>` calls — fully AOT-safe.
 
-### Registering behaviors explicitly (fully AOT-safe)
+### Registering behaviors
 
-Pipeline behaviors can also be registered via the builder to avoid any open-generic reflection:
+Register pipeline behaviors via the builder using closed types:
 
 ```csharp
-// Closed-type, fully AOT-safe — register via AddNetMediate only for behaviors
 builder.Services.AddNetMediate(configure =>
 {
     configure.RegisterBehavior<AuditBehavior<MyRequest, Task<MyResponse>>, MyRequest, Task<MyResponse>>();
@@ -47,4 +46,4 @@ builder.Services.AddNetMediate(configure =>
 
 - Calling `MakeGenericType` at runtime — not supported by NativeAOT
 - Using `Type.GetGenericArguments()` to construct service types at runtime
-- Registering open-generic behaviors via `typeof(T)` if those types use `MakeGenericType` internally
+- Registering behaviors via open-generic `services.AddSingleton(typeof(IPipeline...<,>), typeof(...<,>))` — not supported

@@ -21,10 +21,10 @@ internal sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvi
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> app = App;
 
         // Combine IPipelineBehavior<TMessage, Task<TResponse>> and IPipelineRequestBehavior<TMessage, TResponse>
-        // both AOT-safe (no MakeGenericType).
+        // both AOT-safe (no MakeGenericType). Results are cached per type to avoid repeated DI enumeration.
         IEnumerable<IPipelineBehavior<TMessage, Task<TResponse>>> behaviors =
-            serviceProvider.GetServices<IPipelineBehavior<TMessage, Task<TResponse>>>()
-                .Concat(serviceProvider.GetServices<IPipelineRequestBehavior<TMessage, TResponse>>()
+            serviceProvider.GetCachedBehaviors<IPipelineBehavior<TMessage, Task<TResponse>>>()
+                .Concat(serviceProvider.GetCachedBehaviors<IPipelineRequestBehavior<TMessage, TResponse>>()
                     .Cast<IPipelineBehavior<TMessage, Task<TResponse>>>());
 
         var pipeline = behaviors

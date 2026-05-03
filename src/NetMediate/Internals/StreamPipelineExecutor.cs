@@ -21,10 +21,10 @@ internal sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvid
         PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> app = App;
 
         // Combine IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>> and IPipelineStreamBehavior<TMessage, TResponse>
-        // both AOT-safe (no MakeGenericType).
+        // both AOT-safe (no MakeGenericType). Results are cached per type to avoid repeated DI enumeration.
         IEnumerable<IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>>> behaviors =
-            serviceProvider.GetServices<IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>>>()
-                .Concat(serviceProvider.GetServices<IPipelineStreamBehavior<TMessage, TResponse>>()
+            serviceProvider.GetCachedBehaviors<IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>>>()
+                .Concat(serviceProvider.GetCachedBehaviors<IPipelineStreamBehavior<TMessage, TResponse>>()
                     .Cast<IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>>>());
 
         var pipeline = behaviors

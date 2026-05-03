@@ -367,19 +367,14 @@ public record GetRecentEventsQuery(int MaxItems);
 
 ### Pipeline Behaviors / Interceptors
 
-Behaviors wrap the handler pipeline and run in registration order. Register them via the builder or directly in the DI container:
+Behaviors wrap the handler pipeline and run in registration order. Register them via the builder using closed types — this is the only supported pattern, and it is fully AOT-safe:
 
 ```csharp
-// Open-generic: runs for every request type (register via DI)
-builder.Services.AddSingleton(typeof(IPipelineRequestBehavior<,>), typeof(AuditRequestBehavior<,>));
-
-// Notification-specific: runs for every notification pipeline
-builder.Services.AddSingleton(typeof(IPipelineBehavior<>), typeof(LogNotificationBehavior<>));
-
-// Closed-generic via builder: runs only for a specific message type
 builder.Services.AddNetMediate(configure =>
 {
     configure.RegisterBehavior<AuditCommandBehavior, CreateUserCommand, Task>();
+    configure.RegisterBehavior<AuditRequestBehavior<GetUserQuery, UserDto>, GetUserQuery, Task<UserDto>>();
+    configure.RegisterBehavior<LogNotificationBehavior<UserCreatedNotification>, UserCreatedNotification, Task>();
 });
 ```
 

@@ -140,7 +140,7 @@ public class MediatorServiceBuilderTests
         Assert.Contains(services, s => s.ServiceType == typeof(INotificationHandler<DummyNotification>)
             && s.ImplementationType == typeof(DummyNotificationHandler));
         Assert.Contains(services, s =>
-            s.ServiceType == typeof(PipelineExecutor<DummyNotification, Task, INotificationHandler<DummyNotification>>));
+            s.ServiceType == typeof(NotificationPipelineExecutor<DummyNotification>));
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public class MediatorServiceBuilderTests
         Assert.Contains(services, s => s.ServiceType == typeof(INotificationHandler<DummyNotification>)
             && s.ImplementationInstance == handler);
         Assert.Contains(services, s =>
-            s.ServiceType == typeof(PipelineExecutor<DummyNotification, Task, INotificationHandler<DummyNotification>>));
+            s.ServiceType == typeof(NotificationPipelineExecutor<DummyNotification>));
     }
 
     [Fact]

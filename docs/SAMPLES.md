@@ -4,7 +4,11 @@
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddNetMediate(typeof(CreateOrderHandler).Assembly);
+builder.Services.AddNetMediate(configure =>
+{
+    configure.RegisterRequestHandler<CreateOrderHandler, CreateOrder, OrderCreated>();
+    configure.RegisterNotificationHandler<OrderCreatedEventHandler, OrderCreated>();
+});
 
 var app = builder.Build();
 app.MapPost("/orders", async (IMediator mediator, CreateOrder command, CancellationToken ct) =>
@@ -20,7 +24,10 @@ app.Run();
 
 ```csharp
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddNetMediate(typeof(Worker).Assembly);
+builder.Services.AddNetMediate(configure =>
+{
+    configure.RegisterCommandHandler<SyncCommandHandler, SyncCommand>();
+});
 builder.Services.AddHostedService<Worker>();
 
 await builder.Build().RunAsync();
@@ -42,7 +49,12 @@ public sealed class Worker(IMediator mediator) : BackgroundService
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddNetMediate(typeof(CreateOrderHandler).Assembly);
+// Or use the source generator (recommended for AOT)
+// builder.Services.AddNetMediateGenerated();
+builder.Services.AddNetMediate(configure =>
+{
+    configure.RegisterRequestHandler<CreateOrderHandler, CreateOrder, OrderCreated>();
+});
 
 var app = builder.Build();
 app.MapPost("/orders", async (IMediator mediator, CreateOrder command, CancellationToken ct) =>

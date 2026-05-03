@@ -13,19 +13,11 @@ internal class PipelineExecutor<TMessage, TResult, THandler>(IServiceProvider se
 
         PipelineBehaviorDelegate<TMessage, TResult> app = App;
 
-        // Resolve behaviors using a switch on TResult to stay AOT-safe (no MakeGenericType).
-        // Notification/command pipelines (TResult=Task) also pick up one-param IPipelineBehavior<TMessage>
-        // registrations (e.g. notification adapters, resilience notification behaviors).
-        // All other pipelines (requests, streams) use the standard two-param IPipelineBehavior<TMessage, TResult>.
-        IEnumerable<IPipelineBehavior<TMessage, TResult>> behaviors = typeof(TResult) switch
-        {
-            var t when t == typeof(Task) =>
-                serviceProvider.GetServices<IPipelineBehavior<TMessage, Task>>()
-                    .Concat(serviceProvider.GetServices<IPipelineBehavior<TMessage>>()
-                        .Cast<IPipelineBehavior<TMessage, Task>>())
-                    .Cast<IPipelineBehavior<TMessage, TResult>>(),
-            _ => serviceProvider.GetServices<IPipelineBehavior<TMessage, TResult>>()
-        };
+        // Resolve behaviors — closed-type lookup, AOT-safe, no MakeGenericType or typeof(TResult) switch.
+        // Notification pipelines use NotificationPipelineExecutor<TMessage> which also resolves
+        // IPipelineBehavior<TMessage> (one-param) registrations. This executor is for commands only.
+        IEnumerable<IPipelineBehavior<TMessage, TResult>> behaviors =
+            serviceProvider.GetServices<IPipelineBehavior<TMessage, TResult>>();
 
         var pipeline = behaviors
             .Reverse()

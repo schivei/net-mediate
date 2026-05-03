@@ -35,7 +35,7 @@ builder.Services.AddNetMediateAdapters();
 ```csharp
 public class KafkaUserRegisteredAdapter(IKafkaProducer producer) : INotificationAdapter<UserRegistered>
 {
-    public async ValueTask ForwardAsync(AdapterEnvelope<UserRegistered> envelope, CancellationToken cancellationToken = default)
+    public async Task ForwardAsync(AdapterEnvelope<UserRegistered> envelope, CancellationToken cancellationToken = default)
     {
         var payload = JsonSerializer.Serialize(envelope);
         await producer.PublishAsync("user-registered", payload, cancellationToken);

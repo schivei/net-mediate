@@ -18,10 +18,10 @@ using NetMediate;
 // Register handlers explicitly (required — no assembly scanning)
 builder.Services.AddNetMediate(configure =>
 {
-    configure.RegisterHandler<ICommandHandler<CreateUserCommand>, CreateUserCommandHandler, CreateUserCommand, Task>();
-    configure.RegisterHandler<IRequestHandler<GetUserRequest, UserDto>, GetUserRequestHandler, GetUserRequest, Task<UserDto>>();
-    configure.RegisterHandler<INotificationHandler<UserCreatedNotification>, UserCreatedNotificationHandler, UserCreatedNotification, Task>();
-    configure.RegisterHandler<IStreamHandler<GetEventsQuery, EventDto>, GetEventsQueryHandler, GetEventsQuery, IAsyncEnumerable<EventDto>>();
+    configure.RegisterCommandHandler<CreateUserCommandHandler, CreateUserCommand>();
+    configure.RegisterRequestHandler<GetUserRequestHandler, GetUserRequest, UserDto>();
+    configure.RegisterNotificationHandler<UserCreatedNotificationHandler, UserCreatedNotification>();
+    configure.RegisterStreamHandler<GetEventsQueryHandler, GetEventsQuery, EventDto>();
 });
 
 // Or use the source generator (recommended for AOT — install NetMediate.SourceGeneration)
@@ -145,7 +145,7 @@ Add the package and the source generator automatically produces `AddNetMediateGe
 builder.Services.AddNetMediateGenerated();
 ```
 
-The generator scans your assembly for all `ICommandHandler<>`, `IRequestHandler<,>`, `INotificationHandler<>`, and `IStreamHandler<,>` implementations and emits strongly-typed `RegisterHandler<>` calls — no reflection, fully AOT-compatible.
+The generator scans your assembly for all `ICommandHandler<>`, `IRequestHandler<,>`, `INotificationHandler<>`, and `IStreamHandler<,>` implementations and emits strongly-typed `RegisterCommandHandler<>`, `RegisterRequestHandler<>`, `RegisterNotificationHandler<>`, and `RegisterStreamHandler<>` calls — no reflection, fully AOT-compatible.
 
 ## 5) Adapters (`NetMediate.Adapters`)
 

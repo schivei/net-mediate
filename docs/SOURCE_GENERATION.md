@@ -34,7 +34,9 @@ You can register handlers explicitly (without source generator) using:
 ```csharp
 builder.Services.AddNetMediate(registration =>
 {
-    registration.RegisterCommandHandler<CreateUserCommand, CreateUserCommandHandler>();
-    registration.RegisterRequestHandler<GetUserRequest, UserDto, GetUserRequestHandler>();
+    registration.RegisterCommandHandler<CreateUserCommandHandler, CreateUserCommand>();
+    registration.RegisterRequestHandler<GetUserRequestHandler, GetUserRequest, UserDto>();
+    registration.RegisterNotificationHandler<UserCreatedNotificationHandler, UserCreatedNotification>();
+    registration.RegisterStreamHandler<GetEventsQueryHandler, GetEventsQuery, EventDto>();
 });
 ```

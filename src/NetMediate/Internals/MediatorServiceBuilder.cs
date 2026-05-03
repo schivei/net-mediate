@@ -64,7 +64,7 @@ internal sealed class MediatorServiceBuilder<
         where TMessage : notnull
     {
         _services.AddSingleton<INotificationHandler<TMessage>, THandler>();
-        _services.TryAddTransient<PipelineExecutor<TMessage, Task, INotificationHandler<TMessage>>>();
+        _services.TryAddTransient<NotificationPipelineExecutor<TMessage>>();
         return this;
     }
 
@@ -108,7 +108,7 @@ internal sealed class MediatorServiceBuilder<
         where TMessage : notnull
     {
         _services.AddSingleton<INotificationHandler<TMessage>>(handler);
-        _services.TryAddTransient<PipelineExecutor<TMessage, Task, INotificationHandler<TMessage>>>();
+        _services.TryAddTransient<NotificationPipelineExecutor<TMessage>>();
         return this;
     }
 

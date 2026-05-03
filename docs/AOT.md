@@ -38,10 +38,10 @@ method that registers them explicitly using `RegisterHandler<>` calls — fully 
 ```csharp
 builder.Services.AddNetMediate(configure =>
 {
-    configure.RegisterHandler<ICommandHandler<CreateUserCommand>, CreateUserCommandHandler, CreateUserCommand, Task>();
-    configure.RegisterHandler<INotificationHandler<UserCreated>, UserCreatedHandler, UserCreated, Task>();
-    configure.RegisterHandler<IRequestHandler<GetUserQuery, UserDto>, GetUserQueryHandler, GetUserQuery, Task<UserDto>>();
-    configure.RegisterHandler<IStreamHandler<GetEventsQuery, EventDto>, GetEventsQueryHandler, GetEventsQuery, IAsyncEnumerable<EventDto>>();
+    configure.RegisterCommandHandler<CreateUserCommandHandler, CreateUserCommand>();
+    configure.RegisterNotificationHandler<UserCreatedHandler, UserCreated>();
+    configure.RegisterRequestHandler<GetUserQueryHandler, GetUserQuery, UserDto>();
+    configure.RegisterStreamHandler<GetEventsQueryHandler, GetEventsQuery, EventDto>();
 });
 ```
 
@@ -50,13 +50,13 @@ builder.Services.AddNetMediate(configure =>
 ```csharp
 builder.Services.AddNetMediate(configure =>
 {
-    configure.RegisterBehavior<AuditBehavior<MyRequest, MyResponse>, MyRequest, Task<MyResponse>>();
+    configure.RegisterBehavior<AuditBehavior<MyRequest, Task<MyResponse>>, MyRequest, Task<MyResponse>>();
     // ...
 });
 ```
 
 ## AOT-unsafe patterns to avoid
 
-- Registering behaviors as open-generic service types (`typeof(IPipelineBehavior<,>)`) — relies on DI's internal reflection
 - Calling `MakeGenericType` at runtime — not supported by NativeAOT
 - Using `Type.GetGenericArguments()` to construct service types at runtime
+- Registering open-generic behaviors via `typeof(T)` if those types use `MakeGenericType` internally

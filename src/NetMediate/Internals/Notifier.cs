@@ -25,7 +25,7 @@ internal class Notifier(IServiceProvider serviceProvider, ILogger<Notifier> logg
         // GetService (nullable) so that a notification with no registered handler is a no-op.
         // Executors are only registered when a handler is registered via RegisterNotificationHandler<>.
         var pipeline = serviceProvider
-            .GetService<PipelineExecutor<TMessage, Task, INotificationHandler<TMessage>>>();
+            .GetService<NotificationPipelineExecutor<TMessage>>();
 
         if (pipeline is null) return Task.CompletedTask;
         

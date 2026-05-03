@@ -112,7 +112,7 @@ using NetMediate;
 var builder = Host.CreateApplicationBuilder();
 builder.Services.AddNetMediate(configure =>
 {
-    configure.RegisterHandler<INotificationHandler<UserCreated>, UserCreatedHandler, UserCreated, Task>();
+    configure.RegisterNotificationHandler<UserCreatedHandler, UserCreated>();
 });
 
 // 3. Define a notification (no marker interface required)
@@ -153,9 +153,9 @@ var builder = Host.CreateApplicationBuilder();
 // Register NetMediate and explicitly register all handlers
 builder.Services.AddNetMediate(configure =>
 {
-    configure.RegisterHandler<INotificationHandler<MyNotification>, MyNotificationHandler, MyNotification, Task>();
-    configure.RegisterHandler<ICommandHandler<MyCommand>, MyCommandHandler, MyCommand, Task>();
-    configure.RegisterHandler<IRequestHandler<MyRequest, MyResponse>, MyRequestHandler, MyRequest, Task<MyResponse>>();
+    configure.RegisterNotificationHandler<MyNotificationHandler, MyNotification>();
+    configure.RegisterCommandHandler<MyCommandHandler, MyCommand>();
+    configure.RegisterRequestHandler<MyRequestHandler, MyRequest, MyResponse>();
 });
 
 // Or use the source generator to auto-generate registrations (recommended for AOT)
@@ -364,12 +364,12 @@ public sealed class ValidationBehavior<TMessage, TResult>(IValidator<TMessage> v
     where TMessage : notnull
     where TResult : notnull
 {
-    public async TResult Handle(TMessage message, PipelineBehaviorDelegate<TMessage, TResult> next, CancellationToken cancellationToken)
+    public TResult Handle(TMessage message, PipelineBehaviorDelegate<TMessage, TResult> next, CancellationToken cancellationToken)
     {
         var result = validator.Validate(message);
         if (!result.IsValid)
             throw new ValidationException(result.Errors);
-        return await next(message, cancellationToken);
+        return next(message, cancellationToken);
     }
 }
 ```
@@ -469,7 +469,6 @@ public sealed class LogNotificationBehavior<TMessage>
         await next(message, cancellationToken);
         Console.WriteLine($"Dispatched {typeof(TMessage).Name}");
     }
-}
 }
 ```
 

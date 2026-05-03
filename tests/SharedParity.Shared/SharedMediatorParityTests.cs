@@ -103,19 +103,19 @@ public class SharedMediatorParityTests
 
     public sealed class PingRequestHandler : IRequestHandler<PingRequest, PingResponse>
 #else
-    public sealed record PingRequest(string Value) : IRequest<PingResponse>;
+    public sealed record PingRequest(string Value);
 
-    public sealed record AuditCommand(string Value) : ICommand;
+    public sealed record AuditCommand(string Value);
 
     public sealed record PingNotification(string Value);
 
-    public sealed record CounterStream(int Count) : IStream<int>;
+    public sealed record CounterStream(int Count);
 
     public sealed class PingRequestHandler : IRequestHandler<PingRequest, PingResponse>
 #endif
     {
         public Task<PingResponse> Handle(PingRequest request, CancellationToken cancellationToken = default)
-            => new(new PingResponse($"{request.Value}:pong"));
+            => Task.FromResult(new PingResponse($"{request.Value}:pong"));
     }
 
     public sealed record PingResponse(string Value);

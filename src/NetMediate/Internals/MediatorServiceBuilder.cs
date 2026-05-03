@@ -18,6 +18,8 @@ internal sealed class MediatorServiceBuilder<
         _services.TryAddSingleton<IMediator, Mediator>();
         
         _services.AddTransient(typeof(PipelineExecutor<,,>));
+        _services.AddTransient(typeof(RequestPipelineExecutor<,>));
+        _services.AddTransient(typeof(StreamPipelineExecutor<,>));
 
         if (_services.Any(s => s.ServiceType == typeof(INotifiable)))
         {

@@ -67,7 +67,7 @@ public sealed class IMediatorDefaultAdditionalTests
         MessageNotification[] notifications = [new(1), new(2)];
 
         await m.Notify(
-            notifications,
+            (IEnumerable<MessageNotification>)notifications,
             TestContext.Current.CancellationToken
         );
 

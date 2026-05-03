@@ -14,6 +14,8 @@ public class MediatorTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddTransient(typeof(PipelineExecutor<,,>));
+        services.AddTransient(typeof(RequestPipelineExecutor<,>));
+        services.AddTransient(typeof(StreamPipelineExecutor<,>));
         configure(services);
         return services.BuildServiceProvider();
     }

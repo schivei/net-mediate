@@ -103,7 +103,7 @@ internal sealed class Mediator(
         try
         {
             var pipeline = serviceProvider
-                .GetRequiredService<PipelineExecutor<TMessage, Task<TResponse>, IRequestHandler<TMessage, TResponse>>>();
+                .GetRequiredService<RequestPipelineExecutor<TMessage, TResponse>>();
 
             return await pipeline.Handle(message, RequestHandlers, cancellationToken).ConfigureAwait(false);
         }
@@ -134,7 +134,7 @@ internal sealed class Mediator(
         try
         {
             var pipeline = serviceProvider
-                .GetRequiredService<PipelineExecutor<TMessage, IAsyncEnumerable<TResponse>, IStreamHandler<TMessage, TResponse>>>();
+                .GetRequiredService<StreamPipelineExecutor<TMessage, TResponse>>();
 
             return pipeline.Handle(message, StreamHandlers, cancellationToken);
         }

@@ -9,6 +9,8 @@ internal sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehavio
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
         CancellationToken cancellationToken
     )
+    {
+        var timeout = options.RequestTimeout;
         if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
             return await next(message, cancellationToken).ConfigureAwait(false);
 
@@ -43,6 +45,8 @@ internal sealed class TimeoutNotificationBehavior<TMessage>(TimeoutBehaviorOptio
         PipelineBehaviorDelegate<TMessage, Task> next,
         CancellationToken cancellationToken
     )
+    {
+        var timeout = options.NotificationTimeout;
         if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
         {
             await next(message, cancellationToken).ConfigureAwait(false);

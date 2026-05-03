@@ -13,43 +13,19 @@ internal class PipelineExecutor<TMessage, TResult, THandler>(IServiceProvider se
 
         PipelineBehaviorDelegate<TMessage, TResult> app = App;
 
-        IEnumerable<IPipelineBehavior<TMessage, TResult>> behaviors =
-            serviceProvider.GetServices<IPipelineBehavior<TMessage, TResult>>();
-
-        // When TResult is Task (notification/command pipelines), also include behaviors
-        // registered under the one-parameter IPipelineBehavior<TMessage> service type
-        // (e.g. notification adapters and notification-scoped resilience behaviors).
-        if (typeof(TResult) == typeof(Task))
+        // Resolve behaviors using a switch on TResult to stay AOT-safe (no MakeGenericType).
+        // Notification/command pipelines (TResult=Task) also pick up one-param IPipelineBehavior<TMessage>
+        // registrations (e.g. notification adapters, resilience notification behaviors).
+        // All other pipelines (requests, streams) use the standard two-param IPipelineBehavior<TMessage, TResult>.
+        IEnumerable<IPipelineBehavior<TMessage, TResult>> behaviors = typeof(TResult) switch
         {
-            var oneParamBehaviors = serviceProvider
-                .GetServices(typeof(IPipelineBehavior<>).MakeGenericType(typeof(TMessage)))
-                .Cast<IPipelineBehavior<TMessage, TResult>>();
-            behaviors = behaviors.Concat(oneParamBehaviors);
-        }
-        // When TResult is Task<TResponse>, also include IPipelineRequestBehavior<TMessage, TResponse>.
-        else if (typeof(TResult).IsGenericType &&
-                 typeof(TResult).GetGenericTypeDefinition() == typeof(Task<>))
-        {
-            var responseType = typeof(TResult).GetGenericArguments()[0];
-            var requestBehaviorType = typeof(IPipelineRequestBehavior<,>)
-                .MakeGenericType(typeof(TMessage), responseType);
-            var requestBehaviors = serviceProvider
-                .GetServices(requestBehaviorType)
-                .Cast<IPipelineBehavior<TMessage, TResult>>();
-            behaviors = behaviors.Concat(requestBehaviors);
-        }
-        // When TResult is IAsyncEnumerable<TResponse>, also include IPipelineStreamBehavior<TMessage, TResponse>.
-        else if (typeof(TResult).IsGenericType &&
-                 typeof(TResult).GetGenericTypeDefinition() == typeof(IAsyncEnumerable<>))
-        {
-            var responseType = typeof(TResult).GetGenericArguments()[0];
-            var streamBehaviorType = typeof(IPipelineStreamBehavior<,>)
-                .MakeGenericType(typeof(TMessage), responseType);
-            var streamBehaviors = serviceProvider
-                .GetServices(streamBehaviorType)
-                .Cast<IPipelineBehavior<TMessage, TResult>>();
-            behaviors = behaviors.Concat(streamBehaviors);
-        }
+            var t when t == typeof(Task) =>
+                serviceProvider.GetServices<IPipelineBehavior<TMessage, Task>>()
+                    .Concat(serviceProvider.GetServices<IPipelineBehavior<TMessage>>()
+                        .Cast<IPipelineBehavior<TMessage, Task>>())
+                    .Cast<IPipelineBehavior<TMessage, TResult>>(),
+            _ => serviceProvider.GetServices<IPipelineBehavior<TMessage, TResult>>()
+        };
 
         var pipeline = behaviors
             .Reverse()

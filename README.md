@@ -356,9 +356,9 @@ NetMediate messages are plain records or classes — **no marker interfaces are 
 
 | Message kind | Handler interface | Dispatch semantics |
 |---|---|---|
-| Command | `ICommandHandler<TMessage>` | All registered handlers, in parallel (`Task.WhenAll`) |
+| Command | `ICommandHandler<TMessage>` | All registered handlers, sequential `foreach` dispatch |
 | Request | `IRequestHandler<TMessage, TResponse>` | First registered handler only; returns `TResponse` |
-| Notification | `INotificationHandler<TMessage>` | All registered handlers, fire-and-forget background dispatch |
+| Notification | `INotificationHandler<TMessage>` | All registered handlers, individual fire-and-forget per handler |
 | Stream | `IStreamHandler<TMessage, TResponse>` | All registered handlers iterated; each yields items |
 
 ```csharp

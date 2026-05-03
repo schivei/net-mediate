@@ -8,15 +8,18 @@ internal class Notifier(IServiceProvider serviceProvider, ILogger<Notifier> logg
     public virtual Task DispatchNotifications<TMessage>(TMessage message, INotificationHandler<TMessage>[] handlers,
         CancellationToken cancellationToken = default) where TMessage : notnull
     {
-        Task.WhenAll(handlers.Select(handler => handler.Handle(message, cancellationToken)))
-            .ContinueWith(t =>
-            {
-                if (!t.IsFaulted) return;
-                
-                logger.LogError(t.Exception, "{Message}", t.Exception!.Message);
-            }, TaskContinuationOptions.OnlyOnFaulted)
-            .ConfigureAwait(false);
-        
+        // Fire-and-forget each handler individually to avoid Task.WhenAll allocation overhead.
+        // Exceptions are logged per-handler so one failure does not suppress others.
+        foreach (var handler in handlers)
+        {
+            _ = handler.Handle(message, cancellationToken)
+                .ContinueWith(
+                    t => logger.LogError(t.Exception, "{Message}", t.Exception!.Message),
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted,
+                    TaskScheduler.Default);
+        }
+
         return Task.CompletedTask;
     }
 
@@ -34,6 +37,10 @@ internal class Notifier(IServiceProvider serviceProvider, ILogger<Notifier> logg
 
     public Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
     {
-        return Task.WhenAll(messages.Select(message => Notify(message, cancellationToken)));
+        // Fire-and-forget each notification individually — no Task.WhenAll overhead.
+        foreach (var message in messages)
+            _ = Notify(message, cancellationToken);
+
+        return Task.CompletedTask;
     }
 }

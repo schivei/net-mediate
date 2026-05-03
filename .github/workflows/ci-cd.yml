@@ -90,15 +90,17 @@ jobs:
         COMMIT_SHA: ${{ github.sha }}
       run: |
         python3 << 'PYEOF'
-        import xml.etree.ElementTree as ET, os, subprocess, sys
+        import xml.etree.ElementTree as ET, os, subprocess, sys, json
+
+        MARKER = "<!-- netmediate-coverage-report -->"
 
         xml_files = [
             os.path.join(r, f)
             for r, _, files in os.walk('./coverage')
-            for f in files if f.endswith('.xml')
+            for f in files if f == 'coverage.cobertura.xml'
         ]
         if not xml_files:
-            print("No coverage XML found, skipping PR comment.")
+            print("No coverage.cobertura.xml found, skipping PR comment.")
             sys.exit(0)
 
         # Aggregate line and branch coverage across all coverage files (weighted by lines-valid)
@@ -125,6 +127,7 @@ jobs:
         sha   = os.environ['COMMIT_SHA'][:7]
 
         comment = (
+            f"{MARKER}\n\n"
             f"## {emoji} Code Coverage Report — `{sha}`\n\n"
             f"| Metric | Coverage |\n"
             f"|--------|----------|\n"
@@ -136,16 +139,28 @@ jobs:
         pr   = os.environ['PR_NUMBER']
         repo = os.environ['REPO']
 
-        # Try to update the last bot comment; fall back to creating a new one
-        r = subprocess.run(
-            ['gh', 'pr', 'comment', pr, '--repo', repo, '--body', comment, '--edit-last'],
+        # Find an existing coverage comment by the bot with our marker and update it;
+        # fall back to creating a new comment if none exists.
+        list_result = subprocess.run(
+            ['gh', 'api', f'repos/{repo}/issues/{pr}/comments',
+             '--jq', f'[.[] | select(.body | startswith("{MARKER}")) | .id][0]'],
             capture_output=True, text=True
         )
-        if r.returncode != 0:
+        comment_id = list_result.stdout.strip()
+
+        if comment_id and comment_id != 'null' and comment_id != '':
+            subprocess.run(
+                ['gh', 'api', f'repos/{repo}/issues/comments/{comment_id}',
+                 '-X', 'PATCH', '-f', f'body={comment}'],
+                check=True
+            )
+            print(f"Updated existing coverage comment {comment_id}.")
+        else:
             subprocess.run(
                 ['gh', 'pr', 'comment', pr, '--repo', repo, '--body', comment],
                 check=True
             )
+            print("Created new coverage comment.")
         PYEOF
 
   package:

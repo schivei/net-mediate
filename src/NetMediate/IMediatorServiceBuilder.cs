@@ -103,7 +103,7 @@ public interface IMediatorServiceBuilder
     /// <typeparam name="TMessage">The message type.</typeparam>
     /// <typeparam name="TResult">The result type.</typeparam>
     /// <returns>The current instance of <see cref="IMediatorServiceBuilder"/> for chaining.</returns>
-    IMediatorServiceBuilder RegisterBehavior<
+    IMediatorServiceBuilder RegisterBehavior< // NOSONAR S2436
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TBehavior,
         TMessage,
         TResult>()

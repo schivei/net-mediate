@@ -23,7 +23,6 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 ## Near term
 
 - [ ] **Coverage gate** — enforce 100 % line coverage for `src/NetMediate` in CI so no internal path goes untested.
-- [ ] **`NetMediate.Diagnostics` package** — move `NetMediateDiagnostics` (`ActivitySource`/`Meter`) to an optional package so the core assembly has zero tracing dependency.
 - [ ] **BenchmarkDotNet suite** — add a dedicated `NetMediate.Benchmarks` project with stable, artifact-reproducible BenchmarkDotNet results (mean, alloc/op, gen0/1/2) that CI can track over time.
 - [ ] **Per-commit throughput regression gate** — fail CI if the `command` scenario drops more than 5 % from the previous commit baseline.
 
@@ -37,6 +36,7 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 
 ## Long term
 
+- [ ] **`NetMediate.Diagnostics` package** — extract `NetMediateDiagnostics` (`ActivitySource`/`Meter`) from the core assembly into a separate optional package implemented as a pipeline behavior, so the core has zero tracing dependency and telemetry is opt-in.
 - [ ] **`NetMediate.Validation` package** — optional validation layer implemented as a pipeline behavior, decoupled from the core package and compatible with FluentValidation, DataAnnotations, or custom validators.
 - [ ] **Streaming fan-out** — allow multiple `IStreamHandler<TMsg, TResp>` registrations whose items are merged into a single `IAsyncEnumerable<TResp>`, analogous to how `Send` fans out to multiple command handlers.
 - [ ] **Keyed handler registration** — support `IKeyedServiceProvider` so multiple handlers for the same message type can be addressed by a named key, enabling runtime routing strategies.

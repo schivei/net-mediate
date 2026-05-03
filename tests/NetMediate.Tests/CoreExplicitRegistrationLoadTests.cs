@@ -184,9 +184,9 @@ public sealed class CoreExplicitRegistrationLoadTests(ITestOutputHelper output)
         // This is the same code path emitted by NetMediate.SourceGeneration.
         builder.Services.AddNetMediate(configure =>
         {
-            configure.Services.AddSingleton<ICommandHandler<ExplicitLoadCommand>, ExplicitLoadCommandHandler>();
-            configure.Services.AddSingleton<IRequestHandler<ExplicitLoadRequest, int>, ExplicitLoadRequestHandler>();
-            configure.Services.AddSingleton<INotificationHandler<ExplicitLoadNotification>, ExplicitLoadNotificationHandler>();
+            configure.RegisterHandler<ICommandHandler<ExplicitLoadCommand>, ExplicitLoadCommandHandler, ExplicitLoadCommand, Task>();
+            configure.RegisterHandler<IRequestHandler<ExplicitLoadRequest, int>, ExplicitLoadRequestHandler, ExplicitLoadRequest, Task<int>>();
+            configure.RegisterHandler<INotificationHandler<ExplicitLoadNotification>, ExplicitLoadNotificationHandler, ExplicitLoadNotification, Task>();
         });
 
         var host = builder.Build();

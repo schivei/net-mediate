@@ -11,22 +11,15 @@ internal class PipelineExecutor<TMessage, TResult, THandler>(IServiceProvider se
     {
         var handlers = serviceProvider.GetHandlers<THandler, TMessage, TResult>();
         
-        try
-        {
-            PipelineBehaviorDelegate<TMessage, TResult> app = App;
-            
-            var pipeline = serviceProvider
-                .GetServices<IPipelineBehavior<TMessage, TResult>>()
-                .Reverse()
-                .Aggregate(app, (current, behavior) => (msg, ct) =>
-                    behavior.Handle(msg, current, ct));
+        PipelineBehaviorDelegate<TMessage, TResult> app = App;
+        
+        var pipeline = serviceProvider
+            .GetServices<IPipelineBehavior<TMessage, TResult>>()
+            .Reverse()
+            .Aggregate(app, (current, behavior) => (msg, ct) =>
+                behavior.Handle(msg, current, ct));
 
-            return pipeline(message, cancellationToken);
-        }
-        catch
-        {
-            return exec(message, handlers, cancellationToken);
-        }
+        return pipeline(message, cancellationToken);
 
         TResult App(TMessage msg, CancellationToken ct) =>
             exec(msg, handlers, ct);

@@ -24,7 +24,7 @@ public static class NetMediateAdaptersDI
         configureOptions?.Invoke(opts);
         services.AddSingleton(opts);
 
-        services.AddSingleton(typeof(IPipelineBehavior<>), typeof(NotificationAdapterBehavior<>));
+        services.AddSingleton(typeof(IPipelineBehavior<,>), typeof(NotificationAdapterBehavior<>));
 
         return services;
     }

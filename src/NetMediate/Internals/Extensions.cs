@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Caching.Memory;
 
@@ -30,7 +31,13 @@ internal static class Extensions
         return timeLimit;
     }
 
-    private static IMemoryCache? _sCache;
+    /// <summary>
+    /// Per-service-provider handler cache. Used when the container provides <see cref="IMemoryCache"/>
+    /// (via <c>services.AddMemoryCache()</c>). When no <see cref="IMemoryCache"/> is available the
+    /// lookup always falls through to <see cref="IServiceProvider.GetService"/> so that mock
+    /// re-configurations in test environments are always honoured.
+    /// </summary>
+    private static readonly ConditionalWeakTable<IServiceProvider, IMemoryCache> s_caches = new();
 
     extension(IServiceProvider serviceProvider)
     {
@@ -39,23 +46,24 @@ internal static class Extensions
             return serviceProvider.GetCachedServices<THandler>();
         }
 
-        private IMemoryCache GetCache()
-        {
-            return _sCache ??= serviceProvider.GetService<IMemoryCache>() ??
-                               new MemoryCache(new MemoryCacheOptions());
-        }
-
         private T[] GetCachedServices<T>()
         {
             var serviceType = typeof(T);
             
             SetUsage(serviceType);
 
-            return serviceProvider.GetCache().GetOrCreate(serviceType, entry =>
+            // Only cache handlers when the container provides its own IMemoryCache.
+            // When the container has no IMemoryCache (e.g. test environments with mock providers)
+            // skip caching so that mock re-configurations between test methods are respected.
+            var cache = serviceProvider.GetService<IMemoryCache>();
+            if (cache is null)
+                return serviceProvider.GetServices<T>().ToArray();
+
+            return cache.GetOrCreate(serviceType, entry =>
             {
                 entry.AbsoluteExpirationRelativeToNow = CalculateCachePersistence(serviceType);
                 return serviceProvider.GetServices<T>().ToArray();
-            });
+            }) ?? [];
         }
     }
 }

@@ -21,7 +21,6 @@ namespace NetMediate.Benchmarks;
 /// </remarks>
 [MemoryDiagnoser]
 [SimpleJob(RunStrategy.Throughput)]
-[HideColumns("Error", "StdDev", "Median", "RatioSD")]
 public class CoreDispatchBenchmarks
 {
     private IMediator _mediator = null!;
@@ -61,24 +60,42 @@ public class CoreDispatchBenchmarks
     [GlobalCleanup]
     public void Cleanup() => _provider.Dispose();
 
+    private const int OpsPerInvoke = 1_000;
+
     /// <summary>Measures the per-call overhead of <see cref="IMediator.Send{TMessage}"/>.</summary>
-    [Benchmark(Description = "Command  Send")]
-    public Task Command() => _mediator.Send(s_command);
+    [Benchmark(Description = "Command  Send", OperationsPerInvoke = OpsPerInvoke)]
+    public async Task Command()
+    {
+        for (int i = 0; i < OpsPerInvoke; i++)
+            await _mediator.Send(s_command);
+    }
 
     /// <summary>Measures the per-call overhead of <see cref="IMediator.Notify{TMessage}"/>.</summary>
-    [Benchmark(Description = "Notification  Notify")]
-    public Task Notification() => _mediator.Notify(s_notification);
+    [Benchmark(Description = "Notification  Notify", OperationsPerInvoke = OpsPerInvoke)]
+    public async Task Notification()
+    {
+        for (int i = 0; i < OpsPerInvoke; i++)
+            await _mediator.Notify(s_notification);
+    }
 
     /// <summary>Measures the per-call overhead of <see cref="IMediator.Request{TMessage,TResponse}"/>.</summary>
-    [Benchmark(Description = "Request  Request")]
-    public Task<BenchResponse> Request() => _mediator.Request<BenchRequest, BenchResponse>(s_request);
+    [Benchmark(Description = "Request  Request", OperationsPerInvoke = OpsPerInvoke)]
+    public async Task Request()
+    {
+        for (int i = 0; i < OpsPerInvoke; i++)
+            await _mediator.Request<BenchRequest, BenchResponse>(s_request);
+    }
 
     /// <summary>
     /// Measures the end-to-end cost of a single stream invocation including draining all
     /// yielded items.  Each invocation yields 3 items.
     /// </summary>
-    [Benchmark(Description = "Stream  RequestStream (3 items/call)")]
-    public Task Stream() => DrainStream(_mediator.RequestStream<BenchStreamRequest, BenchStreamItem>(s_streamRequest));
+    [Benchmark(Description = "Stream  RequestStream (3 items/call)", OperationsPerInvoke = OpsPerInvoke)]
+    public async Task Stream()
+    {
+        for (int i = 0; i < OpsPerInvoke; i++)
+            await DrainStream(_mediator.RequestStream<BenchStreamRequest, BenchStreamItem>(s_streamRequest));
+    }
 
     private static async Task DrainStream(IAsyncEnumerable<BenchStreamItem> stream)
     {

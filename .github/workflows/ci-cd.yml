@@ -81,6 +81,12 @@ jobs:
     - name: Test
       run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
 
+    - name: Test Resilience
+      run: dotnet test tests/NetMediate.Resilience.Tests/NetMediate.Resilience.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+    - name: Test Diagnostics
+      run: dotnet test tests/NetMediate.Diagnostics.Tests/NetMediate.Diagnostics.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+
     - name: Test Shared Parity (NetMediate)
       run: dotnet test tests/SharedParity.NetMediate.Tests/SharedParity.NetMediate.Tests.csproj --configuration Release --verbosity normal
 
@@ -215,6 +221,12 @@ jobs:
       
     - name: Run Tests
       run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release --verbosity normal
+
+    - name: Run Resilience Tests
+      run: dotnet test tests/NetMediate.Resilience.Tests/NetMediate.Resilience.Tests.csproj --configuration Release --verbosity normal
+
+    - name: Run Diagnostics Tests
+      run: dotnet test tests/NetMediate.Diagnostics.Tests/NetMediate.Diagnostics.Tests.csproj --configuration Release --verbosity normal
 
     - name: Run Shared Parity Tests (NetMediate)
       run: dotnet test tests/SharedParity.NetMediate.Tests/SharedParity.NetMediate.Tests.csproj --configuration Release --verbosity normal

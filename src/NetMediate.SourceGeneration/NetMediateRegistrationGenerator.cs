@@ -84,20 +84,24 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
     /// <summary>
     /// Builds the infrastructure setup lines that go BEFORE the AddNetMediate configure block.
-    /// These calls register options (for Resilience) or serve as markers — no open-generic behavior
-    /// registrations are emitted here; behaviors are registered per-handler in the configure block.
+    /// For Resilience: registers default option singletons (user may override by registering the
+    /// same type before calling <c>AddNetMediateGenerated()</c>; <see cref="ServiceCollectionDescriptorExtensions.TryAddSingleton"/>
+    /// skips registration when the type is already present).
+    /// For Diagnostics: no infrastructure needed — <c>NetMediateDiagnostics</c> is a static class.
     /// </summary>
     private static string BuildFrameworkInfrastructure(bool hasDiagnostics, bool hasResilience)
     {
         const string indent = "        "; // 8 spaces
         var sb = new System.Text.StringBuilder();
 
-        if (hasDiagnostics)
-            sb.AppendLine($"{indent}services.AddNetMediateDiagnostics();");
-
-        // Registers default options; user may have called AddNetMediateResilience(configure...) earlier.
+        // Resilience: register default options; user-supplied registrations that were added
+        // earlier will be kept (TryAddSingleton is a no-op when the type is already present).
         if (hasResilience)
-            sb.AppendLine($"{indent}services.AddNetMediateResilience();");
+        {
+            sb.AppendLine($"{indent}services.TryAddSingleton(new global::NetMediate.Resilience.RetryBehaviorOptions());");
+            sb.AppendLine($"{indent}services.TryAddSingleton(new global::NetMediate.Resilience.TimeoutBehaviorOptions());");
+            sb.AppendLine($"{indent}services.TryAddSingleton(new global::NetMediate.Resilience.CircuitBreakerBehaviorOptions());");
+        }
 
         return sb.ToString();
     }

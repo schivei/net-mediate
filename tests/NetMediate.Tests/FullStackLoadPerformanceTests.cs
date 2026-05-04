@@ -2,14 +2,12 @@ using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NetMediate.Adapters;
-using NetMediate.Resilience;
 
 namespace NetMediate.Tests;
 
 /// <summary>
-/// Load benchmarks with both <c>NetMediate.Resilience</c> and <c>NetMediate.Adapters</c> registered
-/// simultaneously — measures the combined pipeline overhead of all three resilience behaviors plus
-/// the adapter forwarding wrapper.
+/// Load benchmarks with <c>NetMediate.Adapters</c> registered alongside core handlers —
+/// measures the combined pipeline overhead of the adapter forwarding wrapper.
 /// </summary>
 public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
 {
@@ -127,23 +125,6 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
             configure.RegisterRequestHandler<FullStackRequestHandler, FullStackRequest, int>();
             configure.RegisterNotificationHandler<FullStackNotificationHandler, FullStackNotification>();
         });
-        builder.Services.AddNetMediateResilience(
-            configureRetry: options =>
-            {
-                options.MaxRetryCount = 0;
-                options.Delay = TimeSpan.Zero;
-            },
-            configureTimeout: options =>
-            {
-                options.RequestTimeout = TimeSpan.FromSeconds(30);
-                options.NotificationTimeout = TimeSpan.FromSeconds(30);
-            },
-            configureCircuitBreaker: options =>
-            {
-                options.FailureThreshold = 1000;
-                options.OpenDuration = TimeSpan.FromSeconds(1);
-            }
-        );
         builder.Services.AddNetMediateAdapters();
 
         var host = builder.Build();

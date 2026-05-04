@@ -25,13 +25,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.Adapters\NetMediate.Adapters.csproj" />
-    <ProjectReference Include="..\..\src\NetMediate.Moq\NetMediate.Moq.csproj" />
-    <ProjectReference Include="..\..\src\NetMediate.DataDog.OpenTelemetry\NetMediate.DataDog.OpenTelemetry.csproj" />
-    <ProjectReference Include="..\..\src\NetMediate.DataDog.Serilog\NetMediate.DataDog.Serilog.csproj" />
-    <ProjectReference Include="..\..\src\NetMediate.DataDog.ILogger\NetMediate.DataDog.ILogger.csproj" />
+    <ProjectReference Include="..\..\src\NetMediate.Resilience\NetMediate.Resilience.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
-    <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
   </ItemGroup>
 </Project>

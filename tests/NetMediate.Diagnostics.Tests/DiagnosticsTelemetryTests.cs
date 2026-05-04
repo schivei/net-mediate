@@ -5,7 +5,19 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NetMediate.Diagnostics;
 
-namespace NetMediate.Tests.Internals;
+namespace NetMediate.Diagnostics.Tests;
+
+internal static class AsyncExtensions
+{
+    public static async Task<IEnumerable<T>> AsyncToSync<T>(this IAsyncEnumerable<T> values)
+    {
+        var result = new List<T>();
+        await foreach (var item in values)
+            result.Add(item);
+        return result;
+    }
+}
+
 
 public sealed class DiagnosticsTelemetryTests
 {
@@ -21,8 +33,7 @@ public sealed class DiagnosticsTelemetryTests
         using var activityListener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == NetMediateDiagnostics.ActivitySourceName,
-            Sample = static (ref _) =>
-                ActivitySamplingResult.AllDataAndRecorded,
+            Sample = static (ref _) => ActivitySamplingResult.AllDataAndRecorded,
             ActivityStarted = activity => activityNames.Enqueue(activity.OperationName),
         };
         ActivitySource.AddActivityListener(activityListener);
@@ -61,13 +72,20 @@ public sealed class DiagnosticsTelemetryTests
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediateDiagnostics();
+        // Telemetry behaviors are registered per-handler (no DI extension method needed).
         builder.Services.AddNetMediate(configure =>
         {
             configure.RegisterCommandHandler<TestCommandHandler, TestMessage>();
+            configure.RegisterBehavior<TelemetryNotificationBehavior<TestMessage>, TestMessage, Task>();
+
             configure.RegisterRequestHandler<TestRequestHandler, TestMessage, string>();
+            configure.RegisterBehavior<TelemetryRequestBehavior<TestMessage, string>, TestMessage, Task<string>>();
+
             configure.RegisterNotificationHandler<TestNotificationHandler, TestMessage>();
+            // TelemetryNotificationBehavior<TestMessage> already registered above for the command.
+
             configure.RegisterStreamHandler<TestStreamHandler, TestMessage, string>();
+            configure.RegisterBehavior<TelemetryStreamBehavior<TestMessage, string>, TestMessage, IAsyncEnumerable<string>>();
         });
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);

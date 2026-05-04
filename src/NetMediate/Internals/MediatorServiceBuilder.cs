@@ -11,9 +11,12 @@ internal sealed class MediatorServiceBuilder<
 {
     private readonly IServiceCollection _services;
 
-    internal MediatorServiceBuilder(IServiceCollection services)
+    internal MediatorServiceBuilder(IServiceCollection services, bool skipCoreRegistration = false)
     {
         _services = services;
+
+        if (skipCoreRegistration)
+            return;
 
         _services.TryAddSingleton<IMediator, Mediator>();
 

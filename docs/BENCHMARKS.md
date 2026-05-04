@@ -47,7 +47,36 @@ Measured with `CoreDispatchThroughputTests` — no behaviors, no resilience, no 
 
 ---
 
-## JIT vs NativeAOT comparison
+## BenchmarkDotNet project
+
+For artifact-reproducible, statistically rigorous benchmarks including allocation data and GC gen0/1/2 counts, use the dedicated `NetMediate.Benchmarks` project:
+
+```bash
+# Standard JIT run (produces BenchmarkDotNet HTML/CSV artifacts in BenchmarkDotNet.Artifacts/)
+dotnet run -c Release --project tests/NetMediate.Benchmarks/
+
+# Quick dry-run to verify benchmark classes compile and can execute (no statistical warming)
+dotnet run -c Release --project tests/NetMediate.Benchmarks/ -- --job Dry
+
+# NativeAOT comparison — publish a native binary then run it
+dotnet publish tests/NetMediate.Benchmarks/ -c Release -p:AotBenchmark=true -o /tmp/bench-aot
+/tmp/bench-aot/NetMediate.Benchmarks
+```
+
+`CoreDispatchBenchmarks` covers the four core message types:
+
+| Benchmark | Description |
+|---|---|
+| `Command Send` | `IMediator.Send<BenchCommand>()` — no pipeline behaviors |
+| `Notification Notify` | `IMediator.Notify<BenchNotification>()` — no pipeline behaviors |
+| `Request Request` | `IMediator.Request<BenchRequest, BenchResponse>()` — no pipeline behaviors |
+| `Stream RequestStream (3 items/call)` | `IMediator.RequestStream<BenchStreamRequest, BenchStreamItem>()` — drains 3 items per invocation |
+
+BenchmarkDotNet output columns: `Method`, `Mean`, `Gen0`, `Allocated`.  The `--job Dry` flag produces a fast single-iteration result suitable for CI smoke-testing that the project compiles and executes.
+
+---
+
+
 
 ### Hot-path throughput
 
@@ -171,11 +200,13 @@ Resolves both, then concatenates:
 
 ## Handler and behavior caches
 
-Resolved handler arrays **and** behavior arrays are cached permanently per service type using a `ConcurrentDictionary<Type, Lazy<T[]>>`. Two separate dictionaries are used — `s_handlerCache` and `s_behaviorCache` — so handler and behavior lookups do not compete. Once populated on the first dispatch for a given message type, all subsequent calls read from the cache with no DI resolution or allocation.
+Resolved handler arrays are cached permanently per service type using a global `ConcurrentDictionary<Type, Lazy<T[]>>` (`s_handlerCache`). Handlers are registered as Singletons, so their resolved arrays never change for the lifetime of the application — a single global cache is correct.
+
+Resolved behavior arrays use a **per-service-provider** cache: a `ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<Type, Lazy<T[]>>>` (`s_behaviorCacheByProvider`). Each DI container gets its own isolated behavior dictionary, preventing cache contamination between containers (e.g., different test suites or multi-tenant hosts). When the provider is garbage-collected its cache entry is automatically released — no memory leak.
 
 ```
-First call for TMsg  →  DI resolution + cache fill  →  O(n) one-time cost
-All subsequent calls →  cache read                  →  O(1)
+First call for TMsg in a given provider  →  DI resolution + cache fill  →  O(n) one-time cost
+All subsequent calls                     →  cache read                  →  O(1)
 ```
 
 ---

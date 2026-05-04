@@ -23,7 +23,7 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 ## Near term
 
 - [ ] **Coverage gate** — enforce 100 % line coverage for `src/NetMediate` in CI so no internal path goes untested.
-- [ ] **BenchmarkDotNet suite** — add a dedicated `NetMediate.Benchmarks` project with stable, artifact-reproducible BenchmarkDotNet results (mean, alloc/op, gen0/1/2) that CI can track over time.
+- [x] **BenchmarkDotNet suite** — dedicated `NetMediate.Benchmarks` console project with `CoreDispatchBenchmarks` covering command, notification, request, and stream; `[MemoryDiagnoser]` reports mean, alloc/op, gen0; supports both JIT and NativeAOT runs via `-p:AotBenchmark=true`.
 - [ ] **Per-commit throughput regression gate** — fail CI if the `command` scenario drops more than 5 % from the previous commit baseline.
 
 ## Medium term

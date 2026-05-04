@@ -89,9 +89,6 @@ jobs:
           # Remove any previous CI section from the static BENCHMARKS.md and append new results
           sed -i '/^## Latest CI Benchmark Run/,$d' ../../docs/BENCHMARKS.md
           {
-            echo ""
-            echo "---"
-            echo ""
             echo "## Latest CI Benchmark Run"
             echo ""
             echo "Run: $(date -u '+%Y-%m-%d %H:%M UTC') | Branch: $GITHUB_HEAD_REF | Commit: ${GITHUB_SHA:0:7}"

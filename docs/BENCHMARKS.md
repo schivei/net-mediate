@@ -267,19 +267,6 @@ Thresholds are deliberately lenient to remain green on any CI hardware. Local de
 - [AOT.md](AOT.md) — AOT/NativeAOT compatibility guide
 - [SOURCE_GENERATION.md](SOURCE_GENERATION.md) — source generator guide
 
-
----
-
-
----
-
-
----
-
-
----
-
-
 ---
 
 ## Latest CI Benchmark Run

@@ -13,7 +13,6 @@
   - `dotnet restore src/NetMediate/NetMediate.csproj`
   - `dotnet build src/NetMediate/NetMediate.csproj --no-restore --configuration Release`
   - `dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release`
-  - `dotnet test tests/SharedParity.NetMediate.Tests/SharedParity.NetMediate.Tests.csproj --configuration Release`
 
 ## GitHub Actions
 - In this repo's GitHub Actions workflows, declare permissions at the job level rather than globally at the workflow level.

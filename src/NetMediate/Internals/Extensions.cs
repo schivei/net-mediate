@@ -19,17 +19,42 @@ internal static class Extensions
     private static readonly ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<Type, Lazy<object>>>
         s_behaviorCacheByProvider = new();
 
+    // Pre-compiled pipeline delegates are cached per provider per executor type.
+    // Each concrete executor class (closed generic) registers an Action<IServiceProvider> here
+    // via RegisterPipelineCacheClearing(); ClearCache(provider) invokes all of them so the
+    // pre-compiled chains are rebuilt on the next call (used by test isolation helpers).
+    private static readonly List<Action<IServiceProvider>> s_pipelineCacheClearers = [];
+
     /// <summary>
-    /// Clears the static handler cache.  Optionally clears the behavior cache for a specific
-    /// provider instance.  Intended for test isolation only — in production, prefer using
-    /// distinct message types per handler registration to avoid cache contamination.
+    /// Called once per closed-generic executor type (from a static constructor) to register
+    /// the cache-clearing action for that type's pre-compiled pipeline cache.
+    /// </summary>
+    internal static void RegisterPipelineCacheClearing(Action<IServiceProvider> clearer)
+    {
+        lock (s_pipelineCacheClearers)
+            s_pipelineCacheClearers.Add(clearer);
+    }
+
+    /// <summary>
+    /// Clears the static handler cache.  Optionally clears the behavior cache and pre-compiled
+    /// pipeline caches for a specific provider instance.  Intended for test isolation only —
+    /// in production, prefer using distinct message types per handler registration to avoid
+    /// cache contamination.
     /// </summary>
     internal static void ClearCache(IServiceProvider? serviceProvider = null)
     {
         s_handlerCache.Clear();
 
         if (serviceProvider is not null)
+        {
             s_behaviorCacheByProvider.Remove(serviceProvider);
+
+            lock (s_pipelineCacheClearers)
+            {
+                foreach (var clear in s_pipelineCacheClearers)
+                    clear(serviceProvider);
+            }
+        }
         // If no provider is supplied, we do NOT attempt to clear all per-provider entries —
         // ConditionalWeakTable does not expose a Clear() on all target frameworks and the
         // per-provider caches are naturally empty for any freshly created ServiceProvider.

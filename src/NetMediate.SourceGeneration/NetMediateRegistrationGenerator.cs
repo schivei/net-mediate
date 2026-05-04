@@ -1,4 +1,3 @@
-using System.IO;
 using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -72,7 +71,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             {
                 var (types, (hasDiagnostics, hasResilience)) = input;
                 var (registrations, notifier) = BuildRegistrations(types, hasDiagnostics, hasResilience);
-                var frameworkBehaviors = BuildFrameworkInfrastructure(hasDiagnostics, hasResilience);
+                var frameworkBehaviors = BuildFrameworkInfrastructure(hasResilience);
                 var source = BuildSource(registrations, notifier, frameworkBehaviors);
                 sourceProductionContext.AddSource(
                     "NetMediateGeneratedDI.g.cs",
@@ -89,7 +88,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     /// skips registration when the type is already present).
     /// For Diagnostics: no infrastructure needed — <c>NetMediateDiagnostics</c> is a static class.
     /// </summary>
-    private static string BuildFrameworkInfrastructure(bool hasDiagnostics, bool hasResilience)
+    private static string BuildFrameworkInfrastructure(bool hasResilience)
     {
         const string indent = "        "; // 8 spaces
         var sb = new System.Text.StringBuilder();
@@ -288,15 +287,11 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     {
         var stream = typeof(NetMediateRegistrationGenerator)
             .Assembly
-            .GetManifestResourceStream(TemplateResourceName);
-
-        if (stream is null)
-            throw new InvalidOperationException(
+            .GetManifestResourceStream(TemplateResourceName) ?? throw new InvalidOperationException(
                 $"Embedded template resource '{TemplateResourceName}' was not found. " +
                 "Ensure 'NetMediateGeneratedDI.template' is included as an EmbeddedResource " +
                 "in the NetMediate.SourceGeneration project."
             );
-
         using (stream)
         using (var reader = new StreamReader(stream))
             return reader.ReadToEnd();

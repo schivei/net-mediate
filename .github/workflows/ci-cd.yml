@@ -72,9 +72,6 @@ jobs:
     - name: Build NetMediate.DataDog.ILogger
       run: dotnet build src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --configuration Release
 
-    - name: Build NetMediate.Adapters
-      run: dotnet build src/NetMediate.Adapters/NetMediate.Adapters.csproj --no-restore --configuration Release
-
     - name: Build NetMediate.Quartz
       run: dotnet build src/NetMediate.Quartz/NetMediate.Quartz.csproj --no-restore --configuration Release
       
@@ -119,7 +116,7 @@ jobs:
 
     - name: Commit benchmark results
       if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
-      uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d4 # v9
+      uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5 # v9.1.4
       with:
         add: 'docs/BENCHMARKS.md'
         message: 'chore: update BENCHMARKS.md from CI benchmark run [skip ci]'
@@ -265,9 +262,6 @@ jobs:
 
     - name: Pack NetMediate.DataDog.ILogger package
       run: dotnet pack src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --no-build --no-restore --configuration Release --output ./packages
-
-    - name: Pack NetMediate.Adapters package
-      run: dotnet pack src/NetMediate.Adapters/NetMediate.Adapters.csproj --no-build --no-restore --configuration Release --output ./packages
 
     - name: Pack NetMediate.Quartz package
       run: dotnet pack src/NetMediate.Quartz/NetMediate.Quartz.csproj --no-build --no-restore --configuration Release --output ./packages

@@ -267,3 +267,75 @@ Thresholds are deliberately lenient to remain green on any CI hardware. Local de
 - [AOT.md](AOT.md) — AOT/NativeAOT compatibility guide
 - [SOURCE_GENERATION.md](SOURCE_GENERATION.md) — source generator guide
 
+
+---
+
+## Latest CI Benchmark Run
+
+Run: 2026-05-04 02:00 UTC | Branch: feature/aot | Environment: Ubuntu 24.04.4 LTS, AMD EPYC 9V74 3.68GHz, .NET 10.0.5
+
+| Method | Job | IterationCount | LaunchCount | RunStrategy | UnrollFactor | WarmupCount | Mean | Gen0 | Allocated |
+|--------------------------------------- |----------- |--------------- |------------ |------------ |------------- |------------ |-------------:|-------:|----------:|
+| 'Command  Send' | Job-CEIKLR | Default | Default | Throughput | 16 | Default | 113.9 ns | 0.0114 | 192 B |
+| 'Notification  Notify' | Job-CEIKLR | Default | Default | Throughput | 16 | Default | 171.1 ns | 0.0257 | 432 B |
+| 'Request  Request' | Job-CEIKLR | Default | Default | Throughput | 16 | Default | 140.5 ns | 0.0157 | 264 B |
+| 'Stream  RequestStream (3 items/call)' | Job-CEIKLR | Default | Default | Throughput | 16 | Default | 211.3 ns | 0.0215 | 360 B |
+| 'Command  Send' | Dry | 1 | 1 | ColdStart | 1 | 1 | 317,609.0 ns | - | 320 B |
+| 'Notification  Notify' | Dry | 1 | 1 | ColdStart | 1 | 1 | 304,750.0 ns | - | 624 B |
+| 'Request  Request' | Dry | 1 | 1 | ColdStart | 1 | 1 | 455,177.0 ns | - | 456 B |
+| 'Stream  RequestStream (3 items/call)' | Dry | 1 | 1 | ColdStart | 1 | 1 | 313,403.0 ns | - | 552 B |
+
+### Full Console Output
+
+```
+// * Summary *
+
+BenchmarkDotNet v0.15.8, Linux Ubuntu 24.04.4 LTS (Noble Numbat)
+AMD EPYC 9V74 3.68GHz, 1 CPU, 4 logical and 2 physical cores
+.NET SDK 10.0.201
+  [Host]     : .NET 10.0.5 (10.0.5, 10.0.526.15411), X64 RyuJIT x86-64-v4
+  Job-CEIKLR : .NET 10.0.5 (10.0.5, 10.0.526.15411), X64 RyuJIT x86-64-v4
+  Dry        : .NET 10.0.5 (10.0.5, 10.0.526.15411), X64 RyuJIT x86-64-v4
+
+
+| Method                                 | Job        | IterationCount | LaunchCount | RunStrategy | UnrollFactor | WarmupCount | Mean         | Gen0   | Allocated |
+|--------------------------------------- |----------- |--------------- |------------ |------------ |------------- |------------ |-------------:|-------:|----------:|
+| 'Command  Send'                        | Job-CEIKLR | Default        | Default     | Throughput  | 16           | Default     |     113.9 ns | 0.0114 |     192 B |
+| 'Notification  Notify'                 | Job-CEIKLR | Default        | Default     | Throughput  | 16           | Default     |     171.1 ns | 0.0257 |     432 B |
+| 'Request  Request'                     | Job-CEIKLR | Default        | Default     | Throughput  | 16           | Default     |     140.5 ns | 0.0157 |     264 B |
+| 'Stream  RequestStream (3 items/call)' | Job-CEIKLR | Default        | Default     | Throughput  | 16           | Default     |     211.3 ns | 0.0215 |     360 B |
+| 'Command  Send'                        | Dry        | 1              | 1           | ColdStart   | 1            | 1           | 317,609.0 ns |      - |     320 B |
+| 'Notification  Notify'                 | Dry        | 1              | 1           | ColdStart   | 1            | 1           | 304,750.0 ns |      - |     624 B |
+| 'Request  Request'                     | Dry        | 1              | 1           | ColdStart   | 1            | 1           | 455,177.0 ns |      - |     456 B |
+| 'Stream  RequestStream (3 items/call)' | Dry        | 1              | 1           | ColdStart   | 1            | 1           | 313,403.0 ns |      - |     552 B |
+
+// * Warnings *
+MinIterationTime
+  CoreDispatchBenchmarks.'Command  Send': Dry                        -> The minimum observed iteration time is 317.609us which is very small. It's recommended to increase it to at least 100ms using more operations.
+  CoreDispatchBenchmarks.'Notification  Notify': Dry                 -> The minimum observed iteration time is 304.75us which is very small. It's recommended to increase it to at least 100ms using more operations.
+  CoreDispatchBenchmarks.'Request  Request': Dry                     -> The minimum observed iteration time is 455.177us which is very small. It's recommended to increase it to at least 100ms using more operations.
+  CoreDispatchBenchmarks.'Stream  RequestStream (3 items/call)': Dry -> The minimum observed iteration time is 313.403us which is very small. It's recommended to increase it to at least 100ms using more operations.
+
+// * Hints *
+HideColumnsAnalyser
+  Summary -> Hidden columns: Error, StdDev
+Outliers
+  CoreDispatchBenchmarks.'Notification  Notify': RunStrategy=Throughput                 -> 1 outlier  was  removed, 2 outliers were detected (170.63 ns, 176.14 ns)
+  CoreDispatchBenchmarks.'Request  Request': RunStrategy=Throughput                     -> 1 outlier  was  detected (140.96 ns)
+  CoreDispatchBenchmarks.'Stream  RequestStream (3 items/call)': RunStrategy=Throughput -> 2 outliers were detected (210.70 ns, 211.72 ns)
+
+// * Legends *
+  Mean      : Arithmetic mean of all measurements
+  Gen0      : GC Generation 0 collects per 1000 operations
+  Allocated : Allocated memory per single operation (managed only, inclusive, 1KB = 1024B)
+  1 ns      : 1 Nanosecond (0.000000001 sec)
+
+// * Diagnostic Output - MemoryDiagnoser *
+
+
+// ***** BenchmarkRunner: End *****
+Run time: 00:01:26 (86.39 sec), executed benchmarks: 8
+
+Global total time: 00:01:38 (98.06 sec), executed benchmarks: 8
+// * Artifacts cleanup *
+```

@@ -1,4 +1,5 @@
 using Serilog;
+using System.Data;
 
 namespace NetMediate.DataDog.Serilog;
 
@@ -29,15 +30,15 @@ public static class NetMediateDataDogSerilogExtensions
             NetMediateDiagnostics.ActivitySourceName
         );
         loggerConfiguration.Enrich.WithProperty("netmediate.meter", NetMediateDiagnostics.MeterName);
+        loggerConfiguration.Enrich.WithProperty("netmediate.message_type", NetMediateDiagnostics.MessageTypeName);
 
         if (!options.EnableSink)
             return loggerConfiguration;
 
         if (string.IsNullOrWhiteSpace(options.ApiKey))
         {
-            throw new ArgumentException(
-                "DataDog API key must be provided when EnableSink is true.",
-                $"{nameof(options)}.{nameof(DataDogSerilogOptions.ApiKey)}"
+            throw new NoNullAllowedException(
+                "DataDog API key must be provided when EnableSink is true."
             );
         }
 

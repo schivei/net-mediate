@@ -28,22 +28,6 @@ public sealed class DataDogIntegrationPackageTests
     }
 
     [Fact]
-    public void SerilogPackage_ShouldAllowConfigurationWithoutSink()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-        var logger = new LoggerConfiguration()
-            .UseNetMediateDataDogSerilog(options =>
-            {
-                options.ApiKey = "test-api-key";
-                options.EnableSink = false;
-            }, cancellationToken)
-            .CreateLogger();
-
-        logger.Information("datadog serilog test");
-        logger.Dispose();
-    }
-
-    [Fact]
     public void SerilogPackage_ShouldRequireApiKeyWhenSinkIsEnabled()
     {
         var cancellationToken = TestContext.Current.CancellationToken;

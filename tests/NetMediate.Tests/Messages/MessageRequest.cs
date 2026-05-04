@@ -1,3 +1,3 @@
 ﻿namespace NetMediate.Tests.Messages;
 
-internal sealed record MessageRequest(int CommandId) : BaseMessage;
+internal sealed record MessageRequest(int CommandId) : BaseMessage, IRequest<int>;

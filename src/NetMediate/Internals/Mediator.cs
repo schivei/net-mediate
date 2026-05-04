@@ -28,11 +28,11 @@ internal sealed class Mediator(
 
     /// <inheritdoc/>
     public async Task Send<TMessage>(
-        TMessage command,
+        TMessage message,
         CancellationToken cancellationToken = default
     ) where TMessage : notnull
     {
-        // GetService (nullable) so that a command with no registered handler is a no-op
+        // GetService (nullable) so that a message with no registered handler is a no-op
         // rather than throwing. Executors are only registered when a handler is registered
         // via RegisterCommandHandler<>.
         var pipeline = serviceProvider
@@ -42,7 +42,7 @@ internal sealed class Mediator(
 
         try
         {
-            await pipeline.Handle(command, CommandHandlers, cancellationToken).ConfigureAwait(false);
+            await pipeline.Handle(message, CommandHandlers, cancellationToken).ConfigureAwait(false);
         }
         catch (MediatorException)
         {
@@ -59,9 +59,9 @@ internal sealed class Mediator(
     }
 
     /// <inheritdoc/>
-    public async Task Send<TMessage>(IEnumerable<TMessage> commands, CancellationToken cancellationToken = default) where TMessage : notnull
+    public async Task Send<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
     {
-        await Task.WhenAll(commands.Select(command => Send(command, cancellationToken)));
+        await Task.WhenAll(messages.Select(message => Send(message, cancellationToken)));
     }
 
     private static async Task CommandHandlers<TMessage>(TMessage message,

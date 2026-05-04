@@ -149,10 +149,12 @@ public sealed class ResilienceBehaviorTests
         });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        await mediator.Notify(
+        var ex = await mediator.Notify(
             new TimeoutNotificationMessage("pass"),
             TestContext.Current.CancellationToken
-        );
+        ).ContinueWith(task => task.Exception);
+
+        Assert.Null(ex);
     }
 
     [Fact]

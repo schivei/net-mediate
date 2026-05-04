@@ -20,8 +20,8 @@ public sealed class RetryRequestBehavior<TMessage, TResponse>(IOptions<RetryBeha
         var maxRetryCount = Math.Max(0, options.MaxRetryCount);
         var delay = options.Delay < TimeSpan.Zero ? TimeSpan.Zero : options.Delay;
 
-        var attempt = -1;
-        while (++attempt > -1)
+        var attempt = 0;
+        while (attempt >= 0)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -41,6 +41,10 @@ public sealed class RetryRequestBehavior<TMessage, TResponse>(IOptions<RetryBeha
             {
                 if (delay > TimeSpan.Zero)
                     await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                Interlocked.Increment(ref attempt);
             }
         }
 
@@ -66,8 +70,8 @@ public sealed class RetryNotificationBehavior<TMessage>(IOptions<RetryBehaviorOp
         var maxRetryCount = Math.Max(0, options.MaxRetryCount);
         var delay = options.Delay < TimeSpan.Zero ? TimeSpan.Zero : options.Delay;
 
-        var attempt = -1;
-        while (++attempt > -1)
+        var attempt = 0;
+        while (attempt >= 0)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -88,6 +92,10 @@ public sealed class RetryNotificationBehavior<TMessage>(IOptions<RetryBehaviorOp
             {
                 if (delay > TimeSpan.Zero)
                     await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                Interlocked.Increment(ref attempt);
             }
         }
     }

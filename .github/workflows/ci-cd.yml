@@ -79,6 +79,9 @@ jobs:
 
     - name: Test Diagnostics
       run: dotnet test tests/NetMediate.Diagnostics.Tests/NetMediate.Diagnostics.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+    - name: Test SourceGeneration (package-reference integration)
+      run: dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
       
     - name: Run Benchmarks (PR only)
       if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'

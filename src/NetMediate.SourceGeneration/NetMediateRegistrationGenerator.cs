@@ -37,9 +37,23 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         );
     }
 
-    private static void Accumulate(SourceProductionContext sourceProductionContext, (ImmutableArray<INamedTypeSymbol> Left, (bool hasDiagnostics, bool hasResilience) Right) input)
+    private static void Accumulate(SourceProductionContext sourceProductionContext, (ImmutableArray<INamedTypeSymbol> Left, (bool hasDiagnostics, bool hasResilience, bool isNetMediateAssembly) Right) input)
     {
-        var (types, (hasDiagnostics, hasResilience)) = input;
+        var (types, (hasDiagnostics, hasResilience, isNetMediateAssembly)) = input;
+
+        // When compiling the NetMediate package itself the generator should not emit a real
+        // NetMediateGeneratedDI class: the class would get baked into NetMediate.dll, and
+        // when a downstream project references that DLL the generator would try to emit the
+        // same class again in the same namespace, causing a duplicate-type compile error.
+        if (isNetMediateAssembly)
+        {
+            sourceProductionContext.AddSource(
+                "NetMediateGeneratedDI.g.cs",
+                "// Source generation skipped for the NetMediate core assembly.\n" +
+                "// AddNetMediate() is generated in the referencing project by the source generator.");
+            return;
+        }
+
         var (registrations, notifier) = BuildRegistrations(types, hasDiagnostics, hasResilience);
         var frameworkBehaviors = BuildFrameworkInfrastructure(hasResilience);
         var source = BuildSource(registrations, notifier, frameworkBehaviors);
@@ -49,13 +63,14 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         );
     }
 
-    private static (bool hasDiagnostics, bool hasResilience) Selects(Compilation compilation)
+    private static (bool hasDiagnostics, bool hasResilience, bool isNetMediateAssembly) Selects(Compilation compilation)
     {
         var names = compilation.ReferencedAssemblyNames.Select(name => name.Name);
         bool hasDiagnostics = names.Contains("NetMediate.Diagnostics");
         bool hasResilience = names.Contains("NetMediate.Resilience");
+        bool isNetMediateAssembly = compilation.AssemblyName == "NetMediate";
 
-        return (hasDiagnostics, hasResilience);
+        return (hasDiagnostics, hasResilience, isNetMediateAssembly);
     }
 
     private static bool Search(SyntaxNode node) =>

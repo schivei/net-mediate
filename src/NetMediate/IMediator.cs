@@ -1,4 +1,6 @@
-﻿namespace NetMediate;
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace NetMediate;
 
 /// <summary>
 /// Defines a mediator for sending messages, notifications, and requests between components.

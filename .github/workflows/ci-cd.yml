@@ -12,6 +12,7 @@ env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build-and-test:
@@ -215,7 +216,7 @@ jobs:
         dotnet-version: '10.x'
         
     - name: Restore dependencies
-      run: dotnet restore net-mediate.slnx --configuration Release
+      run: dotnet restore net-mediate.slnx
       
     - name: Build Release (all projects/targets)
       run: dotnet build net-mediate.slnx --configuration Release

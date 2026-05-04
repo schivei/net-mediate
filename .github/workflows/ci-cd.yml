@@ -73,7 +73,7 @@ jobs:
       run: dotnet build src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --configuration Release
 
     - name: Build NetMediate.Quartz
-      run: dotnet build src/NetMediate.Quartz/NetMediate.Quartz.csproj --no-restore --configuration Release
+      run: dotnet build src/NetMediate.Quartz/NetMediate.Quartz.csproj --configuration Release
       
     - name: Test
       run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage

@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NetMediate.Resilience;
 
 namespace NetMediate.Resilience.Tests;
 
@@ -69,12 +68,13 @@ public sealed class ResilienceBehaviorTests
 
         var mediator = host.Services.GetRequiredService<IMediator>();
 
-        await Assert.ThrowsAsync<TimeoutException>(async () =>
+        var ex = await Assert.ThrowsAsync<MediatorException>(async () =>
             await mediator.Request<TimeoutRequestMessage, string>(
                 new TimeoutRequestMessage("slow"),
                 TestContext.Current.CancellationToken
             )
         );
+        Assert.IsType<TimeoutException>(ex.InnerException);
     }
 
     [Fact]
@@ -91,28 +91,30 @@ public sealed class ResilienceBehaviorTests
 
         var mediator = host.Services.GetRequiredService<IMediator>();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        var ex1 = await Assert.ThrowsAsync<MediatorException>(async () =>
+            await mediator.Request<CircuitBreakerRequestMessage, string>(
+                new CircuitBreakerRequestMessage("fail"),
+                TestContext.Current.CancellationToken
+            )
+        );
+        Assert.IsType<InvalidOperationException>(ex1.InnerException);
+
+        var ex2 = await Assert.ThrowsAsync<MediatorException>(async () =>
+            await mediator.Request<CircuitBreakerRequestMessage, string>(
+                new CircuitBreakerRequestMessage("fail"),
+                TestContext.Current.CancellationToken
+            )
+        );
+        Assert.IsType<InvalidOperationException>(ex2.InnerException);
+
+        var circuitEx = await Assert.ThrowsAsync<MediatorException>(async () =>
             await mediator.Request<CircuitBreakerRequestMessage, string>(
                 new CircuitBreakerRequestMessage("fail"),
                 TestContext.Current.CancellationToken
             )
         );
 
-        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await mediator.Request<CircuitBreakerRequestMessage, string>(
-                new CircuitBreakerRequestMessage("fail"),
-                TestContext.Current.CancellationToken
-            )
-        );
-
-        var circuitException = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
-            await mediator.Request<CircuitBreakerRequestMessage, string>(
-                new CircuitBreakerRequestMessage("fail"),
-                TestContext.Current.CancellationToken
-            )
-        );
-
-        Assert.Contains("Circuit open", circuitException.Message);
+        Assert.Contains("Circuit open", circuitEx.InnerException?.Message);
     }
 
     [Fact]

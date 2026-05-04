@@ -63,7 +63,7 @@ internal sealed class MediatorServiceBuilder<
     public IMediatorServiceBuilder RegisterCommandHandler<TMessage>(ICommandHandler<TMessage> handler)
         where TMessage : notnull
     {
-        _services.AddSingleton<ICommandHandler<TMessage>>(handler);
+        _services.AddSingleton(handler);
         _services.TryAddSingleton<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>();
         return this;
     }
@@ -83,7 +83,7 @@ internal sealed class MediatorServiceBuilder<
     public IMediatorServiceBuilder RegisterNotificationHandler<TMessage>(INotificationHandler<TMessage> handler)
         where TMessage : notnull
     {
-        _services.AddSingleton<INotificationHandler<TMessage>>(handler);
+        _services.AddSingleton(handler);
         _services.TryAddSingleton<NotificationPipelineExecutor<TMessage>>();
         return this;
     }
@@ -104,7 +104,7 @@ internal sealed class MediatorServiceBuilder<
     public IMediatorServiceBuilder RegisterRequestHandler<TMessage, TResponse>(IRequestHandler<TMessage, TResponse> handler)
         where TMessage : notnull
     {
-        _services.AddSingleton<IRequestHandler<TMessage, TResponse>>(handler);
+        _services.AddSingleton(handler);
         _services.TryAddSingleton<RequestPipelineExecutor<TMessage, TResponse>>();
         return this;
     }
@@ -125,7 +125,7 @@ internal sealed class MediatorServiceBuilder<
     public IMediatorServiceBuilder RegisterStreamHandler<TMessage, TResponse>(IStreamHandler<TMessage, TResponse> handler)
         where TMessage : notnull
     {
-        _services.AddSingleton<IStreamHandler<TMessage, TResponse>>(handler);
+        _services.AddSingleton(handler);
         _services.TryAddSingleton<StreamPipelineExecutor<TMessage, TResponse>>();
         return this;
     }
@@ -140,6 +140,17 @@ internal sealed class MediatorServiceBuilder<
         where TResult : notnull
     {
         _services.AddTransient<IPipelineBehavior<TMessage, TResult>, TBehavior>();
+        return this;
+    }
+
+    public IMediatorServiceBuilder RegisterNotificationBehavior<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        TBehavior,
+        TMessage>()
+        where TBehavior : class, IPipelineNotificationBehavior<TMessage>
+        where TMessage : notnull
+    {
+        _services.AddTransient<IPipelineNotificationBehavior<TMessage>, TBehavior>();
         return this;
     }
 }

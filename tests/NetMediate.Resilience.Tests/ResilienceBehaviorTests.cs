@@ -2,7 +2,6 @@ using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using NetMediate.Adapters;
 using NetMediate.Resilience;
 
 namespace NetMediate.Resilience.Tests;
@@ -141,21 +140,24 @@ public sealed class ResilienceBehaviorTests
     [Fact]
     public async Task TimeoutNotificationBehavior_ShouldThrowTimeoutException_WhenNotificationExceedsTimeout()
     {
-        using var host = await CreateNotificationHostAsync(services =>
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.UseNetMediate(configure =>
         {
-            services.AddSingleton(new TimeoutBehaviorOptions { NotificationTimeout = TimeSpan.FromMilliseconds(20) });
-            services.AddNetMediateAdapters(opts => opts.ThrowOnAdapterFailure = true);
-            services.AddSingleton<
-                INotificationAdapter<TimeoutNotificationMessage>,
-                SlowNotificationAdapter
-            >();
+            configure.RegisterNotificationHandler<SlowTimeoutNotificationHandler, SlowTimeoutNotificationMessage>();
+            // Timeout registered first → becomes outermost after Reverse(); SlowBehavior becomes inner
+            configure.RegisterBehavior<TimeoutNotificationBehavior<SlowTimeoutNotificationMessage>, SlowTimeoutNotificationMessage, Task>();
+            configure.RegisterBehavior<SlowPipelineBehavior<SlowTimeoutNotificationMessage>, SlowTimeoutNotificationMessage, Task>();
         });
+        builder.Services.AddSingleton(new TimeoutBehaviorOptions { NotificationTimeout = TimeSpan.FromMilliseconds(20) });
+
+        using var host = builder.Build();
+        await host.StartAsync(TestContext.Current.CancellationToken);
 
         var mediator = host.Services.GetRequiredService<IMediator>();
 
         await Assert.ThrowsAsync<TimeoutException>(async () =>
             await mediator.Notify(
-                new TimeoutNotificationMessage("slow"),
+                new SlowTimeoutNotificationMessage("slow"),
                 TestContext.Current.CancellationToken
             )
         );
@@ -164,55 +166,63 @@ public sealed class ResilienceBehaviorTests
     [Fact]
     public async Task CircuitBreakerNotificationBehavior_ShouldOpenAfterThreshold()
     {
-        using var host = await CreateNotificationHostAsync(services =>
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.UseNetMediate(configure =>
         {
-            services.AddSingleton(new CircuitBreakerBehaviorOptions
-            {
-                FailureThreshold = 2,
-                OpenDuration = TimeSpan.FromSeconds(30),
-            });
-            services.AddNetMediateAdapters(opts => opts.ThrowOnAdapterFailure = true);
-            services.AddSingleton<
-                INotificationAdapter<CbNotificationMessage>,
-                ThrowingNotificationAdapter
-            >();
+            configure.RegisterNotificationHandler<ThrowingCbNotificationHandler2, ThrowingCbMessage>();
+            // CircuitBreaker registered first → becomes outermost after Reverse(); Throwing becomes inner
+            configure.RegisterBehavior<CircuitBreakerNotificationBehavior<ThrowingCbMessage>, ThrowingCbMessage, Task>();
+            configure.RegisterBehavior<ThrowingPipelineBehavior<ThrowingCbMessage>, ThrowingCbMessage, Task>();
         });
+        builder.Services.AddSingleton(new CircuitBreakerBehaviorOptions
+        {
+            FailureThreshold = 2,
+            OpenDuration = TimeSpan.FromSeconds(30),
+        });
+
+        using var host = builder.Build();
+        await host.StartAsync(TestContext.Current.CancellationToken);
 
         var mediator = host.Services.GetRequiredService<IMediator>();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            mediator.Notify(new CbNotificationMessage(), TestContext.Current.CancellationToken)
+            mediator.Notify(new ThrowingCbMessage(), TestContext.Current.CancellationToken)
         );
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            mediator.Notify(new CbNotificationMessage(), TestContext.Current.CancellationToken)
+            mediator.Notify(new ThrowingCbMessage(), TestContext.Current.CancellationToken)
         );
 
         var circuitEx = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            mediator.Notify(new CbNotificationMessage(), TestContext.Current.CancellationToken)
+            mediator.Notify(new ThrowingCbMessage(), TestContext.Current.CancellationToken)
         );
         Assert.Contains("Circuit open", circuitEx.Message);
     }
 
     [Fact]
-    public async Task RetryNotificationBehavior_ShouldRetryViaAdapterException()
+    public async Task RetryNotificationBehavior_ShouldRetryOnPipelineBehaviorException()
     {
-        using var host = await CreateNotificationHostAsync(services =>
+        CountingThrowBehavior<CountingThrowMessage>.Reset();
+
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.UseNetMediate(configure =>
         {
-            services.AddSingleton(new RetryBehaviorOptions { MaxRetryCount = 2, Delay = TimeSpan.Zero });
-            services.AddNetMediateAdapters(opts => opts.ThrowOnAdapterFailure = true);
-            services.AddSingleton<
-                INotificationAdapter<RetryNotificationMessage>,
-                CountingThrowAdapter
-            >();
+            configure.RegisterNotificationHandler<CountingThrowNotificationHandler, CountingThrowMessage>();
+            // Retry registered first → becomes outermost after Reverse(); CountingThrow becomes inner
+            configure.RegisterBehavior<RetryNotificationBehavior<CountingThrowMessage>, CountingThrowMessage, Task>();
+            configure.RegisterBehavior<CountingThrowBehavior<CountingThrowMessage>, CountingThrowMessage, Task>();
         });
+        builder.Services.AddSingleton(new RetryBehaviorOptions { MaxRetryCount = 2, Delay = TimeSpan.Zero });
+
+        using var host = builder.Build();
+        await host.StartAsync(TestContext.Current.CancellationToken);
 
         var mediator = host.Services.GetRequiredService<IMediator>();
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            mediator.Notify(new RetryNotificationMessage(), TestContext.Current.CancellationToken)
+            mediator.Notify(new CountingThrowMessage(), TestContext.Current.CancellationToken)
         );
 
-        Assert.Equal(3, CountingThrowAdapter.Invocations);
+        Assert.Equal(3, CountingThrowBehavior<CountingThrowMessage>.Invocations);
     }
 
     // ── Load / throughput test ──────────────────────────────────────────────────────────────
@@ -302,7 +312,6 @@ public sealed class ResilienceBehaviorTests
 
     private static async Task<IHost> CreateNotificationHostAsync(Action<IServiceCollection> configureServices)
     {
-        CountingThrowAdapter.Reset();
         var builder = Host.CreateApplicationBuilder();
         builder.Services.UseNetMediate(configure =>
         {
@@ -395,6 +404,10 @@ public sealed class ResilienceBehaviorTests
     public sealed record CbNotificationMessage;
     public sealed record RetryNotificationMessage;
     public sealed record LoadRequest(int Value);
+    // Unique message types for handler-based resilience tests (avoids static handler cache contamination)
+    public sealed record SlowTimeoutNotificationMessage(string Value = "");
+    public sealed record ThrowingCbMessage;
+    public sealed record CountingThrowMessage;
 
     // ── Handlers ─────────────────────────────────────────────────────────────────────────────
 
@@ -466,30 +479,59 @@ public sealed class ResilienceBehaviorTests
             => Task.FromResult(query.Value + 1);
     }
 
-    // ── Adapters ─────────────────────────────────────────────────────────────────────────────
+    // ── Pipeline behaviors for notification resilience tests ─────────────────────────────────
 
-    private sealed class SlowNotificationAdapter : INotificationAdapter<TimeoutNotificationMessage>
+    /// <summary>Delays 200 ms before calling next — used to trigger timeout behavior.</summary>
+    private sealed class SlowPipelineBehavior<TMessage> : IPipelineBehavior<TMessage>
+        where TMessage : notnull
     {
-        public async Task ForwardAsync(AdapterEnvelope<TimeoutNotificationMessage> envelope, CancellationToken cancellationToken = default)
-            => await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+        public async Task Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken cancellationToken)
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
+            await next(message, cancellationToken);
+        }
     }
 
-    private sealed class ThrowingNotificationAdapter : INotificationAdapter<CbNotificationMessage>
+    /// <summary>Always throws — used to trigger circuit-breaker behavior.</summary>
+    private sealed class ThrowingPipelineBehavior<TMessage> : IPipelineBehavior<TMessage>
+        where TMessage : notnull
     {
-        public Task ForwardAsync(AdapterEnvelope<CbNotificationMessage> envelope, CancellationToken cancellationToken = default)
-            => throw new InvalidOperationException("adapter failure");
+        public Task Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken cancellationToken)
+            => throw new InvalidOperationException("behavior failure");
     }
 
-    private sealed class CountingThrowAdapter : INotificationAdapter<RetryNotificationMessage>
+    /// <summary>Always throws and counts invocations — used to test retry behavior.</summary>
+    private sealed class CountingThrowBehavior<TMessage> : IPipelineBehavior<TMessage>
+        where TMessage : notnull
     {
         private static int s_invocations;
         public static int Invocations => Volatile.Read(ref s_invocations);
         public static void Reset() => Interlocked.Exchange(ref s_invocations, 0);
 
-        public Task ForwardAsync(AdapterEnvelope<RetryNotificationMessage> envelope, CancellationToken cancellationToken = default)
+        public Task Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref s_invocations);
             throw new InvalidOperationException("retry trigger");
         }
+    }
+
+    // ── Notification handlers for the new message types ──────────────────────────────────────
+
+    private sealed class SlowTimeoutNotificationHandler : INotificationHandler<SlowTimeoutNotificationMessage>
+    {
+        public Task Handle(SlowTimeoutNotificationMessage notification, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
+
+    private sealed class ThrowingCbNotificationHandler2 : INotificationHandler<ThrowingCbMessage>
+    {
+        public Task Handle(ThrowingCbMessage notification, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
+
+    private sealed class CountingThrowNotificationHandler : INotificationHandler<CountingThrowMessage>
+    {
+        public Task Handle(CountingThrowMessage notification, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 }

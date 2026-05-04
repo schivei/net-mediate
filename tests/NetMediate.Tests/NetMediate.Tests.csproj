@@ -24,7 +24,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
-    <ProjectReference Include="..\..\src\NetMediate.Adapters\NetMediate.Adapters.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.Moq\NetMediate.Moq.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.DataDog.OpenTelemetry\NetMediate.DataDog.OpenTelemetry.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.DataDog.Serilog\NetMediate.DataDog.Serilog.csproj" />

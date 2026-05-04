@@ -171,33 +171,7 @@ builder.Services.AddNetMediate();
 
 The generator discovers all `ICommandHandler<>`, `IRequestHandler<,>`, `INotificationHandler<>`, and `IStreamHandler<,>` implementations in your project and emits strongly-typed closed-type registrations — no reflection, fully AOT-compatible. See [SOURCE_GENERATION.md](SOURCE_GENERATION.md).
 
-## 5) Adapters (`NetMediate.Adapters`)
-
-### Installation
-
-```bash
-dotnet add package NetMediate.Adapters
-```
-
-### Configuration
-
-```csharp
-using NetMediate.Adapters;
-
-// Register the adapter pipeline behavior
-builder.Services.AddNetMediateAdapters(opts =>
-{
-    opts.ThrowOnAdapterFailure = true;      // default: propagate adapter errors
-    opts.InvokeAdaptersInParallel = false;  // default: sequential
-});
-
-// Register your adapter implementation
-builder.Services.AddNotificationAdapter<UserCreatedNotification, UserCreatedKafkaAdapter>();
-```
-
-See [ADAPTERS.md](ADAPTERS.md) for full details.
-
-## 6) Quartz (`NetMediate.Quartz`)
+## 5) Quartz (`NetMediate.Quartz`)
 
 ### Installation
 
@@ -221,7 +195,7 @@ builder.Services.AddNetMediateQuartz(opts =>
 
 See [QUARTZ.md](QUARTZ.md) for full details.
 
-## 7) Moq (`NetMediate.Moq`)
+## 6) Moq (`NetMediate.Moq`)
 
 ### Installation
 

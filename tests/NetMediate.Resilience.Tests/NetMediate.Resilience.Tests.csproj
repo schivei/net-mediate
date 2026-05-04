@@ -24,7 +24,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
-    <ProjectReference Include="..\..\src\NetMediate.Adapters\NetMediate.Adapters.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.Resilience\NetMediate.Resilience.csproj" />
   </ItemGroup>
   <ItemGroup>

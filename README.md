@@ -61,7 +61,6 @@ dotnet add package NetMediate
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
 <PackageReference Include="NetMediate.Resilience" Version="x.x.x" />
 <PackageReference Include="NetMediate.Quartz" Version="x.x.x" />
-<PackageReference Include="NetMediate.Adapters" Version="x.x.x" />
 <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 <PackageReference Include="NetMediate.DataDog.OpenTelemetry" Version="x.x.x" />
 <PackageReference Include="NetMediate.DataDog.Serilog" Version="x.x.x" />
@@ -71,7 +70,6 @@ dotnet add package NetMediate
 - **NetMediate.Moq**: lightweight Moq helpers for unit and integration tests (`Mocking.Create`, `AddMockSingleton`, async setup extensions).
 - **NetMediate.Resilience**: optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
 - **NetMediate.Quartz**: persists notifications as Quartz.NET jobs, enabling crash recovery and cluster-distributed notification execution.
-- **NetMediate.Adapters**: contracts, a standard envelope, and a pipeline behavior for forwarding notifications to external queues or streams (RabbitMQ, Kafka, Azure Service Bus, etc.).
 - **NetMediate.SourceGeneration**: generates `AddNetMediate()` to register handlers at compile-time — no reflection, fully AOT-safe.
 - **NetMediate.DataDog.OpenTelemetry**: wires NetMediate traces/metrics to DataDog through OpenTelemetry OTLP exporters.
 - **NetMediate.DataDog.Serilog**: attaches the DataDog Serilog sink and enriches logs with NetMediate activity fields.
@@ -85,7 +83,6 @@ dotnet add package NetMediate
 - [Resilience package guide](docs/RESILIENCE.md)
 - [Benchmark results](docs/BENCHMARKS.md)
 - [Quartz persistent notifications](docs/QUARTZ.md)
-- [Notification adapters (external queues/streams)](docs/ADAPTERS.md)
 - [Source generation guide](docs/SOURCE_GENERATION.md)
 - [AOT / NativeAOT and trimming guide](docs/AOT.md)
 - [DataDog integrations guide](docs/DATADOG.md)

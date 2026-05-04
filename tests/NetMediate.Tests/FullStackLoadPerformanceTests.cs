@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NetMediate.Adapters;
 
 namespace NetMediate.Tests;
 
@@ -125,7 +124,6 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
             configure.RegisterRequestHandler<FullStackRequestHandler, FullStackRequest, int>();
             configure.RegisterNotificationHandler<FullStackNotificationHandler, FullStackNotification>();
         });
-        builder.Services.AddNetMediateAdapters();
 
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);

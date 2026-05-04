@@ -10,7 +10,6 @@
     <File Path="versions.props" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/NetMediate.Adapters/NetMediate.Adapters.csproj" Id="b1c4d5e6-f7a8-49b0-c1d2-e3f4a5b6c7d8" />
     <Project Path="src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj" Id="e5f6a7b8-c9d0-4e1f-a2b3-c4d5e6f7a8b9" />
     <Project Path="src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj" Id="2aabfa26-9c0d-4a0f-80f2-f5f2d1b13f2a" />
     <Project Path="src/NetMediate.DataDog.OpenTelemetry/NetMediate.DataDog.OpenTelemetry.csproj" Id="dc9d6521-e745-44d8-8e4b-4d5c4f4eb070" />

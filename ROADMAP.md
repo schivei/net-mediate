@@ -11,14 +11,14 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 - [x] Benchmark suite with load and pipeline-variant tests covering commands, requests, notifications, and streams.
 - [x] NativeAOT and trimming compatibility — no `MakeGenericType`, no assembly scanning, no `typeof(TResult)` runtime switches; closed-type executors registered per handler at startup.
 - [x] Quartz.NET integration (`NetMediate.Quartz`) for persistent, crash-recoverable, and cluster-distributed notification execution.
-- [x] Notification adapter contracts and utilities (`NetMediate.Adapters`) for forwarding notifications to external queues and streams.
+- [x] Notification adapter contracts and utilities can be implemented as user-defined pipeline behaviors that forward notifications to external queues and streams.
 - [x] DataDog integration packages (`NetMediate.DataDog.OpenTelemetry`, `NetMediate.DataDog.Serilog`, `NetMediate.DataDog.ILogger`).
 - [x] `NetMediate.Moq` helper package with fluent async setup extensions and mediator mock registration.
 - [x] Marker-interface-free messaging — any plain class or record can be a message type.
 - [x] `Task`-based handler contracts — all handler `Handle` methods return `Task` or `Task<TResponse>`.
 - [x] Dedicated `NotificationPipelineExecutor<TMessage>` — resolves both `IPipelineBehavior<TMessage, Task>` and `IPipelineBehavior<TMessage>` without a runtime type switch, keeping the notification pipeline AOT-safe.
 - [x] Sample applications (API, Worker, Minimal API) in `docs/SAMPLES.md`.
-- [x] Full documentation suite: installation, configuration, resilience, adapters, source generation, AOT, DataDog, Moq recipes, diagnostics, Quartz, benchmarks.
+- [x] Full documentation suite: installation, configuration, resilience, source generation, AOT, DataDog, Moq recipes, diagnostics, Quartz, benchmarks.
 
 ## Near term
 

@@ -44,16 +44,16 @@ jobs:
       run: dotnet restore net-mediate.slnx
       
     - name: Build NetMediate
-      run: dotnet build src/NetMediate/NetMediate.csproj --no-restore --configuration Release
+      run: dotnet build src/NetMediate/NetMediate.csproj --configuration Release
 
     - name: Build NetMediate.Diagnostics
-      run: dotnet build src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --no-restore --configuration Release
+      run: dotnet build src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release
 
     - name: Build NetMediate.Moq
-      run: dotnet build src/NetMediate.Moq/NetMediate.Moq.csproj --no-restore --configuration Release
+      run: dotnet build src/NetMediate.Moq/NetMediate.Moq.csproj --configuration Release
 
     - name: Build NetMediate.Resilience
-      run: dotnet build src/NetMediate.Resilience/NetMediate.Resilience.csproj --no-restore --configuration Release
+      run: dotnet build src/NetMediate.Resilience/NetMediate.Resilience.csproj --configuration Release
 
     - name: Build NetMediate.SourceGeneration
       run: dotnet build src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release
@@ -218,7 +218,7 @@ jobs:
       run: dotnet restore net-mediate.slnx --configuration Release
       
     - name: Build Release (all projects/targets)
-      run: dotnet build net-mediate.slnx --no-restore --configuration Release
+      run: dotnet build net-mediate.slnx --configuration Release
       
     - name: Run Tests
       run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release --verbosity normal
@@ -230,31 +230,31 @@ jobs:
       run: dotnet test tests/NetMediate.Diagnostics.Tests/NetMediate.Diagnostics.Tests.csproj --configuration Release --verbosity normal
       
     - name: Pack NetMediate package
-      run: dotnet pack src/NetMediate/NetMediate.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate/NetMediate.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.Diagnostics package
-      run: dotnet pack src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.Moq package
-      run: dotnet pack src/NetMediate.Moq/NetMediate.Moq.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.Moq/NetMediate.Moq.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.Resilience package
-      run: dotnet pack src/NetMediate.Resilience/NetMediate.Resilience.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.Resilience/NetMediate.Resilience.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.SourceGeneration package
-      run: dotnet pack src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.DataDog.OpenTelemetry package
-      run: dotnet pack src/NetMediate.DataDog.OpenTelemetry/NetMediate.DataDog.OpenTelemetry.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.DataDog.OpenTelemetry/NetMediate.DataDog.OpenTelemetry.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.DataDog.Serilog package
-      run: dotnet pack src/NetMediate.DataDog.Serilog/NetMediate.DataDog.Serilog.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.DataDog.Serilog/NetMediate.DataDog.Serilog.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.DataDog.ILogger package
-      run: dotnet pack src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.Quartz package
-      run: dotnet pack src/NetMediate.Quartz/NetMediate.Quartz.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.Quartz/NetMediate.Quartz.csproj --configuration Release --output ./packages
       
     - name: List package contents
       run: ls -la ./packages/

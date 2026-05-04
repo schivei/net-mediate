@@ -30,7 +30,6 @@ public static class NetMediateDataDogSerilogExtensions
             NetMediateDiagnostics.ActivitySourceName
         );
         loggerConfiguration.Enrich.WithProperty("netmediate.meter", NetMediateDiagnostics.MeterName);
-        loggerConfiguration.Enrich.WithProperty("netmediate.message_type", NetMediateDiagnostics.MessageTypeName);
 
         if (!options.EnableSink)
             return loggerConfiguration;

@@ -1,10 +1,12 @@
-﻿namespace NetMediate.Resilience;
+using Microsoft.Extensions.Options;
+
+namespace NetMediate.Resilience;
 
 /// <summary>
 /// Request pipeline behavior that applies a timeout.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
-public sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehaviorOptions options)
+public sealed class TimeoutRequestBehavior<TMessage, TResponse>(IOptions<TimeoutBehaviorOptions> optionsAccessor)
     : IPipelineRequestBehavior<TMessage, TResponse> where TMessage : notnull
 {
     /// <inheritdoc />
@@ -14,7 +16,7 @@ public sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehaviorO
         CancellationToken cancellationToken
     )
     {
-        var timeout = options.RequestTimeout;
+        var timeout = optionsAccessor.Value.RequestTimeout;
         if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
             return await next(message, cancellationToken).ConfigureAwait(false);
 
@@ -44,7 +46,7 @@ public sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehaviorO
 /// Notification and command pipeline behavior that applies a timeout.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
-public sealed class TimeoutNotificationBehavior<TMessage>(TimeoutBehaviorOptions options)
+public sealed class TimeoutNotificationBehavior<TMessage>(IOptions<TimeoutBehaviorOptions> optionsAccessor)
     : IPipelineBehavior<TMessage> where TMessage : notnull
 {
     /// <inheritdoc />
@@ -54,7 +56,7 @@ public sealed class TimeoutNotificationBehavior<TMessage>(TimeoutBehaviorOptions
         CancellationToken cancellationToken
     )
     {
-        var timeout = options.NotificationTimeout;
+        var timeout = optionsAccessor.Value.NotificationTimeout;
         if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
         {
             await next(message, cancellationToken).ConfigureAwait(false);

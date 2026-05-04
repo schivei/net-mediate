@@ -94,16 +94,27 @@ jobs:
       if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
       run: |
         cd tests/NetMediate.Benchmarks
-        dotnet run --configuration Release -- --job Short --exporters GitHub --filter '*' || true
+        dotnet run --configuration Release -- --job Short --exporters GitHub --filter '*' 2>&1 | tee /tmp/bench-console.txt || true
         REPORT=$(find BenchmarkDotNet.Artifacts -name '*-report-github.md' 2>/dev/null | head -1)
         if [ -n "$REPORT" ]; then
+          # Remove any previous CI section from the static BENCHMARKS.md and append new results
+          sed -i '/^## Latest CI Benchmark Run/,$d' ../../docs/BENCHMARKS.md
           {
-            echo "## Benchmark Results (CI Run)"
+            echo ""
+            echo "---"
+            echo ""
+            echo "## Latest CI Benchmark Run"
             echo ""
             echo "Run: $(date -u '+%Y-%m-%d %H:%M UTC') | Branch: $GITHUB_HEAD_REF | Commit: ${GITHUB_SHA:0:7}"
             echo ""
             cat "$REPORT"
-          } > ../../docs/BENCHMARKS.md
+            echo ""
+            echo "### Full Console Output"
+            echo ""
+            echo '```'
+            cat /tmp/bench-console.txt
+            echo '```'
+          } >> ../../docs/BENCHMARKS.md
         fi
 
     - name: Commit benchmark results

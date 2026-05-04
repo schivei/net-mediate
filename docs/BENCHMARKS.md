@@ -253,7 +253,6 @@ dotnet test tests/NetMediate.Tests/ --configuration Release \
 | `CoreDispatchThroughputTests` | `core_stream` | `> 500 msgs/s` |
 | `LoadPerformanceTests` | all | `> 500 ops/s` |
 | `CoreExplicitRegistrationLoadTests` | all | `> 500 ops/s` |
-| `AdaptersLoadPerformanceTests` | all | `> 500 ops/s` |
 | `ResilienceLoadPerformanceTests` | `resilience_request_parallel` | `≥ 30,000 ops/s` |
 | `FullStackLoadPerformanceTests` | `fullstack_request_parallel` | `≥ 20,000 ops/s` |
 | `PipelineVariantsLoadTests` | all | `> 500 ops/s` |
@@ -265,7 +264,6 @@ Thresholds are deliberately lenient to remain green on any CI hardware. Local de
 ## See Also
 
 - [RESILIENCE.md](RESILIENCE.md) — resilience package guide
-- [ADAPTERS.md](ADAPTERS.md) — adapters package guide
 - [AOT.md](AOT.md) — AOT/NativeAOT compatibility guide
 - [SOURCE_GENERATION.md](SOURCE_GENERATION.md) — source generator guide
 

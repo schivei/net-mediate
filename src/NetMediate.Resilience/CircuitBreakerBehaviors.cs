@@ -1,11 +1,13 @@
-﻿namespace NetMediate.Resilience;
+using Microsoft.Extensions.Options;
+
+namespace NetMediate.Resilience;
 
 /// <summary>
 /// Request pipeline behavior that applies circuit-breaker logic.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
 public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
-    CircuitBreakerBehaviorOptions options
+    IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
 ) : IPipelineRequestBehavior<TMessage, TResponse> where TMessage : notnull
 {
     private static readonly Lock s_sync = new();
@@ -28,7 +30,7 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
         }
         catch
         {
-            RegisterFailure(options);
+            RegisterFailure(optionsAccessor.Value);
             throw;
         }
     }
@@ -84,7 +86,7 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 /// Notification and command pipeline behavior that applies circuit-breaker logic.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
-public sealed class CircuitBreakerNotificationBehavior<TMessage>(CircuitBreakerBehaviorOptions options)
+public sealed class CircuitBreakerNotificationBehavior<TMessage>(IOptions<CircuitBreakerBehaviorOptions> optionsAccessor)
     : IPipelineBehavior<TMessage> where TMessage : notnull
 {
     private static readonly Lock s_sync = new();
@@ -110,7 +112,7 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(CircuitBreakerB
         }
         catch
         {
-            RegisterFailure(options);
+            RegisterFailure(optionsAccessor.Value);
             throw;
         }
     }

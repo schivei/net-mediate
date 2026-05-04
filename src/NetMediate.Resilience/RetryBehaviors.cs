@@ -1,10 +1,12 @@
-﻿namespace NetMediate.Resilience;
+using Microsoft.Extensions.Options;
+
+namespace NetMediate.Resilience;
 
 /// <summary>
 /// Request pipeline behavior that applies retry logic.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
-public sealed class RetryRequestBehavior<TMessage, TResponse>(RetryBehaviorOptions options)
+public sealed class RetryRequestBehavior<TMessage, TResponse>(IOptions<RetryBehaviorOptions> optionsAccessor)
     : IPipelineRequestBehavior<TMessage, TResponse> where TMessage : notnull
 {
     /// <inheritdoc />
@@ -14,6 +16,7 @@ public sealed class RetryRequestBehavior<TMessage, TResponse>(RetryBehaviorOptio
         CancellationToken cancellationToken
     )
     {
+        var options = optionsAccessor.Value;
         var maxRetryCount = Math.Max(0, options.MaxRetryCount);
         var delay = options.Delay < TimeSpan.Zero ? TimeSpan.Zero : options.Delay;
 
@@ -46,7 +49,7 @@ public sealed class RetryRequestBehavior<TMessage, TResponse>(RetryBehaviorOptio
 /// Notification and command pipeline behavior that applies retry logic.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
-public sealed class RetryNotificationBehavior<TMessage>(RetryBehaviorOptions options) :
+public sealed class RetryNotificationBehavior<TMessage>(IOptions<RetryBehaviorOptions> optionsAccessor) :
     IPipelineBehavior<TMessage> where TMessage : notnull
 {
     /// <inheritdoc />
@@ -56,6 +59,7 @@ public sealed class RetryNotificationBehavior<TMessage>(RetryBehaviorOptions opt
         CancellationToken cancellationToken
     )
     {
+        var options = optionsAccessor.Value;
         var maxRetryCount = Math.Max(0, options.MaxRetryCount);
         var delay = options.Delay < TimeSpan.Zero ? TimeSpan.Zero : options.Delay;
 

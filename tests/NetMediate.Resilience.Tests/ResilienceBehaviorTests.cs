@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using NetMediate.Resilience;
 
@@ -13,7 +12,7 @@ public sealed class ResilienceBehaviorTests
     {
         using var host = await CreateRequestHostAsync(services =>
         {
-            services.AddSingleton(new RetryBehaviorOptions { MaxRetryCount = 3, Delay = TimeSpan.Zero });
+            services.Configure<RetryBehaviorOptions>(opts => { opts.MaxRetryCount = 3; opts.Delay = TimeSpan.Zero; });
         });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
@@ -31,7 +30,7 @@ public sealed class ResilienceBehaviorTests
     {
         using var host = await CreateRequestHostAsync(services =>
         {
-            services.AddSingleton(new RetryBehaviorOptions { MaxRetryCount = 3, Delay = TimeSpan.Zero });
+            services.Configure<RetryBehaviorOptions>(opts => { opts.MaxRetryCount = 3; opts.Delay = TimeSpan.Zero; });
         });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
@@ -54,7 +53,7 @@ public sealed class ResilienceBehaviorTests
     {
         using var host = await CreateRequestHostAsync(services =>
         {
-            services.AddSingleton(new TimeoutBehaviorOptions { RequestTimeout = TimeSpan.FromMilliseconds(20) });
+            services.Configure<TimeoutBehaviorOptions>(opts => { opts.RequestTimeout = TimeSpan.FromMilliseconds(20); });
         });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
@@ -72,11 +71,7 @@ public sealed class ResilienceBehaviorTests
     {
         using var host = await CreateRequestHostAsync(services =>
         {
-            services.AddSingleton(new CircuitBreakerBehaviorOptions
-            {
-                FailureThreshold = 2,
-                OpenDuration = TimeSpan.FromSeconds(30),
-            });
+            services.Configure<CircuitBreakerBehaviorOptions>(opts => { opts.FailureThreshold = 2; opts.OpenDuration = TimeSpan.FromSeconds(30); });
         });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
@@ -110,7 +105,7 @@ public sealed class ResilienceBehaviorTests
     {
         using var host = await CreateRequestHostAsync(services =>
         {
-            services.AddSingleton(new TimeoutBehaviorOptions { RequestTimeout = TimeSpan.Zero });
+            services.Configure<TimeoutBehaviorOptions>(opts => { opts.RequestTimeout = TimeSpan.Zero; });
         });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
@@ -127,7 +122,7 @@ public sealed class ResilienceBehaviorTests
     {
         using var host = await CreateNotificationHostAsync(services =>
         {
-            services.AddSingleton(new TimeoutBehaviorOptions { NotificationTimeout = TimeSpan.Zero });
+            services.Configure<TimeoutBehaviorOptions>(opts => { opts.NotificationTimeout = TimeSpan.Zero; });
         });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
@@ -148,7 +143,7 @@ public sealed class ResilienceBehaviorTests
             configure.RegisterBehavior<TimeoutNotificationBehavior<SlowTimeoutNotificationMessage>, SlowTimeoutNotificationMessage, Task>();
             configure.RegisterBehavior<SlowPipelineBehavior<SlowTimeoutNotificationMessage>, SlowTimeoutNotificationMessage, Task>();
         });
-        builder.Services.AddSingleton(new TimeoutBehaviorOptions { NotificationTimeout = TimeSpan.FromMilliseconds(20) });
+        builder.Services.Configure<TimeoutBehaviorOptions>(opts => { opts.NotificationTimeout = TimeSpan.FromMilliseconds(20); });
 
         using var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
@@ -174,11 +169,7 @@ public sealed class ResilienceBehaviorTests
             configure.RegisterBehavior<CircuitBreakerNotificationBehavior<ThrowingCbMessage>, ThrowingCbMessage, Task>();
             configure.RegisterBehavior<ThrowingPipelineBehavior<ThrowingCbMessage>, ThrowingCbMessage, Task>();
         });
-        builder.Services.AddSingleton(new CircuitBreakerBehaviorOptions
-        {
-            FailureThreshold = 2,
-            OpenDuration = TimeSpan.FromSeconds(30),
-        });
+        builder.Services.Configure<CircuitBreakerBehaviorOptions>(opts => { opts.FailureThreshold = 2; opts.OpenDuration = TimeSpan.FromSeconds(30); });
 
         using var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
@@ -211,7 +202,7 @@ public sealed class ResilienceBehaviorTests
             configure.RegisterBehavior<RetryNotificationBehavior<CountingThrowMessage>, CountingThrowMessage, Task>();
             configure.RegisterBehavior<CountingThrowBehavior<CountingThrowMessage>, CountingThrowMessage, Task>();
         });
-        builder.Services.AddSingleton(new RetryBehaviorOptions { MaxRetryCount = 2, Delay = TimeSpan.Zero });
+        builder.Services.Configure<RetryBehaviorOptions>(opts => { opts.MaxRetryCount = 2; opts.Delay = TimeSpan.Zero; });
 
         using var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
@@ -299,11 +290,7 @@ public sealed class ResilienceBehaviorTests
             configure.RegisterBehavior<CircuitBreakerNotificationBehavior<RetryNotificationViaMediatorMessage>, RetryNotificationViaMediatorMessage, Task>();
         });
 
-        // Register test-specific options first; fallback defaults come last via TryAddSingleton.
         configureServices(builder.Services);
-        builder.Services.TryAddSingleton(new RetryBehaviorOptions());
-        builder.Services.TryAddSingleton(new TimeoutBehaviorOptions());
-        builder.Services.TryAddSingleton(new CircuitBreakerBehaviorOptions());
 
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
@@ -333,9 +320,6 @@ public sealed class ResilienceBehaviorTests
         });
 
         configureServices(builder.Services);
-        builder.Services.TryAddSingleton(new RetryBehaviorOptions());
-        builder.Services.TryAddSingleton(new TimeoutBehaviorOptions());
-        builder.Services.TryAddSingleton(new CircuitBreakerBehaviorOptions());
 
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
@@ -353,13 +337,9 @@ public sealed class ResilienceBehaviorTests
             configure.RegisterBehavior<CircuitBreakerRequestBehavior<LoadRequest, int>, LoadRequest, Task<int>>();
         });
 
-        builder.Services.AddSingleton(new RetryBehaviorOptions { MaxRetryCount = 0, Delay = TimeSpan.Zero });
-        builder.Services.AddSingleton(new TimeoutBehaviorOptions { RequestTimeout = TimeSpan.FromSeconds(30) });
-        builder.Services.AddSingleton(new CircuitBreakerBehaviorOptions
-        {
-            FailureThreshold = 1000,
-            OpenDuration = TimeSpan.FromSeconds(1),
-        });
+        builder.Services.Configure<RetryBehaviorOptions>(opts => { opts.MaxRetryCount = 0; opts.Delay = TimeSpan.Zero; });
+        builder.Services.Configure<TimeoutBehaviorOptions>(opts => { opts.RequestTimeout = TimeSpan.FromSeconds(30); });
+        builder.Services.Configure<CircuitBreakerBehaviorOptions>(opts => { opts.FailureThreshold = 1000; opts.OpenDuration = TimeSpan.FromSeconds(1); });
 
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);

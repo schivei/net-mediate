@@ -12,26 +12,26 @@ dotnet add package NetMediate.Resilience
 
 No manual registration is required. The source generator (`NetMediate.SourceGeneration`) automatically detects the `NetMediate.Resilience` assembly reference at compile time and registers all resilience behaviors before user-defined behaviors in the pipeline.
 
-To customize the behavior options, register the option types **before** calling `AddNetMediate()`:
+To customize the behavior options, use `ConfigureOptions` or `Configure<T>` **before** calling `AddNetMediate()`:
 
 ```csharp
 // Override retry defaults (optional — defaults are applied automatically)
-builder.Services.AddSingleton(new RetryBehaviorOptions
+builder.Services.Configure<RetryBehaviorOptions>(opts =>
 {
-    MaxRetryCount = 3,
-    Delay = TimeSpan.FromMilliseconds(200),
+    opts.MaxRetryCount = 3;
+    opts.Delay = TimeSpan.FromMilliseconds(200);
 });
 
-builder.Services.AddSingleton(new TimeoutBehaviorOptions
+builder.Services.Configure<TimeoutBehaviorOptions>(opts =>
 {
-    RequestTimeout = TimeSpan.FromSeconds(10),
-    NotificationTimeout = TimeSpan.FromSeconds(5),
+    opts.RequestTimeout = TimeSpan.FromSeconds(10);
+    opts.NotificationTimeout = TimeSpan.FromSeconds(5);
 });
 
-builder.Services.AddSingleton(new CircuitBreakerBehaviorOptions
+builder.Services.Configure<CircuitBreakerBehaviorOptions>(opts =>
 {
-    FailureThreshold = 5,
-    OpenDuration = TimeSpan.FromSeconds(30),
+    opts.FailureThreshold = 5;
+    opts.OpenDuration = TimeSpan.FromSeconds(30);
 });
 
 // The source generator emits this call — no manual call needed
@@ -58,10 +58,10 @@ Each option is independent — override only the ones you need.
 Retries a failed pipeline step up to `MaxRetryCount` times with an optional delay between attempts.
 
 ```csharp
-builder.Services.AddSingleton(new RetryBehaviorOptions
+builder.Services.Configure<RetryBehaviorOptions>(opts =>
 {
-    MaxRetryCount = 3,
-    Delay = TimeSpan.FromMilliseconds(100),
+    opts.MaxRetryCount = 3;
+    opts.Delay = TimeSpan.FromMilliseconds(100);
 });
 ```
 
@@ -70,10 +70,10 @@ builder.Services.AddSingleton(new RetryBehaviorOptions
 Cancels the request if it exceeds the configured timeout.
 
 ```csharp
-builder.Services.AddSingleton(new TimeoutBehaviorOptions
+builder.Services.Configure<TimeoutBehaviorOptions>(opts =>
 {
-    RequestTimeout = TimeSpan.FromSeconds(30),
-    NotificationTimeout = TimeSpan.FromSeconds(5),
+    opts.RequestTimeout = TimeSpan.FromSeconds(30);
+    opts.NotificationTimeout = TimeSpan.FromSeconds(5);
 });
 ```
 
@@ -82,9 +82,9 @@ builder.Services.AddSingleton(new TimeoutBehaviorOptions
 Opens the circuit after `FailureThreshold` consecutive failures and keeps it open for `OpenDuration`.
 
 ```csharp
-builder.Services.AddSingleton(new CircuitBreakerBehaviorOptions
+builder.Services.Configure<CircuitBreakerBehaviorOptions>(opts =>
 {
-    FailureThreshold = 5,
-    OpenDuration = TimeSpan.FromMinutes(1),
+    opts.FailureThreshold = 5;
+    opts.OpenDuration = TimeSpan.FromMinutes(1);
 });
 ```

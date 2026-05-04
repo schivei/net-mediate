@@ -38,6 +38,6 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 
 - [x] **`NetMediate.Diagnostics` package** — `NetMediateDiagnostics` (`ActivitySource`/`Meter`) extracted from the core assembly into `NetMediate.Diagnostics`; implemented as pipeline behaviors (`TelemetryNotificationBehavior`, `TelemetryRequestBehavior`, `TelemetryStreamBehavior`); auto-registered by the source generator when the package is referenced (first in pipeline order).
 - [x] **Streaming fan-out** — multiple `IStreamHandler<TMsg, TResp>` registrations are supported; their items are merged sequentially into a single `IAsyncEnumerable<TResp>`, analogous to how `Send` fans out to multiple command handlers.
-- [x] **Keyed handler registration** — `IKeyedServiceProvider` support added: `RegisterKeyed*Handler<THandler, TMsg>(key)` registers handlers under a service key; `IMediator.Send(key,…)`, `Request(key,…)`, `RequestStream(key,…)`, and `Notify(key,…)` dispatch only to handlers registered under that key, enabling runtime routing strategies.
+- [ ] **Keyed handler registration** — runtime routing via service keys. Deferred: `IKeyedServiceProvider` is not NativeAOT-compatible, so keyed dispatch cannot be added without breaking AOT support.
 - [x] **Activity-link propagation** — `NetMediateDiagnostics.StartActivity<TMessage>` now adds an `ActivityLink` to the ambient `Activity.Current` at dispatch time, ensuring distributed traces are correctly connected across async boundaries (especially important for fire-and-forget notifications).
 

@@ -22,12 +22,10 @@ namespace NetMediate;
 public static class MediatorExtensions
 {
     private static readonly MethodInfo? s_requestMethod = typeof(IMediator)
-        .GetMethods()
-        .FirstOrDefault(m => m.Name == nameof(IMediator.Request) && m.GetParameters().Length == 2);
+        .GetMethod(nameof(IMediator.Request));
 
     private static readonly MethodInfo? s_requestStreamMethod = typeof(IMediator)
-        .GetMethods()
-        .FirstOrDefault(m => m.Name == nameof(IMediator.RequestStream) && m.GetParameters().Length == 2);
+        .GetMethod(nameof(IMediator.RequestStream));
 
     extension (IMediator mediator)
     {
@@ -37,8 +35,8 @@ public static class MediatorExtensions
         /// <remarks>
         /// This method uses reflection (<see cref="MethodInfo.MakeGenericMethod"/>) internally to
         /// dispatch the request. It is not compatible with NativeAOT or trimming. Prefer the
-        /// strongly-typed <c>IMediator.Request&lt;TMessage, TResponse&gt;(TMessage, CancellationToken)</c>
-        /// overload which specifies both type arguments explicitly.
+        /// <see cref="IMediator.Request{TMessage, TResponse}"/> overload which specifies both type
+        /// arguments explicitly.
         /// </remarks>
         /// <typeparam name="TResponse">The response type.</typeparam>
         /// <param name="request">Request instance.</param>
@@ -61,8 +59,8 @@ public static class MediatorExtensions
         /// <remarks>
         /// This method uses reflection (<see cref="MethodInfo.MakeGenericMethod"/>) internally to
         /// dispatch the stream request. It is not compatible with NativeAOT or trimming. Prefer the
-        /// strongly-typed <c>IMediator.RequestStream&lt;TMessage, TResponse&gt;(TMessage, CancellationToken)</c>
-        /// overload which specifies both type arguments explicitly.
+        /// <see cref="IMediator.RequestStream{TMessage, TResponse}"/> overload which specifies both
+        /// type arguments explicitly.
         /// </remarks>
         /// <typeparam name="TResponse">The response item type.</typeparam>
         /// <param name="message">Stream request instance.</param>

@@ -28,19 +28,6 @@ internal sealed class Mediator(
     }
 
     /// <inheritdoc/>
-    public async Task Notify<TMessage>(
-        object? key,
-        TMessage message,
-        CancellationToken cancellationToken = default
-    ) where TMessage : notnull
-    {
-        if (serviceProvider is not IKeyedServiceProvider keyed) return;
-
-        foreach (var handler in keyed.GetKeyedServices<INotificationHandler<TMessage>>(key))
-            await handler.Handle(message, cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <inheritdoc/>
     public async Task Send<TMessage>(
         TMessage message,
         CancellationToken cancellationToken = default
@@ -78,19 +65,6 @@ internal sealed class Mediator(
         await Task.WhenAll(messages.Select(message => Send(message, cancellationToken)));
     }
 
-    /// <inheritdoc/>
-    public async Task Send<TMessage>(
-        object? key,
-        TMessage message,
-        CancellationToken cancellationToken = default
-    ) where TMessage : notnull
-    {
-        if (serviceProvider is not IKeyedServiceProvider keyed) return;
-
-        foreach (var handler in keyed.GetKeyedServices<ICommandHandler<TMessage>>(key))
-            await handler.Handle(message, cancellationToken).ConfigureAwait(false);
-    }
-
     private static async Task CommandHandlers<TMessage>(TMessage message,
         IEnumerable<ICommandHandler<TMessage>> handlers,
         CancellationToken ct) where TMessage : notnull
@@ -126,21 +100,6 @@ internal sealed class Mediator(
         }
     }
 
-    /// <inheritdoc/>
-    public Task<TResponse> Request<TMessage, TResponse>(
-        object? key,
-        TMessage message,
-        CancellationToken cancellationToken = default
-    ) where TMessage : notnull
-    {
-        if (serviceProvider is not IKeyedServiceProvider keyed)
-            throw new InvalidOperationException(
-                "The current service provider does not support keyed services.");
-
-        return keyed.GetRequiredKeyedService<IRequestHandler<TMessage, TResponse>>(key)
-            .Handle(message, cancellationToken);
-    }
-
     private static Task<TResponse> RequestHandlers<TMessage, TResponse>(TMessage message, IRequestHandler<TMessage, TResponse>[] handlers, CancellationToken cancellationToken) where TMessage : notnull
     {
         return handlers.Single().Handle(message, cancellationToken);
@@ -158,31 +117,6 @@ internal sealed class Mediator(
         return pipeline.Handle(message, StreamHandlers, cancellationToken);
     }
 
-    /// <inheritdoc/>
-    public IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
-        object? key,
-        TMessage message,
-        CancellationToken cancellationToken = default
-    ) where TMessage : notnull
-    {
-        if (serviceProvider is not IKeyedServiceProvider keyed)
-            return EmptyStream<TResponse>();
-
-        return KeyedStreamHandlers<TMessage, TResponse>(keyed, key, message, cancellationToken);
-    }
-
-    private static async IAsyncEnumerable<TResponse> KeyedStreamHandlers<TMessage, TResponse>(
-        IKeyedServiceProvider keyed,
-        object? key,
-        TMessage message,
-        [EnumeratorCancellation] CancellationToken cancellationToken)
-        where TMessage : notnull
-    {
-        foreach (var handler in keyed.GetKeyedServices<IStreamHandler<TMessage, TResponse>>(key))
-            await foreach (var item in handler.Handle(message, cancellationToken).ConfigureAwait(false))
-                yield return item;
-    }
-
     private static async IAsyncEnumerable<TResponse> StreamHandlers<TMessage, TResponse>(
         TMessage message,
         IStreamHandler<TMessage, TResponse>[] handlers,
@@ -192,15 +126,5 @@ internal sealed class Mediator(
         foreach (var handler in handlers)
             await foreach (var item in handler.Handle(message, cancellationToken).ConfigureAwait(false))
                 yield return item;
-    }
-
-    private static IAsyncEnumerable<T> EmptyStream<T>()
-    {
-        return GetAsync();
-        static async IAsyncEnumerable<T> GetAsync()
-        {
-            await Task.Yield();
-            yield break;
-        }
     }
 }

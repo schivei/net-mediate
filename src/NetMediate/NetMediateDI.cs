@@ -28,7 +28,7 @@ namespace NetMediate;
 public static class NetMediateDI
 {
     private static bool s_started;
-    private readonly static Lock s_lock;
+    private readonly static Lock s_lock = new();
 
     /// <summary>
     /// Configures NetMediate core services and applies the provided explicit handler registration

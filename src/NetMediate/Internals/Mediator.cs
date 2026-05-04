@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
@@ -116,8 +117,14 @@ internal sealed class Mediator(
         return pipeline.Handle(message, StreamHandlers, cancellationToken);
     }
 
-    private static IAsyncEnumerable<TResponse> StreamHandlers<TResponse, TMessage>(TMessage message, IStreamHandler<TMessage, TResponse>[] handlers, CancellationToken cancellationToken) where TMessage : notnull
+    private static async IAsyncEnumerable<TResponse> StreamHandlers<TMessage, TResponse>(
+        TMessage message,
+        IStreamHandler<TMessage, TResponse>[] handlers,
+        [EnumeratorCancellation] CancellationToken cancellationToken)
+        where TMessage : notnull
     {
-        return handlers.Single().Handle(message, cancellationToken);
+        foreach (var handler in handlers)
+            await foreach (var item in handler.Handle(message, cancellationToken).ConfigureAwait(false))
+                yield return item;
     }
 }

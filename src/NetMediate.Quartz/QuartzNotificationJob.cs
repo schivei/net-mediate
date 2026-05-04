@@ -46,7 +46,7 @@ public sealed class QuartzNotificationJob(
     public const string TypeDataKey = "netmediate_type";
 
     // Cached delegate invoker keyed by message type to avoid per-call MakeGenericMethod on hot paths.
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, Func<INotifiable, object, CancellationToken, ValueTask>>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, Func<INotifiable, object, CancellationToken, Task>>
         s_dispatcherCache = new();
 
     /// <inheritdoc />
@@ -89,13 +89,13 @@ public sealed class QuartzNotificationJob(
         await dispatcher(notifiable, message, context.CancellationToken).ConfigureAwait(false);
     }
 
-    private static Func<INotifiable, object, CancellationToken, ValueTask> BuildDispatcher(Type messageType)
+    private static Func<INotifiable, object, CancellationToken, Task> BuildDispatcher(Type messageType)
     {
         var method = typeof(INotifiable)
             .GetMethod(nameof(INotifiable.DispatchNotifications))!
             .MakeGenericMethod(messageType);
 
         return (notifiable, message, cancellationToken) =>
-            (ValueTask)method.Invoke(notifiable, [message, cancellationToken])!;
+            (Task)method.Invoke(notifiable, [message, cancellationToken])!;
     }
 }

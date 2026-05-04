@@ -1,25 +1,22 @@
-﻿namespace NetMediate.Resilience;
+using Microsoft.Extensions.Options;
+
+namespace NetMediate.Resilience;
 
 /// <summary>
-/// Provides a request behavior that enforces a timeout for request handling operations.
+/// Request pipeline behavior that applies a timeout.
+/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
-/// <remarks>If the request handler does not complete within the specified timeout, a <see
-/// cref="TimeoutException"/> is thrown. The timeout is not enforced if the configured duration is zero or
-/// infinite.</remarks>
-/// <typeparam name="TMessage">The type of the request message. Must implement <see cref="IRequest{TResponse}"/> and not be null.</typeparam>
-/// <typeparam name="TResponse">The type of the response returned by the request handler.</typeparam>
-/// <param name="options">The options that configure the timeout duration for request processing.</param>
-public sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehaviorOptions options)
-    : IRequestBehavior<TMessage, TResponse> where TMessage : notnull, IRequest<TResponse>
+public sealed class TimeoutRequestBehavior<TMessage, TResponse>(IOptions<TimeoutBehaviorOptions> optionsAccessor)
+    : IPipelineRequestBehavior<TMessage, TResponse> where TMessage : notnull
 {
     /// <inheritdoc />
-    public async ValueTask<TResponse> Handle(
+    public async Task<TResponse> Handle(
         TMessage message,
-        RequestHandlerDelegate<TMessage, TResponse> next,
-        CancellationToken cancellationToken = default
+        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        CancellationToken cancellationToken
     )
     {
-        var timeout = options.RequestTimeout;
+        var timeout = optionsAccessor.Value.RequestTimeout;
         if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
             return await next(message, cancellationToken).ConfigureAwait(false);
 
@@ -46,24 +43,20 @@ public sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehaviorO
 }
 
 /// <summary>
-/// Provides a notification behavior that enforces a timeout for notification handlers.
+/// Notification and command pipeline behavior that applies a timeout.
+/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
-/// <remarks>If the notification handler does not complete within the specified timeout, a <see
-/// cref="TimeoutException"/> is thrown. The timeout is not enforced if the configured duration is zero or
-/// infinite.</remarks>
-/// <typeparam name="TMessage">The type of notification message to handle. Must implement <see cref="INotification"/> and be non-nullable.</typeparam>
-/// <param name="options">The options that configure the timeout duration for notification handling.</param>
-public sealed class TimeoutNotificationBehavior<TMessage>(TimeoutBehaviorOptions options)
-    : INotificationBehavior<TMessage> where TMessage : notnull, INotification
+public sealed class TimeoutNotificationBehavior<TMessage>(IOptions<TimeoutBehaviorOptions> optionsAccessor)
+    : IPipelineBehavior<TMessage> where TMessage : notnull
 {
     /// <inheritdoc />
-    public async ValueTask Handle(
+    public async Task Handle(
         TMessage message,
-        NotificationHandlerDelegate<TMessage> next,
-        CancellationToken cancellationToken = default
+        PipelineBehaviorDelegate<TMessage, Task> next,
+        CancellationToken cancellationToken
     )
     {
-        var timeout = options.NotificationTimeout;
+        var timeout = optionsAccessor.Value.NotificationTimeout;
         if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
         {
             await next(message, cancellationToken).ConfigureAwait(false);

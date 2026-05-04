@@ -15,14 +15,11 @@ A lightweight and efficient .NET implementation of the Mediator pattern for in-p
   - [Commands](#commands)
   - [Requests](#requests)
   - [Streams](#streams)
-  - [Validations](#validations)
-  - [Simplified Messages](#simplified-messages)
-  - [Advanced Configuration](#advanced-configuration)
+  - [Pipeline Behaviors](#pipeline-behaviors--interceptors)
 - [Framework Support](#framework-support)
 - [Companion Guides](#companion-guides)
 - [Contributing](#contributing)
 - [License](#license)
-- [Fixed problems](#fixed-problems)
 
 ## Introduction
 
@@ -30,17 +27,15 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 
 ### Key Features
 
-- **Commands**: Send one-way messages to all registered handlers simultaneously
-- **Notifications**: Publish messages to multiple handlers
-- **Requests**: Send messages and receive responses
-- **Streaming**: Handle requests that return multiple responses over time
-- **Validation**: Built-in message validation support with custom validators
-- **Pipeline Behaviors**: Interceptors with pre/post flow for Send/Request/Notify/Stream
+- **Commands**: Send one-way messages to all registered handlers sequentially
+- **Notifications**: Publish messages to multiple handlers (fire-and-forget; per-handler errors are logged)
+- **Requests**: Send a message to a single handler and receive a typed response
+- **Streaming**: Handle requests that return multiple responses over time via `IAsyncEnumerable`
+- **Pipeline Behaviors**: Interceptors with pre/post flow for every message kind
 - **Optional resilience package**: Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience`
 - **OpenTelemetry-ready diagnostics**: Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream
 - **Optional DataDog integrations**: OpenTelemetry, Serilog, and ILogger support packages
 - **Dependency Injection**: Seamless integration with Microsoft.Extensions.DependencyInjection
-- **Keyed Services**: Support for keyed service registration and resolution
 - **Cancellation Support**: Full cancellation token support across all operations
 - **Broad runtime compatibility**: Multi-targeted for `net10.0`, `netstandard2.0`, and `netstandard2.1`
 
@@ -66,31 +61,28 @@ dotnet add package NetMediate
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
 <PackageReference Include="NetMediate.Resilience" Version="x.x.x" />
 <PackageReference Include="NetMediate.Quartz" Version="x.x.x" />
-<PackageReference Include="NetMediate.Adapters" Version="x.x.x" />
 <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 <PackageReference Include="NetMediate.DataDog.OpenTelemetry" Version="x.x.x" />
 <PackageReference Include="NetMediate.DataDog.Serilog" Version="x.x.x" />
 <PackageReference Include="NetMediate.DataDog.ILogger" Version="x.x.x" />
 ```
 
-- **NetMediate.Moq**: adds lightweight Moq helpers for cleaner unit and integration tests (`Mocking.Create`, `AddMockSingleton`, and async setup extensions).
-- **NetMediate.Resilience**: adds optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
+- **NetMediate.Moq**: lightweight Moq helpers for unit and integration tests (`Mocking.Create`, `AddMockSingleton`, async setup extensions).
+- **NetMediate.Resilience**: optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
 - **NetMediate.Quartz**: persists notifications as Quartz.NET jobs, enabling crash recovery and cluster-distributed notification execution.
-- **NetMediate.Adapters**: provides contracts, a standard envelope, and a pipeline behavior for forwarding notifications to external queues or streams (RabbitMQ, Kafka, Azure Service Bus, etc.).
-- **NetMediate.SourceGeneration**: generates `AddNetMediateGenerated(...)` to register handlers at compile-time and reduce reflection cost at startup.
+- **NetMediate.SourceGeneration**: generates `AddNetMediate()` to register handlers at compile-time — no reflection, fully AOT-safe.
 - **NetMediate.DataDog.OpenTelemetry**: wires NetMediate traces/metrics to DataDog through OpenTelemetry OTLP exporters.
-- **NetMediate.DataDog.Serilog**: adds DataDog Serilog sink configuration and NetMediate observability enrichers.
-- **NetMediate.DataDog.ILogger**: adds ILogger scope helpers with DataDog-compatible fields and NetMediate correlation values.
+- **NetMediate.DataDog.Serilog**: attaches the DataDog Serilog sink and enriches logs with NetMediate activity fields.
+- **NetMediate.DataDog.ILogger**: `ILogger` scope helpers with DataDog-compatible fields and NetMediate correlation values.
 
 ## Companion Guides
 
 - [NetMediate.Moq recipes](docs/NETMEDIATE_MOQ_RECIPES.md)
 - [API/Worker/Minimal API samples](docs/SAMPLES.md)
-- [Diagnostics (structured logs + metrics)](docs/DIAGNOSTICS.md)
-- [Resilience package guide and load capacity](docs/RESILIENCE.md)
-- [Benchmark results (all scenarios)](docs/BENCHMARKS.md)
+- [Diagnostics (traces + metrics)](docs/DIAGNOSTICS.md)
+- [Resilience package guide](docs/RESILIENCE.md)
+- [Benchmark results](docs/BENCHMARKS.md)
 - [Quartz persistent notifications](docs/QUARTZ.md)
-- [Notification adapters (external queues/streams)](docs/ADAPTERS.md)
 - [Source generation guide](docs/SOURCE_GENERATION.md)
 - [AOT / NativeAOT and trimming guide](docs/AOT.md)
 - [DataDog integrations guide](docs/DATADOG.md)
@@ -101,27 +93,28 @@ dotnet add package NetMediate
 Here's a minimal example to get you started with NetMediate:
 
 ```csharp
-// 1. Install the package
+// 1. Install the packages
 // dotnet add package NetMediate
+// dotnet add package NetMediate.SourceGeneration  (as analyzer — see Installation)
 
-// 2. Register services
+// 2. Register services — source generator discovers all handlers automatically
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
-builder.Services.AddNetMediate();
+builder.Services.AddNetMediate(); // all handlers in your project are registered here
 
-// 3. Define a notification (must implement INotification)
-public record UserCreated(string UserId, string Email) : INotification;
+// 3. Define a notification (no marker interface required)
+public record UserCreated(string UserId, string Email);
 
-// 4. Create a handler (Handle returns ValueTask, not Task)
+// 4. Create a handler (Handle returns Task)
 public class UserCreatedHandler : INotificationHandler<UserCreated>
 {
-    public ValueTask Handle(UserCreated notification, CancellationToken cancellationToken = default)
+    public Task Handle(UserCreated notification, CancellationToken cancellationToken = default)
     {
         Console.WriteLine($"User {notification.UserId} was created!");
-        return ValueTask.CompletedTask;
+        return Task.CompletedTask;
     }
 }
 
@@ -138,7 +131,7 @@ For more detailed examples, see the [Usage Examples](#usage-examples) section be
 
 ### Basic Setup
 
-First, register NetMediate services in your dependency injection container:
+Register NetMediate services using the source generator:
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
@@ -147,11 +140,9 @@ using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
 
-// Register NetMediate and scan all loaded assemblies for handlers
+// Source generation automatically discovers and registers all handlers at compile time.
+// Install NetMediate.SourceGeneration as an analyzer and call:
 builder.Services.AddNetMediate();
-
-// Or scan specific assemblies
-builder.Services.AddNetMediate(typeof(MyHandler).Assembly);
 
 var host = builder.Build();
 var mediator = host.Services.GetRequiredService<IMediator>();
@@ -159,12 +150,12 @@ var mediator = host.Services.GetRequiredService<IMediator>();
 
 ### Notifications
 
-Notifications are written to an in-memory channel and dispatched by a background worker. All registered handlers for the same message type are called **sequentially** in registration order. `Notify` returns as soon as the message is enqueued — handler execution happens asynchronously. Exceptions thrown by notification handlers are caught by the background worker and logged as warnings.
+`Notify` runs the notification pipeline synchronously and dispatches each registered handler as an individual fire-and-forget task. The handler `Task` objects are started immediately and not awaited by `Notify` itself — the calling code regains control once all handlers are started. If a handler throws, the exception is caught and logged as an error; other handlers continue normally.
 
 #### Define a Notification Message
 ```csharp
-// Must implement INotification
-public record UserRegistered(string UserId, string Email, DateTime RegisteredAt) : INotification;
+// No marker interface required — any plain class or record works
+public record UserRegistered(string UserId, string Email, DateTime RegisteredAt);
 ```
 
 #### Create Notification Handlers
@@ -178,8 +169,8 @@ public class EmailNotificationHandler : INotificationHandler<UserRegistered>
         _emailService = emailService;
     }
 
-    // Handle must return ValueTask, not Task
-    public async ValueTask Handle(UserRegistered notification, CancellationToken cancellationToken = default)
+    // Handle must return Task, not Task
+    public async Task Handle(UserRegistered notification, CancellationToken cancellationToken = default)
     {
         await _emailService.SendWelcomeEmailAsync(notification.Email, cancellationToken);
     }
@@ -194,7 +185,7 @@ public class AuditLogHandler : INotificationHandler<UserRegistered>
         _auditService = auditService;
     }
 
-    public async ValueTask Handle(UserRegistered notification, CancellationToken cancellationToken = default)
+    public async Task Handle(UserRegistered notification, CancellationToken cancellationToken = default)
     {
         await _auditService.LogEventAsync($"User {notification.UserId} registered", cancellationToken);
     }
@@ -219,17 +210,17 @@ await mediator.Notify(notifications, cancellationToken);
 
 ### Commands
 
-Commands are dispatched to **all** registered handlers in parallel (`Task.WhenAll`). Use `Send` when you want to trigger a side-effect across multiple consumers with no return value.
+Commands are dispatched to **all** registered handlers **sequentially** (one after another in registration order). Use `Send` when you want to trigger a side-effect across multiple consumers with no return value.
 
 #### Define a Command
 ```csharp
-// Must implement ICommand
-public record CreateUserCommand(string Email, string FirstName, string LastName) : ICommand;
+// No marker interface required — any plain class or record works
+public record CreateUserCommand(string Email, string FirstName, string LastName);
 ```
 
 #### Create a Command Handler
 
-Multiple handlers can be registered for the same command type — all run in parallel on each `Send` call.
+Multiple handlers can be registered for the same command type — all run sequentially on each `Send` call.
 
 ```csharp
 public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
@@ -241,8 +232,8 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
         _userRepository = userRepository;
     }
 
-    // Handle must return ValueTask, not Task
-    public async ValueTask Handle(CreateUserCommand command, CancellationToken cancellationToken = default)
+    // Handle must return Task
+    public async Task Handle(CreateUserCommand command, CancellationToken cancellationToken = default)
     {
         var user = new User
         {
@@ -268,8 +259,8 @@ Requests are sent to a handler and return a response.
 
 #### Define a Request and Response
 ```csharp
-// Must implement IRequest<TResponse>
-public record GetUserQuery(string UserId) : IRequest<UserDto>;
+// No marker interface required
+public record GetUserQuery(string UserId);
 public record UserDto(string Id, string Email, string FirstName, string LastName);
 ```
 
@@ -284,8 +275,8 @@ public class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserDto>
         _userRepository = userRepository;
     }
 
-    // Handle must return ValueTask<TResponse>, not Task<TResponse>
-    public async ValueTask<UserDto> Handle(GetUserQuery query, CancellationToken cancellationToken = default)
+    // Handle must return Task<TResponse>
+    public async Task<UserDto> Handle(GetUserQuery query, CancellationToken cancellationToken = default)
     {
         var user = await _userRepository.GetByIdAsync(query.UserId, cancellationToken);
 
@@ -306,8 +297,8 @@ Streams allow handlers to return multiple responses over time.
 
 #### Define a Stream Request
 ```csharp
-// Must implement IStream<TResponse>
-public record GetUserActivityQuery(string UserId, DateTime FromDate) : IStream<ActivityDto>;
+// No marker interface required
+public record GetUserActivityQuery(string UserId, DateTime FromDate);
 public record ActivityDto(string Id, string Action, DateTime Timestamp);
 ```
 
@@ -345,134 +336,57 @@ await foreach (var activity in mediator.RequestStream<GetUserActivityQuery, Acti
 }
 ```
 
-### Validations
-
-NetMediate supports message validation through multiple approaches:
-
-#### Self-Validating Messages
-```csharp
-using System.ComponentModel.DataAnnotations;
-
-// Self-validating command: implements both ICommand and IValidatable
-public record CreateUserCommand(string Email, string FirstName, string LastName) : ICommand, IValidatable
-{
-    public Task<ValidationResult> ValidateAsync()
-    {
-        if (string.IsNullOrWhiteSpace(Email))
-            return Task.FromResult(new ValidationResult("Email is required", new[] { nameof(Email) }));
-
-        if (!Email.Contains('@'))
-            return Task.FromResult(new ValidationResult("Invalid email format", new[] { nameof(Email) }));
-
-        if (string.IsNullOrWhiteSpace(FirstName))
-            return Task.FromResult(new ValidationResult("First name is required", new[] { nameof(FirstName) }));
-
-        return Task.FromResult(ValidationResult.Success!);
-    }
-}
-```
-
-#### External Validation Handlers
-```csharp
-public class CreateUserCommandValidator : IValidationHandler<CreateUserCommand>
-{
-    private readonly IUserRepository _userRepository;
-    
-    public CreateUserCommandValidator(IUserRepository userRepository)
-    {
-        _userRepository = userRepository;
-    }
-    
-    public async ValueTask<ValidationResult> ValidateAsync(
-        CreateUserCommand message, 
-        CancellationToken cancellationToken = default)
-    {
-        var existingUser = await _userRepository.GetByEmailAsync(message.Email, cancellationToken);
-        
-        if (existingUser != null)
-            return new ValidationResult("Email already exists", new[] { nameof(message.Email) });
-            
-        return ValidationResult.Success!;
-    }
-}
-```
-
-#### Validation Exceptions
-When validation fails, NetMediate throws a `MessageValidationException`:
-
-```csharp
-try
-{
-    var command = new CreateUserCommand("", "John", "Doe"); // Invalid email
-    await mediator.Send(command);
-}
-catch (MessageValidationException ex)
-{
-    Console.WriteLine($"Validation failed: {ex.Message}");
-}
-```
-
 ### Message type summary
 
-NetMediate messages are plain records or classes that implement one of the four marker interfaces. There are no generic self-handler interfaces — the message type and the handler type are always separate.
+NetMediate messages are plain records or classes — **no marker interfaces are required**. The message type and the handler type are always separate.
 
-| Message kind | Marker interface | Handler interface | Dispatch semantics |
-|---|---|---|---|
-| Command | `ICommand` | `ICommandHandler<TMessage>` | All registered handlers, in parallel (`Task.WhenAll`) |
-| Request | `IRequest<TResponse>` | `IRequestHandler<TMessage, TResponse>` | First registered handler only; returns `TResponse` |
-| Notification | `INotification` | `INotificationHandler<TMessage>` | All registered handlers, sequentially, via background worker |
-| Stream | `IStream<TResponse>` | `IStreamHandler<TMessage, TResponse>` | All registered handlers iterated; each yields items |
+| Message kind | Handler interface | Dispatch semantics |
+|---|---|---|
+| Command | `ICommandHandler<TMessage>` | All registered handlers, sequential in registration order |
+| Request | `IRequestHandler<TMessage, TResponse>` | First registered handler only; returns `TResponse` |
+| Notification | `INotificationHandler<TMessage>` | All registered handlers, individual fire-and-forget per handler |
+| Stream | `IStreamHandler<TMessage, TResponse>` | Single registered handler; yields items asynchronously |
 
 ```csharp
-// Command — no return value, dispatched to all registered handlers in parallel
-public record DeleteUserCommand(string UserId) : ICommand;
+// Command — no return value, dispatched to all registered handlers sequentially
+public record DeleteUserCommand(string UserId);
 
 // Request — single handler, returns a response
-public record GetUserQuery(string UserId) : IRequest<UserDto>;
+public record GetUserQuery(string UserId);
 
-// Notification — dispatched to all registered handlers sequentially (via background worker)
-public record UserDeleted(string UserId) : INotification;
+// Notification — dispatched to all registered handlers (fire-and-forget; errors logged)
+public record UserDeleted(string UserId);
 
-// Stream — all registered handlers are iterated; each yields results asynchronously
-public record GetRecentEventsQuery(int MaxItems) : IStream<EventDto>;
+// Stream — single handler; yields results asynchronously
+public record GetRecentEventsQuery(int MaxItems);
 ```
 
 
-### Advanced Configuration
+### Pipeline Behaviors / Interceptors
 
-#### Ignoring unhandled messages
-
-By default, NetMediate throws `InvalidOperationException` when no handler is registered for a message. To suppress this:
+Behaviors wrap the handler pipeline and run in registration order. Register them via the builder using closed types — this is the only supported pattern, and it is fully AOT-safe:
 
 ```csharp
-builder.Services.AddNetMediate(typeof(MyHandler).Assembly)
-    .IgnoreUnhandledMessages(ignore: true);
-```
-
-#### Pipeline Behaviors / Interceptors
-
-Behaviors wrap the handler pipeline. Register them via DI using the appropriate behavior interface:
-
-```csharp
-// Open-generic: runs for every request type
-builder.Services.AddSingleton(typeof(IRequestBehavior<,>), typeof(AuditRequestBehavior<,>));
-
-// Closed-generic: runs only for a specific message type
-builder.Services.AddSingleton<ICommandBehavior<CreateUserCommand>, ValidationCommandBehavior>();
+builder.Services.UseNetMediate(configure =>
+{
+    configure.RegisterBehavior<AuditCommandBehavior, CreateUserCommand, Task>();
+    configure.RegisterBehavior<AuditRequestBehavior<GetUserQuery, UserDto>, GetUserQuery, Task<UserDto>>();
+    configure.RegisterBehavior<LogNotificationBehavior<UserCreatedNotification>, UserCreatedNotification, Task>();
+});
 ```
 
 Example behavior — audit timing for requests:
 
 ```csharp
 public sealed class AuditRequestBehavior<TMessage, TResponse>
-    : IRequestBehavior<TMessage, TResponse>
-    where TMessage : notnull, IRequest<TResponse>
+    : IPipelineRequestBehavior<TMessage, TResponse>
+    where TMessage : notnull
 {
-    // Handle returns ValueTask<TResponse>; next delegate accepts (message, cancellationToken)
-    public async ValueTask<TResponse> Handle(
+    // Handle returns Task<TResponse>; next delegate accepts (message, cancellationToken)
+    public async Task<TResponse> Handle(
         TMessage message,
-        RequestHandlerDelegate<TMessage, TResponse> next,
-        CancellationToken cancellationToken = default)
+        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        CancellationToken cancellationToken)
     {
         var startedAt = DateTimeOffset.UtcNow;
         var response = await next(message, cancellationToken);
@@ -486,13 +400,13 @@ Example notification behavior:
 
 ```csharp
 public sealed class LogNotificationBehavior<TMessage>
-    : INotificationBehavior<TMessage>
-    where TMessage : notnull, INotification
+    : IPipelineBehavior<TMessage>
+    where TMessage : notnull
 {
-    public async ValueTask Handle(
+    public async Task Handle(
         TMessage message,
-        NotificationHandlerDelegate<TMessage> next,
-        CancellationToken cancellationToken = default)
+        PipelineBehaviorDelegate<TMessage, Task> next,
+        CancellationToken cancellationToken)
     {
         Console.WriteLine($"Dispatching {typeof(TMessage).Name}");
         await next(message, cancellationToken);
@@ -501,60 +415,32 @@ public sealed class LogNotificationBehavior<TMessage>
 }
 ```
 
+> **Note on validation**: NetMediate does not include a built-in validation layer. Implement validation as a pipeline behavior. See [docs/VALIDATION_BEHAVIOR_SAMPLE.md](docs/VALIDATION_BEHAVIOR_SAMPLE.md) for an example.
+
 ## Framework Support
 
 ### Supported package TFMs
 
-All runtime packages (`NetMediate`, `NetMediate.Moq`, `NetMediate.Resilience`, `NetMediate.Quartz`, `NetMediate.Adapters`) are published with:
+All runtime packages are published with:
 
 - `net10.0`
 - `netstandard2.0`
 - `netstandard2.1`
 
-`NetMediate.SourceGeneration` remains an analyzer package (`netstandard2.0`) and works from all supported host TFMs.
+`NetMediate.SourceGeneration` is an analyzer-only package (`netstandard2.0`) and works from all supported host TFMs.
 
 ### Application types covered
 
-Because packages expose `netstandard2.0` and `netstandard2.1` assets, they can be consumed by:
-
-- desktop applications
-- CLI applications
-- mobile applications
-- MAUI applications
-- server/web applications
-
-Always validate your specific app stack (DI host model, platform runtime, and trimming/AOT profile) in your CI pipeline.
-
-### Benchmark note by target
-
-Performance scenarios are measured from runnable host runtimes. Current benchmark executions are reported for `net10.0`.
-For `netstandard2.0`/`netstandard2.1`, throughput is determined by the concrete runtime hosting those assets (desktop/CLI/mobile/MAUI).
+Because packages expose `netstandard2.0` and `netstandard2.1` assets they can be consumed by desktop, CLI, mobile, MAUI, and server/web applications.
 
 ## Contributing
 
-Contributions are welcome! We appreciate your interest in making NetMediate better.
-
-Please read our [Contributing Guidelines](CONTRIBUTING.md) for detailed information about:
-- Development setup and prerequisites
-- Code style and formatting requirements
-- Testing guidelines and coverage requirements
-- Pull request process and expectations
-
-We also ask that all contributors follow our [Code of Conduct](CODE_OF_CONDUCT.md) to ensure a welcoming and inclusive environment for everyone.
-
-For major changes, please open an issue first to discuss what you would like to change.
+Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Emergency Publishing
 
-For critical situations requiring immediate package publishing, see the [Emergency Publishing Guide](docs/EMERGENCY_PUBLISHING.md). This functionality is restricted to the repository owner and bypasses normal change detection mechanisms.
+For critical situations requiring immediate package publishing, see the [Emergency Publishing Guide](docs/EMERGENCY_PUBLISHING.md).
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Fixed problems
-
-- Notification exceptions no longer stop execution: exceptions thrown by handlers inside the background notification worker are caught and logged as warnings, so other notifications continue to be dispatched.
-- Added batch publishing support for notifications.
-- Improved consistency across handler interfaces via the IHandler base.
-- Refactored internals for clearer, more maintainable code.

@@ -2,6 +2,11 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NetMediate.Internals;
+using NetMediate.Tests.CommandHandlers;
+using NetMediate.Tests.Messages;
+using NetMediate.Tests.NotificationHandlers;
+using NetMediate.Tests.RequestHandlers;
+using NetMediate.Tests.StreamHandlers;
 
 [assembly: ExcludeFromCodeCoverage]
 
@@ -19,9 +24,14 @@ public sealed class NetMediateFixture : IDisposable
     {
         _builder = Host.CreateApplicationBuilder();
         _builder.Services.AddSingleton(this);
-        var builder = new MediatorServiceBuilder<Notifier>(_builder.Services);
-        builder.MapAssemblies(GetType().Assembly);
-        builder.MapAssemblies();
+        _builder.Services.UseNetMediate<Notifier>(configure =>
+        {
+            configure.RegisterCommandHandler<MessageCommandHandler, MessageCommand>();
+            configure.RegisterNotificationHandler<MessageNotificationHandler, MessageNotification>();
+            configure.RegisterNotificationHandler<SimpleValidatableNotifyHandler, SimpleValidatableMessage>();
+            configure.RegisterRequestHandler<MessageRequestHandler, MessageRequest, int>();
+            configure.RegisterStreamHandler<MessageStreamHandler, MessageStream, int>();
+        });
     }
 
     public async Task RunAsync(Func<IServiceProvider, Task> runner)

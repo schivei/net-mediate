@@ -24,7 +24,13 @@ public class SharedMediatorParityTests
 #if MEDIATR_COMPAT
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<SharedMediatorParityTests>());
 #else
-        builder.Services.AddNetMediate<Notifier>(typeof(SharedMediatorParityTests).Assembly);
+        builder.Services.UseNetMediate<Notifier>(configure =>
+        {
+            configure.RegisterRequestHandler<PingRequestHandler, PingRequest, PingResponse>();
+            configure.RegisterCommandHandler<AuditCommandHandler, AuditCommand>();
+            configure.RegisterNotificationHandler<PingNotificationHandler, PingNotification>();
+            configure.RegisterStreamHandler<CounterStreamHandler, CounterStream, int>();
+        });
 #endif
 
         using var host = builder.Build();
@@ -44,7 +50,7 @@ public class SharedMediatorParityTests
         ) streamed.Add(item);
 #else
         var reply = await mediator.Request<PingRequest, PingResponse>(
-            new PingRequest("ping"),
+            new("ping"),
             TestContext.Current.CancellationToken
         );
 
@@ -58,7 +64,7 @@ public class SharedMediatorParityTests
         var streamed = new List<int>();
         await foreach (
             var item in mediator.RequestStream<CounterStream, int>(
-                new CounterStream(3),
+                new(3),
                 TestContext.Current.CancellationToken
             )
         )
@@ -97,19 +103,19 @@ public class SharedMediatorParityTests
 
     public sealed class PingRequestHandler : IRequestHandler<PingRequest, PingResponse>
 #else
-    public sealed record PingRequest(string Value) : IRequest<PingResponse>;
+    public sealed record PingRequest(string Value);
 
-    public sealed record AuditCommand(string Value) : ICommand;
+    public sealed record AuditCommand(string Value);
 
-    public sealed record PingNotification(string Value) : INotification;
+    public sealed record PingNotification(string Value);
 
-    public sealed record CounterStream(int Count) : IStream<int>;
+    public sealed record CounterStream(int Count);
 
     public sealed class PingRequestHandler : IRequestHandler<PingRequest, PingResponse>
 #endif
     {
-        public ValueTask<PingResponse> Handle(PingRequest request, CancellationToken cancellationToken = default)
-            => new(new PingResponse($"{request.Value}:pong"));
+        public Task<PingResponse> Handle(PingRequest request, CancellationToken cancellationToken = default) // NOSONAR S2325
+            => Task.FromResult(new PingResponse($"{request.Value}:pong"));
     }
 
     public sealed record PingResponse(string Value);
@@ -122,10 +128,10 @@ public class SharedMediatorParityTests
     {
         private readonly DispatchRecorder _recorder = recorder;
 
-        public ValueTask Handle(AuditCommand request, CancellationToken cancellationToken = default)
+        public Task Handle(AuditCommand request, CancellationToken cancellationToken = default)
         {
             _recorder.LastCommand = request.Value;
-            return ValueTask.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 
@@ -139,13 +145,13 @@ public class SharedMediatorParityTests
     {
         private readonly DispatchRecorder _recorder = recorder;
 
-        public ValueTask Handle(
+        public Task Handle(
             PingNotification notification,
             CancellationToken cancellationToken = default
         )
         {
             _recorder.LastNotification = notification.Value;
-            return ValueTask.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 

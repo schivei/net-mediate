@@ -1,5 +1,4 @@
 using Serilog;
-using System.Data;
 
 namespace NetMediate.DataDog.Serilog;
 
@@ -36,8 +35,9 @@ public static class NetMediateDataDogSerilogExtensions
 
         if (string.IsNullOrWhiteSpace(options.ApiKey))
         {
-            throw new NoNullAllowedException(
-                "DataDog API key must be provided when EnableSink is true."
+            throw new ArgumentException(
+                "DataDog API key must be provided when EnableSink is true.",
+                nameof(configure)
             );
         }
 

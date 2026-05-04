@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate.Internals;
 
@@ -28,16 +27,6 @@ namespace NetMediate;
 [ExcludeFromCodeCoverage]
 public static class NetMediateDI
 {
-    // Tracks which IServiceCollection instances have already had UseNetMediate called.
-    // ConditionalWeakTable keys on the live collection reference, so each independent DI
-    // container gets its own isolation without any cross-container leakage (safe for tests
-    // that build multiple containers in the same process).  When a collection is GC-eligible
-    // the entry is automatically released — no memory leak.
-    private static readonly ConditionalWeakTable<IServiceCollection, object> s_started = new ConditionalWeakTable<IServiceCollection, object>();
-
-    // Plain object lock (not System.Threading.Lock) so no polyfill dependency in this file.
-    private static readonly object s_startedLock = new();
-
     /// <summary>
     /// Configures NetMediate core services and applies the provided explicit handler registration
     /// callback.  This overload is <em>intended to be called by source-generated code only</em>
@@ -62,21 +51,16 @@ public static class NetMediateDI
     {
         Guard.ThrowIfNull(configure);
 
-        // Idempotency guard: if UseNetMediate has already been called on this container, log a
-        // warning and return a no-op builder so callers can still chain off the return value.
-        lock (s_startedLock)
+        // IMediator is the first service registered by MediatorServiceBuilder, so its presence
+        // in the collection is a reliable, allocation-free idempotency indicator per container.
+        if (services.Any(static s => s.ServiceType == typeof(IMediator)))
         {
-            if (s_started.TryGetValue(services, out _))
-            {
-                Debug.WriteLine(
-                    "[NetMediate] UseNetMediate was called more than once on the same IServiceCollection. " +
-                    "The duplicate call is ignored. Ensure AddNetMediate() is called only once " +
-                    "at application startup."
-                );
-                return new MediatorServiceBuilder<Notifier>(services, skipCoreRegistration: true);
-            }
-
-            s_started.Add(services, new object());
+            Debug.WriteLine(
+                "[NetMediate] UseNetMediate was called more than once on the same IServiceCollection. " +
+                "The duplicate call is ignored. Ensure AddNetMediate() is called only once " +
+                "at application startup."
+            );
+            return new MediatorServiceBuilder<Notifier>(services, skipCoreRegistration: true);
         }
 
         var builder = new MediatorServiceBuilder<Notifier>(services);
@@ -107,18 +91,13 @@ public static class NetMediateDI
     {
         Guard.ThrowIfNull(configure);
 
-        lock (s_startedLock)
+        if (services.Any(static s => s.ServiceType == typeof(IMediator)))
         {
-            if (s_started.TryGetValue(services, out _))
-            {
-                Debug.WriteLine(
-                    "[NetMediate] UseNetMediate was called more than once on the same IServiceCollection. " +
-                    "The duplicate call is ignored."
-                );
-                return new MediatorServiceBuilder<TNotifier>(services, skipCoreRegistration: true);
-            }
-
-            s_started.Add(services, new object());
+            Debug.WriteLine(
+                "[NetMediate] UseNetMediate was called more than once on the same IServiceCollection. " +
+                "The duplicate call is ignored."
+            );
+            return new MediatorServiceBuilder<TNotifier>(services, skipCoreRegistration: true);
         }
 
         var builder = new MediatorServiceBuilder<TNotifier>(services);

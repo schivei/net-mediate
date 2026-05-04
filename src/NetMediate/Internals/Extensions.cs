@@ -9,14 +9,14 @@ internal static class Extensions
     // Handlers are registered as Singletons, so their resolved arrays never change across the
     // lifetime of the application.  A single global cache keyed by service type is correct and
     // avoids any per-container overhead.
-    private static readonly ConcurrentDictionary<Type, Lazy<object>> s_handlerCache = new();
+    private static readonly ConcurrentDictionary<ServiceKey, Lazy<object>> s_handlerCache = new();
 
     // Behaviors may differ between service-provider instances (e.g., different test containers
     // register different behaviors for the same message type).  Using a ConditionalWeakTable
     // keys the per-type behavior cache to the concrete IServiceProvider instance, so each
     // container gets its own isolated cache.  When the provider is GC'd its cache entry is
     // automatically released — no memory leak.
-    private static readonly ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<Type, Lazy<object>>>
+    private static readonly ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<ServiceKey, Lazy<object>>>
         s_behaviorCacheByProvider = new();
 
     // Pre-compiled pipeline delegates are cached per provider per executor type.
@@ -55,35 +55,30 @@ internal static class Extensions
                     clear(serviceProvider);
             }
         }
-        // If no provider is supplied, we do NOT attempt to clear all per-provider entries —
-        // ConditionalWeakTable does not expose a Clear() on all target frameworks and the
-        // per-provider caches are naturally empty for any freshly created ServiceProvider.
     }
 
     extension(IServiceProvider serviceProvider)
     {
-        public THandler[] GetHandlers<THandler, TMessage, TResult>()
+        public THandler[] GetHandlers<THandler, TMessage, TResult>(object? key = null)
             where THandler : class, IHandler<TMessage, TResult>
             where TMessage : notnull
             where TResult : notnull
         {
-            return serviceProvider.GetCachedServices<THandler>(s_handlerCache);
+            return serviceProvider.GetCachedServices<THandler>(new(typeof(THandler), key), s_handlerCache);
         }
 
-        public T[] GetCachedBehaviors<T>() where T : class
+        public T[] GetCachedBehaviors<T>(object? key = null) where T : class
         {
-            // Retrieve (or lazily create) the per-provider behavior dictionary, then cache
-            // within it — identical pattern to GetHandlers but scoped to this provider.
             var providerCache = s_behaviorCacheByProvider.GetOrCreateValue(serviceProvider);
-            return serviceProvider.GetCachedServices<T>(providerCache);
+            return serviceProvider.GetCachedServices<T>(new(typeof(T), key), providerCache);
         }
 
-        private T[] GetCachedServices<T>(ConcurrentDictionary<Type, Lazy<object>> cache) where T : class
+        private T[] GetCachedServices<T>(ServiceKey key, ConcurrentDictionary<ServiceKey, Lazy<object>> cache) where T : class
         {
             var lazy = cache.GetOrAdd(
-                typeof(T),
+                key,
                 _ => new Lazy<object>(
-                    () => serviceProvider.GetServices<T>().ToArray(),
+                    () => serviceProvider.GetKeyedServices<T>(key).ToArray(),
                     LazyThreadSafetyMode.ExecutionAndPublication));
 
             return (T[])lazy.Value;

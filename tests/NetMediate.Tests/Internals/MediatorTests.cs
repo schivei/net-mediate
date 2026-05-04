@@ -251,6 +251,32 @@ public class MediatorTests
 
     #endregion
 
+    #region ClearCache Tests
+
+    [Fact]
+    public async Task ClearCache_WithProvider_ShouldInvalidatePipelineCacheAndRebuild()
+    {
+        var handler = new TrackingCommandHandler<TestMessageCommand>();
+        await using var provider = BuildProvider(b => b.RegisterCommandHandler(handler));
+        var mediator = BuildMediator(provider);
+        var message = new TestMessageCommand { Content = "first" };
+
+        // First call — populates the per-provider pipeline cache
+        await mediator.Send(message, TestContext.Current.CancellationToken);
+
+        // ClearCache with provider — invalidates the behavior and pipeline caches for this provider
+        Extensions.ClearCache(provider);
+
+        // Second call — should rebuild the pipeline and succeed
+        var message2 = new TestMessageCommand { Content = "second" };
+        await mediator.Send(message2, TestContext.Current.CancellationToken);
+
+        Assert.Contains(message, handler.Invocations);
+        Assert.Contains(message2, handler.Invocations);
+    }
+
+    #endregion
+
     #region Notify Error-Path Tests
 
     [Fact]

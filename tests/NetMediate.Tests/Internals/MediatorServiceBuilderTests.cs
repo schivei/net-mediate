@@ -113,6 +113,21 @@ public class MediatorServiceBuilderTests
         );
     }
 
+    [Fact]
+    public void RegisterNotificationBehavior_AddsBehaviorToServiceCollection()
+    {
+        var services = new ServiceCollection();
+        var builder = new MediatorServiceBuilder<Notifier>(services);
+
+        builder.RegisterNotificationBehavior<NoOpNotificationBehavior<DummyNotification>, DummyNotification>();
+
+        Assert.Contains(
+            services,
+            s => s.ServiceType == typeof(IPipelineNotificationBehavior<DummyNotification>)
+                 && s.ImplementationType == typeof(NoOpNotificationBehavior<DummyNotification>)
+        );
+    }
+
     // ── Specialized type-based registration (AOT-safe) ──────────────────────────
 
     [Fact]
@@ -234,6 +249,13 @@ public class MediatorServiceBuilderTests
     }
 
     private sealed class NoOpBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
+        where TMessage : notnull
+    {
+        public Task Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
+            next(message, ct);
+    }
+
+    private sealed class NoOpNotificationBehavior<TMessage> : IPipelineNotificationBehavior<TMessage>
         where TMessage : notnull
     {
         public Task Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>

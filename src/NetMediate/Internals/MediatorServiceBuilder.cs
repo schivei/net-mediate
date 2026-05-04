@@ -142,4 +142,15 @@ internal sealed class MediatorServiceBuilder<
         _services.AddTransient<IPipelineBehavior<TMessage, TResult>, TBehavior>();
         return this;
     }
+
+    public IMediatorServiceBuilder RegisterNotificationBehavior<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        TBehavior,
+        TMessage>()
+        where TBehavior : class, IPipelineNotificationBehavior<TMessage>
+        where TMessage : notnull
+    {
+        _services.AddTransient<IPipelineNotificationBehavior<TMessage>, TBehavior>();
+        return this;
+    }
 }

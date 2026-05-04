@@ -140,15 +140,18 @@ public class MediatorTests
     }
 
     [Fact]
-    public async Task Send_WhenHandlerThrows_PropagatesException()
+    public async Task Send_WhenHandlerThrows_PropagatesAsMediatorException()
     {
         await using var provider = BuildProvider(b =>
             b.RegisterCommandHandler(new ThrowingCommandHandler()));
         var mediator = BuildMediator(provider);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAsync<MediatorException>(
             () => mediator.Send(new TestMessageCommand { Content = "Test" }, TestContext.Current.CancellationToken)
         );
+        Assert.IsType<InvalidOperationException>(ex.InnerException);
+        Assert.Equal(typeof(TestMessageCommand), ex.MessageType);
+        Assert.Equal(typeof(ICommandHandler<TestMessageCommand>), ex.HandlerType);
     }
 
     #endregion

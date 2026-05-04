@@ -64,6 +64,13 @@ internal sealed class TelemetryRequestBehavior<TMessage, TResponse> : IPipelineR
 /// Stream pipeline behavior that records OpenTelemetry traces and metrics for stream dispatch.
 /// Register via <see cref="DependencyInjection.AddNetMediateDiagnostics"/>.
 /// </summary>
+/// <remarks>
+/// The activity is scoped to the stream <em>dispatch</em> (i.e. the call to
+/// <see cref="IMediator.RequestStream{TMessage,TResponse}"/>), not to the full enumeration.
+/// This is intentional: <see cref="IAsyncEnumerable{T}"/> is lazy and the consumer drives
+/// enumeration independently. The metric counter is also incremented at dispatch time to
+/// track how many streams were started.
+/// </remarks>
 internal sealed class TelemetryStreamBehavior<TMessage, TResponse> : IPipelineStreamBehavior<TMessage, TResponse>
     where TMessage : notnull
 {
@@ -73,6 +80,7 @@ internal sealed class TelemetryStreamBehavior<TMessage, TResponse> : IPipelineSt
         PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> next,
         CancellationToken cancellationToken)
     {
+        // Activity covers stream dispatch only; disposed when this method returns.
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Stream");
         try
         {

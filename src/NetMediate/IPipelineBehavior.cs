@@ -11,6 +11,20 @@
 public interface IPipelineBehavior<TMessage> : IPipelineBehavior<TMessage, Task> where TMessage : notnull;
 
 /// <summary>
+/// A dedicated shorthand for notification-specific pipeline behaviors, mirroring the symmetric
+/// registration experience of <see cref="IPipelineRequestBehavior{TMessage,TResponse}"/> for requests.
+/// </summary>
+/// <remarks>
+/// Implementations of this interface are registered via
+/// <see cref="IMediatorServiceBuilder.RegisterNotificationBehavior{TBehavior,TMessage}()"/> and are resolved
+/// exclusively for notification pipelines by <c>NotificationPipelineExecutor&lt;TMessage&gt;</c>.
+/// This provides a type-safe, AOT-compatible way to add cross-cutting concerns to notification dispatch
+/// without registering against the more general <c>IPipelineBehavior&lt;TMessage, Task&gt;</c>.
+/// </remarks>
+/// <typeparam name="TMessage">The notification message type. Cannot be null.</typeparam>
+public interface IPipelineNotificationBehavior<TMessage> : IPipelineBehavior<TMessage> where TMessage : notnull;
+
+/// <summary>
 /// Defines a behavior that can be added to the processing pipeline for a message, allowing custom logic to be executed
 /// before or after the main message handler.
 /// </summary>

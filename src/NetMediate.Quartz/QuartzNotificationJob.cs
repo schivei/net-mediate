@@ -1,8 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
-using global::Quartz;
+using Quartz;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NetMediate.Internals;
+using System.Text.Json.Serialization;
 
 namespace NetMediate.Quartz;
 

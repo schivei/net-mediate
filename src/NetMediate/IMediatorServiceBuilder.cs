@@ -108,4 +108,18 @@ public interface IMediatorServiceBuilder
         where TBehavior : class, IPipelineBehavior<TMessage, TResult>
         where TMessage : notnull
         where TResult : notnull;
+
+    /// <summary>
+    /// Registers a notification-specific pipeline behavior.
+    /// Provides a symmetric registration experience to
+    /// <see cref="RegisterBehavior{TBehavior,TMessage,TResult}"/> for notification pipelines.
+    /// </summary>
+    /// <typeparam name="TBehavior">The <see cref="IPipelineNotificationBehavior{TMessage}"/> implementation type.</typeparam>
+    /// <typeparam name="TMessage">The notification message type.</typeparam>
+    /// <returns>The current instance of <see cref="IMediatorServiceBuilder"/> for chaining.</returns>
+    IMediatorServiceBuilder RegisterNotificationBehavior<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TBehavior,
+        TMessage>()
+        where TBehavior : class, IPipelineNotificationBehavior<TMessage>
+        where TMessage : notnull;
 }

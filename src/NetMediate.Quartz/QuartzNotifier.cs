@@ -1,10 +1,17 @@
-using Quartz;
 using Microsoft.Extensions.Logging;
 using NetMediate.Internals;
+using Quartz;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.Quartz;
 
 /// <inheritdoc/>
+[RequiresDynamicCode(
+    "QuartzNotificationJob uses MakeGenericMethod for per-type notification dispatch and is not compatible with NativeAOT."
+)]
+[RequiresUnreferencedCode(
+    "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
+)]
 public sealed class QuartzNotifier(
     IScheduler scheduler,
     INotificationSerializer serializer,

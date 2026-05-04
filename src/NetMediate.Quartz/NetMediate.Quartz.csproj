@@ -12,6 +12,14 @@
     <WarningsAsErrors />
     <WarningsNotAsErrors>CS1591</WarningsNotAsErrors>
     <GenerateDocumentationFileInReleaseBuild>true</GenerateDocumentationFileInReleaseBuild>
+
+	<IsAotCompatible>false</IsAotCompatible>
+	<IsTrimmable>false</IsTrimmable>
+	<EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+	<EnableSingleFileAnalyzer>false</EnableSingleFileAnalyzer>
+	<EnableAotAnalyzer>false</EnableAotAnalyzer>
+	<VerifyReferenceAotCompatibility>false</VerifyReferenceAotCompatibility>
+	<PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <WarningsNotAsErrors />

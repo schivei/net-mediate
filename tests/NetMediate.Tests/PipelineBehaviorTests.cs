@@ -117,6 +117,33 @@ public sealed class PipelineBehaviorTests
         Assert.Equal("notification:after-await", entries[^1]);
     }
 
+    [Fact]
+    public async Task NotificationBehaviorShorthand_ShouldWrapNotificationDispatch()
+    {
+        using var host = await CreateHostAsync(
+            services =>
+            {
+                services.AddScoped<IPipelineNotificationBehavior<PipelineNotification>, ShorthandNotificationBehavior>();
+                services.AddSingleton<CallTrace>();
+            }
+        );
+
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        var trace = host.Services.GetRequiredService<CallTrace>();
+        var cancellationToken = TestContext.Current.CancellationToken;
+
+        await mediator.Notify(new PipelineNotification("ok"), cancellationToken);
+        await WaitForTraceSizeAsync(trace, expected: 5, cancellationToken);
+
+        var entries = trace.ToArray();
+        Assert.Equal(5, entries.Length);
+        Assert.Equal("notification:pre", entries[0]);
+        Assert.Contains("notification:handler:1", entries);
+        Assert.Contains("notification:handler:2", entries);
+        Assert.Equal("notification:post", entries[^2]);
+        Assert.Equal("notification:after-await", entries[^1]);
+    }
+
     private static async Task WaitForTraceSizeAsync(
         CallTrace trace,
         int expected,
@@ -311,6 +338,22 @@ public sealed class PipelineBehaviorTests
 
     private sealed class NotificationBehavior(CallTrace trace)
         : IPipelineBehavior<PipelineNotification, Task>
+    {
+        public async Task Handle(
+            PipelineNotification message,
+            PipelineBehaviorDelegate<PipelineNotification, Task> next,
+            CancellationToken cancellationToken = default
+        )
+        {
+            trace.Add("notification:pre");
+            await next(message, cancellationToken);
+            trace.Add("notification:post");
+            trace.Add("notification:after-await");
+        }
+    }
+
+    private sealed class ShorthandNotificationBehavior(CallTrace trace)
+        : IPipelineNotificationBehavior<PipelineNotification>
     {
         public async Task Handle(
             PipelineNotification message,

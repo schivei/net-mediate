@@ -1,5 +1,5 @@
-using System.IO;
 using System.Collections.Immutable;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -20,66 +20,62 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     {
         var handlerTypes = context
             .SyntaxProvider.CreateSyntaxProvider(
-                predicate: static (node, _) => node is ClassDeclarationSyntax cds && cds.BaseList is not null,
-                transform: static (ctx, _) =>
-                {
-                    if (ctx.Node is not ClassDeclarationSyntax declaration)
-                        return null;
-
-                    if (ctx.SemanticModel.GetDeclaredSymbol(declaration) is not INamedTypeSymbol typeSymbol)
-                        return null;
-
-                    if (typeSymbol.IsAbstract || typeSymbol.IsGenericType)
-                        return null;
-
-                    if (!IsAccessible(typeSymbol))
-                        return null;
-
-                    return typeSymbol;
-                }
+                predicate: static (node, _) => Search(node),
+                transform: static (ctx, _) => Transform(ctx)
             )
             .Where(static t => t is not null)
             .Select(static (t, _) => t!)
             .Collect();
 
-        // Detect referenced framework packages.
-        // Diagnostics must be registered FIRST (outermost in the pipeline after Reverse/Aggregate).
-        // Resilience is registered SECOND.
-        // Both are registered per message-type using closed-type RegisterBehavior<> calls —
-        // no open-generic typeof() registrations are emitted.
-        var packageInfo = context.CompilationProvider.Select(static (compilation, _) =>
-        {
-            var names = compilation.ReferencedAssemblyNames;
-            bool hasDiagnostics = false;
-            bool hasResilience = false;
-
-            foreach (var assemblyName in names)
-            {
-                if (assemblyName.Name == "NetMediate.Diagnostics")
-                    hasDiagnostics = true;
-                else if (assemblyName.Name == "NetMediate.Resilience")
-                    hasResilience = true;
-            }
-
-            return (hasDiagnostics, hasResilience);
-        });
+        var packageInfo = context.CompilationProvider.Select(static (compilation, _) => Selects(compilation));
 
         var combined = handlerTypes.Combine(packageInfo);
 
         context.RegisterSourceOutput(
             combined,
-            static (sourceProductionContext, input) =>
-            {
-                var (types, (hasDiagnostics, hasResilience)) = input;
-                var (registrations, notifier) = BuildRegistrations(types, hasDiagnostics, hasResilience);
-                var frameworkBehaviors = BuildFrameworkInfrastructure(hasDiagnostics, hasResilience);
-                var source = BuildSource(registrations, notifier, frameworkBehaviors);
-                sourceProductionContext.AddSource(
-                    "NetMediateGeneratedDI.g.cs",
-                    source
-                );
-            }
+            static (sourceProductionContext, input) => Accumulate(sourceProductionContext, input)
         );
+    }
+
+    private static void Accumulate(SourceProductionContext sourceProductionContext, (ImmutableArray<INamedTypeSymbol> Left, (bool hasDiagnostics, bool hasResilience) Right) input)
+    {
+        var (types, (hasDiagnostics, hasResilience)) = input;
+        var (registrations, notifier) = BuildRegistrations(types, hasDiagnostics, hasResilience);
+        var frameworkBehaviors = BuildFrameworkInfrastructure(hasResilience);
+        var source = BuildSource(registrations, notifier, frameworkBehaviors);
+        sourceProductionContext.AddSource(
+            "NetMediateGeneratedDI.g.cs",
+            source
+        );
+    }
+
+    private static (bool hasDiagnostics, bool hasResilience) Selects(Compilation compilation)
+    {
+        var names = compilation.ReferencedAssemblyNames.Select(name => name.Name);
+        bool hasDiagnostics = names.Contains("NetMediate.Diagnostics");
+        bool hasResilience = names.Contains("NetMediate.Resilience");
+
+        return (hasDiagnostics, hasResilience);
+    }
+
+    private static bool Search(SyntaxNode node) =>
+        node is ClassDeclarationSyntax cds && cds.BaseList is not null;
+
+    private static INamedTypeSymbol? Transform(GeneratorSyntaxContext ctx)
+    {
+        if (ctx.Node is not ClassDeclarationSyntax declaration)
+            return null;
+
+        if (ctx.SemanticModel.GetDeclaredSymbol(declaration) is not INamedTypeSymbol typeSymbol)
+            return null;
+
+        if (typeSymbol.IsAbstract || typeSymbol.IsGenericType)
+            return null;
+
+        if (!IsAccessible(typeSymbol))
+            return null;
+
+        return typeSymbol;
     }
 
     /// <summary>
@@ -89,7 +85,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     /// skips registration when the type is already present).
     /// For Diagnostics: no infrastructure needed — <c>NetMediateDiagnostics</c> is a static class.
     /// </summary>
-    private static string BuildFrameworkInfrastructure(bool hasDiagnostics, bool hasResilience)
+    private static string BuildFrameworkInfrastructure(bool hasResilience)
     {
         const string indent = "        "; // 8 spaces
         var sb = new System.Text.StringBuilder();
@@ -112,7 +108,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     /// Uses insertion-ordered dictionaries for deduplication so the same behavior is never
     /// emitted twice even when multiple handlers share the same message type.
     /// </summary>
-    private static (IEnumerable<string> registrations, string notifier) BuildRegistrations(
+    private static (IEnumerable<string> registrations, StringBuilder notifier) BuildRegistrations(
         ImmutableArray<INamedTypeSymbol> types,
         bool hasDiagnostics,
         bool hasResilience)
@@ -121,33 +117,12 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         var diagnosticsBehaviors = new Dictionary<string, bool>(StringComparer.Ordinal);
         var resilienceBehaviors  = new Dictionary<string, bool>(StringComparer.Ordinal);
         var handlers             = new Dictionary<string, bool>(StringComparer.Ordinal);
-        var notifier             = "UseNetMediate";
+        var notifier             = new StringBuilder("UseNetMediate");
 
         foreach (var handlerType in types)
         {
             var handlerName = handlerType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            foreach (var @interface in handlerType.AllInterfaces)
-            {
-                var definition = @interface.OriginalDefinition;
-                if (definition.ContainingNamespace.ToDisplayString() != "NetMediate")
-                    continue;
-
-                var name = definition.Name;
-                var arity = definition.Arity;
-                var args = @interface.TypeArguments;
-
-                if (name == "INotifier" && arity == 0)
-                {
-                    notifier += $"<{handlerName}>";
-                    continue;
-                }
-
-                ProcessHandlerInterface(
-                    name, arity, handlerName, args,
-                    hasDiagnostics, hasResilience,
-                    diagnosticsBehaviors, resilienceBehaviors, handlers);
-            }
+            BuildResgistration(hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers, notifier, handlerType, handlerName);
         }
 
         // Final output order: Diagnostics behaviors → Resilience behaviors → handler registrations.
@@ -156,6 +131,31 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             .Concat(handlers.Keys);
 
         return (allRegistrations, notifier);
+    }
+
+    private static void BuildResgistration(bool hasDiagnostics, bool hasResilience, Dictionary<string, bool> diagnosticsBehaviors, Dictionary<string, bool> resilienceBehaviors, Dictionary<string, bool> handlers, StringBuilder notifier, INamedTypeSymbol handlerType, string handlerName) // NOSONAR S107
+    {
+        foreach (var @interface in handlerType.AllInterfaces)
+        {
+            var definition = @interface.OriginalDefinition;
+            if (definition.ContainingNamespace.ToDisplayString() != "NetMediate")
+                continue;
+
+            var name = definition.Name;
+            var arity = definition.Arity;
+            var args = @interface.TypeArguments;
+
+            if (name == "INotifier" && arity == 0)
+            {
+                notifier.Append($"<{handlerName}>");
+                continue;
+            }
+
+            ProcessHandlerInterface(
+                name, arity, handlerName, args,
+                hasDiagnostics, hasResilience,
+                diagnosticsBehaviors, resilienceBehaviors, handlers);
+        }
     }
 
     private static void ProcessHandlerInterface(
@@ -167,7 +167,38 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         bool hasResilience,
         Dictionary<string, bool> diagnosticsBehaviors,
         Dictionary<string, bool> resilienceBehaviors,
-        Dictionary<string, bool> handlers)
+        Dictionary<string, bool> handlers) // NOSONAR S107
+    {
+        AddCommand(interfaceName, arity, handlerName, args, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers);
+
+        AddRequest(interfaceName, arity, handlerName, args, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers);
+    }
+
+    private static void AddRequest(string interfaceName, int arity, string handlerName, ImmutableArray<ITypeSymbol> args, bool hasDiagnostics, bool hasResilience, Dictionary<string, bool> diagnosticsBehaviors, Dictionary<string, bool> resilienceBehaviors, Dictionary<string, bool> handlers)  // NOSONAR S107
+    {
+        if (arity == 2 && args.Length == 2)
+        {
+            if (!IsAccessible(args[0]) || !IsAccessible(args[1])) return;
+
+            var msg = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var resp = args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+            switch (interfaceName)
+            {
+                case "IRequestHandler":
+                    AddRequestBehaviors(msg, resp, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors);
+                    handlers.AddIfNew($"configure.RegisterRequestHandler<{handlerName}, {msg}, {resp}>();");
+                    break;
+
+                case "IStreamHandler":
+                    AddStreamBehaviors(msg, resp, hasDiagnostics, diagnosticsBehaviors);
+                    handlers.AddIfNew($"configure.RegisterStreamHandler<{handlerName}, {msg}, {resp}>();");
+                    break;
+            }
+        }
+    }
+
+    private static void AddCommand(string interfaceName, int arity, string handlerName, ImmutableArray<ITypeSymbol> args, bool hasDiagnostics, bool hasResilience, Dictionary<string, bool> diagnosticsBehaviors, Dictionary<string, bool> resilienceBehaviors, Dictionary<string, bool> handlers)  // NOSONAR S107
     {
         if (arity == 1 && args.Length == 1)
         {
@@ -185,26 +216,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 case "INotificationHandler":
                     AddCommandNotificationBehaviors(msg, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors);
                     handlers.AddIfNew($"configure.RegisterNotificationHandler<{handlerName}, {msg}>();");
-                    break;
-            }
-        }
-        else if (arity == 2 && args.Length == 2)
-        {
-            if (!IsAccessible(args[0]) || !IsAccessible(args[1])) return;
-
-            var msg  = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            var resp = args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            switch (interfaceName)
-            {
-                case "IRequestHandler":
-                    AddRequestBehaviors(msg, resp, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors);
-                    handlers.AddIfNew($"configure.RegisterRequestHandler<{handlerName}, {msg}, {resp}>();");
-                    break;
-
-                case "IStreamHandler":
-                    AddStreamBehaviors(msg, resp, hasDiagnostics, diagnosticsBehaviors);
-                    handlers.AddIfNew($"configure.RegisterStreamHandler<{handlerName}, {msg}, {resp}>();");
                     break;
             }
         }
@@ -270,7 +281,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
     // ── Source building ───────────────────────────────────────────────────────────────────────
 
-    private static string BuildSource(IEnumerable<string> registrations, string notifier, string frameworkBehaviors)
+    private static string BuildSource(IEnumerable<string> registrations, StringBuilder notifier, string frameworkBehaviors)
     {
         const string indent = "            ";
         var registrationsBlock = string.Join(
@@ -279,7 +290,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         );
 
         return LoadTemplate()
-            .Replace(NotifierToken, notifier)
+            .Replace(NotifierToken, notifier.ToString())
             .Replace(RegistrationsToken, registrationsBlock)
             .Replace(FrameworkBehaviorsToken, frameworkBehaviors);
     }
@@ -288,15 +299,11 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     {
         var stream = typeof(NetMediateRegistrationGenerator)
             .Assembly
-            .GetManifestResourceStream(TemplateResourceName);
-
-        if (stream is null)
-            throw new InvalidOperationException(
+            .GetManifestResourceStream(TemplateResourceName) ?? throw new InvalidOperationException(
                 $"Embedded template resource '{TemplateResourceName}' was not found. " +
                 "Ensure 'NetMediateGeneratedDI.template' is included as an EmbeddedResource " +
                 "in the NetMediate.SourceGeneration project."
             );
-
         using (stream)
         using (var reader = new StreamReader(stream))
             return reader.ReadToEnd();

@@ -5,6 +5,7 @@
     <Title>NetMediate.Diagnostics</Title>
     <Description>Optional OpenTelemetry traces and metrics pipeline behaviors for NetMediate.</Description>
     <PackageTags>Mediator;NetMediate;OpenTelemetry;Diagnostics;Tracing;Metrics</PackageTags>
+	<RootNamespace>NetMediate</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />

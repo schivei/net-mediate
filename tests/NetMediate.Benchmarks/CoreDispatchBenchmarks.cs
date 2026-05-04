@@ -99,6 +99,6 @@ public class CoreDispatchBenchmarks
 
     private static async Task DrainStream(IAsyncEnumerable<BenchStreamItem> stream)
     {
-        await foreach (var _ in stream) { }
+        await foreach (var _ in stream) { } // NOSONAR S108
     }
 }

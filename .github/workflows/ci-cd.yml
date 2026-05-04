@@ -23,7 +23,7 @@ jobs:
     name: Build and Test
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       pull-requests: write
 
     steps:
@@ -121,6 +121,7 @@ jobs:
         add: 'docs/BENCHMARKS.md'
         message: 'chore: update BENCHMARKS.md from CI benchmark run [skip ci]'
         default_author: github_actions
+        push: 'origin HEAD:refs/heads/${{ github.head_ref }}'
 
     - name: Post coverage summary to PR
       if: github.event_name == 'pull_request'

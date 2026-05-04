@@ -51,6 +51,9 @@ jobs:
     - name: Build NetMediate
       run: dotnet build src/NetMediate/NetMediate.csproj --no-restore --configuration Release
 
+    - name: Build NetMediate.Diagnostics
+      run: dotnet build src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --no-restore --configuration Release
+
     - name: Build NetMediate.Moq
       run: dotnet build src/NetMediate.Moq/NetMediate.Moq.csproj --no-restore --configuration Release
 
@@ -80,7 +83,31 @@ jobs:
 
     - name: Test Shared Parity (NetMediate)
       run: dotnet test tests/SharedParity.NetMediate.Tests/SharedParity.NetMediate.Tests.csproj --configuration Release --verbosity normal
-      
+
+    - name: Run Benchmarks (PR only)
+      if: github.event_name == 'pull_request'
+      run: |
+        cd tests/NetMediate.Benchmarks
+        dotnet run --configuration Release -- --job Short --exporters GitHub --filter '*' || true
+        REPORT=$(find BenchmarkDotNet.Artifacts -name '*-report-github.md' 2>/dev/null | head -1)
+        if [ -n "$REPORT" ]; then
+          {
+            echo "## Benchmark Results (CI Run)"
+            echo ""
+            echo "Run: $(date -u '+%Y-%m-%d %H:%M UTC') | Branch: $GITHUB_HEAD_REF | Commit: ${GITHUB_SHA:0:7}"
+            echo ""
+            cat "$REPORT"
+          } > ../../docs/BENCHMARKS.md
+        fi
+
+    - name: Commit benchmark results
+      if: github.event_name == 'pull_request'
+      uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d4 # v9
+      with:
+        add: 'docs/BENCHMARKS.md'
+        message: 'chore: update BENCHMARKS.md from CI benchmark run [skip ci]'
+        default_author: github_actions
+
     - name: Post coverage summary to PR
       if: github.event_name == 'pull_request'
       env:
@@ -194,6 +221,9 @@ jobs:
       
     - name: Pack NetMediate package
       run: dotnet pack src/NetMediate/NetMediate.csproj --no-build --no-restore --configuration Release --output ./packages
+
+    - name: Pack NetMediate.Diagnostics package
+      run: dotnet pack src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --no-build --no-restore --configuration Release --output ./packages
 
     - name: Pack NetMediate.Moq package
       run: dotnet pack src/NetMediate.Moq/NetMediate.Moq.csproj --no-build --no-restore --configuration Release --output ./packages

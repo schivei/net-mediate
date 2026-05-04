@@ -8,9 +8,9 @@ namespace NetMediate.SourceGeneration;
 [Generator]
 public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 {
-    // Placeholder tokens that are substituted into the embedded code template.
     private const string NotifierToken = "{{Notifier}}";
     private const string RegistrationsToken = "{{Registrations}}";
+    private const string FrameworkBehaviorsToken = "{{FrameworkBehaviors}}";
 
     // Resolved once; format: <RootNamespace>.<FileName>
     private static readonly string TemplateResourceName =
@@ -42,18 +42,58 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             .Select(static (t, _) => t!)
             .Collect();
 
-        context.RegisterSourceOutput(
-            handlerTypes,
-            static (sourceProductionContext, types) =>
+        // Detect referenced framework packages (Diagnostics must be first / outermost in the pipeline,
+        // Resilience second).  We combine with handler types so the source output is regenerated whenever
+        // either set changes.
+        var packageInfo = context.CompilationProvider.Select(static (compilation, _) =>
+        {
+            var names = compilation.ReferencedAssemblyNames;
+            bool hasDiagnostics = false;
+            bool hasResilience = false;
+
+            foreach (var assemblyName in names)
             {
+                if (assemblyName.Name == "NetMediate.Diagnostics")
+                    hasDiagnostics = true;
+                else if (assemblyName.Name == "NetMediate.Resilience")
+                    hasResilience = true;
+            }
+
+            return (hasDiagnostics, hasResilience);
+        });
+
+        var combined = handlerTypes.Combine(packageInfo);
+
+        context.RegisterSourceOutput(
+            combined,
+            static (sourceProductionContext, input) =>
+            {
+                var (types, (hasDiagnostics, hasResilience)) = input;
                 var (registrations, notifier) = BuildRegistrations(types);
-                var source = BuildSource(registrations, notifier);
+                var frameworkBehaviors = BuildFrameworkBehaviors(hasDiagnostics, hasResilience);
+                var source = BuildSource(registrations, notifier, frameworkBehaviors);
                 sourceProductionContext.AddSource(
                     "NetMediateGeneratedDI.g.cs",
                     source
                 );
             }
         );
+    }
+
+    private static string BuildFrameworkBehaviors(bool hasDiagnostics, bool hasResilience)
+    {
+        const string indent = "        "; // 8 spaces
+        var sb = new System.Text.StringBuilder();
+
+        // Diagnostics FIRST — outermost wrapper in the pipeline (registered first = outermost after Reverse)
+        if (hasDiagnostics)
+            sb.AppendLine($"{indent}services.AddNetMediateDiagnostics();");
+
+        // Resilience SECOND
+        if (hasResilience)
+            sb.AppendLine($"{indent}services.AddNetMediateResilience();");
+
+        return sb.ToString();
     }
 
     private static (IEnumerable<string> registrations, string notifier) BuildRegistrations(
@@ -91,11 +131,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         return (registrations, notifier);
     }
 
-    /// <summary>
-    /// Builds a single handler registration line for 1-arg (command/notification) or
-    /// 2-arg (request/stream) handler interfaces; returns <see langword="null"/> when the
-    /// interface is not a recognised handler or any type argument is inaccessible.
-    /// </summary>
     private static string? TryBuildHandlerRegistration(
         string interfaceName,
         int arity,
@@ -138,13 +173,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         return null;
     }
 
-    /// <summary>
-    /// Renders the embedded code template, substituting the notifier expression and the
-    /// collected registration lines for their respective placeholder tokens.
-    /// </summary>
-    private static string BuildSource(IEnumerable<string> registrations, string notifier)
+    private static string BuildSource(IEnumerable<string> registrations, string notifier, string frameworkBehaviors)
     {
-        const string indent = "            "; // 12 spaces – matches the template indentation
+        const string indent = "            ";
         var registrationsBlock = string.Join(
             "\n",
             registrations.Select(r => indent + r)
@@ -152,14 +183,10 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
         return LoadTemplate()
             .Replace(NotifierToken, notifier)
-            .Replace(RegistrationsToken, registrationsBlock);
+            .Replace(RegistrationsToken, registrationsBlock)
+            .Replace(FrameworkBehaviorsToken, frameworkBehaviors);
     }
 
-    /// <summary>
-    /// Reads the embedded template file and returns its content as a string.
-    /// Throws <see cref="InvalidOperationException"/> if the resource is missing,
-    /// which would only happen if the project was misconfigured (template file removed).
-    /// </summary>
     private static string LoadTemplate()
     {
         var stream = typeof(NetMediateRegistrationGenerator)
@@ -213,4 +240,3 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         return true;
     }
 }
-

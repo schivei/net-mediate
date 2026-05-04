@@ -36,7 +36,7 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 
 ## Long term
 
-- [ ] **`NetMediate.Diagnostics` package** — extract `NetMediateDiagnostics` (`ActivitySource`/`Meter`) from the core assembly into a separate optional package implemented as a pipeline behavior, so the core has zero tracing dependency and telemetry is opt-in.
+- [x] **`NetMediate.Diagnostics` package** — `NetMediateDiagnostics` (`ActivitySource`/`Meter`) extracted from the core assembly into `NetMediate.Diagnostics`; implemented as pipeline behaviors (`TelemetryNotificationBehavior`, `TelemetryRequestBehavior`, `TelemetryStreamBehavior`); auto-registered by the source generator when the package is referenced (first in pipeline order).
 - [ ] **`NetMediate.Validation` package** — optional validation layer implemented as a pipeline behavior, decoupled from the core package and compatible with FluentValidation, DataAnnotations, or custom validators.
 - [ ] **Streaming fan-out** — allow multiple `IStreamHandler<TMsg, TResp>` registrations whose items are merged into a single `IAsyncEnumerable<TResp>`, analogous to how `Send` fans out to multiple command handlers.
 - [ ] **Keyed handler registration** — support `IKeyedServiceProvider` so multiple handlers for the same message type can be addressed by a named key, enabling runtime routing strategies.

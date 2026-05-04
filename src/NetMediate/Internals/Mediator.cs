@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
 
@@ -13,20 +13,7 @@ internal sealed class Mediator(
         CancellationToken cancellationToken = default
     )
     {
-        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Notify");
-        try
-        {
-            await notifier.Notify(message, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-            throw;
-        }
-        finally
-        {
-            NetMediateDiagnostics.RecordNotify<TMessage>();
-        }
+        await notifier.Notify(message, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -35,21 +22,7 @@ internal sealed class Mediator(
         CancellationToken cancellationToken = default
     ) where TMessage : notnull
     {
-        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Notify");
-
-        try
-        {
-            await notifier.Notify(messages, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-            throw;
-        }
-        finally
-        {
-            NetMediateDiagnostics.RecordNotify<TMessage>();
-        }
+        await notifier.Notify(messages, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -58,29 +31,15 @@ internal sealed class Mediator(
         CancellationToken cancellationToken = default
     ) where TMessage : notnull
     {
-        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Send");
+        // GetService (nullable) so that a command with no registered handler is a no-op
+        // rather than throwing. Executors are only registered when a handler is registered
+        // via RegisterCommandHandler<>.
+        var pipeline = serviceProvider
+            .GetService<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>();
 
-        try
-        {
-            // GetService (nullable) so that a command with no registered handler is a no-op
-            // rather than throwing. Executors are only registered when a handler is registered
-            // via RegisterCommandHandler<>.
-            var pipeline = serviceProvider
-                .GetService<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>();
+        if (pipeline is null) return;
 
-            if (pipeline is null) return;
-
-            await pipeline.Handle(command, CommandHandlers, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-            throw;
-        }
-        finally
-        {
-            NetMediateDiagnostics.RecordSend<TMessage>();
-        }
+        await pipeline.Handle(command, CommandHandlers, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
@@ -103,24 +62,10 @@ internal sealed class Mediator(
         CancellationToken cancellationToken = default
     ) where TMessage : notnull
     {
-        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Request");
+        var pipeline = serviceProvider
+            .GetRequiredService<RequestPipelineExecutor<TMessage, TResponse>>();
 
-        try
-        {
-            var pipeline = serviceProvider
-                .GetRequiredService<RequestPipelineExecutor<TMessage, TResponse>>();
-
-            return await pipeline.Handle(message, RequestHandlers, cancellationToken).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-            throw;
-        }
-        finally
-        {
-            NetMediateDiagnostics.RecordRequest<TMessage>();
-        }
+        return await pipeline.Handle(message, RequestHandlers, cancellationToken).ConfigureAwait(false);
     }
 
     private static Task<TResponse> RequestHandlers<TMessage, TResponse>(TMessage message, IRequestHandler<TMessage, TResponse>[] handlers, CancellationToken cancellationToken) where TMessage : notnull
@@ -134,24 +79,10 @@ internal sealed class Mediator(
         CancellationToken cancellationToken = default
     ) where TMessage : notnull
     {
-        var activity = NetMediateDiagnostics.StartActivity<TMessage>("RequestStream");
+        var pipeline = serviceProvider
+            .GetRequiredService<StreamPipelineExecutor<TMessage, TResponse>>();
 
-        try
-        {
-            var pipeline = serviceProvider
-                .GetRequiredService<StreamPipelineExecutor<TMessage, TResponse>>();
-
-            return pipeline.Handle(message, StreamHandlers, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-            throw;
-        }
-        finally
-        {
-            NetMediateDiagnostics.RecordStream<TMessage>();
-        }
+        return pipeline.Handle(message, StreamHandlers, cancellationToken);
     }
 
     private static IAsyncEnumerable<TResponse> StreamHandlers<TResponse, TMessage>(TMessage message, IStreamHandler<TMessage, TResponse>[] handlers, CancellationToken cancellationToken) where TMessage : notnull

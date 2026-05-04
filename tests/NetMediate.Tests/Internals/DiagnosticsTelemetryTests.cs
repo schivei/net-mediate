@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using NetMediate.Diagnostics;
 
 namespace NetMediate.Tests.Internals;
 
@@ -48,12 +49,10 @@ public sealed class DiagnosticsTelemetryTests
         var activityNamesSnapshot = activityNames.ToArray();
         var counterNamesSnapshot = counterNames.ToArray();
 
-        Assert.Contains("NetMediate.Send", activityNamesSnapshot);
         Assert.Contains("NetMediate.Request", activityNamesSnapshot);
         Assert.Contains("NetMediate.Notify", activityNamesSnapshot);
-        Assert.Contains("NetMediate.RequestStream", activityNamesSnapshot);
+        Assert.Contains("NetMediate.Stream", activityNamesSnapshot);
 
-        Assert.Contains(NetMediateDiagnostics.SendCountMetricName, counterNamesSnapshot);
         Assert.Contains(NetMediateDiagnostics.RequestCountMetricName, counterNamesSnapshot);
         Assert.Contains(NetMediateDiagnostics.NotifyCountMetricName, counterNamesSnapshot);
         Assert.Contains(NetMediateDiagnostics.StreamCountMetricName, counterNamesSnapshot);
@@ -62,6 +61,7 @@ public sealed class DiagnosticsTelemetryTests
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddNetMediateDiagnostics();
         builder.Services.AddNetMediate(configure =>
         {
             configure.RegisterCommandHandler<TestCommandHandler, TestMessage>();

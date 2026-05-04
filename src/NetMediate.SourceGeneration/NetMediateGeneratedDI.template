@@ -5,10 +5,12 @@ namespace NetMediate;
 [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
 public static class NetMediateGeneratedDI
 {
-    /// <summary>Registers all discovered handlers with the mediator using AOT-safe closed-type registration.</summary>
+    /// <summary>Registers all discovered handlers with the mediator using AOT-safe closed-type registration.
+    /// Framework behaviors (diagnostics, resilience) are registered first to ensure they wrap user behaviors
+    /// and run outermost in the pipeline.</summary>
     public static global::NetMediate.IMediatorServiceBuilder AddNetMediateGenerated(this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
     {
-        return services.{{Notifier}}(configure =>
+{{FrameworkBehaviors}}        return services.{{Notifier}}(configure =>
         {
 {{Registrations}}
         });

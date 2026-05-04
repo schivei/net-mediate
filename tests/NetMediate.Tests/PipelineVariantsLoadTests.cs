@@ -459,7 +459,7 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
         Action<IMediatorServiceBuilder> configure)
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(configure);
+        builder.Services.UseNetMediate(configure);
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
         return (host.Services.GetRequiredService<IMediator>(), host);

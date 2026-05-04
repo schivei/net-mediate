@@ -83,9 +83,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// Builds the infrastructure setup lines that go BEFORE the AddNetMediate configure block.
+    /// Builds the infrastructure setup lines that go BEFORE the UseNetMediate configure block.
     /// For Resilience: registers default option singletons (user may override by registering the
-    /// same type before calling <c>AddNetMediateGenerated()</c>; <see cref="ServiceCollectionDescriptorExtensions.TryAddSingleton"/>
+    /// same type before calling <c>AddNetMediate()</c>; <see cref="ServiceCollectionDescriptorExtensions.TryAddSingleton"/>
     /// skips registration when the type is already present).
     /// For Diagnostics: no infrastructure needed — <c>NetMediateDiagnostics</c> is a static class.
     /// </summary>
@@ -121,7 +121,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         var diagnosticsBehaviors = new Dictionary<string, bool>(StringComparer.Ordinal);
         var resilienceBehaviors  = new Dictionary<string, bool>(StringComparer.Ordinal);
         var handlers             = new Dictionary<string, bool>(StringComparer.Ordinal);
-        var notifier             = "AddNetMediate";
+        var notifier             = "UseNetMediate";
 
         foreach (var handlerType in types)
         {

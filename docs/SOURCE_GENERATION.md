@@ -18,7 +18,7 @@ Add the package as an **analyzer-only** reference (it must not be referenced as 
 using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
-builder.Services.AddNetMediateGenerated();
+builder.Services.AddNetMediate();
 ```
 
 That's it. The generator discovers all concrete (non-abstract, non-generic) classes that implement one of the NetMediate handler interfaces in your project and wires them up:
@@ -32,7 +32,7 @@ That's it. The generator discovers all concrete (non-abstract, non-generic) clas
 
 The generated method is decorated with `[ExcludeFromCodeCoverage]` — you do not need to test it directly.
 
-If a class also implements `INotifiable` (e.g. a custom notifier), the generator uses `AddNetMediate<TNotifier>` instead of `AddNetMediate`.
+If a class also implements `INotifiable` (e.g. a custom notifier), the generator uses `UseNetMediate<TNotifier>` instead of `UseNetMediate`.
 
 ## AOT / NativeAOT
 

@@ -72,7 +72,7 @@ dotnet add package NetMediate
 - **NetMediate.Resilience**: optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
 - **NetMediate.Quartz**: persists notifications as Quartz.NET jobs, enabling crash recovery and cluster-distributed notification execution.
 - **NetMediate.Adapters**: contracts, a standard envelope, and a pipeline behavior for forwarding notifications to external queues or streams (RabbitMQ, Kafka, Azure Service Bus, etc.).
-- **NetMediate.SourceGeneration**: generates `AddNetMediateGenerated()` to register handlers at compile-time — no reflection, fully AOT-safe.
+- **NetMediate.SourceGeneration**: generates `AddNetMediate()` to register handlers at compile-time — no reflection, fully AOT-safe.
 - **NetMediate.DataDog.OpenTelemetry**: wires NetMediate traces/metrics to DataDog through OpenTelemetry OTLP exporters.
 - **NetMediate.DataDog.Serilog**: attaches the DataDog Serilog sink and enriches logs with NetMediate activity fields.
 - **NetMediate.DataDog.ILogger**: `ILogger` scope helpers with DataDog-compatible fields and NetMediate correlation values.
@@ -106,7 +106,7 @@ using Microsoft.Extensions.Hosting;
 using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
-builder.Services.AddNetMediateGenerated(); // all handlers in your project are registered here
+builder.Services.AddNetMediate(); // all handlers in your project are registered here
 
 // 3. Define a notification (no marker interface required)
 public record UserCreated(string UserId, string Email);
@@ -145,7 +145,7 @@ var builder = Host.CreateApplicationBuilder();
 
 // Source generation automatically discovers and registers all handlers at compile time.
 // Install NetMediate.SourceGeneration as an analyzer and call:
-builder.Services.AddNetMediateGenerated();
+builder.Services.AddNetMediate();
 
 var host = builder.Build();
 var mediator = host.Services.GetRequiredService<IMediator>();
@@ -370,7 +370,7 @@ public record GetRecentEventsQuery(int MaxItems);
 Behaviors wrap the handler pipeline and run in registration order. Register them via the builder using closed types — this is the only supported pattern, and it is fully AOT-safe:
 
 ```csharp
-builder.Services.AddNetMediate(configure =>
+builder.Services.UseNetMediate(configure =>
 {
     configure.RegisterBehavior<AuditCommandBehavior, CreateUserCommand, Task>();
     configure.RegisterBehavior<AuditRequestBehavior<GetUserQuery, UserDto>, GetUserQuery, Task<UserDto>>();

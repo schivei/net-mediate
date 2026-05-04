@@ -132,7 +132,7 @@ Publishing with `--self-contained -p:PublishTrimmed=true` reduces binary size bu
 All handlers are registered explicitly via `IMediatorServiceBuilder` methods or the source generator:
 
 ```csharp
-builder.Services.AddNetMediate(configure =>
+builder.Services.UseNetMediate(configure =>
 {
     configure.RegisterCommandHandler<MyCommandHandler, MyCommand>();
     configure.RegisterRequestHandler<MyRequestHandler, MyRequest, MyResponse>();
@@ -141,7 +141,7 @@ builder.Services.AddNetMediate(configure =>
 });
 
 // Or via source generator (identical registrations, generated at compile time)
-builder.Services.AddNetMediateGenerated();
+builder.Services.AddNetMediate();
 ```
 
 At startup each `Register*Handler<>` call performs two `TryAddSingleton<>` / `TryAddTransient<>` registrations:

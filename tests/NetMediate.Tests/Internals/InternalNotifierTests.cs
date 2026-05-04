@@ -16,7 +16,7 @@ public class InternalNotifierTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddNetMediate(configure ?? (_ => { }));
+        services.UseNetMediate(configure ?? (_ => { }));
         var provider = services.BuildServiceProvider();
         var logger = provider.GetRequiredService<ILogger<Notifier>>();
         return (new Notifier(provider, logger), provider);

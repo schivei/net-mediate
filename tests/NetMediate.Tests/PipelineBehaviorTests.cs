@@ -145,7 +145,7 @@ public sealed class PipelineBehaviorTests
     {
         var builder = Host.CreateApplicationBuilder();
         setup(builder.Services);
-        builder.Services.AddNetMediate(reg =>
+        builder.Services.UseNetMediate(reg =>
         {
             reg.RegisterRequestHandler<PipelineRequestHandler, PipelineRequest, string>();
             reg.RegisterCommandHandler<PipelineCommandHandler, PipelineCommand>();

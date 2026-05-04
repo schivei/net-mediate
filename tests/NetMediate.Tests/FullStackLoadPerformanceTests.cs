@@ -120,7 +120,7 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(configure =>
+        builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterRequestHandler<FullStackRequestHandler, FullStackRequest, int>();
             configure.RegisterNotificationHandler<FullStackNotificationHandler, FullStackNotification>();

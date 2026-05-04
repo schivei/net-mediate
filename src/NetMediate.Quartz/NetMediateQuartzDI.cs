@@ -48,7 +48,7 @@ public static class NetMediateQuartzDI
         services.AddTransient<QuartzNotificationJob>();
 
         // Register NetMediate using QuartzNotifier as the INotifiable transport.
-        services.AddNetMediate<QuartzNotifier>(_ => { });
+        services.UseNetMediate<QuartzNotifier>(_ => { });
 
         return services;
     }

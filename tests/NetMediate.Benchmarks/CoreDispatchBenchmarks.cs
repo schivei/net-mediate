@@ -38,7 +38,7 @@ public class CoreDispatchBenchmarks
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddNetMediate(configure =>
+        services.UseNetMediate(configure =>
         {
             configure.RegisterCommandHandler<BenchCommandHandler, BenchCommand>();
             configure.RegisterNotificationHandler<BenchNotificationHandler, BenchNotification>();

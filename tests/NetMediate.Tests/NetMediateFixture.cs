@@ -24,7 +24,7 @@ public sealed class NetMediateFixture : IDisposable
     {
         _builder = Host.CreateApplicationBuilder();
         _builder.Services.AddSingleton(this);
-        _builder.Services.AddNetMediate<Notifier>(configure =>
+        _builder.Services.UseNetMediate<Notifier>(configure =>
         {
             configure.RegisterCommandHandler<MessageCommandHandler, MessageCommand>();
             configure.RegisterNotificationHandler<MessageNotificationHandler, MessageNotification>();

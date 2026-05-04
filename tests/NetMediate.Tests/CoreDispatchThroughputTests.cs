@@ -201,7 +201,7 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         var builder = Host.CreateApplicationBuilder();
 
         // Core only — no behaviors, no resilience, no adapters.
-        builder.Services.AddNetMediate(configure =>
+        builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterCommandHandler<CoreCmdHandler, CoreCmd>();
             configure.RegisterNotificationHandler<CoreNotifHandler, CoreNotif>();

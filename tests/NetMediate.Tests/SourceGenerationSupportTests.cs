@@ -6,12 +6,12 @@ namespace NetMediate.Tests;
 public sealed class SourceGenerationSupportTests
 {
     [Fact]
-    public async Task AddNetMediate_WithConfigureOverload_ShouldAllowExplicitRegistrationWithoutAssemblyScan()
+    public async Task UseNetMediate_WithConfigureOverload_ShouldAllowExplicitRegistrationWithoutAssemblyScan()
     {
         ExplicitRegistrationCommandHandler.Executed = 0;
 
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(configure =>
+        builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterCommandHandler<ExplicitRegistrationCommandHandler, ExplicitRegistrationCommand>();
         });

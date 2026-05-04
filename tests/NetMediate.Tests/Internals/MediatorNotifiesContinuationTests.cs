@@ -58,7 +58,7 @@ public sealed class MediatorNotifiesContinuationTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddNetMediate(configure);
+        services.UseNetMediate(configure);
         return services.BuildServiceProvider();
     }
 

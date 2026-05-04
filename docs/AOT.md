@@ -8,7 +8,7 @@ Handler registration is generated at compile time by `NetMediate.SourceGeneratio
 
 | Path | AOT / Trim compatible | Notes |
 |---|---|---|
-| Source generation (`AddNetMediateGenerated()`) | ✅ Yes | Generated at compile time — no reflection |
+| Source generation (`AddNetMediate()`) | ✅ Yes | Generated at compile time — no reflection |
 | `RegisterBehavior<TBehavior, TMessage, TResult>()` | ✅ Yes | Closed-type — no reflection, fully AOT-safe |
 
 ## AOT-compatible setup
@@ -26,7 +26,7 @@ Handler registration is generated at compile time by `NetMediate.SourceGeneratio
 
 ```csharp
 // Generated at compile time — no reflection at startup
-builder.Services.AddNetMediateGenerated();
+builder.Services.AddNetMediate();
 ```
 
 The source generator discovers all handler types in your project and emits closed-type `Register*Handler<>` calls — fully AOT-safe.
@@ -36,7 +36,7 @@ The source generator discovers all handler types in your project and emits close
 Register pipeline behaviors via the builder using closed types:
 
 ```csharp
-builder.Services.AddNetMediate(configure =>
+builder.Services.UseNetMediate(configure =>
 {
     configure.RegisterBehavior<AuditBehavior<MyRequest, Task<MyResponse>>, MyRequest, Task<MyResponse>>();
 });

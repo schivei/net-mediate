@@ -208,7 +208,7 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(configure =>
+        builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterCommandHandler<LoadCommandHandler, LoadCommand>();
             configure.RegisterRequestHandler<LoadRequestHandler, LoadRequest, int>();

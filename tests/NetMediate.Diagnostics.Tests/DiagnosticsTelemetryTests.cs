@@ -73,7 +73,7 @@ public sealed class DiagnosticsTelemetryTests
     {
         var builder = Host.CreateApplicationBuilder();
         // Telemetry behaviors are registered per-handler (no DI extension method needed).
-        builder.Services.AddNetMediate(configure =>
+        builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterCommandHandler<TestCommandHandler, TestMessage>();
             configure.RegisterBehavior<TelemetryNotificationBehavior<TestMessage>, TestMessage, Task>();

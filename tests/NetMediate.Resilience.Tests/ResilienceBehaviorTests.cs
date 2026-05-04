@@ -265,7 +265,7 @@ public sealed class ResilienceBehaviorTests
         RetryRequestHandler.Reset();
         RetryNotificationViaMediatorHandler.Reset();
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(configure =>
+        builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterRequestHandler<RetryRequestHandler, RetryRequestMessage, string>();
             configure.RegisterRequestHandler<TimeoutRequestHandler, TimeoutRequestMessage, string>();
@@ -304,7 +304,7 @@ public sealed class ResilienceBehaviorTests
     {
         CountingThrowAdapter.Reset();
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(configure =>
+        builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterNotificationHandler<TimeoutNotificationHandler, TimeoutNotificationMessage>();
             configure.RegisterNotificationHandler<CbNotificationHandler, CbNotificationMessage>();
@@ -336,7 +336,7 @@ public sealed class ResilienceBehaviorTests
     private static async Task<IHost> CreateLoadHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(configure =>
+        builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterRequestHandler<LoadRequestHandler, LoadRequest, int>();
             configure.RegisterBehavior<RetryRequestBehavior<LoadRequest, int>, LoadRequest, Task<int>>();

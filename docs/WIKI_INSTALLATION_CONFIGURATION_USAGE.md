@@ -20,7 +20,7 @@ using NetMediate;
 // Source generation discovers all ICommandHandler<>, IRequestHandler<,>,
 // INotificationHandler<>, and IStreamHandler<,> implementations in your project
 // and generates closed-type AOT-safe registrations automatically.
-builder.Services.AddNetMediateGenerated();
+builder.Services.AddNetMediate();
 ```
 
 ### Usage
@@ -81,7 +81,7 @@ Register behavior implementations using the builder:
 
 ```csharp
 // Via builder (closed-type, fully AOT-safe — the only supported approach)
-builder.Services.AddNetMediate(configure =>
+builder.Services.UseNetMediate(configure =>
 {
     configure.RegisterBehavior<MyLoggingBehavior, MyRequest, Task<MyResponse>>();
 });
@@ -166,7 +166,7 @@ See [RESILIENCE.md](RESILIENCE.md) for full details.
 ### Usage
 
 ```csharp
-builder.Services.AddNetMediateGenerated();
+builder.Services.AddNetMediate();
 ```
 
 The generator discovers all `ICommandHandler<>`, `IRequestHandler<,>`, `INotificationHandler<>`, and `IStreamHandler<,>` implementations in your project and emits strongly-typed closed-type registrations — no reflection, fully AOT-compatible. See [SOURCE_GENERATION.md](SOURCE_GENERATION.md).

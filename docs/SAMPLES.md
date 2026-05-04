@@ -6,7 +6,7 @@
 // Handlers (CreateOrderHandler, OrderCreatedEventHandler) are discovered
 // and registered automatically by the source generator.
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddNetMediateGenerated();
+builder.Services.AddNetMediate();
 
 var app = builder.Build();
 app.MapPost("/orders", async (IMediator mediator, CreateOrder command, CancellationToken ct) =>
@@ -23,7 +23,7 @@ app.Run();
 ```csharp
 // SyncCommandHandler is discovered and registered automatically by the source generator.
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddNetMediateGenerated();
+builder.Services.AddNetMediate();
 builder.Services.AddHostedService<Worker>();
 
 await builder.Build().RunAsync();
@@ -46,7 +46,7 @@ public sealed class Worker(IMediator mediator) : BackgroundService
 ```csharp
 // CreateOrderHandler is discovered and registered automatically by the source generator.
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddNetMediateGenerated();
+builder.Services.AddNetMediate();
 
 var app = builder.Build();
 app.MapPost("/orders", async (IMediator mediator, CreateOrder command, CancellationToken ct) =>

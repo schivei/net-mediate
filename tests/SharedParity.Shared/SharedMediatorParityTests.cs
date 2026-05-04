@@ -24,7 +24,7 @@ public class SharedMediatorParityTests
 #if MEDIATR_COMPAT
         builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<SharedMediatorParityTests>());
 #else
-        builder.Services.AddNetMediate<Notifier>(configure =>
+        builder.Services.UseNetMediate<Notifier>(configure =>
         {
             configure.RegisterRequestHandler<PingRequestHandler, PingRequest, PingResponse>();
             configure.RegisterCommandHandler<AuditCommandHandler, AuditCommand>();

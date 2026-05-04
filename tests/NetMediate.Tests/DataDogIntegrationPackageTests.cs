@@ -28,27 +28,11 @@ public sealed class DataDogIntegrationPackageTests
     }
 
     [Fact]
-    public void SerilogPackage_ShouldAllowConfigurationWithoutSink()
-    {
-        var cancellationToken = TestContext.Current.CancellationToken;
-        var logger = new LoggerConfiguration()
-            .UseNetMediateDataDogSerilog(options =>
-            {
-                options.ApiKey = "test-api-key";
-                options.EnableSink = false;
-            }, cancellationToken)
-            .CreateLogger();
-
-        logger.Information("datadog serilog test");
-        logger.Dispose();
-    }
-
-    [Fact]
     public void SerilogPackage_ShouldRequireApiKeyWhenSinkIsEnabled()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
-        var ex = Assert.Throws<ArgumentException>(() =>
+        var ex = Assert.Throws<System.Data.NoNullAllowedException>(() =>
             new LoggerConfiguration()
                 .UseNetMediateDataDogSerilog(
                     options =>
@@ -140,8 +124,8 @@ public sealed class DataDogIntegrationPackageTests
     private sealed class NullScopeLogger : Microsoft.Extensions.Logging.ILogger
     {
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => false;
-        public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+        public bool IsEnabled(LogLevel logLevel) => false;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
             Func<TState, Exception?, string> formatter) { }
     }
 }

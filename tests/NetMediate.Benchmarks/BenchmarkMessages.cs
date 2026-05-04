@@ -4,7 +4,7 @@ namespace NetMediate.Benchmarks;
 
 // ── Command ──────────────────────────────────────────────────────────────────
 /// <summary>Benchmark command message.</summary>
-public sealed record BenchCommand;
+public sealed record BenchCommand : ICommand;
 
 /// <summary>No-op command handler used in benchmarks.</summary>
 public sealed class BenchCommandHandler : ICommandHandler<BenchCommand>
@@ -16,7 +16,7 @@ public sealed class BenchCommandHandler : ICommandHandler<BenchCommand>
 
 // ── Notification ─────────────────────────────────────────────────────────────
 /// <summary>Benchmark notification message.</summary>
-public sealed record BenchNotification;
+public sealed record BenchNotification : INotification;
 
 /// <summary>No-op notification handler used in benchmarks.</summary>
 public sealed class BenchNotificationHandler : INotificationHandler<BenchNotification>
@@ -28,7 +28,7 @@ public sealed class BenchNotificationHandler : INotificationHandler<BenchNotific
 
 // ── Request ───────────────────────────────────────────────────────────────────
 /// <summary>Benchmark request message.</summary>
-public sealed record BenchRequest;
+public sealed record BenchRequest : IRequest<BenchResponse>;
 
 /// <summary>Benchmark request response.</summary>
 public sealed record BenchResponse(int Value);
@@ -45,7 +45,7 @@ public sealed class BenchRequestHandler : IRequestHandler<BenchRequest, BenchRes
 
 // ── Stream ────────────────────────────────────────────────────────────────────
 /// <summary>Benchmark stream message.</summary>
-public sealed record BenchStreamRequest;
+public sealed record BenchStreamRequest : IStream<BenchStreamItem>;
 
 /// <summary>Benchmark stream item.</summary>
 public sealed record BenchStreamItem(int Index);

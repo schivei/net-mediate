@@ -12,7 +12,7 @@ namespace NetMediate;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Do not call <see cref="UseNetMediate(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{NetMediate.IMediatorServiceBuilder})"/>
+/// <b>Do not call <see cref="UseNetMediate(IServiceCollection,Action{IMediatorServiceBuilder})"/>
 /// directly.</b>  Use the <c>AddNetMediate()</c> extension method emitted by the
 /// <c>NetMediate.SourceGeneration</c> source generator instead.  That method is generated at
 /// compile time inside your project and calls this method with all discovered handlers
@@ -27,11 +27,6 @@ namespace NetMediate;
 [ExcludeFromCodeCoverage]
 public static class NetMediateDI
 {
-    // Sentinel service used to detect duplicate registration attempts.
-    // Registered as a singleton by the first successful call; later calls detect its presence
-    // and return without modifying the container.
-    private sealed class NetMediateRegisteredMarker;
-
     /// <summary>
     /// Configures NetMediate core services and applies the provided explicit handler registration
     /// callback.  This overload is <em>intended to be called by source-generated code only</em>
@@ -56,9 +51,9 @@ public static class NetMediateDI
     {
         Guard.ThrowIfNull(configure);
 
-        // Idempotency guard: if NetMediate was already registered on this container, log a
-        // warning and return a no-op builder so callers can still chain off the return value.
-        if (services.Any(static s => s.ServiceType == typeof(NetMediateRegisteredMarker)))
+        // IMediator is the first service registered by MediatorServiceBuilder, so its presence
+        // in the collection is a reliable, allocation-free idempotency indicator per container.
+        if (services.Any(static s => s.ServiceType == typeof(IMediator)))
         {
             Debug.WriteLine(
                 "[NetMediate] UseNetMediate was called more than once on the same IServiceCollection. " +
@@ -67,8 +62,6 @@ public static class NetMediateDI
             );
             return new MediatorServiceBuilder<Notifier>(services, skipCoreRegistration: true);
         }
-
-        services.AddSingleton<NetMediateRegisteredMarker>();
 
         var builder = new MediatorServiceBuilder<Notifier>(services);
         configure(builder);
@@ -91,14 +84,14 @@ public static class NetMediateDI
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static IMediatorServiceBuilder UseNetMediate<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
-        TNotifier>(
+    TNotifier>(
         this IServiceCollection services,
         Action<IMediatorServiceBuilder> configure
     ) where TNotifier : class, INotifiable
     {
         Guard.ThrowIfNull(configure);
 
-        if (services.Any(static s => s.ServiceType == typeof(NetMediateRegisteredMarker)))
+        if (services.Any(static s => s.ServiceType == typeof(IMediator)))
         {
             Debug.WriteLine(
                 "[NetMediate] UseNetMediate was called more than once on the same IServiceCollection. " +
@@ -106,8 +99,6 @@ public static class NetMediateDI
             );
             return new MediatorServiceBuilder<TNotifier>(services, skipCoreRegistration: true);
         }
-
-        services.AddSingleton<NetMediateRegisteredMarker>();
 
         var builder = new MediatorServiceBuilder<TNotifier>(services);
         configure(builder);

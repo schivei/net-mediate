@@ -29,6 +29,9 @@ public static class NetMediateDiagnostics
     /// <summary>Gets the metric name for Stream operation count.</summary>
     public const string StreamCountMetricName = "netmediate.stream.count";
 
+    /// <summary>Represents the name of the message type used for identification or serialization purposes.</summary>
+    public const string MessageTypeName = "message_type";
+
     /// <summary>The ActivitySource instance used to create activities.</summary>
     public static readonly ActivitySource ActivitySource = new(ActivitySourceName);
 
@@ -55,34 +58,34 @@ public static class NetMediateDiagnostics
     public static void RecordSend<TMessage>()
     {
         if (!s_sendCount.Enabled) return;
-        s_sendCount.Add(1, new KeyValuePair<string, object?>("message_type", typeof(TMessage).Name));
+        s_sendCount.Add(1, new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name));
     }
 
     /// <summary>Records a Request metric increment.</summary>
     public static void RecordRequest<TMessage>()
     {
         if (!s_requestCount.Enabled) return;
-        s_requestCount.Add(1, new KeyValuePair<string, object?>("message_type", typeof(TMessage).Name));
+        s_requestCount.Add(1, new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name));
     }
 
     /// <summary>Records a Notify metric increment.</summary>
     public static void RecordNotify<TMessage>(long size = 1)
     {
         if (!s_notifyCount.Enabled) return;
-        s_notifyCount.Add(size, new KeyValuePair<string, object?>("message_type", typeof(TMessage).Name));
+        s_notifyCount.Add(size, new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name));
     }
 
     /// <summary>Records a Dispatch metric increment.</summary>
     public static void RecordDispatch<TMessage>()
     {
         if (!s_dispatchCount.Enabled) return;
-        s_dispatchCount.Add(1, new KeyValuePair<string, object?>("message_type", typeof(TMessage).Name));
+        s_dispatchCount.Add(1, new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name));
     }
 
     /// <summary>Records a Stream metric increment.</summary>
     public static void RecordStream<TMessage>()
     {
         if (!s_streamCount.Enabled) return;
-        s_streamCount.Add(1, new KeyValuePair<string, object?>("message_type", typeof(TMessage).Name));
+        s_streamCount.Add(1, new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name));
     }
 }

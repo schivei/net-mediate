@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.Metrics;
-using NetMediate.Internals;
 
 namespace NetMediate.Tests.Internals;
 
@@ -17,7 +16,7 @@ public sealed class CoreCoverageTests
         var handler = new StringEchoHandler();
 
         // Call the untyped overload; it must cast and delegate to the typed Handle.
-        object result = handler.Handle((object)"hello");
+        object result = handler.Handle((object)"hello", TestContext.Current.CancellationToken);
 
         Assert.Equal("hello", result);
     }
@@ -56,7 +55,38 @@ public sealed class CoreCoverageTests
         var result = new ValidationResult("error");
         var ex = new MessageValidationException(result);
 
-        Assert.IsAssignableFrom<Exception>(ex);
+        Assert.IsType<Exception>(ex, exactMatch: false);
+        Assert.Same(result, ex.ValidationResult);
+        Assert.Equal("error", ex.Message);
+    }
+
+    // ── MediatorException ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public void MediatorException_Ctor_ExposesAllProperties()
+    {
+        var inner = new InvalidOperationException("handler error");
+
+        var ex = new MediatorException(typeof(string), typeof(ICommandHandler<string>), "trace-42", inner);
+
+        Assert.Equal(typeof(string), ex.MessageType);
+        Assert.Equal(typeof(ICommandHandler<string>), ex.HandlerType);
+        Assert.Equal("trace-42", ex.TraceId);
+        Assert.Same(inner, ex.InnerException);
+        Assert.IsType<Exception>(ex, exactMatch: false);
+        Assert.Contains("String", ex.Message);
+    }
+
+    [Fact]
+    public void MediatorException_WithNullHandlerType_MessageExcludesHandlerType()
+    {
+        var inner = new Exception("fail");
+
+        var ex = new MediatorException(typeof(int), null, null, inner);
+
+        Assert.Null(ex.HandlerType);
+        Assert.Null(ex.TraceId);
+        Assert.Contains("Int32", ex.Message);
     }
 
     // ── NetMediateDiagnostics.RecordDispatch ──────────────────────────────────────
@@ -66,7 +96,7 @@ public sealed class CoreCoverageTests
     {
         // When no MeterListener subscribes to DispatchCount, Enabled==false and
         // the guard returns early without throwing. This covers the early-return branch.
-        var ex = Record.Exception(() => NetMediateDiagnostics.RecordDispatch<object>());
+        var ex = Record.Exception(NetMediateDiagnostics.RecordDispatch<object>);
 
         Assert.Null(ex);
     }

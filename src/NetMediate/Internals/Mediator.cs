@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
@@ -27,11 +28,11 @@ internal sealed class Mediator(
 
     /// <inheritdoc/>
     public async Task Send<TMessage>(
-        TMessage command,
+        TMessage message,
         CancellationToken cancellationToken = default
     ) where TMessage : notnull
     {
-        // GetService (nullable) so that a command with no registered handler is a no-op
+        // GetService (nullable) so that a message with no registered handler is a no-op
         // rather than throwing. Executors are only registered when a handler is registered
         // via RegisterCommandHandler<>.
         var pipeline = serviceProvider
@@ -39,13 +40,28 @@ internal sealed class Mediator(
 
         if (pipeline is null) return;
 
-        await pipeline.Handle(command, CommandHandlers, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await pipeline.Handle(message, CommandHandlers, cancellationToken).ConfigureAwait(false);
+        }
+        catch (MediatorException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new MediatorException(
+                typeof(TMessage),
+                typeof(ICommandHandler<TMessage>),
+                Activity.Current?.Id,
+                ex);
+        }
     }
 
     /// <inheritdoc/>
-    public async Task Send<TMessage>(IEnumerable<TMessage> commands, CancellationToken cancellationToken = default) where TMessage : notnull
+    public async Task Send<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
     {
-        await Task.WhenAll(commands.Select(command => Send(command, cancellationToken)));
+        await Task.WhenAll(messages.Select(message => Send(message, cancellationToken)));
     }
 
     private static async Task CommandHandlers<TMessage>(TMessage message,
@@ -65,7 +81,22 @@ internal sealed class Mediator(
         var pipeline = serviceProvider
             .GetRequiredService<RequestPipelineExecutor<TMessage, TResponse>>();
 
-        return await pipeline.Handle(message, RequestHandlers, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await pipeline.Handle(message, RequestHandlers, cancellationToken).ConfigureAwait(false);
+        }
+        catch (MediatorException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new MediatorException(
+                typeof(TMessage),
+                typeof(IRequestHandler<TMessage, TResponse>),
+                Activity.Current?.Id,
+                ex);
+        }
     }
 
     private static Task<TResponse> RequestHandlers<TMessage, TResponse>(TMessage message, IRequestHandler<TMessage, TResponse>[] handlers, CancellationToken cancellationToken) where TMessage : notnull

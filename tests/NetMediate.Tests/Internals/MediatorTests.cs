@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using NetMediate.Internals;
 using MoqNotifier = NetMediate.Moq.Notifier;
 
@@ -48,7 +47,7 @@ public class MediatorTests
     {
         var handler = new TrackingNotificationHandler<TestMessageNotification>();
         await using var provider = BuildProvider(b =>
-            b.RegisterNotificationHandler<TestMessageNotification>(handler));
+            b.RegisterNotificationHandler(handler));
         var mediator = BuildMediator(provider);
         var message = new TestMessageNotification { Content = "Test" };
 
@@ -63,7 +62,7 @@ public class MediatorTests
     {
         var handler = new TrackingNotificationHandler<TestMessageNotification>();
         await using var provider = BuildProvider(b =>
-            b.RegisterNotificationHandler<TestMessageNotification>(handler));
+            b.RegisterNotificationHandler(handler));
         var mediator = BuildMediator(provider);
         TestMessageNotification[] messages = [new() { Content = "1" }, new() { Content = "2" }];
 
@@ -93,8 +92,8 @@ public class MediatorTests
         var handler2 = new TrackingNotificationHandler<TestMessageNotification>();
         await using var provider = BuildProvider(b =>
         {
-            b.RegisterNotificationHandler<TestMessageNotification>(handler1);
-            b.RegisterNotificationHandler<TestMessageNotification>(handler2);
+            b.RegisterNotificationHandler(handler1);
+            b.RegisterNotificationHandler(handler2);
         });
         var mediator = BuildMediator(provider);
         var message = new TestMessageNotification { Content = "Test" };
@@ -118,7 +117,7 @@ public class MediatorTests
     {
         var handler = new TrackingCommandHandler<TestMessageCommand>();
         await using var provider = BuildProvider(b =>
-            b.RegisterCommandHandler<TestMessageCommand>(handler));
+            b.RegisterCommandHandler(handler));
         var mediator = BuildMediator(provider);
         var message = new TestMessageCommand { Content = "Test" };
 
@@ -141,15 +140,18 @@ public class MediatorTests
     }
 
     [Fact]
-    public async Task Send_WhenHandlerThrows_PropagatesException()
+    public async Task Send_WhenHandlerThrows_PropagatesAsMediatorException()
     {
         await using var provider = BuildProvider(b =>
-            b.RegisterCommandHandler<TestMessageCommand>(new ThrowingCommandHandler()));
+            b.RegisterCommandHandler(new ThrowingCommandHandler()));
         var mediator = BuildMediator(provider);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
+        var ex = await Assert.ThrowsAsync<MediatorException>(
             () => mediator.Send(new TestMessageCommand { Content = "Test" }, TestContext.Current.CancellationToken)
         );
+        Assert.IsType<InvalidOperationException>(ex.InnerException);
+        Assert.Equal(typeof(TestMessageCommand), ex.MessageType);
+        Assert.Equal(typeof(ICommandHandler<TestMessageCommand>), ex.HandlerType);
     }
 
     #endregion
@@ -161,7 +163,7 @@ public class MediatorTests
     {
         var expectedResponse = new TestResponse { Value = "Response" };
         await using var provider = BuildProvider(b =>
-            b.RegisterRequestHandler<TestRequest, TestResponse>(new FixedResponseHandler(expectedResponse)));
+            b.RegisterRequestHandler(new FixedResponseHandler(expectedResponse)));
         var mediator = BuildMediator(provider);
 
         var result = await mediator.Request<TestRequest, TestResponse>(
@@ -199,7 +201,7 @@ public class MediatorTests
             new TestResponse { Value = "Response2" },
         };
         await using var provider = BuildProvider(b =>
-            b.RegisterStreamHandler<TestStream, TestResponse>(new EnumerableStreamHandler(responses)));
+            b.RegisterStreamHandler(new EnumerableStreamHandler(responses)));
         var mediator = BuildMediator(provider);
 
         var results = new List<TestResponse>();
@@ -237,7 +239,7 @@ public class MediatorTests
     public async Task Send_Enumerable_ShouldInvokeAllHandlers()
     {
         var handler = new TrackingCommandHandler<TestMessageCommand>();
-        await using var provider = BuildProvider(b => b.RegisterCommandHandler<TestMessageCommand>(handler));
+        await using var provider = BuildProvider(b => b.RegisterCommandHandler(handler));
         var mediator = BuildMediator(provider);
         TestMessageCommand[] commands = [new() { Content = "A" }, new() { Content = "B" }];
 
@@ -245,6 +247,32 @@ public class MediatorTests
 
         Assert.Contains(commands[0], handler.Invocations);
         Assert.Contains(commands[1], handler.Invocations);
+    }
+
+    #endregion
+
+    #region ClearCache Tests
+
+    [Fact]
+    public async Task ClearCache_WithProvider_ShouldInvalidatePipelineCacheAndRebuild()
+    {
+        var handler = new TrackingCommandHandler<TestMessageCommand>();
+        await using var provider = BuildProvider(b => b.RegisterCommandHandler(handler));
+        var mediator = BuildMediator(provider);
+        var message = new TestMessageCommand { Content = "first" };
+
+        // First call — populates the per-provider pipeline cache
+        await mediator.Send(message, TestContext.Current.CancellationToken);
+
+        // ClearCache with provider — invalidates the behavior and pipeline caches for this provider
+        Extensions.ClearCache(provider);
+
+        // Second call — should rebuild the pipeline and succeed
+        var message2 = new TestMessageCommand { Content = "second" };
+        await mediator.Send(message2, TestContext.Current.CancellationToken);
+
+        Assert.Contains(message, handler.Invocations);
+        Assert.Contains(message2, handler.Invocations);
     }
 
     #endregion

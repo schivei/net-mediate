@@ -10,7 +10,7 @@ public class Notifier : INotifiable
 
     public Notifier(IServiceProvider serviceProvider)
     {
-        var logger = serviceProvider.GetService<ILogger<NetMediate.Internals.Notifier>>();
+        var logger = serviceProvider.GetService<ILogger<Internals.Notifier>>();
         _notifier = new(serviceProvider, logger);
     }
     

@@ -18,7 +18,7 @@ internal sealed class RequiresDynamicCodeAttribute(string message) : Attribute
 
 /// <summary>
 /// Indicates that the specified method requires dynamic access to code that is not referenced statically,
-/// for example through <see cref="System.Reflection"/>. This attribute is polyfilled for pre-.NET 5 TFMs.
+/// for example through <see cref="Reflection"/>. This attribute is polyfilled for pre-.NET 5 TFMs.
 /// </summary>
 [AttributeUsage(
     AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Class,

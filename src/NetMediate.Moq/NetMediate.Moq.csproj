@@ -5,6 +5,13 @@
     <Title>NetMediate.Moq</Title>
     <Description>Utilities for elegant and efficient NetMediate unit and integration test mocking.</Description>
     <PackageTags>Mediator;Moq;Testing;NetMediate</PackageTags>
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    <EnableSingleFileAnalyzer>false</EnableSingleFileAnalyzer>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <VerifyReferenceAotCompatibility>false</VerifyReferenceAotCompatibility>
+    <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />

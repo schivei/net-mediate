@@ -5,6 +5,13 @@
     <Title>NetMediate.DataDog.Serilog</Title>
     <Description>DataDog Serilog sink integrations for NetMediate observability.</Description>
     <PackageTags>Mediator;NetMediate;DataDog;Serilog;Logs;APM</PackageTags>
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    <EnableSingleFileAnalyzer>false</EnableSingleFileAnalyzer>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <VerifyReferenceAotCompatibility>false</VerifyReferenceAotCompatibility>
+    <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />

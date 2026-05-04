@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
@@ -11,30 +12,54 @@ namespace NetMediate.Internals;
 internal sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvider serviceProvider)
     where TMessage : notnull
 {
+    // Per-provider pre-compiled pipeline cache — see PipelineExecutor<,,> for the full rationale.
+    private static readonly ConditionalWeakTable<IServiceProvider, Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>>
+        s_pipelineCache = new();
+
+    static StreamPipelineExecutor() =>
+        Extensions.RegisterPipelineCacheClearing(sp => s_pipelineCache.Remove(sp));
+
     public IAsyncEnumerable<TResponse> Handle(
         TMessage message,
         HandlerExecutionDelegate<IStreamHandler<TMessage, TResponse>, TMessage, IAsyncEnumerable<TResponse>> exec,
         CancellationToken cancellationToken)
     {
-        var handlers = serviceProvider.GetHandlers<IStreamHandler<TMessage, TResponse>, TMessage, IAsyncEnumerable<TResponse>>();
+        var lazy = s_pipelineCache.GetValue(
+            serviceProvider,
+            sp => new Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>(
+                () => BuildPipeline(sp, exec),
+                LazyThreadSafetyMode.ExecutionAndPublication));
 
-        PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> app = App;
+        return lazy.Value(message, cancellationToken);
+    }
+
+    private static PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> BuildPipeline(
+        IServiceProvider sp,
+        HandlerExecutionDelegate<IStreamHandler<TMessage, TResponse>, TMessage, IAsyncEnumerable<TResponse>> exec)
+    {
+        // Resolve handlers directly from the provider — the pipeline is already cached per-provider,
+        // so this runs only once per provider. Using direct resolution avoids cross-provider
+        // contamination that would occur with a global static handler cache.
+        var handlers = sp.GetServices<IStreamHandler<TMessage, TResponse>>().ToArray();
+
+        // Single-handler fast path: invoke the sole registered handler directly.
+        PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> app = handlers.Length == 1
+            ? (msg, ct) => handlers[0].Handle(msg, ct)
+            : (msg, ct) => exec(msg, handlers, ct);
 
         // Combine IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>> and IPipelineStreamBehavior<TMessage, TResponse>
         // both AOT-safe (no MakeGenericType). Results are cached per type to avoid repeated DI enumeration.
-        IEnumerable<IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>>> behaviors =
-            serviceProvider.GetCachedBehaviors<IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>>>()
-                .Concat(serviceProvider.GetCachedBehaviors<IPipelineStreamBehavior<TMessage, TResponse>>()
-                    .Cast<IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>>>());
+        var behaviorArray = sp.GetCachedBehaviors<IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>>>()
+            .Concat(sp.GetCachedBehaviors<IPipelineStreamBehavior<TMessage, TResponse>>()
+                .Cast<IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>>>())
+            .ToArray();
 
-        var pipeline = behaviors
-            .Reverse()
+        if (behaviorArray.Length == 0)
+            return app;
+
+        // Explicit Enumerable.Reverse avoids ambiguity with MemoryExtensions.Reverse(Span<T>).
+        return Enumerable.Reverse(behaviorArray)
             .Aggregate(app, (current, behavior) => (msg, ct) =>
                 behavior.Handle(msg, current, ct));
-
-        return pipeline(message, cancellationToken);
-
-        IAsyncEnumerable<TResponse> App(TMessage msg, CancellationToken ct) =>
-            exec(msg, handlers, ct);
     }
 }

@@ -79,7 +79,7 @@ public class InternalNotifierTests
         var tcs = new TaskCompletionSource<bool>();
         var handler = new TcsNotificationHandler<TestNotification>(tcs);
         var (notifier, provider) = BuildNotifier(b =>
-            b.RegisterNotificationHandler<TestNotification>(handler));
+            b.RegisterNotificationHandler(handler));
         await using var _ = provider;
         var message = new TestNotification();
 

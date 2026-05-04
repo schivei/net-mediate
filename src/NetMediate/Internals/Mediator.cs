@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
@@ -39,7 +40,22 @@ internal sealed class Mediator(
 
         if (pipeline is null) return;
 
-        await pipeline.Handle(command, CommandHandlers, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await pipeline.Handle(command, CommandHandlers, cancellationToken).ConfigureAwait(false);
+        }
+        catch (MediatorException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new MediatorException(
+                typeof(TMessage),
+                typeof(ICommandHandler<TMessage>),
+                Activity.Current?.Id,
+                ex);
+        }
     }
 
     /// <inheritdoc/>
@@ -65,7 +81,22 @@ internal sealed class Mediator(
         var pipeline = serviceProvider
             .GetRequiredService<RequestPipelineExecutor<TMessage, TResponse>>();
 
-        return await pipeline.Handle(message, RequestHandlers, cancellationToken).ConfigureAwait(false);
+        try
+        {
+            return await pipeline.Handle(message, RequestHandlers, cancellationToken).ConfigureAwait(false);
+        }
+        catch (MediatorException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            throw new MediatorException(
+                typeof(TMessage),
+                typeof(IRequestHandler<TMessage, TResponse>),
+                Activity.Current?.Id,
+                ex);
+        }
     }
 
     private static Task<TResponse> RequestHandlers<TMessage, TResponse>(TMessage message, IRequestHandler<TMessage, TResponse>[] handlers, CancellationToken cancellationToken) where TMessage : notnull

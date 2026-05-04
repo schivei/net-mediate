@@ -1,5 +1,3 @@
-using NetMediate.Internals;
-
 namespace NetMediate.Quartz;
 
 /// <summary>

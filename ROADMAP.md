@@ -28,11 +28,11 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 
 ## Medium term
 
-- [ ] **Synchronous fire-and-forget notifier** — optional `INotifiable` implementation that dispatches notification handlers inline (no `Channel<T>` + `BackgroundService` overhead) for scenarios where latency matters more than isolation.
-- [ ] **Pre-compiled behavior chain** — build the behavior delegate chain once at startup per message type and cache it in a static generic field, eliminating the per-call `Reverse`/`Aggregate`/closure allocation.
-- [ ] **Single-handler fast path for `Send`** — when exactly one `ICommandHandler<T>` is registered, invoke it directly without the `foreach` loop.
-- [ ] **`IPipelineNotificationBehavior<TMessage>` shorthand** — a dedicated interface mirroring `IPipelineRequestBehavior<,>` so notification-specific behaviors have a symmetric registration experience.
-- [ ] **Structured error context** — surface handler exceptions through a typed `MediatorException` carrying the originating message type, handler type, and activity trace ID.
+- [x] **Synchronous fire-and-forget notifier** — optional `INotifiable` implementation that dispatches notification handlers inline (no `Channel<T>` + `BackgroundService` overhead) for scenarios where latency matters more than isolation.
+- [x] **Pre-compiled behavior chain** — build the behavior delegate chain once at startup per message type and cache it in a static generic field, eliminating the per-call `Reverse`/`Aggregate`/closure allocation.
+- [x] **Single-handler fast path for `Send`** — when exactly one `ICommandHandler<T>` is registered, invoke it directly without the `foreach` loop.
+- [x] **`IPipelineNotificationBehavior<TMessage>` shorthand** — a dedicated interface mirroring `IPipelineRequestBehavior<,>` so notification-specific behaviors have a symmetric registration experience.
+- [x] **Structured error context** — surface handler exceptions through a typed `MediatorException` carrying the originating message type, handler type, and activity trace ID.
 
 ## Long term
 

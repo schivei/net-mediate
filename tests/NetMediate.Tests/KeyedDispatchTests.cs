@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
@@ -187,36 +186,48 @@ public sealed class KeyedDispatchTests
 
     private sealed class KeyedStreamHandlerA : IStreamHandler<KeyedStreamMessage, int>
     {
-        public async IAsyncEnumerable<int> Handle(
+        public IAsyncEnumerable<int> Handle(
             KeyedStreamMessage message,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default)
         {
-            yield return 1;
-            yield return 2;
-            await Task.CompletedTask;
+            return GetAsync();
+            static async IAsyncEnumerable<int> GetAsync()
+            {
+                yield return 1;
+                yield return 2;
+                await Task.Yield();
+            }
         }
     }
 
     private sealed class KeyedStreamHandlerB : IStreamHandler<KeyedStreamMessage, int>
     {
-        public async IAsyncEnumerable<int> Handle(
+        public IAsyncEnumerable<int> Handle(
             KeyedStreamMessage message,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default)
         {
-            yield return 3;
-            yield return 4;
-            await Task.CompletedTask;
+            return GetAsync();
+            static async IAsyncEnumerable<int> GetAsync()
+            {
+                yield return 3;
+                yield return 4;
+                await Task.Yield();
+            }
         }
     }
 
     private sealed class KeyedStreamHandlerC : IStreamHandler<KeyedStreamMessage, int>
     {
-        public async IAsyncEnumerable<int> Handle(
+        public IAsyncEnumerable<int> Handle(
             KeyedStreamMessage message,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default)
         {
-            yield return 99;
-            await Task.CompletedTask;
+            return GetAsync();
+            static async IAsyncEnumerable<int> GetAsync()
+            {
+                yield return 99;
+                await Task.Yield();
+            }
         }
     }
 }

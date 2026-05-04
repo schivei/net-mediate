@@ -194,10 +194,13 @@ internal sealed class Mediator(
                 yield return item;
     }
 
-#pragma warning disable CS1998
-    private static async IAsyncEnumerable<T> EmptyStream<T>()
+    private static IAsyncEnumerable<T> EmptyStream<T>()
     {
-        yield break;
+        return GetAsync();
+        static async IAsyncEnumerable<T> GetAsync()
+        {
+            await Task.Yield();
+            yield break;
+        }
     }
-#pragma warning restore CS1998
 }

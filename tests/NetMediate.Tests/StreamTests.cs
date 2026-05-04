@@ -1,5 +1,4 @@
-﻿using System.Runtime.CompilerServices;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NetMediate.Tests.Messages;
 
@@ -64,27 +63,35 @@ public sealed class StreamTests
 
     private sealed class FanOutStreamHandlerA : IStreamHandler<FanOutMessage, int>
     {
-        public async IAsyncEnumerable<int> Handle(
+        public IAsyncEnumerable<int> Handle(
             FanOutMessage message,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default)
         {
-            yield return 1;
-            yield return 2;
-            yield return 3;
-            await Task.CompletedTask;
+            return GetAsync();
+            static async IAsyncEnumerable<int> GetAsync()
+            {
+                yield return 1;
+                yield return 2;
+                yield return 3;
+                await Task.Yield();
+            }
         }
     }
 
     private sealed class FanOutStreamHandlerB : IStreamHandler<FanOutMessage, int>
     {
-        public async IAsyncEnumerable<int> Handle(
+        public IAsyncEnumerable<int> Handle(
             FanOutMessage message,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default)
         {
-            yield return 4;
-            yield return 5;
-            yield return 6;
-            await Task.CompletedTask;
+            return GetAsync();
+            static async IAsyncEnumerable<int> GetAsync()
+            {
+                yield return 4;
+                yield return 5;
+                yield return 6;
+                await Task.Yield();
+            }
         }
     }
 }

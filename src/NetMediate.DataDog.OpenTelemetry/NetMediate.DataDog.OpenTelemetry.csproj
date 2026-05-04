@@ -5,6 +5,13 @@
     <Title>NetMediate.DataDog.OpenTelemetry</Title>
     <Description>DataDog OpenTelemetry integrations for NetMediate traces and metrics.</Description>
     <PackageTags>Mediator;NetMediate;DataDog;OpenTelemetry;Tracing;Metrics;APM</PackageTags>
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    <EnableSingleFileAnalyzer>false</EnableSingleFileAnalyzer>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <VerifyReferenceAotCompatibility>false</VerifyReferenceAotCompatibility>
+    <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />

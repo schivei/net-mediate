@@ -91,7 +91,7 @@ jobs:
       run: dotnet test tests/SharedParity.NetMediate.Tests/SharedParity.NetMediate.Tests.csproj --configuration Release --verbosity normal
 
     - name: Run Benchmarks (PR only)
-      if: github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
       run: |
         cd tests/NetMediate.Benchmarks
         dotnet run --configuration Release -- --job Short --exporters GitHub --filter '*' || true
@@ -107,7 +107,7 @@ jobs:
         fi
 
     - name: Commit benchmark results
-      if: github.event_name == 'pull_request'
+      if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
       uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d4 # v9
       with:
         add: 'docs/BENCHMARKS.md'

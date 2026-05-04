@@ -26,6 +26,7 @@ jobs:
   auto-publish:
     name: Auto-Publish (Second Thursday)
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
 
     steps:
     - name: Checkout code

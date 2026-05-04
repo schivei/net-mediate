@@ -42,7 +42,7 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
     [Fact]
     public async Task CoreCommand_DispatchThroughput()
     {
-        if (!ShouldRun()) return;
+        if (!ShouldRun()) Assert.Skip("NETMEDIATE_RUN_PERFORMANCE_TESTS not set.");
 
         using var host = await CreateHostAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
@@ -82,7 +82,7 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
     [Fact]
     public async Task CoreNotification_DispatchThroughput()
     {
-        if (!ShouldRun()) return;
+        if (!ShouldRun()) Assert.Skip("NETMEDIATE_RUN_PERFORMANCE_TESTS not set.");
 
         using var host = await CreateHostAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
@@ -121,7 +121,7 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
     [Fact]
     public async Task CoreRequest_DispatchThroughput()
     {
-        if (!ShouldRun()) return;
+        if (!ShouldRun()) Assert.Skip("NETMEDIATE_RUN_PERFORMANCE_TESTS not set.");
 
         using var host = await CreateHostAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
@@ -161,7 +161,7 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
     [Fact]
     public async Task CoreStream_DispatchThroughput()
     {
-        if (!ShouldRun()) return;
+        if (!ShouldRun()) Assert.Skip("NETMEDIATE_RUN_PERFORMANCE_TESTS not set.");
 
         using var host = await CreateHostAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();

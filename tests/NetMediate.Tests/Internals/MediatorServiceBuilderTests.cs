@@ -81,7 +81,8 @@ public class MediatorServiceBuilderTests
     {
         // Guard.ThrowIfNull must not throw for a non-null argument
         object value = new();
-        Guard.ThrowIfNull(value); // no exception
+        var ex = Record.Exception(() => Guard.ThrowIfNull(value));
+        Assert.Null(ex);
     }
 
     [Fact]

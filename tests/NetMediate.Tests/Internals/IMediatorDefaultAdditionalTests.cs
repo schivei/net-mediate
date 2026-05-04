@@ -28,7 +28,19 @@ public sealed class IMediatorDefaultAdditionalTests
         public Task Send<TMessage>(IEnumerable<TMessage> commands, CancellationToken cancellationToken = default) where TMessage : notnull =>
             Task.CompletedTask;
 
+        public Task Send<TMessage>(
+            object? key,
+            TMessage message,
+            CancellationToken cancellationToken = default
+        ) where TMessage : notnull => Task.CompletedTask;
+
         public Task<TResponse> Request<TMessage, TResponse>(
+            TMessage message,
+            CancellationToken cancellationToken = default
+        ) where TMessage : notnull => Task.FromResult(default(TResponse)!);
+
+        public Task<TResponse> Request<TMessage, TResponse>(
+            object? key,
             TMessage message,
             CancellationToken cancellationToken = default
         ) where TMessage : notnull => Task.FromResult(default(TResponse)!);
@@ -46,8 +58,28 @@ public sealed class IMediatorDefaultAdditionalTests
             }
         }
 
+        public IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
+            object? key,
+            TMessage message,
+            CancellationToken cancellationToken = default
+        ) where TMessage : notnull
+        {
+            return GetAsync();
+            static async IAsyncEnumerable<TResponse> GetAsync()
+            {
+                await Task.CompletedTask;
+                yield break;
+            }
+        }
+
         public async Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull =>
             await Task.WhenAll(messages.Select(m => Notify(m, cancellationToken)));
+
+        public Task Notify<TMessage>(
+            object? key,
+            TMessage message,
+            CancellationToken cancellationToken = default
+        ) where TMessage : notnull => Task.CompletedTask;
     }
 
     [Fact]

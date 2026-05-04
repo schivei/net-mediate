@@ -153,4 +153,52 @@ internal sealed class MediatorServiceBuilder<
         _services.AddTransient<IPipelineNotificationBehavior<TMessage>, TBehavior>();
         return this;
     }
+
+    // ── Keyed registration (runtime routing via IKeyedServiceProvider) ──
+
+    public IMediatorServiceBuilder RegisterKeyedCommandHandler<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        THandler,
+        TMessage>(object? key)
+        where THandler : class, ICommandHandler<TMessage>
+        where TMessage : notnull
+    {
+        _services.AddKeyedSingleton<ICommandHandler<TMessage>, THandler>(key);
+        return this;
+    }
+
+    public IMediatorServiceBuilder RegisterKeyedNotificationHandler<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        THandler,
+        TMessage>(object? key)
+        where THandler : class, INotificationHandler<TMessage>
+        where TMessage : notnull
+    {
+        _services.AddKeyedSingleton<INotificationHandler<TMessage>, THandler>(key);
+        return this;
+    }
+
+    public IMediatorServiceBuilder RegisterKeyedRequestHandler<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        THandler,
+        TMessage,
+        TResponse>(object? key)
+        where THandler : class, IRequestHandler<TMessage, TResponse>
+        where TMessage : notnull
+    {
+        _services.AddKeyedSingleton<IRequestHandler<TMessage, TResponse>, THandler>(key);
+        return this;
+    }
+
+    public IMediatorServiceBuilder RegisterKeyedStreamHandler<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        THandler,
+        TMessage,
+        TResponse>(object? key)
+        where THandler : class, IStreamHandler<TMessage, TResponse>
+        where TMessage : notnull
+    {
+        _services.AddKeyedSingleton<IStreamHandler<TMessage, TResponse>, THandler>(key);
+        return this;
+    }
 }

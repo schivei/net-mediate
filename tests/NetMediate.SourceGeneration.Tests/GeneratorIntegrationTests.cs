@@ -16,6 +16,14 @@ namespace NetMediate.SourceGeneration.Tests;
 /// </summary>
 public sealed class GeneratorIntegrationTests
 {
+    // ── constants ─────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Version of the internal NetMediate test package created by the pre-restore pack step.
+    /// Must match <c>PackageReference Include="NetMediate" Version="..."</c> in the .csproj
+    /// and the <c>/p:Version=...</c> argument in the CI pack step.
+    /// </summary>
+    private const string NetMediateInternalPackageVersion = "0.0.1-internal";
     // ── helpers ──────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -44,15 +52,15 @@ public sealed class GeneratorIntegrationTests
 
         // Package IDs are stored lowercase in the cache; version matches the PackageReference.
         var generatorDll = Path.Combine(
-            nugetPackages, "netmediate", "0.0.1-internal",
+            nugetPackages, "netmediate", NetMediateInternalPackageVersion,
             "analyzers", "dotnet", "cs", "NetMediate.SourceGeneration.dll");
 
         if (!File.Exists(generatorDll))
             throw new FileNotFoundException(
                 $"NetMediate.SourceGeneration.dll not found at '{generatorDll}'. " +
                 $"Run the pre-restore pack step first: " +
-                $"dotnet build src/NetMediate/NetMediate.csproj -c Release /p:Version=0.0.1-internal && " +
-                $"dotnet pack src/NetMediate/NetMediate.csproj -c Release --no-build /p:Version=0.0.1-internal --output ./local-packages",
+                $"dotnet build src/NetMediate/NetMediate.csproj -c Release /p:Version={NetMediateInternalPackageVersion} && " +
+                $"dotnet pack src/NetMediate/NetMediate.csproj -c Release --no-build /p:Version={NetMediateInternalPackageVersion} --output ./local-packages",
                 generatorDll);
 
         // Assembly.LoadFrom resolves Microsoft.CodeAnalysis from the already-loaded instance in

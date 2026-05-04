@@ -42,7 +42,9 @@
          this static None item ensures the DLL is also packed so downstream projects that
          reference the NetMediate NuGet package get the source generator automatically.
          The file only exists after the project is built; the CI/local workflow always runs
-         `dotnet build` before `dotnet pack -no-build`. -->
+         `dotnet build` before `dotnet pack -no-build`.
+         The netstandard2.0 sub-path is intentional: NetMediate.SourceGeneration targets
+         netstandard2.0 only (see its .csproj), so the DLL is always in that TFM folder. -->
     <None Include="$(MSBuildThisFileDirectory)..\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll"
           Pack="true"
           PackagePath="analyzers/dotnet/cs"

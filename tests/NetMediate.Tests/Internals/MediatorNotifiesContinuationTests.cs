@@ -80,7 +80,7 @@ public sealed class MediatorNotifiesContinuationTests
     {
         var message = new Msg();
         await using var provider = BuildProvider(b =>
-            b.RegisterNotificationHandler<Msg>(new OkHandler()));
+            b.RegisterNotificationHandler(new OkHandler()));
         var sut = BuildMediator(provider);
 
         await sut.Notify(message, TestContext.Current.CancellationToken);
@@ -95,7 +95,7 @@ public sealed class MediatorNotifiesContinuationTests
     {
         var message = new Msg();
         await using var provider = BuildProvider(b =>
-            b.RegisterNotificationHandler<Msg>(new FaultHandler()));
+            b.RegisterNotificationHandler(new FaultHandler()));
         var sut = BuildMediator(provider);
 
         // Fire-and-forget: no exception propagated
@@ -112,7 +112,7 @@ public sealed class MediatorNotifiesContinuationTests
         var message = new Msg();
         await using var provider = BuildProvider(b =>
         {
-            b.RegisterNotificationHandler<Msg>(new FaultHandler());
+            b.RegisterNotificationHandler(new FaultHandler());
             b.RegisterBehavior<PassThroughBehavior, Msg, Task>();
         });
         var sut = BuildMediator(provider);
@@ -130,7 +130,7 @@ public sealed class MediatorNotifiesContinuationTests
         var message = new Msg();
         await using var provider = BuildProvider(b =>
         {
-            b.RegisterNotificationHandler<Msg>(new OkHandler());
+            b.RegisterNotificationHandler(new OkHandler());
             b.RegisterBehavior<PassThroughBehavior, Msg, Task>();
         });
         var sut = BuildMediator(provider);

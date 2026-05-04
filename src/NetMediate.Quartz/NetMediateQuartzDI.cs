@@ -1,6 +1,7 @@
-using global::Quartz;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate.Internals;
+using Quartz;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.Quartz;
 
@@ -33,6 +34,12 @@ public static class NetMediateQuartzDI
     /// <param name="services">The <see cref="IServiceCollection"/> to add NetMediate Quartz services to.</param>
     /// <param name="configureOptions">Optional callback to configure <see cref="QuartzNotificationOptions"/>.</param>
     /// <returns>The <see cref="IServiceCollection"/> for chaining.</returns>
+    [RequiresDynamicCode(
+        "QuartzNotificationJob uses MakeGenericMethod for per-type notification dispatch and is not compatible with NativeAOT."
+    )]
+    [RequiresUnreferencedCode(
+        "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
+    )]
     public static IServiceCollection AddNetMediateQuartz(
         this IServiceCollection services,
         Action<QuartzNotificationOptions>? configureOptions = null)

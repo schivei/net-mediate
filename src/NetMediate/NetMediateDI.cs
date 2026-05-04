@@ -12,7 +12,7 @@ namespace NetMediate;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Do not call <see cref="UseNetMediate(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{NetMediate.IMediatorServiceBuilder})"/>
+/// <b>Do not call <see cref="UseNetMediate(IServiceCollection,Action{IMediatorServiceBuilder})"/>
 /// directly.</b>  Use the <c>AddNetMediate()</c> extension method emitted by the
 /// <c>NetMediate.SourceGeneration</c> source generator instead.  That method is generated at
 /// compile time inside your project and calls this method with all discovered handlers

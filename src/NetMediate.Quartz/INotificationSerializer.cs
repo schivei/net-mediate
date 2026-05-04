@@ -1,4 +1,4 @@
-using NetMediate.Internals;
+using System.Text.Json.Serialization;
 
 namespace NetMediate.Quartz;
 

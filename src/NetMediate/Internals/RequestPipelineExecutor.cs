@@ -1,5 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-
 namespace NetMediate.Internals;
 
 /// <summary>

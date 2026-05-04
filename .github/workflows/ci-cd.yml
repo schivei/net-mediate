@@ -40,7 +40,17 @@ jobs:
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
         restore-keys: |
           ${{ runner.os }}-nuget-
-          
+
+    - name: Pack NetMediate (internal version for source generation integration tests)
+      # Creates local-packages/NetMediate.0.0.1-internal.nupkg with the source generator bundled
+      # as an analyzer inside it. This must run BEFORE the solution restore so that the
+      # NetMediate.SourceGeneration.Tests project (which references NetMediate@0.0.1-internal)
+      # can be resolved via the local-packages NuGet feed declared in NuGet.Config.
+      # GeneratePackageOnBuild=true requires an explicit build before pack --no-build.
+      run: |
+        dotnet build src/NetMediate/NetMediate.csproj --configuration Release /p:Version=0.0.1-internal
+        dotnet pack src/NetMediate/NetMediate.csproj --configuration Release --no-build /p:Version=0.0.1-internal --output ./local-packages
+
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx
       
@@ -218,6 +228,13 @@ jobs:
       with:
         dotnet-version: '10.x'
         
+    - name: Pack NetMediate (internal version for source generation integration tests)
+      # Must run before restore so that NetMediate@0.0.1-internal is available to the solution.
+      # GeneratePackageOnBuild=true requires an explicit build before pack --no-build.
+      run: |
+        dotnet build src/NetMediate/NetMediate.csproj --configuration Release /p:Version=0.0.1-internal
+        dotnet pack src/NetMediate/NetMediate.csproj --configuration Release --no-build /p:Version=0.0.1-internal --output ./local-packages
+
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx
       

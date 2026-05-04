@@ -30,13 +30,24 @@
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
+  <!-- Bundle the source generator inside the NetMediate package so users get AOT-safe
+       handler registration code generation without installing a separate package. -->
   <ItemGroup>
-    <!-- Bundle the source generator inside the NetMediate package so users get AOT-safe
-         handler registration code generation without installing a separate package. -->
     <ProjectReference Include="..\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj"
       ReferenceOutputAssembly="false"
       OutputItemType="Analyzer"
       PrivateAssets="all" />
+    <!-- Explicitly include the source generator DLL in the analyzers/dotnet/cs folder of this
+         NuGet package.  The ProjectReference above makes the analyzer active at build time;
+         this static None item ensures the DLL is also packed so downstream projects that
+         reference the NetMediate NuGet package get the source generator automatically.
+         The file only exists after the project is built; the CI/local workflow always runs
+         `dotnet build` before `dotnet pack -no-build`. -->
+    <None Include="$(MSBuildThisFileDirectory)..\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll"
+          Pack="true"
+          PackagePath="analyzers/dotnet/cs"
+          Visible="false"
+          Condition="Exists('$(MSBuildThisFileDirectory)..\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll')" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />

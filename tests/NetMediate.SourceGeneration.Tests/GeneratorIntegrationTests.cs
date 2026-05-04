@@ -2,24 +2,73 @@ using System.Collections.Immutable;
 using System.Reflection;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.Text;
-using NetMediate.SourceGeneration;
 
 namespace NetMediate.SourceGeneration.Tests;
 
 /// <summary>
-/// Integration tests that verify <see cref="NetMediateRegistrationGenerator"/> behaviour when
-/// code is compiled against a pre-built <c>NetMediate.dll</c> — i.e. the same scenario a user
-/// experiences when referencing the NuGet package instead of a project reference.
+/// Integration tests that verify <c>NetMediateRegistrationGenerator</c> behaviour when code is
+/// compiled against the <c>NetMediate</c> NuGet package — the exact scenario a user experiences
+/// when running <c>dotnet add package NetMediate</c>.
+///
+/// The source generator (<c>NetMediate.SourceGeneration.dll</c>) is bundled inside the
+/// <c>NetMediate</c> package as an analyzer.  At build time it runs on this test project itself;
+/// at test-runtime the Roslyn API tests load it dynamically from the NuGet package cache.
 /// </summary>
 public sealed class GeneratorIntegrationTests
 {
     // ── helpers ──────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
+    /// Loads <c>NetMediateRegistrationGenerator</c> from the analyzer DLL that is bundled inside
+    /// the <c>NetMediate</c> NuGet package.  The package layout is:
+    /// <code>
+    ///   lib/{tfm}/NetMediate.dll                           ← runtime reference
+    ///   analyzers/dotnet/cs/NetMediate.SourceGeneration.dll ← source generator
+    /// </code>
+    /// We locate the generator DLL by navigating to the NuGet global packages cache.
+    /// NuGet lowercases package IDs in the cache on all platforms.
+    /// <para>
+    /// <c>Assembly.LoadFrom</c> resolves <c>Microsoft.CodeAnalysis</c> from the instance already
+    /// loaded in the default context (loaded by this project's own package reference), so the
+    /// <see cref="IIncrementalGenerator"/> type identity is preserved and the cast succeeds.
+    /// </para>
+    /// </summary>
+    private static IIncrementalGenerator CreateGenerator()
+    {
+        // NuGet installs to the global packages cache. NUGET_PACKAGES can override the default.
+        var nugetPackages =
+            Environment.GetEnvironmentVariable("NUGET_PACKAGES")
+            ?? Path.Combine(
+                   Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                   ".nuget", "packages");
+
+        // Package IDs are stored lowercase in the cache; version matches the PackageReference.
+        var generatorDll = Path.Combine(
+            nugetPackages, "netmediate", "0.0.1-internal",
+            "analyzers", "dotnet", "cs", "NetMediate.SourceGeneration.dll");
+
+        if (!File.Exists(generatorDll))
+            throw new FileNotFoundException(
+                $"NetMediate.SourceGeneration.dll not found at '{generatorDll}'. " +
+                $"Run the pre-restore pack step first: " +
+                $"dotnet build src/NetMediate/NetMediate.csproj -c Release /p:Version=0.0.1-internal && " +
+                $"dotnet pack src/NetMediate/NetMediate.csproj -c Release --no-build /p:Version=0.0.1-internal --output ./local-packages",
+                generatorDll);
+
+        // Assembly.LoadFrom resolves Microsoft.CodeAnalysis from the already-loaded instance in
+        // the default load context, so IIncrementalGenerator identity is preserved.
+        var asm  = Assembly.LoadFrom(generatorDll);
+        var type = asm.GetType("NetMediate.SourceGeneration.NetMediateRegistrationGenerator")
+            ?? throw new InvalidOperationException(
+                   "NetMediateRegistrationGenerator type not found in the loaded assembly.");
+
+        return (IIncrementalGenerator)Activator.CreateInstance(type)!;
+    }
+
+    /// <summary>
     /// Runs the generator against an in-memory compilation built with the given source text and
-    /// a reference to the real NetMediate.dll. Returns the generated source for
-    /// <c>NetMediateGeneratedDI.g.cs</c>.
+    /// (optionally) a reference to the real <c>NetMediate.dll</c>.  Returns the generated source
+    /// for <c>NetMediateGeneratedDI.g.cs</c>.
     /// </summary>
     private static (string generatedSource, ImmutableArray<Diagnostic> diagnostics) RunGenerator(
         string assemblyName,
@@ -34,7 +83,7 @@ public sealed class GeneratorIntegrationTests
             references: references,
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        var generator = new NetMediateRegistrationGenerator();
+        var generator = CreateGenerator();
         var driver = CSharpGeneratorDriver.Create(generator);
         driver = (CSharpGeneratorDriver)driver.RunGeneratorsAndUpdateCompilation(
             compilation, out _, out var generatorDiagnostics);
@@ -52,11 +101,11 @@ public sealed class GeneratorIntegrationTests
     {
         var refs = new List<MetadataReference>
         {
-            // Core .NET references needed for compilation
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(IAsyncEnumerable<>).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(Microsoft.Extensions.DependencyInjection.IServiceCollection).Assembly.Location),
+            MetadataReference.CreateFromFile(
+                typeof(Microsoft.Extensions.DependencyInjection.IServiceCollection).Assembly.Location),
         };
 
         // Add all loaded assemblies to avoid type resolution failures
@@ -70,15 +119,29 @@ public sealed class GeneratorIntegrationTests
         }
 
         if (includeNetMediateDll)
-        {
-            // Reference the real NetMediate.dll — this is what package reference users get.
             refs.Add(MetadataReference.CreateFromFile(typeof(IMediator).Assembly.Location));
-        }
 
         return refs;
     }
 
     // ── tests ─────────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Proves that the source generator ran on THIS test project at build time by verifying that
+    /// <c>NetMediateGeneratedDI</c> was generated and compiled into this assembly.  The generator
+    /// reaches this project via the <c>NetMediate</c> NuGet package reference (the analyzer DLL
+    /// is bundled inside the package).  If the package was misconfigured or the generator had
+    /// produced a duplicate-type error, this project would not have compiled.
+    /// </summary>
+    [Fact]
+    public void TestProject_ReferencesNetMediatePackage_GeneratorRanOnBuildAndClassExists()
+    {
+        // The generated class lives in namespace NetMediate inside the test assembly.
+        var generatedType = Assembly.GetExecutingAssembly()
+            .GetType("NetMediate.NetMediateGeneratedDI");
+
+        Assert.NotNull(generatedType);
+    }
 
     /// <summary>
     /// When the generator runs on the <c>NetMediate</c> assembly itself (as happens during
@@ -89,22 +152,20 @@ public sealed class GeneratorIntegrationTests
     [Fact]
     public void Generator_WhenBuildingNetMediateAssembly_ShouldSkipEmission()
     {
-        // Use "NetMediate" as the assembly name — exactly what happens during package build.
         var (generatedSource, _) = RunGenerator(
             assemblyName: "NetMediate",
             userSource: "// empty project",
             includeNetMediateDll: false);
 
-        // Must NOT emit the class — only a placeholder comment.
         Assert.DoesNotContain("class NetMediateGeneratedDI", generatedSource);
         Assert.DoesNotContain("public static", generatedSource);
         Assert.Contains("Source generation skipped", generatedSource);
     }
 
     /// <summary>
-    /// When the generator runs on a <em>user</em> project that references the
-    /// <c>NetMediate.dll</c> (package reference scenario), it should emit a full
-    /// <c>AddNetMediate()</c> method with all discovered handlers registered.
+    /// When the generator runs on a user project that references the <c>NetMediate.dll</c>
+    /// (package reference scenario), it should emit a full <c>AddNetMediate()</c> method with
+    /// all discovered handlers registered.
     /// </summary>
     [Fact]
     public void Generator_WhenBuildingUserProject_ShouldEmitAddNetMediate()
@@ -125,23 +186,15 @@ public sealed class GeneratorIntegrationTests
             }
             """;
 
-        var (generatedSource, diagnostics) = RunGenerator(
-            assemblyName: "MyApp",
-            userSource: userSource);
+        var (generatedSource, diagnostics) = RunGenerator(assemblyName: "MyApp", userSource: userSource);
 
-        // Should have no generator errors
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         Assert.Empty(errors);
-
-        // The generated class should be present
         Assert.Contains("class NetMediateGeneratedDI", generatedSource);
         Assert.Contains("AddNetMediate", generatedSource);
     }
 
-    /// <summary>
-    /// When a user project has a command handler, the generator should emit a
-    /// <c>RegisterCommandHandler</c> call for it.
-    /// </summary>
+    /// <summary>Command handler registration is emitted for a user project.</summary>
     [Fact]
     public void Generator_WhenUserProjectHasCommandHandler_ShouldRegisterIt()
     {
@@ -168,10 +221,7 @@ public sealed class GeneratorIntegrationTests
         Assert.Contains("PingCommand", generatedSource);
     }
 
-    /// <summary>
-    /// When a user project has a request handler, the generator should emit a
-    /// <c>RegisterRequestHandler</c> call for it.
-    /// </summary>
+    /// <summary>Request handler registration is emitted for a user project.</summary>
     [Fact]
     public void Generator_WhenUserProjectHasRequestHandler_ShouldRegisterIt()
     {
@@ -197,10 +247,7 @@ public sealed class GeneratorIntegrationTests
         Assert.Contains("GetHandler", generatedSource);
     }
 
-    /// <summary>
-    /// When a user project has a notification handler, the generator should emit a
-    /// <c>RegisterNotificationHandler</c> call for it.
-    /// </summary>
+    /// <summary>Notification handler registration is emitted for a user project.</summary>
     [Fact]
     public void Generator_WhenUserProjectHasNotificationHandler_ShouldRegisterIt()
     {
@@ -228,7 +275,7 @@ public sealed class GeneratorIntegrationTests
 
     /// <summary>
     /// Validates that the generated <c>AddNetMediate()</c> compiles successfully when combined
-    /// with the user's handler code — i.e. the emitted registrations reference valid types.
+    /// with the user's handler code.
     /// </summary>
     [Fact]
     public void Generator_WhenUserProjectHasHandlers_GeneratedCodeShouldCompileCleanly()
@@ -257,11 +304,10 @@ public sealed class GeneratorIntegrationTests
             references: refs,
             options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        var generator = new NetMediateRegistrationGenerator();
+        var generator = CreateGenerator();
         var driver = CSharpGeneratorDriver.Create(generator);
         driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out _);
 
-        // The final compilation (original sources + generated code) should have no errors.
         var errors = outputCompilation.GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ToList();
@@ -269,3 +315,4 @@ public sealed class GeneratorIntegrationTests
         Assert.Empty(errors);
     }
 }
+

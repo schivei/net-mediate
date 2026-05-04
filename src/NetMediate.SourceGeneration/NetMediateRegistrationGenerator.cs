@@ -133,7 +133,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         return (allRegistrations, notifier);
     }
 
-    private static void BuildResgistration(bool hasDiagnostics, bool hasResilience, Dictionary<string, bool> diagnosticsBehaviors, Dictionary<string, bool> resilienceBehaviors, Dictionary<string, bool> handlers, StringBuilder notifier, INamedTypeSymbol handlerType, string handlerName)
+    private static void BuildResgistration(bool hasDiagnostics, bool hasResilience, Dictionary<string, bool> diagnosticsBehaviors, Dictionary<string, bool> resilienceBehaviors, Dictionary<string, bool> handlers, StringBuilder notifier, INamedTypeSymbol handlerType, string handlerName) // NOSONAR S107
     {
         foreach (var @interface in handlerType.AllInterfaces)
         {

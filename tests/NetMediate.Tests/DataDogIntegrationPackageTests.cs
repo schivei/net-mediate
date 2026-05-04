@@ -32,7 +32,7 @@ public sealed class DataDogIntegrationPackageTests
     {
         var cancellationToken = TestContext.Current.CancellationToken;
 
-        var ex = Assert.Throws<ArgumentException>(() =>
+        var ex = Assert.Throws<System.Data.NoNullAllowedException>(() =>
             new LoggerConfiguration()
                 .UseNetMediateDataDogSerilog(
                     options =>

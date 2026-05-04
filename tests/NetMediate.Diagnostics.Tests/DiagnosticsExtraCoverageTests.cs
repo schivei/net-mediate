@@ -304,7 +304,7 @@ public sealed class DiagnosticsExtraCoverageTests
             [EnumeratorCancellation] CancellationToken ct = default)
         {
             yield return "ok";
-            await Task.CompletedTask;
+            await Task.Yield();
         }
     }
 

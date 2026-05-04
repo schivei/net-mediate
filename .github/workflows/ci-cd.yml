@@ -23,12 +23,12 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         fetch-depth: 0
         
     - name: Setup .NET SDK 10.x
-      uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
       with:
         dotnet-version: '10.x'
         
@@ -44,16 +44,16 @@ jobs:
       run: dotnet restore net-mediate.slnx
       
     - name: Build NetMediate
-      run: dotnet build src/NetMediate/NetMediate.csproj --no-restore --configuration Release
+      run: dotnet build src/NetMediate/NetMediate.csproj --configuration Release
 
     - name: Build NetMediate.Diagnostics
-      run: dotnet build src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --no-restore --configuration Release
+      run: dotnet build src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release
 
     - name: Build NetMediate.Moq
-      run: dotnet build src/NetMediate.Moq/NetMediate.Moq.csproj --no-restore --configuration Release
+      run: dotnet build src/NetMediate.Moq/NetMediate.Moq.csproj --configuration Release
 
     - name: Build NetMediate.Resilience
-      run: dotnet build src/NetMediate.Resilience/NetMediate.Resilience.csproj --no-restore --configuration Release
+      run: dotnet build src/NetMediate.Resilience/NetMediate.Resilience.csproj --configuration Release
 
     - name: Build NetMediate.SourceGeneration
       run: dotnet build src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release
@@ -205,20 +205,20 @@ jobs:
     
     steps:
     - name: Checkout code
-      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         fetch-depth: 0
         
     - name: Setup .NET SDK 10.x
-      uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
       with:
         dotnet-version: '10.x'
         
     - name: Restore dependencies
-      run: dotnet restore net-mediate.slnx
+      run: dotnet restore net-mediate.slnx --configuration Release
       
     - name: Build Release (all projects/targets)
-      run: dotnet build net-mediate.slnx --no-restore --configuration Release
+      run: dotnet build net-mediate.slnx --configuration Release
       
     - name: Run Tests
       run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release --verbosity normal
@@ -230,31 +230,31 @@ jobs:
       run: dotnet test tests/NetMediate.Diagnostics.Tests/NetMediate.Diagnostics.Tests.csproj --configuration Release --verbosity normal
       
     - name: Pack NetMediate package
-      run: dotnet pack src/NetMediate/NetMediate.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate/NetMediate.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.Diagnostics package
-      run: dotnet pack src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.Moq package
-      run: dotnet pack src/NetMediate.Moq/NetMediate.Moq.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.Moq/NetMediate.Moq.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.Resilience package
-      run: dotnet pack src/NetMediate.Resilience/NetMediate.Resilience.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.Resilience/NetMediate.Resilience.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.SourceGeneration package
-      run: dotnet pack src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.DataDog.OpenTelemetry package
-      run: dotnet pack src/NetMediate.DataDog.OpenTelemetry/NetMediate.DataDog.OpenTelemetry.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.DataDog.OpenTelemetry/NetMediate.DataDog.OpenTelemetry.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.DataDog.Serilog package
-      run: dotnet pack src/NetMediate.DataDog.Serilog/NetMediate.DataDog.Serilog.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.DataDog.Serilog/NetMediate.DataDog.Serilog.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.DataDog.ILogger package
-      run: dotnet pack src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --configuration Release --output ./packages
 
     - name: Pack NetMediate.Quartz package
-      run: dotnet pack src/NetMediate.Quartz/NetMediate.Quartz.csproj --no-build --no-restore --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.Quartz/NetMediate.Quartz.csproj --configuration Release --output ./packages
       
     - name: List package contents
       run: ls -la ./packages/
@@ -289,7 +289,7 @@ jobs:
       
     steps:
     - name: Checkout code
-      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       
     - name: Download package artifacts
       uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4

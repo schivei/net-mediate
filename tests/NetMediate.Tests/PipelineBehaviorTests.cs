@@ -13,8 +13,8 @@ public sealed class PipelineBehaviorTests
         using var host = await CreateHostAsync(
             services =>
             {
-                services.AddScoped<IRequestBehavior<PipelineRequest, string>, FirstRequestBehavior>();
-                services.AddScoped<IRequestBehavior<PipelineRequest, string>, SecondRequestBehavior>();
+                services.AddScoped<IPipelineBehavior<PipelineRequest, Task<string>>, FirstRequestBehavior>();
+                services.AddScoped<IPipelineBehavior<PipelineRequest, Task<string>>, SecondRequestBehavior>();
                 services.AddSingleton<CallTrace>();
             }
         );
@@ -24,7 +24,7 @@ public sealed class PipelineBehaviorTests
         var cancellationToken = TestContext.Current.CancellationToken;
 
         var response = await mediator.Request<PipelineRequest, string>(
-            new PipelineRequest("ok"),
+            new("ok"),
             cancellationToken
         );
 
@@ -47,7 +47,7 @@ public sealed class PipelineBehaviorTests
         using var host = await CreateHostAsync(
             services =>
             {
-                services.AddScoped<ICommandBehavior<PipelineCommand>, CommandBehavior>();
+                services.AddScoped<IPipelineBehavior<PipelineCommand, Task>, CommandBehavior>();
                 services.AddSingleton<CallTrace>();
             }
         );
@@ -70,7 +70,7 @@ public sealed class PipelineBehaviorTests
         using var host = await CreateHostAsync(
             services =>
             {
-                services.AddScoped<IStreamBehavior<PipelineStream, int>, StreamBehavior>();
+                services.AddScoped<IPipelineBehavior<PipelineStream, IAsyncEnumerable<int>>, StreamBehavior>();
                 services.AddSingleton<CallTrace>();
             }
         );
@@ -80,7 +80,7 @@ public sealed class PipelineBehaviorTests
         var cancellationToken = TestContext.Current.CancellationToken;
 
         var values = await mediator
-            .RequestStream<PipelineStream, int>(new PipelineStream(3), cancellationToken)
+            .RequestStream<PipelineStream, int>(new(3), cancellationToken)
             .AsyncToSync();
 
         Assert.Equal([1, 2, 3], values);
@@ -96,7 +96,7 @@ public sealed class PipelineBehaviorTests
         using var host = await CreateHostAsync(
             services =>
             {
-                services.AddScoped<INotificationBehavior<PipelineNotification>, NotificationBehavior>();
+                services.AddScoped<IPipelineBehavior<PipelineNotification, Task>, NotificationBehavior>();
                 services.AddSingleton<CallTrace>();
             }
         );
@@ -141,21 +141,28 @@ public sealed class PipelineBehaviorTests
         );
     }
 
-    private static async Task<IHost> CreateHostAsync(Action<IServiceCollection> configure)
+    private static async Task<IHost> CreateHostAsync(Action<IServiceCollection> setup)
     {
         var builder = Host.CreateApplicationBuilder();
-        configure(builder.Services);
-        builder.Services.AddNetMediate(typeof(PipelineBehaviorTests).Assembly);
+        setup(builder.Services);
+        builder.Services.UseNetMediate(reg =>
+        {
+            reg.RegisterRequestHandler<PipelineRequestHandler, PipelineRequest, string>();
+            reg.RegisterCommandHandler<PipelineCommandHandler, PipelineCommand>();
+            reg.RegisterStreamHandler<PipelineStreamHandler, PipelineStream, int>();
+            reg.RegisterNotificationHandler<PipelineNotificationHandler1, PipelineNotification>();
+            reg.RegisterNotificationHandler<PipelineNotificationHandler2, PipelineNotification>();
+        });
 
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
         return host;
     }
 
-    public sealed record PipelineRequest(string Value) : IRequest<string>;
-    public sealed record PipelineCommand(string Value) : ICommand;
-    public sealed record PipelineNotification(string Value) : INotification;
-    public sealed record PipelineStream(int Count) : IStream<int>;
+    public sealed record PipelineRequest(string Value);
+    public sealed record PipelineCommand(string Value);
+    public sealed record PipelineNotification(string Value);
+    public sealed record PipelineStream(int Count);
 
     private sealed class CallTrace
     {
@@ -168,22 +175,22 @@ public sealed class PipelineBehaviorTests
     private sealed class PipelineRequestHandler(CallTrace trace)
         : IRequestHandler<PipelineRequest, string>
     {
-        public ValueTask<string> Handle(
+        public Task<string> Handle(
             PipelineRequest query,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("request:handler");
-            return ValueTask.FromResult(query.Value);
+            return Task.FromResult(query.Value);
         }
     }
 
     private sealed class FirstRequestBehavior(CallTrace trace)
-        : IRequestBehavior<PipelineRequest, string>
+        : IPipelineRequestBehavior<PipelineRequest, string>
     {
-        public async ValueTask<string> Handle(
+        public async Task<string> Handle(
             PipelineRequest message,
-            RequestHandlerDelegate<PipelineRequest, string> next,
+            PipelineBehaviorDelegate<PipelineRequest, Task<string>> next,
             CancellationToken cancellationToken = default
         )
         {
@@ -195,11 +202,11 @@ public sealed class PipelineBehaviorTests
     }
 
     private sealed class SecondRequestBehavior(CallTrace trace)
-        : IRequestBehavior<PipelineRequest, string>
+        : IPipelineRequestBehavior<PipelineRequest, string>
     {
-        public async ValueTask<string> Handle(
+        public async Task<string> Handle(
             PipelineRequest message,
-            RequestHandlerDelegate<PipelineRequest, string> next,
+            PipelineBehaviorDelegate<PipelineRequest, Task<string>> next,
             CancellationToken cancellationToken = default
         )
         {
@@ -213,19 +220,19 @@ public sealed class PipelineBehaviorTests
     private sealed class PipelineCommandHandler(CallTrace trace)
         : ICommandHandler<PipelineCommand>
     {
-        public ValueTask Handle(PipelineCommand command, CancellationToken cancellationToken = default)
+        public Task Handle(PipelineCommand command, CancellationToken cancellationToken = default)
         {
             trace.Add("command:handler");
-            return ValueTask.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 
     private sealed class CommandBehavior(CallTrace trace)
-        : ICommandBehavior<PipelineCommand>
+        : IPipelineBehavior<PipelineCommand, Task>
     {
-        public async ValueTask Handle(
+        public async Task Handle(
             PipelineCommand message,
-            CommandHandlerDelegate<PipelineCommand> next,
+            PipelineBehaviorDelegate<PipelineCommand, Task> next,
             CancellationToken cancellationToken = default
         )
         {
@@ -255,17 +262,17 @@ public sealed class PipelineBehaviorTests
     }
 
     private sealed class StreamBehavior(CallTrace trace)
-        : IStreamBehavior<PipelineStream, int>
+        : IPipelineStreamBehavior<PipelineStream, int>
     {
         public IAsyncEnumerable<int> Handle(
             PipelineStream message,
-            StreamHandlerDelegate<PipelineStream, int> next,
+            PipelineBehaviorDelegate<PipelineStream, IAsyncEnumerable<int>> next,
             CancellationToken cancellationToken = default
         ) => Execute(message, next, cancellationToken);
 
         private async IAsyncEnumerable<int> Execute(
             PipelineStream message,
-            StreamHandlerDelegate<PipelineStream, int> next,
+            PipelineBehaviorDelegate<PipelineStream, IAsyncEnumerable<int>> next,
             [EnumeratorCancellation] CancellationToken cancellationToken
         )
         {
@@ -279,35 +286,35 @@ public sealed class PipelineBehaviorTests
     private sealed class PipelineNotificationHandler1(CallTrace trace)
         : INotificationHandler<PipelineNotification>
     {
-        public ValueTask Handle(
+        public Task Handle(
             PipelineNotification notification,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("notification:handler:1");
-            return ValueTask.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 
     private sealed class PipelineNotificationHandler2(CallTrace trace)
         : INotificationHandler<PipelineNotification>
     {
-        public ValueTask Handle(
+        public Task Handle(
             PipelineNotification notification,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("notification:handler:2");
-            return ValueTask.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 
     private sealed class NotificationBehavior(CallTrace trace)
-        : INotificationBehavior<PipelineNotification>
+        : IPipelineBehavior<PipelineNotification, Task>
     {
-        public async ValueTask Handle(
+        public async Task Handle(
             PipelineNotification message,
-            NotificationHandlerDelegate<PipelineNotification> next,
+            PipelineBehaviorDelegate<PipelineNotification, Task> next,
             CancellationToken cancellationToken = default
         )
         {

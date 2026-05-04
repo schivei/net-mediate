@@ -14,6 +14,13 @@ This page is the wiki entry point for the repository documentation set.
 - [DataDog integrations](DATADOG.md)
 - [NetMediate.Moq recipes](NETMEDIATE_MOQ_RECIPES.md)
 - [Samples](SAMPLES.md)
+- [AOT / NativeAOT and trimming](AOT.md)
+
+## Validation
+
+NetMediate does not include built-in validation. Implement validation as a pipeline behavior:
+
+- [Custom validation behavior sample](VALIDATION_BEHAVIOR_SAMPLE.md)
 
 ## Platform and framework coverage
 
@@ -23,13 +30,9 @@ Runtime packages are multi-targeted for:
 - `netstandard2.0`
 - `netstandard2.1`
 
-This enables usage from desktop, CLI, mobile, MAUI, and server applications, depending on host runtime support.
+This enables usage from desktop, CLI, mobile, MAUI, and server applications depending on host runtime support.
 
 ## Benchmarks
 
-Performance benchmark outputs are documented in:
-
+- [Benchmark results and reproduction steps](BENCHMARKS.md)
 - [Diagnostics benchmark table](DIAGNOSTICS.md#performance-comparison-main-vs-current-branch)
-- [Resilience benchmark table](RESILIENCE.md#load-and-capacity-benchmark)
-
-`netstandard2.0` and `netstandard2.1` assets are host-runtime assets; benchmark throughput must be measured in the concrete target app runtime.

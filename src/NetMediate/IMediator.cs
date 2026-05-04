@@ -12,10 +12,10 @@ public interface IMediator
     /// <param name="notification">The notification message to publish.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    ValueTask Notify<TMessage>(
+    Task Notify<TMessage>(
         TMessage notification,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull, INotification;
+    ) where TMessage : notnull;
 
     /// <summary>
     /// Publishes a collection of notification messages to all registered handlers.
@@ -24,10 +24,10 @@ public interface IMediator
     /// <param name="messages">The collection of notification messages to publish.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    ValueTask Notify<TMessage>(
+    Task Notify<TMessage>(
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull, INotification;
+    ) where TMessage : notnull;
 
     /// <summary>
     /// Sends a command to all registered handlers in parallel.
@@ -41,10 +41,27 @@ public interface IMediator
     /// <param name="command">The command to send.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    ValueTask Send<TMessage>(
+    Task Send<TMessage>(
         TMessage command,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull, ICommand;
+    ) where TMessage : notnull;
+
+    /// <summary>
+    /// Sends a command to all registered handlers in parallel.
+    /// </summary>
+    /// <remarks>
+    /// All registered <see cref="ICommandHandler{TMessage}"/> implementations receive the command
+    /// concurrently via <c>Task.WhenAll</c>. Use this when you want to trigger an action across
+    /// multiple consumers with no return value.
+    /// </remarks>
+    /// <typeparam name="TMessage">The type of the command message.</typeparam>
+    /// <param name="commands">The command to send.</param>
+    /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+    /// <returns>A task that represents the asynchronous operation.</returns>
+    Task Send<TMessage>(
+        IEnumerable<TMessage> commands,
+        CancellationToken cancellationToken = default
+    ) where TMessage : notnull;
 
     /// <summary>
     /// Sends a request to a handler and awaits a response.
@@ -54,10 +71,10 @@ public interface IMediator
     /// <param name="request">The request to send.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation and contains the response.</returns>
-    ValueTask<TResponse> Request<TMessage, TResponse>(
+    Task<TResponse> Request<TMessage, TResponse>(
         TMessage request,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull, IRequest<TResponse>;
+    ) where TMessage : notnull;
 
     /// <summary>
     /// Sends a request to a handler and receives a stream of responses asynchronously.
@@ -70,5 +87,5 @@ public interface IMediator
     IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
         TMessage request,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull, IStream<TResponse>;
+    ) where TMessage : notnull;
 }

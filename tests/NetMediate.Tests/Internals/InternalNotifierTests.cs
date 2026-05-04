@@ -1,105 +1,133 @@
 using Microsoft.Extensions.DependencyInjection;
-using Moq;
+using Microsoft.Extensions.Logging;
 using NetMediate.Internals;
-using System.Threading.Channels;
 
 namespace NetMediate.Tests.Internals;
 
 /// <summary>
-/// Tests for the internal <see cref="Notifier"/> (production channel-based notifier),
-/// distinct from <see cref="NetMediate.Moq.Notifier"/> which is used in unit tests.
+/// Tests for the internal <see cref="Notifier"/> (production fire-and-forget notifier).
 /// </summary>
 public class InternalNotifierTests
 {
-    public record TestNotification : INotification;
+    public record TestNotification;
 
-    private static (Notifier notifier, Channel<IPack> channel) BuildNotifier(
-        INotificationHandler<TestNotification>[] handlers,
-        IValidationHandler<TestNotification>[] validationHandlers)
+    private static (Notifier notifier, ServiceProvider provider) BuildNotifier(
+        Action<IMediatorServiceBuilder>? configure = null)
     {
-        var channel = Channel.CreateUnbounded<IPack>();
-        var config = new Configuration(channel);
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.UseNetMediate(configure ?? (_ => { }));
+        var provider = services.BuildServiceProvider();
+        var logger = provider.GetRequiredService<ILogger<Notifier>>();
+        return (new Notifier(provider, logger), provider);
+    }
 
-        var spMock = new Mock<IServiceProvider>();
-        spMock.Setup(p => p.GetService(typeof(IEnumerable<INotificationHandler<TestNotification>>)))
-              .Returns(handlers);
-        spMock.Setup(p => p.GetService(typeof(IEnumerable<IValidationHandler<TestNotification>>)))
-              .Returns(validationHandlers);
-        spMock.Setup(p => p.GetService(typeof(IEnumerable<INotificationBehavior<TestNotification>>)))
-              .Returns(Array.Empty<INotificationBehavior<TestNotification>>());
-
-        var scopeMock = new Mock<IServiceScope>();
-        scopeMock.Setup(s => s.ServiceProvider).Returns(spMock.Object);
-
-        var scopeFactoryMock = new Mock<IServiceScopeFactory>();
-        scopeFactoryMock.Setup(f => f.CreateScope()).Returns(scopeMock.Object);
-
-        return (new Notifier(config, scopeFactoryMock.Object), channel);
+    private static async Task WaitForAsync(Func<bool> predicate, CancellationToken ct)
+    {
+        for (var i = 0; i < 100; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+            if (predicate()) return;
+            await Task.Delay(10, ct);
+        }
     }
 
     [Fact]
     public async Task DispatchNotifications_WithHandler_InvokesHandler()
     {
-        // Arrange
-        var handlerMock = new Mock<INotificationHandler<TestNotification>>();
-        handlerMock.Setup(h => h.Handle(It.IsAny<TestNotification>(), It.IsAny<CancellationToken>()))
-                   .Returns(ValueTask.CompletedTask);
-
-        var (notifier, _) = BuildNotifier([handlerMock.Object], []);
+        var tcs = new TaskCompletionSource<bool>();
+        var handler = new TcsNotificationHandler<TestNotification>(tcs);
+        var (notifier, provider) = BuildNotifier();
+        await using var _ = provider;
         var message = new TestNotification();
 
-        // Act
-        await notifier.DispatchNotifications(message, TestContext.Current.CancellationToken);
+        await notifier.DispatchNotifications(message, [handler], TestContext.Current.CancellationToken);
+        await WaitForAsync(() => tcs.Task.IsCompleted, TestContext.Current.CancellationToken);
 
-        // Assert — handler was invoked (covers the normal Notifier.DispatchNotifications path + finally)
-        handlerMock.Verify(h => h.Handle(message, It.IsAny<CancellationToken>()), Times.Once);
+        Assert.True(tcs.Task.IsCompletedSuccessfully);
     }
 
     [Fact]
-    public async Task DispatchNotifications_WhenHandlerThrows_PropagatesAndCoversExceptionPath()
+    public async Task DispatchNotifications_WhenHandlerThrows_LogsAndDoesNotThrow()
     {
-        // Arrange
-        var handlerMock = new Mock<INotificationHandler<TestNotification>>();
-        handlerMock.Setup(h => h.Handle(It.IsAny<TestNotification>(), It.IsAny<CancellationToken>()))
-                   .ThrowsAsync(new InvalidOperationException("handler failure"));
-
-        var (notifier, _) = BuildNotifier([handlerMock.Object], []);
+        var handler = new ThrowingNotificationHandler<TestNotification>();
+        var (notifier, provider) = BuildNotifier();
+        await using var _ = provider;
         var message = new TestNotification();
 
-        // Act & Assert — covers the catch(Exception ex) block (activity?.SetStatus) and re-throw
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => notifier.DispatchNotifications(message, TestContext.Current.CancellationToken).AsTask()
-        );
+        // Fire-and-forget: returns Task.CompletedTask immediately, exception is swallowed/logged
+        var task = notifier.DispatchNotifications(message, [handler], TestContext.Current.CancellationToken);
+        Assert.True(task.IsCompleted);
+        await task; // must not throw
     }
 
     [Fact]
     public async Task DispatchNotifications_WithNoHandlers_CompletesWithoutInvoking()
     {
-        // Arrange — no handlers → MountPipeline returns null → early return
-        var (notifier, _) = BuildNotifier([], []);
+        var (notifier, provider) = BuildNotifier();
+        await using var _ = provider;
         var message = new TestNotification();
 
-        // Act & Assert — no exception, pipeline returns null path covered
-        await notifier.DispatchNotifications(message, TestContext.Current.CancellationToken);
+        var task = notifier.DispatchNotifications(message, [], TestContext.Current.CancellationToken);
+        Assert.True(task.IsCompleted);
+        await task;
     }
 
     [Fact]
-    public async Task Notify_Enumerable_WritesPacksToChannel()
+    public async Task Notify_WithHandler_InvokesHandlerEventually()
     {
-        // Arrange — production Notifier.Notify(IEnumerable) writes to the channel; no worker is running
-        var handlerMock = new Mock<INotificationHandler<TestNotification>>();
-        handlerMock.Setup(h => h.Handle(It.IsAny<TestNotification>(), It.IsAny<CancellationToken>()))
-                   .Returns(ValueTask.CompletedTask);
+        var tcs = new TaskCompletionSource<bool>();
+        var handler = new TcsNotificationHandler<TestNotification>(tcs);
+        var (notifier, provider) = BuildNotifier(b =>
+            b.RegisterNotificationHandler<TestNotification>(handler));
+        await using var _ = provider;
+        var message = new TestNotification();
 
-        var (notifier, channel) = BuildNotifier([handlerMock.Object], []);
-        TestNotification[] messages = [new(), new()];
+        await notifier.Notify(message, TestContext.Current.CancellationToken);
+        await WaitForAsync(() => tcs.Task.IsCompleted, TestContext.Current.CancellationToken);
 
-        // Act
-        await notifier.Notify(messages, TestContext.Current.CancellationToken);
+        Assert.True(tcs.Task.IsCompletedSuccessfully);
+    }
 
-        // Assert — 2 packs written to channel (one per message)
-        var packsRead = 0;
-        while (channel.Reader.TryRead(out _)) packsRead++;
-        Assert.Equal(2, packsRead);
+    [Fact]
+    public void Notify_Enumerable_WhenNotifyThrowsSynchronously_CatchesAndLogs()
+    {
+        // A service provider that always throws forces Notify(TMessage) to throw
+        // synchronously inside the foreach loop, exercising the catch branch.
+        var services = new ServiceCollection();
+        services.AddLogging();
+        using var logProvider = services.BuildServiceProvider();
+        var logger = logProvider.GetRequiredService<ILogger<Notifier>>();
+
+        var notifier = new Notifier(new ThrowingServiceProvider(), logger);
+        var messages = new[] { new TestNotification(), new TestNotification() };
+
+        var task = notifier.Notify<TestNotification>(messages, CancellationToken.None);
+
+        // Must complete synchronously and not throw — exceptions are caught and logged.
+        Assert.True(task.IsCompletedSuccessfully);
+    }
+
+    private sealed class ThrowingServiceProvider : IServiceProvider
+    {
+        public object? GetService(Type serviceType) =>
+            throw new InvalidOperationException("test-throw");
+    }
+
+    private sealed class TcsNotificationHandler<T>(TaskCompletionSource<bool> tcs) : INotificationHandler<T>
+        where T : notnull
+    {
+        public Task Handle(T notification, CancellationToken ct = default)
+        {
+            tcs.TrySetResult(true);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ThrowingNotificationHandler<T> : INotificationHandler<T>
+        where T : notnull
+    {
+        public Task Handle(T notification, CancellationToken ct = default) =>
+            Task.FromException(new InvalidOperationException("handler failure"));
     }
 }

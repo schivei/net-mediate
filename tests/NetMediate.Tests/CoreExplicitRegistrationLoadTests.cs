@@ -97,7 +97,7 @@ public sealed class CoreExplicitRegistrationLoadTests(ITestOutputHelper output)
             },
             async (i, token) =>
             {
-                var response = await mediator.Request<ExplicitLoadRequest, int>(new ExplicitLoadRequest(i), token);
+                var response = await mediator.Request<ExplicitLoadRequest, int>(new(i), token);
                 Assert.Equal(i + 1, response);
             }
         );
@@ -182,11 +182,11 @@ public sealed class CoreExplicitRegistrationLoadTests(ITestOutputHelper output)
 
         // Explicit (AOT-safe) registration — no assembly scanning.
         // This is the same code path emitted by NetMediate.SourceGeneration.
-        builder.Services.AddNetMediate(configure =>
+        builder.Services.UseNetMediate(configure =>
         {
-            configure.Services.AddSingleton<ICommandHandler<ExplicitLoadCommand>, ExplicitLoadCommandHandler>();
-            configure.Services.AddSingleton<IRequestHandler<ExplicitLoadRequest, int>, ExplicitLoadRequestHandler>();
-            configure.Services.AddSingleton<INotificationHandler<ExplicitLoadNotification>, ExplicitLoadNotificationHandler>();
+            configure.RegisterCommandHandler<ExplicitLoadCommandHandler, ExplicitLoadCommand>();
+            configure.RegisterRequestHandler<ExplicitLoadRequestHandler, ExplicitLoadRequest, int>();
+            configure.RegisterNotificationHandler<ExplicitLoadNotificationHandler, ExplicitLoadNotification>();
         });
 
         var host = builder.Build();
@@ -201,25 +201,25 @@ public sealed class CoreExplicitRegistrationLoadTests(ITestOutputHelper output)
             StringComparison.OrdinalIgnoreCase
         );
 
-    public sealed record ExplicitLoadCommand(int Value) : ICommand;
-    public sealed record ExplicitLoadRequest(int Value) : IRequest<int>;
-    public sealed record ExplicitLoadNotification(int Value) : INotification;
+    public sealed record ExplicitLoadCommand(int Value);
+    public sealed record ExplicitLoadRequest(int Value);
+    public sealed record ExplicitLoadNotification(int Value);
 
     private sealed class ExplicitLoadCommandHandler : ICommandHandler<ExplicitLoadCommand>
     {
-        public ValueTask Handle(ExplicitLoadCommand command, CancellationToken cancellationToken = default) =>
-            ValueTask.CompletedTask;
+        public Task Handle(ExplicitLoadCommand command, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class ExplicitLoadRequestHandler : IRequestHandler<ExplicitLoadRequest, int>
     {
-        public ValueTask<int> Handle(ExplicitLoadRequest query, CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(query.Value + 1);
+        public Task<int> Handle(ExplicitLoadRequest query, CancellationToken cancellationToken = default) =>
+            Task.FromResult(query.Value + 1);
     }
 
     private sealed class ExplicitLoadNotificationHandler : INotificationHandler<ExplicitLoadNotification>
     {
-        public ValueTask Handle(ExplicitLoadNotification notification, CancellationToken cancellationToken = default) =>
-            ValueTask.CompletedTask;
+        public Task Handle(ExplicitLoadNotification notification, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }

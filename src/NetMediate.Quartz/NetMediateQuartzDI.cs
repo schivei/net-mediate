@@ -32,15 +32,10 @@ public static class NetMediateQuartzDI
     /// </remarks>
     /// <param name="services">The <see cref="IServiceCollection"/> to add NetMediate Quartz services to.</param>
     /// <param name="configureOptions">Optional callback to configure <see cref="QuartzNotificationOptions"/>.</param>
-    /// <param name="scanAssemblies">
-    /// When <see langword="true"/> (default), scans all loaded assemblies for NetMediate handlers.
-    /// Set to <see langword="false"/> when using source generation or manual handler registration.
-    /// </param>
     /// <returns>The <see cref="IServiceCollection"/> for chaining.</returns>
     public static IServiceCollection AddNetMediateQuartz(
         this IServiceCollection services,
-        Action<QuartzNotificationOptions>? configureOptions = null,
-        bool scanAssemblies = true)
+        Action<QuartzNotificationOptions>? configureOptions = null)
     {
         var opts = new QuartzNotificationOptions();
         configureOptions?.Invoke(opts);
@@ -53,10 +48,7 @@ public static class NetMediateQuartzDI
         services.AddTransient<QuartzNotificationJob>();
 
         // Register NetMediate using QuartzNotifier as the INotifiable transport.
-        if (scanAssemblies)
-            services.AddNetMediate<QuartzNotifier>();
-        else
-            services.AddNetMediate<QuartzNotifier>(_ => { });
+        services.UseNetMediate<QuartzNotifier>(_ => { });
 
         return services;
     }

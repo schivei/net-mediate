@@ -10,7 +10,7 @@ public sealed class JsonNotificationSerializer : INotificationSerializer
     private static readonly JsonSerializerOptions s_options = new(JsonSerializerDefaults.Web);
 
     /// <inheritdoc />
-    public string Serialize<TMessage>(TMessage message) where TMessage : notnull, INotification =>
+    public string Serialize<TMessage>(TMessage message) where TMessage : notnull =>
         JsonSerializer.Serialize<object>(message, s_options);
 
     /// <inheritdoc />

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\pack.props" />
+  <PropertyGroup>
+    <AssemblyName>NetMediate.Diagnostics</AssemblyName>
+    <Title>NetMediate.Diagnostics</Title>
+    <Description>Optional OpenTelemetry traces and metrics pipeline behaviors for NetMediate.</Description>
+    <PackageTags>Mediator;NetMediate;OpenTelemetry;Diagnostics;Tracing;Metrics</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'netstandard2.1'">
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.*" />
+  </ItemGroup>
+</Project>

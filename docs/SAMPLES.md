@@ -3,8 +3,10 @@
 ## API sample
 
 ```csharp
+// Handlers (CreateOrderHandler, OrderCreatedEventHandler) are discovered
+// and registered automatically by the source generator.
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddNetMediate(typeof(CreateOrderHandler).Assembly);
+builder.Services.AddNetMediate();
 
 var app = builder.Build();
 app.MapPost("/orders", async (IMediator mediator, CreateOrder command, CancellationToken ct) =>
@@ -19,8 +21,9 @@ app.Run();
 ## Worker sample
 
 ```csharp
+// SyncCommandHandler is discovered and registered automatically by the source generator.
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddNetMediate(typeof(Worker).Assembly);
+builder.Services.AddNetMediate();
 builder.Services.AddHostedService<Worker>();
 
 await builder.Build().RunAsync();
@@ -41,8 +44,9 @@ public sealed class Worker(IMediator mediator) : BackgroundService
 ## Minimal API sample
 
 ```csharp
+// CreateOrderHandler is discovered and registered automatically by the source generator.
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddNetMediate(typeof(CreateOrderHandler).Assembly);
+builder.Services.AddNetMediate();
 
 var app = builder.Build();
 app.MapPost("/orders", async (IMediator mediator, CreateOrder command, CancellationToken ct) =>

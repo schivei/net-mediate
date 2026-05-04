@@ -1,21 +1,6 @@
 # NetMediate.Resilience
 
-`NetMediate.Resilience` is an optional package that keeps resilience concerns out of the `NetMediate` core package.
-
-This follows a UNIX-style philosophy: each package should do one thing well.
-
-## Features
-
-- Retry behaviors for request and notification pipelines
-- Timeout behaviors for request and notification pipelines
-- Circuit-breaker behaviors for request and notification pipelines
-
-> For notification flows, exceptions thrown by handlers are caught by the background notification worker
-> and logged as warnings (they do not propagate to the caller of `mediator.Notify`). Resilience behaviors
-> wrap the notification dispatch pipeline (validation + all handlers) executed inside the worker.
->
-> Circuit-breaker state is intentionally isolated per message flow (closed generic behavior type),
-> so one message type opening a circuit does not block unrelated message types.
+Adds retry, timeout and circuit-breaker pipeline behaviors to your NetMediate message pipeline.
 
 ## Installation
 
@@ -23,86 +8,83 @@ This follows a UNIX-style philosophy: each package should do one thing well.
 dotnet add package NetMediate.Resilience
 ```
 
-## Usage
+## Registration
+
+No manual registration is required. The source generator (`NetMediate.SourceGeneration`) automatically detects the `NetMediate.Resilience` assembly reference at compile time and registers all resilience behaviors before user-defined behaviors in the pipeline.
+
+To customize the behavior options, use `ConfigureOptions` or `Configure<T>` **before** calling `AddNetMediate()`:
 
 ```csharp
-using NetMediate.Resilience;
+// Override retry defaults (optional — defaults are applied automatically)
+builder.Services.Configure<RetryBehaviorOptions>(opts =>
+{
+    opts.MaxRetryCount = 3;
+    opts.Delay = TimeSpan.FromMilliseconds(200);
+});
 
-builder.Services.AddNetMediate(typeof(MyHandler).Assembly);
-builder.Services.AddNetMediateResilience(
-    configureRetry: retry =>
-    {
-        retry.MaxRetryCount = 2;
-        retry.Delay = TimeSpan.FromMilliseconds(25);
-    },
-    configureTimeout: timeout =>
-    {
-        timeout.RequestTimeout = TimeSpan.FromSeconds(2);
-        timeout.NotificationTimeout = TimeSpan.FromSeconds(2);
-    },
-    configureCircuitBreaker: breaker =>
-    {
-        breaker.FailureThreshold = 5;
-        breaker.OpenDuration = TimeSpan.FromSeconds(30);
-    }
-);
+builder.Services.Configure<TimeoutBehaviorOptions>(opts =>
+{
+    opts.RequestTimeout = TimeSpan.FromSeconds(10);
+    opts.NotificationTimeout = TimeSpan.FromSeconds(5);
+});
+
+builder.Services.Configure<CircuitBreakerBehaviorOptions>(opts =>
+{
+    opts.FailureThreshold = 5;
+    opts.OpenDuration = TimeSpan.FromSeconds(30);
+});
+
+// The source generator emits this call — no manual call needed
+builder.Services.AddNetMediate();
 ```
 
-You can also register each concern independently:
+Each option is independent — override only the ones you need.
+
+## Behaviors
+
+| Behavior | Registration service type | Applies to |
+|---|---|---|
+| `RetryRequestBehavior<TMessage, TResponse>` | `IPipelineRequestBehavior<,>` | Request pipeline |
+| `RetryNotificationBehavior<TMessage>` | `IPipelineBehavior<>` | Notification pipeline |
+| `TimeoutRequestBehavior<TMessage, TResponse>` | `IPipelineRequestBehavior<,>` | Request pipeline |
+| `TimeoutNotificationBehavior<TMessage>` | `IPipelineBehavior<>` | Notification pipeline |
+| `CircuitBreakerRequestBehavior<TMessage, TResponse>` | `IPipelineRequestBehavior<,>` | Request pipeline |
+| `CircuitBreakerNotificationBehavior<TMessage>` | `IPipelineBehavior<>` | Notification pipeline |
+
+> **Note:** Notification dispatch is fire-and-forget by design. Handler exceptions do **not** propagate back through the notification pipeline, so retry/timeout/circuit-breaker behaviors at the pipeline level do not observe handler failures for notifications. Use these behaviors to protect the pipeline itself (e.g., adapter calls, pre-processing logic).
+
+## Retry
+
+Retries a failed pipeline step up to `MaxRetryCount` times with an optional delay between attempts.
 
 ```csharp
-builder.Services.AddNetMediateRetry();
-builder.Services.AddNetMediateTimeout();
-builder.Services.AddNetMediateCircuitBreaker();
+builder.Services.Configure<RetryBehaviorOptions>(opts =>
+{
+    opts.MaxRetryCount = 3;
+    opts.Delay = TimeSpan.FromMilliseconds(100);
+});
 ```
 
-## Load and capacity benchmark
+## Timeout
 
-`LoadPerformanceTests` and `ResilienceLoadPerformanceTests` exercise sequential and parallel scenarios with and without the resilience behaviors package enabled.
+Cancels the request if it exceeds the configured timeout.
 
-### How to reproduce
-
-```bash
-NETMEDIATE_RUN_PERFORMANCE_TESTS=true dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj \
-  --configuration Release --filter "FullyQualifiedName~LoadPerformance" \
-  --logger "console;verbosity=detailed"
+```csharp
+builder.Services.Configure<TimeoutBehaviorOptions>(opts =>
+{
+    opts.RequestTimeout = TimeSpan.FromSeconds(30);
+    opts.NotificationTimeout = TimeSpan.FromSeconds(5);
+});
 ```
 
-Each test prints a `LOAD_RESULT` line of the form:
+## Circuit Breaker
 
+Opens the circuit after `FailureThreshold` consecutive failures and keeps it open for `OpenDuration`.
+
+```csharp
+builder.Services.Configure<CircuitBreakerBehaviorOptions>(opts =>
+{
+    opts.FailureThreshold = 5;
+    opts.OpenDuration = TimeSpan.FromMinutes(1);
+});
 ```
-LOAD_RESULT <scenario> tfm=<tfm> ops=<count> elapsed_ms=<ms> throughput_ops_s=<ops/s>
-```
-
-### Measured results (net10.0 — 5-run median, GitHub-hosted runner)
-
-| Scenario | Operations | Mode | Median throughput (ops/s) | Notes |
-|---|---:|---|---:|---|
-| `command` | 20,000 | Sequential | 404,930 | `ICommandHandler<T>` baseline |
-| `request_parallel` | 10,000 | Parallel | 136,357 | `IRequestHandler<T,R>` parallel baseline |
-| `resilience_request_parallel` | 10,000 | Parallel | 118,867 | Same as above + all three resilience behaviors |
-
-Observed overhead for resilience behaviors: **−12.83 %** compared to the parallel request baseline.
-
-> Absolute values depend on runner hardware and parallelism. These figures are captured on the
-> standard GitHub Actions runner (`ubuntu-latest`). Expect **2–5×** higher throughput on
-> developer workstations and production servers.
-
-### Minimum assertions
-
-`LoadPerformanceTests` uses a deliberately lenient threshold (`> 500 ops/s`) to stay green on any
-hardware. `ResilienceLoadPerformanceTests` applies an environment-aware minimum:
-
-- **CI (`GITHUB_ACTIONS=true`)**: `≥ 30,000 ops/s`
-- **Local/other**: `≥ 50,000 ops/s`
-
-### Target coverage for package assets
-
-`NetMediate.Resilience` is published for:
-
-- `net10.0`
-- `netstandard2.0`
-- `netstandard2.1`
-
-The measured throughput table above is produced on a `net10.0` host runtime. For `netstandard2.0`/`netstandard2.1`,
-benchmark numbers depend on the runtime that hosts the package (desktop/CLI/mobile/MAUI).

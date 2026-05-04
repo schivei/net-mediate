@@ -1,170 +1,116 @@
-﻿using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate.Internals;
 
 namespace NetMediate;
 
 /// <summary>
-/// Provides extension methods for registering NetMediate services with the dependency injection container.
+/// Provides the internal extension method used by source-generated code to register NetMediate
+/// services with the dependency injection container.
 /// </summary>
+/// <remarks>
+/// <para>
+/// <b>Do not call <see cref="UseNetMediate(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{NetMediate.IMediatorServiceBuilder})"/>
+/// directly.</b>  Use the <c>AddNetMediate()</c> extension method emitted by the
+/// <c>NetMediate.SourceGeneration</c> source generator instead.  That method is generated at
+/// compile time inside your project and calls this method with all discovered handlers
+/// registered in an AOT-safe, trim-safe manner.
+/// </para>
+/// <para>
+/// Calling <c>AddNetMediate()</c> more than once on the same <see cref="IServiceCollection"/> is
+/// safe: subsequent calls are silently ignored (a debug-level warning is written to
+/// <see cref="Debug"/>) and the original registration is preserved.
+/// </para>
+/// </remarks>
 [ExcludeFromCodeCoverage]
 public static class NetMediateDI
 {
-    /// <summary>
-    /// Adds NetMediate services to the specified <see cref="IServiceCollection"/> and returns a <see cref="IMediatorServiceBuilder"/>
-    /// for further configuration. This method scans all loaded assemblies for handlers.
-    /// </summary>
-    /// <remarks>
-    /// This overload uses reflection-based assembly scanning and is not compatible with NativeAOT or trimming.
-    /// For AOT-compatible registration, use <c>AddNetMediateGenerated()</c> from the <c>NetMediate.SourceGeneration</c>
-    /// package, or the <see cref="AddNetMediate(IServiceCollection, Action{IMediatorServiceBuilder})"/> overload
-    /// that accepts an explicit configuration action.
-    /// </remarks>
-    /// <param name="services">The service collection to add NetMediate services to.</param>
-    /// <returns>A <see cref="IMediatorServiceBuilder"/> instance for additional configuration.</returns>
-    [RequiresUnreferencedCode(
-        "Assembly scanning uses reflection to discover handler types. " +
-        "Use AddNetMediate(IServiceCollection, Action<IMediatorServiceBuilder>) with explicit handler registration " +
-        "or NetMediate.SourceGeneration for a trim-safe path."
-    )]
-    public static IMediatorServiceBuilder AddNetMediate(this IServiceCollection services) =>
-        NetMediate<Notifier>(
-            services,
-            []
-        );
+    // Sentinel service used to detect duplicate registration attempts.
+    // Registered as a singleton by the first successful call; later calls detect its presence
+    // and return without modifying the container.
+    private sealed class NetMediateRegisteredMarker;
 
     /// <summary>
-    /// Adds NetMediate services to the specified service collection using the provided notifier type.
+    /// Configures NetMediate core services and applies the provided explicit handler registration
+    /// callback.  This overload is <em>intended to be called by source-generated code only</em>
+    /// — prefer the generated <c>AddNetMediate()</c> extension method over calling this method
+    /// directly.
     /// </summary>
     /// <remarks>
-    /// This overload uses reflection-based assembly scanning and is not compatible with NativeAOT or trimming.
-    /// </remarks>
-    /// <typeparam name="TNotifier">The type that implements the notification interface to be used for notifications.</typeparam>
-    /// <param name="services">The service collection to which NetMediate services will be added.</param>
-    /// <returns>An IMediatorServiceBuilder that can be used to further configure NetMediate services.</returns>
-    [RequiresUnreferencedCode(
-        "Assembly scanning uses reflection to discover handler types. " +
-        "Use AddNetMediate(IServiceCollection, Action<IMediatorServiceBuilder>) with explicit handler registration " +
-        "or NetMediate.SourceGeneration for a trim-safe path."
-    )]
-    public static IMediatorServiceBuilder AddNetMediate<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TNotifier>(this IServiceCollection services)
-        where TNotifier : class, INotifiable =>
-        NetMediate<TNotifier>(
-            services,
-            []
-        );
-
-    /// <summary>
-    /// Adds NetMediate core services without assembly scanning and applies custom registration configuration.
-    /// This overload is useful for source-generated handler registration to avoid reflection at startup.
-    /// </summary>
-    /// <remarks>
-    /// This overload does <em>not</em> scan assemblies for handlers and is compatible with NativeAOT and trimming
-    /// when all handler types are explicitly registered inside <paramref name="configure"/>.
+    /// This overload is AOT- and trim-safe when all handler types are explicitly registered
+    /// inside <paramref name="configure"/>.  It does <b>not</b> scan assemblies for handlers.
+    /// Subsequent calls on the same <paramref name="services"/> are silently ignored.
     /// </remarks>
     /// <param name="services">The service collection to add NetMediate services to.</param>
-    /// <param name="configure">The callback that performs explicit handler registrations.</param>
+    /// <param name="configure">
+    /// The callback that performs explicit handler and behavior registrations.
+    /// </param>
     /// <returns>A <see cref="IMediatorServiceBuilder"/> instance for additional configuration.</returns>
-    public static IMediatorServiceBuilder AddNetMediate(
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static IMediatorServiceBuilder UseNetMediate(
         this IServiceCollection services,
         Action<IMediatorServiceBuilder> configure
     )
     {
         Guard.ThrowIfNull(configure);
 
-        // Direct instantiation (without MapAssemblies) is intentional: this overload is the
-        // AOT/trim-safe path. Assembly scanning is deliberately omitted so that the caller's
-        // configure callback is the sole source of handler registrations.
+        // Idempotency guard: if NetMediate was already registered on this container, log a
+        // warning and return a no-op builder so callers can still chain off the return value.
+        if (services.Any(static s => s.ServiceType == typeof(NetMediateRegisteredMarker)))
+        {
+            Debug.WriteLine(
+                "[NetMediate] UseNetMediate was called more than once on the same IServiceCollection. " +
+                "The duplicate call is ignored. Ensure AddNetMediate() is called only once " +
+                "at application startup."
+            );
+            return new MediatorServiceBuilder<Notifier>(services, skipCoreRegistration: true);
+        }
+
+        services.AddSingleton<NetMediateRegisteredMarker>();
+
         var builder = new MediatorServiceBuilder<Notifier>(services);
         configure(builder);
         return builder;
     }
 
     /// <summary>
-    /// Adds NetMediate core services without assembly scanning, using the provided notifier type, and applies
-    /// custom registration configuration.
+    /// Configures NetMediate core services with a custom notifier type and applies the provided
+    /// explicit handler registration callback.  This overload is <em>intended to be called by
+    /// source-generated code only</em>.
     /// </summary>
-    /// <remarks>
-    /// This overload does <em>not</em> scan assemblies for handlers and is compatible with NativeAOT and trimming
-    /// when all handler types are explicitly registered inside <paramref name="configure"/>.
-    /// </remarks>
-    /// <typeparam name="TNotifier">The type that implements the notification interface and will be used for notification handling.</typeparam>
-    /// <param name="services">The service collection to which NetMediate services will be added.</param>
-    /// <param name="configure">A delegate that configures the mediator service builder after the core services have been registered. Cannot be
-    /// null.</param>
-    /// <returns>An instance of IMediatorServiceBuilder that can be used to further configure mediator services.</returns>
-    public static IMediatorServiceBuilder AddNetMediate<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TNotifier>(
+    /// <typeparam name="TNotifier">
+    /// The type implementing <see cref="INotifiable"/> to use for notification handling.
+    /// </typeparam>
+    /// <param name="services">The service collection to add NetMediate services to.</param>
+    /// <param name="configure">
+    /// The callback that performs explicit handler and behavior registrations.
+    /// </param>
+    /// <returns>A <see cref="IMediatorServiceBuilder"/> instance for additional configuration.</returns>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public static IMediatorServiceBuilder UseNetMediate<
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
+        TNotifier>(
         this IServiceCollection services,
         Action<IMediatorServiceBuilder> configure
     ) where TNotifier : class, INotifiable
     {
         Guard.ThrowIfNull(configure);
 
-        // Direct instantiation (without MapAssemblies) is intentional: this overload is the
-        // AOT/trim-safe path. Assembly scanning is deliberately omitted so that the caller's
-        // configure callback is the sole source of handler registrations.
+        if (services.Any(static s => s.ServiceType == typeof(NetMediateRegisteredMarker)))
+        {
+            Debug.WriteLine(
+                "[NetMediate] UseNetMediate was called more than once on the same IServiceCollection. " +
+                "The duplicate call is ignored."
+            );
+            return new MediatorServiceBuilder<TNotifier>(services, skipCoreRegistration: true);
+        }
+
+        services.AddSingleton<NetMediateRegisteredMarker>();
+
         var builder = new MediatorServiceBuilder<TNotifier>(services);
         configure(builder);
         return builder;
     }
-
-    /// <summary>
-    /// Adds NetMediate mediator services to the specified service collection and registers handlers from the provided
-    /// assemblies.
-    /// </summary>
-    /// <remarks>
-    /// This overload uses reflection-based assembly scanning and is not compatible with NativeAOT or trimming.
-    /// </remarks>
-    /// <param name="services">The service collection to which the mediator services will be added. Cannot be null.</param>
-    /// <param name="assemblies">An array of assemblies to scan for handler implementations. At least one assembly must be provided.</param>
-    /// <returns>An IMediatorServiceBuilder that can be used to further configure mediator services.</returns>
-    [RequiresUnreferencedCode(
-        "Assembly scanning uses reflection to discover handler types. " +
-        "Use AddNetMediate(IServiceCollection, Action<IMediatorServiceBuilder>) with explicit handler registration " +
-        "or NetMediate.SourceGeneration for a trim-safe path."
-    )]
-    public static IMediatorServiceBuilder AddNetMediate(
-        this IServiceCollection services,
-        params Assembly[] assemblies
-    ) => NetMediate<Notifier>(services, assemblies);
-
-    /// <summary>
-    /// Adds NetMediate services to the specified <see cref="IServiceCollection"/> and returns a <see cref="IMediatorServiceBuilder"/>
-    /// for further configuration. This method scans the provided assemblies for handlers.
-    /// </summary>
-    /// <remarks>
-    /// This overload uses reflection-based assembly scanning and is not compatible with NativeAOT or trimming.
-    /// </remarks>
-    /// <param name="services">The service collection to add NetMediate services to.</param>
-    /// <param name="assemblies">Assemblies to scan for handlers.</param>
-    /// <returns>A <see cref="IMediatorServiceBuilder"/> instance for additional configuration.</returns>
-    [RequiresUnreferencedCode(
-        "Assembly scanning uses reflection to discover handler types. " +
-        "Use AddNetMediate(IServiceCollection, Action<IMediatorServiceBuilder>) with explicit handler registration " +
-        "or NetMediate.SourceGeneration for a trim-safe path."
-    )]
-    public static IMediatorServiceBuilder AddNetMediate<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TNotifier>(
-        this IServiceCollection services,
-        params Assembly[] assemblies
-    ) where TNotifier : class, INotifiable
-        => NetMediate<TNotifier>(services, assemblies);
-
-    /// <summary>
-    /// Configures and registers mediator services for the specified notifier type, mapping handlers from the provided
-    /// assemblies.
-    /// </summary>
-    /// <typeparam name="TNotifier">The type of notifier to be used with the mediator. Must implement the INotifiable interface.</typeparam>
-    /// <param name="services">The service collection to which mediator services will be added. Cannot be null.</param>
-    /// <param name="assemblies">An array of assemblies to scan for handler implementations. Only types in these assemblies will be considered
-    /// for registration.</param>
-    /// <returns>An IMediatorServiceBuilder instance for further configuration of mediator services.</returns>
-    [RequiresUnreferencedCode(
-        "Assembly scanning uses reflection to discover handler types."
-    )]
-    private static IMediatorServiceBuilder NetMediate<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TNotifier>(
-        IServiceCollection services,
-        params Assembly[] assemblies
-    ) where TNotifier : class, INotifiable
-        => new MediatorServiceBuilder<TNotifier>(services).MapAssemblies(assemblies);
 }

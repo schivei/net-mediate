@@ -1,15 +1,12 @@
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using NetMediate.Adapters;
-using NetMediate.Resilience;
 
 namespace NetMediate.Tests;
 
 /// <summary>
-/// Load benchmarks with both <c>NetMediate.Resilience</c> and <c>NetMediate.Adapters</c> registered
-/// simultaneously — measures the combined pipeline overhead of all three resilience behaviors plus
-/// the adapter forwarding wrapper.
+/// Load benchmarks with <c>NetMediate.Adapters</c> registered alongside core handlers —
+/// measures the combined pipeline overhead of the adapter forwarding wrapper.
 /// </summary>
 public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
 {
@@ -36,7 +33,7 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
             },
             async (i, token) =>
             {
-                var response = await mediator.Request<FullStackRequest, int>(new FullStackRequest(i), token);
+                var response = await mediator.Request<FullStackRequest, int>(new(i), token);
                 Assert.Equal(i + 1, response);
             }
         );
@@ -122,25 +119,11 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(typeof(FullStackLoadPerformanceTests).Assembly);
-        builder.Services.AddNetMediateResilience(
-            configureRetry: options =>
-            {
-                options.MaxRetryCount = 0;
-                options.Delay = TimeSpan.Zero;
-            },
-            configureTimeout: options =>
-            {
-                options.RequestTimeout = TimeSpan.FromSeconds(30);
-                options.NotificationTimeout = TimeSpan.FromSeconds(30);
-            },
-            configureCircuitBreaker: options =>
-            {
-                options.FailureThreshold = 1000;
-                options.OpenDuration = TimeSpan.FromSeconds(1);
-            }
-        );
-        builder.Services.AddNetMediateAdapters();
+        builder.Services.UseNetMediate(configure =>
+        {
+            configure.RegisterRequestHandler<FullStackRequestHandler, FullStackRequest, int>();
+            configure.RegisterNotificationHandler<FullStackNotificationHandler, FullStackNotification>();
+        });
 
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
@@ -163,18 +146,18 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
             ? 20_000d
             : 40_000d;
 
-    public sealed record FullStackRequest(int Value) : IRequest<int>;
-    public sealed record FullStackNotification(int Value) : INotification;
+    public sealed record FullStackRequest(int Value);
+    public sealed record FullStackNotification(int Value);
 
     private sealed class FullStackRequestHandler : IRequestHandler<FullStackRequest, int>
     {
-        public ValueTask<int> Handle(FullStackRequest query, CancellationToken cancellationToken = default) =>
-            ValueTask.FromResult(query.Value + 1);
+        public Task<int> Handle(FullStackRequest query, CancellationToken cancellationToken = default) =>
+            Task.FromResult(query.Value + 1);
     }
 
     private sealed class FullStackNotificationHandler : INotificationHandler<FullStackNotification>
     {
-        public ValueTask Handle(FullStackNotification notification, CancellationToken cancellationToken = default) =>
-            ValueTask.CompletedTask;
+        public Task Handle(FullStackNotification notification, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 }

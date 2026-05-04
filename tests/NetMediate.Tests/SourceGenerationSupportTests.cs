@@ -6,12 +6,15 @@ namespace NetMediate.Tests;
 public sealed class SourceGenerationSupportTests
 {
     [Fact]
-    public async Task AddNetMediate_WithConfigureOverload_ShouldAllowExplicitRegistrationWithoutAssemblyScan()
+    public async Task UseNetMediate_WithConfigureOverload_ShouldAllowExplicitRegistrationWithoutAssemblyScan()
     {
         ExplicitRegistrationCommandHandler.Executed = 0;
 
         var builder = Host.CreateApplicationBuilder();
-        builder.Services.AddNetMediate(typeof(ExplicitRegistrationCommand).Assembly);
+        builder.Services.UseNetMediate(configure =>
+        {
+            configure.RegisterCommandHandler<ExplicitRegistrationCommandHandler, ExplicitRegistrationCommand>();
+        });
 
         using var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
@@ -22,20 +25,20 @@ public sealed class SourceGenerationSupportTests
         Assert.Equal(1, Volatile.Read(ref ExplicitRegistrationCommandHandler.Executed));
     }
 
-    public sealed record ExplicitRegistrationCommand : ICommand;
+    public sealed record ExplicitRegistrationCommand;
 
     private sealed class ExplicitRegistrationCommandHandler
         : ICommandHandler<ExplicitRegistrationCommand>
     {
         public static int Executed;
 
-        public ValueTask Handle(
+        public Task Handle(
             ExplicitRegistrationCommand command,
             CancellationToken cancellationToken = default
         )
         {
             Interlocked.Increment(ref Executed);
-            return ValueTask.CompletedTask;
+            return Task.CompletedTask;
         }
     }
 }

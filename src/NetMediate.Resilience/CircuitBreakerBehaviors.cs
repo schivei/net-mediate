@@ -1,27 +1,21 @@
-﻿namespace NetMediate.Resilience;
+using Microsoft.Extensions.Options;
+
+namespace NetMediate.Resilience;
 
 /// <summary>
-/// Provides a request pipeline behavior that implements the circuit breaker pattern, preventing further request
-/// handling when a configurable failure threshold is exceeded within a specified time window.
+/// Request pipeline behavior that applies circuit-breaker logic.
+/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
-/// <remarks>The circuit breaker is maintained per closed generic type, isolating failure tracking for each
-/// message type. When the number of consecutive failures reaches the configured threshold, the circuit opens and
-/// subsequent requests are rejected for the specified duration. After the open period elapses, the circuit resets and
-/// allows requests to proceed. This behavior helps prevent repeated failures from overwhelming downstream
-/// systems.</remarks>
-/// <typeparam name="TMessage">The type of the request message. Must implement IRequest<TResponse> and cannot be null.</typeparam>
-/// <typeparam name="TResponse">The type of the response returned by the request handler.</typeparam>
-/// <param name="options">The configuration options that control the failure threshold and open duration for the circuit breaker.</param>
 public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
-    CircuitBreakerBehaviorOptions options
-) : IRequestBehavior<TMessage, TResponse> where TMessage : notnull, IRequest<TResponse>
+    IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
+) : IPipelineRequestBehavior<TMessage, TResponse> where TMessage : notnull
 {
     private static readonly Lock s_sync = new();
     private static int s_consecutiveFailures;
     private static DateTimeOffset? s_openUntil;
 
     /// <inheritdoc />
-    public async ValueTask<TResponse> Handle(TMessage message, RequestHandlerDelegate<TMessage, TResponse> next, CancellationToken cancellationToken = default)
+    public async Task<TResponse> Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task<TResponse>> next, CancellationToken cancellationToken)
     {
         if (IsCircuitOpen())
             throw new InvalidOperationException(
@@ -36,7 +30,7 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
         }
         catch
         {
-            RegisterFailure(options);
+            RegisterFailure(optionsAccessor.Value);
             throw;
         }
     }
@@ -89,28 +83,21 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 }
 
 /// <summary>
-/// Provides a notification pipeline behavior that applies a circuit breaker pattern to notification handlers,
-/// temporarily blocking message processing after a configurable number of consecutive failures.
+/// Notification and command pipeline behavior that applies circuit-breaker logic.
+/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
-/// <remarks>The circuit breaker state is maintained separately for each closed generic type, ensuring that
-/// failures in one notification type do not affect others. When the number of consecutive failures reaches the
-/// specified threshold, the circuit opens and blocks further notifications for the configured duration. After the open
-/// period elapses, the circuit resets and allows processing to resume.</remarks>
-/// <typeparam name="TMessage">The type of notification message handled by this behavior. Must implement <see cref="INotification"/> and be
-/// non-nullable.</typeparam>
-/// <param name="options">The configuration options that control the failure threshold and open duration for the circuit breaker.</param>
-public sealed class CircuitBreakerNotificationBehavior<TMessage>(CircuitBreakerBehaviorOptions options)
-    : INotificationBehavior<TMessage> where TMessage : notnull, INotification
+public sealed class CircuitBreakerNotificationBehavior<TMessage>(IOptions<CircuitBreakerBehaviorOptions> optionsAccessor)
+    : IPipelineBehavior<TMessage> where TMessage : notnull
 {
     private static readonly Lock s_sync = new();
     private static int s_consecutiveFailures;
     private static DateTimeOffset? s_openUntil;
 
     /// <inheritdoc />
-    public async ValueTask Handle(
+    public async Task Handle(
         TMessage message,
-        NotificationHandlerDelegate<TMessage> next,
-        CancellationToken cancellationToken = default
+        PipelineBehaviorDelegate<TMessage, Task> next,
+        CancellationToken cancellationToken
     )
     {
         if (IsCircuitOpen())
@@ -125,7 +112,7 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(CircuitBreakerB
         }
         catch
         {
-            RegisterFailure(options);
+            RegisterFailure(optionsAccessor.Value);
             throw;
         }
     }
@@ -137,14 +124,13 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(CircuitBreakerB
             if (s_openUntil is null)
                 return false;
 
-            if (DateTimeOffset.UtcNow >= s_openUntil.Value)
-            {
-                s_openUntil = null;
-                s_consecutiveFailures = 0;
-                return false;
-            }
+            if (DateTimeOffset.UtcNow < s_openUntil.Value)
+                return true;
+            
+            s_openUntil = null;
+            s_consecutiveFailures = 0;
+            return false;
 
-            return true;
         }
     }
 

@@ -1,10 +1,10 @@
 namespace NetMediate.Diagnostics;
 
 /// <summary>
-/// Notification pipeline behavior that records OpenTelemetry traces and metrics for notification dispatch.
-/// Register via <see cref="DependencyInjection.AddNetMediateDiagnostics"/>.
+/// Notification and command pipeline behavior that records OpenTelemetry traces and metrics.
+/// Registered per-handler by the source generator when <c>NetMediate.Diagnostics</c> is referenced.
 /// </summary>
-internal sealed class TelemetryNotificationBehavior<TMessage> : IPipelineBehavior<TMessage>
+public sealed class TelemetryNotificationBehavior<TMessage> : IPipelineBehavior<TMessage>
     where TMessage : notnull
 {
     /// <inheritdoc />
@@ -31,10 +31,10 @@ internal sealed class TelemetryNotificationBehavior<TMessage> : IPipelineBehavio
 }
 
 /// <summary>
-/// Request pipeline behavior that records OpenTelemetry traces and metrics for request dispatch.
-/// Register via <see cref="DependencyInjection.AddNetMediateDiagnostics"/>.
+/// Request pipeline behavior that records OpenTelemetry traces and metrics.
+/// Registered per-handler by the source generator when <c>NetMediate.Diagnostics</c> is referenced.
 /// </summary>
-internal sealed class TelemetryRequestBehavior<TMessage, TResponse> : IPipelineRequestBehavior<TMessage, TResponse>
+public sealed class TelemetryRequestBehavior<TMessage, TResponse> : IPipelineRequestBehavior<TMessage, TResponse>
     where TMessage : notnull
 {
     /// <inheritdoc />
@@ -61,8 +61,8 @@ internal sealed class TelemetryRequestBehavior<TMessage, TResponse> : IPipelineR
 }
 
 /// <summary>
-/// Stream pipeline behavior that records OpenTelemetry traces and metrics for stream dispatch.
-/// Register via <see cref="DependencyInjection.AddNetMediateDiagnostics"/>.
+/// Stream pipeline behavior that records OpenTelemetry traces and metrics.
+/// Registered per-handler by the source generator when <c>NetMediate.Diagnostics</c> is referenced.
 /// </summary>
 /// <remarks>
 /// The activity is scoped to the stream <em>dispatch</em> (i.e. the call to
@@ -71,7 +71,7 @@ internal sealed class TelemetryRequestBehavior<TMessage, TResponse> : IPipelineR
 /// enumeration independently. The metric counter is also incremented at dispatch time to
 /// track how many streams were started.
 /// </remarks>
-internal sealed class TelemetryStreamBehavior<TMessage, TResponse> : IPipelineStreamBehavior<TMessage, TResponse>
+public sealed class TelemetryStreamBehavior<TMessage, TResponse> : IPipelineStreamBehavior<TMessage, TResponse>
     where TMessage : notnull
 {
     /// <inheritdoc />

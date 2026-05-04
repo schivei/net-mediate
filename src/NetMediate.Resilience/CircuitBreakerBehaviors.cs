@@ -1,6 +1,10 @@
 ﻿namespace NetMediate.Resilience;
 
-internal sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
+/// <summary>
+/// Request pipeline behavior that applies circuit-breaker logic.
+/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
+/// </summary>
+public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     CircuitBreakerBehaviorOptions options
 ) : IPipelineRequestBehavior<TMessage, TResponse> where TMessage : notnull
 {
@@ -76,7 +80,11 @@ internal sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     }
 }
 
-internal sealed class CircuitBreakerNotificationBehavior<TMessage>(CircuitBreakerBehaviorOptions options)
+/// <summary>
+/// Notification and command pipeline behavior that applies circuit-breaker logic.
+/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
+/// </summary>
+public sealed class CircuitBreakerNotificationBehavior<TMessage>(CircuitBreakerBehaviorOptions options)
     : IPipelineBehavior<TMessage> where TMessage : notnull
 {
     private static readonly Lock s_sync = new();

@@ -268,12 +268,36 @@ public sealed class ResilienceBehaviorTests
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddNetMediate(configure =>
         {
+            // Handlers
             configure.RegisterRequestHandler<RetryRequestHandler, RetryRequestMessage, string>();
             configure.RegisterRequestHandler<TimeoutRequestHandler, TimeoutRequestMessage, string>();
             configure.RegisterRequestHandler<CircuitBreakerRequestHandler, CircuitBreakerRequestMessage, string>();
             configure.RegisterNotificationHandler<RetryNotificationViaMediatorHandler, RetryNotificationViaMediatorMessage>();
+
+            // Behaviors — registered explicitly (no open-generic typeof() calls).
+            // Behaviors with default options are pass-through for tests that only exercise one behavior type.
+            configure.RegisterBehavior<RetryRequestBehavior<RetryRequestMessage, string>, RetryRequestMessage, Task<string>>();
+            configure.RegisterBehavior<TimeoutRequestBehavior<RetryRequestMessage, string>, RetryRequestMessage, Task<string>>();
+            configure.RegisterBehavior<CircuitBreakerRequestBehavior<RetryRequestMessage, string>, RetryRequestMessage, Task<string>>();
+
+            configure.RegisterBehavior<RetryRequestBehavior<TimeoutRequestMessage, string>, TimeoutRequestMessage, Task<string>>();
+            configure.RegisterBehavior<TimeoutRequestBehavior<TimeoutRequestMessage, string>, TimeoutRequestMessage, Task<string>>();
+            configure.RegisterBehavior<CircuitBreakerRequestBehavior<TimeoutRequestMessage, string>, TimeoutRequestMessage, Task<string>>();
+
+            configure.RegisterBehavior<RetryRequestBehavior<CircuitBreakerRequestMessage, string>, CircuitBreakerRequestMessage, Task<string>>();
+            configure.RegisterBehavior<TimeoutRequestBehavior<CircuitBreakerRequestMessage, string>, CircuitBreakerRequestMessage, Task<string>>();
+            configure.RegisterBehavior<CircuitBreakerRequestBehavior<CircuitBreakerRequestMessage, string>, CircuitBreakerRequestMessage, Task<string>>();
+
+            configure.RegisterBehavior<RetryNotificationBehavior<RetryNotificationViaMediatorMessage>, RetryNotificationViaMediatorMessage, Task>();
+            configure.RegisterBehavior<TimeoutNotificationBehavior<RetryNotificationViaMediatorMessage>, RetryNotificationViaMediatorMessage, Task>();
+            configure.RegisterBehavior<CircuitBreakerNotificationBehavior<RetryNotificationViaMediatorMessage>, RetryNotificationViaMediatorMessage, Task>();
         });
+
+        // Apply test-specific options first; the fallback below registers defaults for any missing types.
         configureServices(builder.Services);
+
+        // Ensure all option types are available (TryAddSingleton skips types already registered above).
+        builder.Services.AddNetMediateResilience();
 
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
@@ -286,11 +310,30 @@ public sealed class ResilienceBehaviorTests
         var builder = Host.CreateApplicationBuilder();
         builder.Services.AddNetMediate(configure =>
         {
+            // Handlers
             configure.RegisterNotificationHandler<TimeoutNotificationHandler, TimeoutNotificationMessage>();
             configure.RegisterNotificationHandler<CbNotificationHandler, CbNotificationMessage>();
             configure.RegisterNotificationHandler<RetryNotificationHandler, RetryNotificationMessage>();
+
+            // Behaviors — registered explicitly (no open-generic typeof() calls).
+            configure.RegisterBehavior<RetryNotificationBehavior<TimeoutNotificationMessage>, TimeoutNotificationMessage, Task>();
+            configure.RegisterBehavior<TimeoutNotificationBehavior<TimeoutNotificationMessage>, TimeoutNotificationMessage, Task>();
+            configure.RegisterBehavior<CircuitBreakerNotificationBehavior<TimeoutNotificationMessage>, TimeoutNotificationMessage, Task>();
+
+            configure.RegisterBehavior<RetryNotificationBehavior<CbNotificationMessage>, CbNotificationMessage, Task>();
+            configure.RegisterBehavior<TimeoutNotificationBehavior<CbNotificationMessage>, CbNotificationMessage, Task>();
+            configure.RegisterBehavior<CircuitBreakerNotificationBehavior<CbNotificationMessage>, CbNotificationMessage, Task>();
+
+            configure.RegisterBehavior<RetryNotificationBehavior<RetryNotificationMessage>, RetryNotificationMessage, Task>();
+            configure.RegisterBehavior<TimeoutNotificationBehavior<RetryNotificationMessage>, RetryNotificationMessage, Task>();
+            configure.RegisterBehavior<CircuitBreakerNotificationBehavior<RetryNotificationMessage>, RetryNotificationMessage, Task>();
         });
+
+        // Apply test-specific options first; the fallback below registers defaults for any missing types.
         configureServices(builder.Services);
+
+        // Ensure all option types are available (TryAddSingleton skips types already registered above).
+        builder.Services.AddNetMediateResilience();
 
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);

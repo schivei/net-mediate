@@ -1,6 +1,10 @@
 ﻿namespace NetMediate.Resilience;
 
-internal sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehaviorOptions options)
+/// <summary>
+/// Request pipeline behavior that applies a timeout.
+/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
+/// </summary>
+public sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehaviorOptions options)
     : IPipelineRequestBehavior<TMessage, TResponse> where TMessage : notnull
 {
     /// <inheritdoc />
@@ -36,7 +40,11 @@ internal sealed class TimeoutRequestBehavior<TMessage, TResponse>(TimeoutBehavio
     }
 }
 
-internal sealed class TimeoutNotificationBehavior<TMessage>(TimeoutBehaviorOptions options)
+/// <summary>
+/// Notification and command pipeline behavior that applies a timeout.
+/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
+/// </summary>
+public sealed class TimeoutNotificationBehavior<TMessage>(TimeoutBehaviorOptions options)
     : IPipelineBehavior<TMessage> where TMessage : notnull
 {
     /// <inheritdoc />

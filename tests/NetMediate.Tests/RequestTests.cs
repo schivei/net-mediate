@@ -18,8 +18,10 @@ public sealed class RequestTests
             async (sp) =>
             {
                 var mediator = sp.GetRequiredService<IMediator>();
-                return await mediator
-                    .Request<MessageRequest, int>(message, fixture.CancellationTokenSource.Token);
+                return await mediator.Request<MessageRequest, int>(
+                    message,
+                    fixture.CancellationTokenSource.Token
+                );
             }
         );
         // Assert

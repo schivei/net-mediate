@@ -11,8 +11,19 @@
 /// <param name="message">The notification message to process.</param>
 /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
 /// <returns>A TResult that represents the asynchronous handling operation.</returns>
-public delegate TResult PipelineBehaviorDelegate<in TMessage, out TResult>(object? key, TMessage message, CancellationToken cancellationToken) where TResult : notnull where TMessage : notnull;
+public delegate TResult PipelineBehaviorDelegate<in TMessage, out TResult>(
+    object? key,
+    TMessage message,
+    CancellationToken cancellationToken
+)
+    where TResult : notnull
+    where TMessage : notnull;
 
-internal delegate TResult HandlerExecutionDelegate<in THandler, in TMessage, out TResult>(object? key, TMessage message, THandler[] handlers, CancellationToken cancellationToken) // NOSONAR S2436
+internal delegate TResult HandlerExecutionDelegate<in THandler, in TMessage, out TResult>(
+    object? key,
+    TMessage message,
+    THandler[] handlers,
+    CancellationToken cancellationToken
+)
     where TMessage : notnull
     where TResult : notnull;

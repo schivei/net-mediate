@@ -1,7 +1,7 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate.Internals;
 using Quartz;
-using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.Quartz;
 
@@ -42,7 +42,8 @@ public static class NetMediateQuartzDI
     )]
     public static IServiceCollection AddNetMediateQuartz(
         this IServiceCollection services,
-        Action<QuartzNotificationOptions>? configureOptions = null)
+        Action<QuartzNotificationOptions>? configureOptions = null
+    )
     {
         var opts = new QuartzNotificationOptions();
         configureOptions?.Invoke(opts);

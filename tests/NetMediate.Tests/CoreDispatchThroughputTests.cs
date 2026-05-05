@@ -65,7 +65,10 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
             $"LOAD_RESULT core_command tfm={tfm} execution_mode={mode} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={msgsPerSecond:F2}"
         );
 
-        Assert.True(msgsPerSecond > 500, $"Core command throughput too low: {msgsPerSecond:F0} msgs/s [{mode}]");
+        Assert.True(
+            msgsPerSecond > 500,
+            $"Core command throughput too low: {msgsPerSecond:F0} msgs/s [{mode}]"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -103,7 +106,10 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
             $"LOAD_RESULT core_notification tfm={tfm} execution_mode={mode} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={msgsPerSecond:F2}"
         );
 
-        Assert.True(msgsPerSecond > 500, $"Core notification throughput too low: {msgsPerSecond:F0} msgs/s [{mode}]");
+        Assert.True(
+            msgsPerSecond > 500,
+            $"Core notification throughput too low: {msgsPerSecond:F0} msgs/s [{mode}]"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -140,7 +146,10 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
             $"LOAD_RESULT core_request tfm={tfm} execution_mode={mode} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={msgsPerSecond:F2}"
         );
 
-        Assert.True(msgsPerSecond > 500, $"Core request throughput too low: {msgsPerSecond:F0} msgs/s [{mode}]");
+        Assert.True(
+            msgsPerSecond > 500,
+            $"Core request throughput too low: {msgsPerSecond:F0} msgs/s [{mode}]"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -178,7 +187,10 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
             $"LOAD_RESULT core_stream tfm={tfm} execution_mode={mode} ops={ops} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={msgsPerSecond:F2}"
         );
 
-        Assert.True(msgsPerSecond > 500, $"Core stream throughput too low: {msgsPerSecond:F0} msgs/s [{mode}]");
+        Assert.True(
+            msgsPerSecond > 500,
+            $"Core stream throughput too low: {msgsPerSecond:F0} msgs/s [{mode}]"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -208,8 +220,11 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
     // ─────────────────────────────────────────────────────────────────────────
 
     public sealed record CoreCmd(int Value);
+
     public sealed record CoreNotif(int Value);
+
     public sealed record CoreReq(int Value);
+
     public sealed record CoreStream(int Value);
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -238,7 +253,8 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
     {
         public async IAsyncEnumerable<int> Handle(
             CoreStream request,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            [EnumeratorCancellation] CancellationToken cancellationToken = default
+        )
         {
             for (var i = 0; i < 3; i++)
             {

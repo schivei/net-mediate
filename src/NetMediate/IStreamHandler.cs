@@ -8,4 +8,6 @@
 /// representing the response stream.</remarks>
 /// <typeparam name="TMessage">The type of the streaming message to handle. Must not be null.</typeparam>
 /// <typeparam name="TResponse">The type of the responses produced by the handler.</typeparam>
-public interface IStreamHandler<in TMessage, out TResponse> : IHandler<TMessage, IAsyncEnumerable<TResponse>> where TMessage : notnull;
+public interface IStreamHandler<in TMessage, out TResponse>
+    : IHandler<TMessage, IAsyncEnumerable<TResponse>>
+    where TMessage : notnull;

@@ -27,8 +27,14 @@ public sealed class NetMediateFixture : IDisposable
         _builder.Services.UseNetMediate<Notifier>(configure =>
         {
             configure.RegisterCommandHandler<MessageCommandHandler, MessageCommand>();
-            configure.RegisterNotificationHandler<MessageNotificationHandler, MessageNotification>();
-            configure.RegisterNotificationHandler<SimpleValidatableNotifyHandler, SimpleValidatableMessage>();
+            configure.RegisterNotificationHandler<
+                MessageNotificationHandler,
+                MessageNotification
+            >();
+            configure.RegisterNotificationHandler<
+                SimpleValidatableNotifyHandler,
+                SimpleValidatableMessage
+            >();
             configure.RegisterRequestHandler<MessageRequestHandler, MessageRequest, int>();
             configure.RegisterStreamHandler<MessageStreamHandler, MessageStream, int>();
             configure.RegisterRequestHandler<KeyedRequestHandler, MessageRequest, int>("routing");

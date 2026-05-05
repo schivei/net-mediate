@@ -32,10 +32,12 @@ public static class NetMediateDataDogOpenTelemetryDI
         var builder = services.AddOpenTelemetry();
 
         builder.ConfigureResource(resource =>
-            resource.AddService(
-                serviceName: options.ServiceName,
-                serviceVersion: options.ServiceVersion
-            ).AddAttributes([new("deployment.environment", options.Environment)])
+            resource
+                .AddService(
+                    serviceName: options.ServiceName,
+                    serviceVersion: options.ServiceVersion
+                )
+                .AddAttributes([new("deployment.environment", options.Environment)])
         );
 
         builder.WithTracing(tracing =>

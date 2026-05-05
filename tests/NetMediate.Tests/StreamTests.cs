@@ -20,7 +20,10 @@ public sealed class StreamTests
             {
                 var mediator = sp.GetRequiredService<IMediator>();
                 return await mediator
-                    .RequestStream<MessageStream, int>(message, fixture.CancellationTokenSource.Token)
+                    .RequestStream<MessageStream, int>(
+                        message,
+                        fixture.CancellationTokenSource.Token
+                    )
                     .AsyncToSync();
             }
         );
@@ -52,7 +55,10 @@ public sealed class StreamTests
 
         var mediator = host.Services.GetRequiredService<IMediator>();
         var results = await mediator
-            .RequestStream<FanOutMessage, int>(new FanOutMessage(), TestContext.Current.CancellationToken)
+            .RequestStream<FanOutMessage, int>(
+                new FanOutMessage(),
+                TestContext.Current.CancellationToken
+            )
             .AsyncToSync();
 
         // HandlerA yields 1, 2, 3 then HandlerB yields 4, 5, 6 — sequential fan-out.
@@ -65,7 +71,8 @@ public sealed class StreamTests
     {
         public IAsyncEnumerable<int> Handle(
             FanOutMessage message,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default
+        )
         {
             return GetAsync();
             static async IAsyncEnumerable<int> GetAsync()
@@ -82,7 +89,8 @@ public sealed class StreamTests
     {
         public IAsyncEnumerable<int> Handle(
             FanOutMessage message,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default
+        )
         {
             return GetAsync();
             static async IAsyncEnumerable<int> GetAsync()

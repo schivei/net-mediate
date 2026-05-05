@@ -13,8 +13,7 @@ public class PackageMetadataTests
 
         if (!File.Exists(packagePath))
         {
-            // Skip test if package doesn't exist (e.g., in CI without package build)
-            Assert.Skip("Package not found; run `dotnet pack` first.");
+            Assert.Fail("Package not found in src/NetMediate/bin/Release/; run `dotnet build src/NetMediate/NetMediate.csproj --configuration Release` first.");
         }
 
         using var archive = ZipFile.OpenRead(packagePath);
@@ -33,8 +32,7 @@ public class PackageMetadataTests
 
         if (!File.Exists(packagePath))
         {
-            // Skip test if package doesn't exist
-            Assert.Skip("Package not found; run `dotnet pack` first.");
+            Assert.Fail("Package not found in src/NetMediate/bin/Release/; run `dotnet build src/NetMediate/NetMediate.csproj --configuration Release` first.");
         }
 
         using var archive = ZipFile.OpenRead(packagePath);

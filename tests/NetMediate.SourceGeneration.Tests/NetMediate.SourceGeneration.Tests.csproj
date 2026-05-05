@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="..\..\versions.props" />
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <NoWarn>CS1591;xUnit1051;$(NoWarn)</NoWarn>
+    <RestoreAdditionalProjectSources>..\..\src\NetMediate\bin\Release</RestoreAdditionalProjectSources>
+  </PropertyGroup>
+  <ItemGroup>
+   <ProjectReference Include="..\..\src\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj" ReferenceOutputAssembly="false" />
+	<ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" ReferenceOutputAssembly="false" />
+    <PackageReference Include="coverlet.collector" Version="10.*">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.7" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
+	<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />
+	<PackageReference Include="NetMediate" Version="$(Stable).*" PrivateAssets="all" />
+    <PackageReference Include="xunit.v3" Version="3.*" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.*">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

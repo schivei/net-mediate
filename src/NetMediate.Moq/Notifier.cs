@@ -14,7 +14,7 @@ public class Notifier : INotifiable
         _notifier = new(serviceProvider, logger);
     }
     
-    public async Task DispatchNotifications<TMessage>(TMessage message, INotificationHandler<TMessage>[] handlers,
+    public async Task DispatchNotifications<TMessage>(object? key, TMessage message, INotificationHandler<TMessage>[] handlers,
         CancellationToken cancellationToken = default) where TMessage : notnull
     {
         foreach (var handler in handlers)
@@ -24,10 +24,10 @@ public class Notifier : INotifiable
     }
 
     /// <inheritdoc />
-    public Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
-        _notifier.Notify(message, cancellationToken);
+    public Task Notify<TMessage>(object? key, TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
+        _notifier.Notify(key, message, cancellationToken);
 
     /// <inheritdoc />
-    public Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull =>
-        _notifier.Notify(messages, cancellationToken);
+    public Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull =>
+        _notifier.Notify(key, messages, cancellationToken);
 }

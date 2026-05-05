@@ -2,7 +2,6 @@
   <Folder Name="/.sln/">
     <File Path=".github/dependabot.yml" />
     <File Path=".github/workflows/ci-cd.yml" />
-    <File Path=".github/workflows/emergency-publish.yml" />
     <File Path=".gitignore" />
     <File Path="LICENSE" />
     <File Path="pack.props" />

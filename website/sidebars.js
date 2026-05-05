@@ -52,7 +52,6 @@ const sidebars = {
         'community/code-of-conduct',
         'community/security',
         'community/roadmap',
-        'community/emergency-publishing',
       ]],
     ].map(([label, items]) => ({ type: 'category', label, items }))),
   ],

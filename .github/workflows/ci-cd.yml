@@ -289,8 +289,14 @@ jobs:
     - name: Get package version
       id: get_version
       run: |
-        PKG=$(find ./packages -maxdepth 1 -name 'NetMediate.[0-9]*.nupkg' | head -1)
-        VERSION=$(echo "$PKG" | sed 's/.*NetMediate\.\(.*\)\.nupkg/\1/')
+        PKG=$(find ./packages -maxdepth 1 -name 'NetMediate.[0-9]*.nupkg' | sort -V | tail -1)
+        if [[ -z "$PKG" ]]; then
+          echo "::error::No NetMediate .nupkg found in ./packages — cannot determine release version."
+          exit 1
+        fi
+        BASENAME=$(basename "$PKG")
+        VERSION="${BASENAME#NetMediate.}"
+        VERSION="${VERSION%.nupkg}"
         echo "version=$VERSION" >> "$GITHUB_OUTPUT"
         echo "Detected package version: $VERSION"
 

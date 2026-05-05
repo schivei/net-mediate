@@ -22,6 +22,7 @@
   --ifm-footer-background-color: #1c1e21;
   --ifm-link-color: #0969da;
   --ifm-link-hover-color: #0550ae;
+  --ifm-heading-color: #24292f;
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
@@ -41,6 +42,7 @@
   --ifm-footer-background-color: #0d1117;
   --ifm-link-color: #58a6ff;
   --ifm-link-hover-color: #79b8ff;
+  --ifm-heading-color: #f0f6fc;
 }
 
 /* Custom styling for a more GitHub-like appearance */
@@ -137,6 +139,19 @@ table td {
 .feature h3 {
   font-weight: 600;
   margin-bottom: 0.5rem;
+}
+
+/* Title and heading color fixes for light/dark mode */
+.hero__title,
+h1,
+h2,
+h3 {
+  color: var(--ifm-heading-color);
+}
+
+/* Hero title needs special handling when in hero--primary */
+.hero--primary .hero__title {
+  color: #ffffff;
 }
 
 /* Announcement bar */

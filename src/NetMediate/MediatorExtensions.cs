@@ -22,10 +22,24 @@ namespace NetMediate;
 public static class MediatorExtensions
 {
     private static readonly MethodInfo? s_requestMethod = typeof(IMediator)
-        .GetMethod(nameof(IMediator.Request));
+        .GetMethods()
+        .FirstOrDefault(m =>
+            m.Name == nameof(IMediator.Request) &&
+            m.IsGenericMethodDefinition &&
+            m.GetGenericArguments().Length == 2 &&
+            m.GetParameters() is var p &&
+            p.Length == 3 &&
+            p[0].ParameterType == typeof(object));
 
     private static readonly MethodInfo? s_requestStreamMethod = typeof(IMediator)
-        .GetMethod(nameof(IMediator.RequestStream));
+        .GetMethods()
+        .FirstOrDefault(m =>
+            m.Name == nameof(IMediator.RequestStream) &&
+            m.IsGenericMethodDefinition &&
+            m.GetGenericArguments().Length == 2 &&
+            m.GetParameters() is var p &&
+            p.Length == 3 &&
+            p[0].ParameterType == typeof(object));
 
     extension (IMediator mediator)
     {

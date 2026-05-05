@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <NoWarn>CS1591;xUnit1051;$(NoWarn)</NoWarn>
-    <RestoreAdditionalProjectSources>..\..\src\NetMediate\bin\$(Configuration)</RestoreAdditionalProjectSources>
+    <RestoreAdditionalProjectSources>..\..\src\NetMediate\bin\Release</RestoreAdditionalProjectSources>
   </PropertyGroup>
   <ItemGroup>
    <ProjectReference Include="..\..\src\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj" ReferenceOutputAssembly="false" />

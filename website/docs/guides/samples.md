@@ -73,7 +73,7 @@ Register handlers under routing keys and dispatch selectively at runtime. The `k
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddNetMediate(configure =>
 {
-    configure.RegisterCommandHandler<DefaultOrderHandler, ProcessOrder>();        // null key
+    configure.RegisterCommandHandler<DefaultOrderHandler, ProcessOrder>();        // null key → "__default"
     configure.RegisterCommandHandler<PriorityOrderHandler, ProcessOrder>("priority"); // keyed
 });
 
@@ -95,6 +95,10 @@ app.MapPost("/orders/priority", async (IMediator mediator, ProcessOrder cmd, Can
 
 app.Run();
 ```
+
+:::note Default routing key
+A `null` key (the default when no key is passed) is normalized internally to `"__default"`. Avoid using that literal string as your own routing key.
+:::
 
 :::note NativeAOT
 Keyed registration uses `IKeyedServiceProvider` internally and is **not NativeAOT-compatible**. Use it only when NativeAOT is not required.

@@ -371,7 +371,7 @@ Register handlers under routing keys and dispatch to a specific subset at runtim
 // Registration — same message type, different keys
 builder.Services.AddNetMediate(configure =>
 {
-    configure.RegisterCommandHandler<DefaultHandler, MyCommand>();        // null key
+    configure.RegisterCommandHandler<DefaultHandler, MyCommand>();        // null key → "__default"
     configure.RegisterCommandHandler<AuditHandler, MyCommand>("audit");  // keyed
 });
 
@@ -383,6 +383,8 @@ await mediator.Send("audit", new MyCommand(), cancellationToken);
 ```
 
 The `key` is propagated through the entire pipeline — behaviors receive it in their `Handle(object? key, ...)` signature and can use it for routing, logging, or conditional logic.
+
+> **Default routing key:** A `null` key (the default when no key is passed) is normalized internally to the constant `Extensions.DEFAULT_ROUTING_KEY = "__default"`. This means `mediator.Send(command, ct)` and `mediator.Send(null, command, ct)` are exactly equivalent. Avoid using the literal string `"__default"` as your own routing key to prevent conflicts.
 
 > **NativeAOT:** Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed registration uses `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**; use it only when NativeAOT is not required.
 

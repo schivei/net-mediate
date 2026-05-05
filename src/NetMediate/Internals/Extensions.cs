@@ -124,14 +124,17 @@ internal static class Extensions
                     {
                         // Combine behaviors registered under the default routing key (via
                         // RegisterBehavior) with any behaviors registered without a key (plain
-                        // AddScoped/AddSingleton/AddTransient).  The keyed set comes first so
-                        // the registration-order declared through IMediatorServiceBuilder is
+                        // AddScoped/AddSingleton/AddTransient). The keyed set comes first so
+                        // the registration order declared through IMediatorServiceBuilder is
                         // preserved; unkeyed registrations are appended for backward compat.
                         var keyed = serviceProvider.GetKeyedServices<T>(DEFAULT_ROUTING_KEY).ToArray();
                         var unkeyed = serviceProvider.GetServices<T>().ToArray();
                         if (keyed.Length == 0) return unkeyed;
                         if (unkeyed.Length == 0) return keyed;
-                        return keyed.Concat(unkeyed).ToArray();
+                        var combined = new T[keyed.Length + unkeyed.Length];
+                        keyed.CopyTo(combined, 0);
+                        unkeyed.CopyTo(combined, keyed.Length);
+                        return combined;
                     },
                     LazyThreadSafetyMode.ExecutionAndPublication
                 )

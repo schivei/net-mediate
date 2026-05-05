@@ -38,7 +38,11 @@ The generated method is decorated with `[ExcludeFromCodeCoverage]` — you do no
 
 If a class also implements `INotifiable` (e.g. a custom notifier), the generator uses `UseNetMediate<TNotifier>` instead of `UseNetMediate`.
 
-> **Keyed handlers** (registered with a `key` argument, e.g. `RegisterCommandHandler<T,M>("audit")`) are **not** auto-discovered by the source generator. Register keyed handlers manually via `UseNetMediate` if needed.
+> **Keyed handlers**: The source generator handles two cases automatically:
+> - Handler decorated with `[KeyedService(Key = "mykey")]` → registered with the explicit key `"mykey"`.
+> - Handler with no attribute → registered under `Extensions.DEFAULT_ROUTING_KEY = "__default"` (the same key used when `null` is passed at dispatch time, so `mediator.Send(command, ct)` and `mediator.Send(null, command, ct)` are equivalent).
+>
+> If you want to register a handler under a custom key *without* using the `[KeyedService]` attribute, you must register it manually via `UseNetMediate`. Avoid using the reserved literal `"__default"` as your own routing key.
 
 ## AOT / NativeAOT
 

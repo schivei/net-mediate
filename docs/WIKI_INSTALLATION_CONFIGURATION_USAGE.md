@@ -76,7 +76,7 @@ All `Register*Handler` methods accept an optional `key` argument. This lets you 
 ```csharp
 builder.Services.AddNetMediate(configure =>
 {
-    configure.RegisterCommandHandler<DefaultCommandHandler, MyCommand>();          // null key
+    configure.RegisterCommandHandler<DefaultCommandHandler, MyCommand>();          // null key → "__default"
     configure.RegisterCommandHandler<AuditCommandHandler, MyCommand>("audit");    // keyed
 });
 
@@ -88,6 +88,8 @@ await mediator.Send("audit", command, ct);
 ```
 
 The same `key` parameter is available on all dispatch methods: `Send(key, ...)`, `Notify(key, ...)`, `Request(key, ...)`, and `RequestStream(key, ...)`.
+
+> **Default routing key:** A `null` key is normalized internally to `Extensions.DEFAULT_ROUTING_KEY = "__default"`. This means `mediator.Send(command, ct)` and `mediator.Send(null, command, ct)` are exactly equivalent. Avoid using the literal string `"__default"` as your own routing key to prevent conflicts.
 
 > **NativeAOT:** Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed registration uses `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**; use it only when NativeAOT is not required.
 

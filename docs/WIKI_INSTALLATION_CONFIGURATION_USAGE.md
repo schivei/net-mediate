@@ -120,7 +120,7 @@ builder.Services.UseNetMediate(configure =>
 
 ### Usage
 
-The `next` delegate accepts `(message, cancellationToken)`. Behaviors execute in registration order (outer-to-inner for pre, inner-to-outer for post):
+The `next` delegate accepts `(message, cancellationToken)`. Behaviors execute in registration order (outer-to-inner for pre, inner-to-outer for post). Every `Handle` method receives an optional `key` parameter — the same key that was passed to the dispatch call, which you can use for routing or contextual filtering:
 
 ```csharp
 public sealed class AuditRequestBehavior<TMessage, TResponse>
@@ -128,11 +128,12 @@ public sealed class AuditRequestBehavior<TMessage, TResponse>
     where TMessage : notnull
 {
     public async Task<TResponse> Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
         CancellationToken cancellationToken)
     {
-        // pre-processing
+        // pre-processing (key is available for routing/filtering)
         var result = await next(message, cancellationToken);
         // post-processing
         return result;

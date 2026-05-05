@@ -3,17 +3,23 @@
 Update docs/BENCHMARKS.md with the latest BenchmarkDotNet results.
 
 Called by CI after running the benchmarks.  Reads three files:
-  $BENCH_REPORT (default: bench-report.md)  – BenchmarkDotNet GitHub markdown report
-  $BENCH_BASE   (default: benchmarks-base.md) – BENCHMARKS.md from the target branch (for baseline)
-  docs/BENCHMARKS.md  – the file to be updated (in the current workspace)
+  $BENCH_REPORT      – BenchmarkDotNet GitHub markdown report for the PR branch
+  $BENCH_BASE_REPORT – BenchmarkDotNet GitHub markdown report for the base branch
+                       (same-run baseline; produced by running the base branch
+                       benchmark in the same CI job via git worktree).
+                       When present, this is preferred over the stored HTML-comment
+                       baseline for timing comparison.
+  $BENCH_BASE        – BENCHMARKS.md from the target branch (fallback baseline)
+  docs/BENCHMARKS.md – the file to be updated (in the current workspace)
 
 Environment variables consumed:
-  BENCH_REPORT  – path to the BenchmarkDotNet markdown report (set by CI to runner.temp)
-  BENCH_BASE    – path to the base-branch BENCHMARKS.md (set by CI to runner.temp)
-  BRANCH      – current PR head branch name
-  COMMIT_SHA  – full SHA of the head commit
-  BASE_REF    – target branch name (for labelling the baseline column)
-  BENCHMARKS_MD – path to the doc to update (defaults to docs/BENCHMARKS.md)
+  BENCH_REPORT       – path to PR BenchmarkDotNet markdown report
+  BENCH_BASE_REPORT  – path to base-branch BenchmarkDotNet markdown report (optional)
+  BENCH_BASE         – path to base-branch BENCHMARKS.md (fallback baseline)
+  BRANCH             – current PR head branch name
+  COMMIT_SHA         – full SHA of the head commit
+  BASE_REF           – target branch name (for labelling the baseline column)
+  BENCHMARKS_MD      – path to the doc to update (defaults to docs/BENCHMARKS.md)
 """
 import re
 import json
@@ -21,23 +27,32 @@ import sys
 import os
 from datetime import datetime, timezone
 
-BRANCH      = os.environ.get('BRANCH', 'unknown')
-COMMIT      = os.environ.get('COMMIT_SHA', 'unknown')[:7]
-BASE_REF    = os.environ.get('BASE_REF', 'main')
-DATE        = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
-DOC_PATH    = os.environ.get('BENCHMARKS_MD', 'docs/BENCHMARKS.md')
-REPORT_PATH = os.environ.get('BENCH_REPORT', 'bench-report.md')
-BASE_PATH   = os.environ.get('BENCH_BASE', 'benchmarks-base.md')
+BRANCH              = os.environ.get('BRANCH', 'unknown')
+COMMIT              = os.environ.get('COMMIT_SHA', 'unknown')[:7]
+BASE_REF            = os.environ.get('BASE_REF', 'main')
+DATE                = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+DOC_PATH            = os.environ.get('BENCHMARKS_MD', 'docs/BENCHMARKS.md')
+REPORT_PATH         = os.environ.get('BENCH_REPORT', 'bench-report.md')
+BASE_PATH           = os.environ.get('BENCH_BASE', 'benchmarks-base.md')
+BASE_REPORT_PATH    = os.environ.get('BENCH_BASE_REPORT', '')
+# When BENCH_BASELINE_ONLY=true the script only refreshes the stored baseline
+# comment and exits — used on main-branch pushes so future PRs compare against
+# the correct post-merge baseline without overwriting the rest of the document.
+BASELINE_ONLY       = os.environ.get('BENCH_BASELINE_ONLY', '').lower() in ('1', 'true', 'yes')
 
 # ---------------------------------------------------------------------------
 # Read input files
 # ---------------------------------------------------------------------------
 with open(REPORT_PATH) as f:
     report = f.read()
-with open(BASE_PATH) as f:
-    base_doc = f.read()
 with open(DOC_PATH) as f:
     doc = f.read()
+# BASE_PATH is only needed for PR full-update mode.
+if not BASELINE_ONLY:
+    with open(BASE_PATH) as f:
+        base_doc = f.read()
+else:
+    base_doc = ''
 
 # ---------------------------------------------------------------------------
 # Single source of truth: BenchmarkDotNet method description → (key, display label).
@@ -51,7 +66,7 @@ BENCHMARKS: dict[str, tuple[str, str]] = {
 ORDERED_KEYS = ['cmd', 'notify', 'request', 'stream']
 KEY_TO_LABEL: dict[str, str] = {v[0]: v[1] for v in BENCHMARKS.values()}
 
-# Parse Throughput-job rows from the BenchmarkDotNet GitHub markdown report.
+# Parse Throughput-job rows from a BenchmarkDotNet GitHub markdown report.
 # Column order: Method | Job | IterCount | LaunchCount | RunStrategy | WarmupCount
 #               | Mean  | Error | StdDev | Gen0 | Allocated
 # Only rows with RunStrategy="Throughput" (Job-XXXXXX jobs) are matched.
@@ -69,18 +84,26 @@ row_re = re.compile(
     # StdDev (skip)  |  Gen0 (group 4)  |  Allocated (group 5)
     r"[^|]*\|\s*([\d.]+)\s*\|\s*([\d.]+\s*[BKM]*)\s*\|"
 )
-metrics: dict[str, dict] = {}
-for m in row_re.finditer(report):
-    method = m.group(1)
-    for method_name, (key, _) in BENCHMARKS.items():
-        if method_name in method:
-            metrics[key] = {
-                'mean':  float(m.group(2)),
-                'error': float(m.group(3)),
-                'gen0':  float(m.group(4)),
-                'alloc': m.group(5).strip(),
-            }
-            break
+
+
+def parse_report_metrics(text: str) -> dict:
+    """Return {key: {mean, error, gen0, alloc}} from a BenchmarkDotNet github report."""
+    result = {}
+    for m in row_re.finditer(text):
+        method = m.group(1)
+        for method_name, (key, _) in BENCHMARKS.items():
+            if method_name in method:
+                result[key] = {
+                    'mean':  float(m.group(2)),
+                    'error': float(m.group(3)),
+                    'gen0':  float(m.group(4)),
+                    'alloc': m.group(5).strip(),
+                }
+                break
+    return result
+
+
+metrics: dict[str, dict] = parse_report_metrics(report)
 
 if not metrics:
     print(
@@ -88,6 +111,26 @@ if not metrics:
         file=sys.stderr,
     )
     sys.exit(0)
+
+# ---------------------------------------------------------------------------
+# Parse the live base-branch benchmark report (same-run baseline).
+# When present, this provides a direct apples-to-apples comparison because
+# both branches were measured on the same machine during the same CI job.
+# Falls back to the HTML-comment stored baseline when not available.
+# ---------------------------------------------------------------------------
+live_base_metrics: dict[str, dict] = {}
+if BASE_REPORT_PATH and os.path.isfile(BASE_REPORT_PATH):
+    try:
+        with open(BASE_REPORT_PATH) as f:
+            live_base_metrics = parse_report_metrics(f.read())
+        if live_base_metrics:
+            print(f'Same-run base metrics loaded from {BASE_REPORT_PATH} '
+                  f'({len(live_base_metrics)} benchmarks).')
+        else:
+            print(f'Warning: {BASE_REPORT_PATH} contained no parseable rows.',
+                  file=sys.stderr)
+    except Exception as exc:
+        print(f'Warning: could not parse {BASE_REPORT_PATH}: {exc}', file=sys.stderr)
 
 # ---------------------------------------------------------------------------
 # Extract system info from the report's fenced ini block at the top
@@ -102,11 +145,10 @@ sdk_str  = sdk_m.group(1).strip()  if sdk_m  else 'unknown'
 host_str = host_m.group(1).strip() if host_m else 'unknown'
 
 # ---------------------------------------------------------------------------
-# Read baseline from base-branch doc (stored as an HTML comment).
-# Fall back to the current branch doc when the base branch has no stored
-# baseline (e.g. first run before the PR is merged into main).
+# Read stored baseline from base-branch doc (HTML comment fallback).
+# Used only when no live base-branch benchmark report is available.
 # ---------------------------------------------------------------------------
-baseline: dict[str, float] = {}
+baseline: dict = {}
 _BL_PAT = re.compile(r'<!-- netmediate-bench-baseline: ({[^}]+}) -->')
 for candidate_doc in (base_doc, doc):
     bl_m = _BL_PAT.search(candidate_doc)
@@ -121,7 +163,44 @@ for candidate_doc in (base_doc, doc):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-THRESHOLD_PERCENT = 3.0  # ±3% band for "no change" classification
+# Timing tolerance: ±10% accounts for natural CI hardware variance.
+# Allocations (parse_alloc_bytes / compare_alloc_str) are fully deterministic
+# and not affected by CPU load — use them as the primary regression signal.
+THRESHOLD_PERCENT  = 10.0
+ALLOC_THRESHOLD_B  = 8    # allocation delta of 8 bytes or less is measurement/rounding noise
+
+
+def parse_alloc_bytes(alloc: str) -> float:
+    """Convert a BenchmarkDotNet allocation string to bytes.
+
+    Examples: '48 B' → 48.0, '1.23 KB' → 1259.52, '-' → 0.0
+    """
+    alloc = alloc.strip()
+    if not alloc or alloc == '-':
+        return 0.0
+    m = re.match(r'^([\d.]+)\s*([BKMG]?)B?$', alloc, re.IGNORECASE)
+    if not m:
+        return 0.0
+    val    = float(m.group(1))
+    prefix = m.group(2).upper()
+    # 'B' is consumed by the trailing `B?` in the regex, so group(2) is either
+    # empty (plain bytes), or K/M/G for larger units.  No separate 'B' entry needed.
+    mult   = {'': 1.0, 'K': 1024.0, 'M': 1048576.0, 'G': 1073741824.0}
+    return val * mult.get(prefix, 1.0)
+
+
+def get_base_mean(key: str):
+    """Return baseline mean_ns — live same-run result preferred over stored value."""
+    if key in live_base_metrics:
+        return live_base_metrics[key]['mean']
+    return baseline.get(key)
+
+
+def get_base_alloc_bytes(key: str) -> float:
+    """Return baseline alloc bytes — live same-run result preferred over stored value."""
+    if key in live_base_metrics:
+        return parse_alloc_bytes(live_base_metrics[key]['alloc'])
+    return float(baseline.get(f'{key}_a', 0))
 
 
 def throughput_str(ns: float) -> str:
@@ -132,7 +211,8 @@ def throughput_str(ns: float) -> str:
 
 
 def compare_str(key: str, new_ns: float) -> str:
-    old_ns = baseline.get(key)
+    """Timing comparison (±10% tolerance for CI hardware variance)."""
+    old_ns = get_base_mean(key)
     if old_ns is None or old_ns <= 0:
         return '—'
     d = (new_ns - old_ns) / old_ns * 100
@@ -140,6 +220,46 @@ def compare_str(key: str, new_ns: float) -> str:
         return f'≈ ({d:+.1f}%)'
     return f'✅ improved ({d:+.1f}%)' if d < 0 else f'⚠️ degraded ({d:+.1f}%)'
 
+
+def compare_alloc_str(key: str, new_alloc_str: str) -> str:
+    """Allocation comparison — deterministic, unaffected by CPU load."""
+    new_b = parse_alloc_bytes(new_alloc_str)
+    old_b = get_base_alloc_bytes(key)
+    if old_b <= 0:
+        return '—'
+    delta = new_b - old_b
+    if abs(delta) <= ALLOC_THRESHOLD_B:
+        return '✅ same'
+    icon = '⚠️' if delta > 0 else '✅'
+    return f"{icon} {'+' if delta > 0 else ''}{delta:.0f} B"
+
+
+# Whether timing comparison used the live same-run base or the stored baseline
+_using_live_base = bool(live_base_metrics)
+
+# ---------------------------------------------------------------------------
+# Baseline-only mode: update only the stored baseline comment, then exit.
+# Used on main-branch pushes so future PR runs compare against the correct
+# post-merge values without overwriting the environment or throughput sections.
+# ---------------------------------------------------------------------------
+if BASELINE_ONLY:
+    _new_bl = {k: v['mean'] for k, v in metrics.items()}
+    for k, v in metrics.items():
+        _new_bl[f'{k}_a'] = parse_alloc_bytes(v['alloc'])
+    _new_bl_comment = '<!-- netmediate-bench-baseline: ' + json.dumps(_new_bl) + ' -->'
+    _old_bl_re = re.compile(r'<!-- netmediate-bench-baseline: .+? -->', re.DOTALL)
+    if _old_bl_re.search(doc):
+        doc = _old_bl_re.sub(_new_bl_comment, doc)
+    else:
+        doc = doc.replace(
+            '# NetMediate Benchmark Results\n',
+            '# NetMediate Benchmark Results\n\n' + _new_bl_comment + '\n',
+            1,
+        )
+    with open(DOC_PATH, 'w') as f:
+        f.write(doc)
+    print(f'Baseline-only update complete. New baseline: {_new_bl}')
+    sys.exit(0)
 
 # ---------------------------------------------------------------------------
 # Build updated environment block (replaces the ci-environment marker region)
@@ -157,10 +277,11 @@ env_block = (
 
 # ---------------------------------------------------------------------------
 # Build updated throughput block (replaces the ci-throughput marker region)
+# Columns: Mean | Error | Gen0 | Allocated | Alloc Δ | Throughput | vs timing
 # ---------------------------------------------------------------------------
 tput_header = (
-    '| Benchmark | Mean | Error | Gen0 | Allocated | Throughput | vs baseline |\n'
-    '|---|---|---|---|---|---|---|'
+    '| Benchmark | Mean | Error | Gen0 | Allocated | Alloc Δ | Throughput | vs timing |\n'
+    '|---|---|---|---|---|---|---|---|'
 )
 tput_rows = []
 for key in ORDERED_KEYS:
@@ -169,6 +290,7 @@ for key in ORDERED_KEYS:
         tput_rows.append(
             f"| {KEY_TO_LABEL[key]} | {m['mean']:.2f} ns | ±{m['error']:.3f} ns"
             f" | {m['gen0']:.4f} | {m['alloc']}"
+            f" | {compare_alloc_str(key, m['alloc'])}"
             f" | {throughput_str(m['mean'])} | {compare_str(key, m['mean'])} |"
         )
 throughput_block = tput_header + '\n' + '\n'.join(tput_rows)
@@ -189,8 +311,12 @@ doc = replace_between(doc, '<!-- ci-throughput-start -->', '<!-- ci-throughput-e
 
 # ---------------------------------------------------------------------------
 # Update the baseline HTML comment (stores new values for next run's comparison)
+# Include allocation bytes so the stored fallback baseline can also drive
+# the deterministic Alloc Δ column without a live base-branch run.
 # ---------------------------------------------------------------------------
 new_baseline = {k: v['mean'] for k, v in metrics.items()}
+for k, v in metrics.items():
+    new_baseline[f'{k}_a'] = parse_alloc_bytes(v['alloc'])
 new_bl_comment = '<!-- netmediate-bench-baseline: ' + json.dumps(new_baseline) + ' -->'
 old_bl_pat = re.compile(r'<!-- netmediate-bench-baseline: .+? -->', re.DOTALL)
 if old_bl_pat.search(doc):
@@ -205,26 +331,33 @@ else:
 # ---------------------------------------------------------------------------
 # Build comparison table for the "Latest CI Benchmark Run" section
 # ---------------------------------------------------------------------------
-if baseline:
+_has_base = bool(live_base_metrics) or bool(baseline)
+if _has_base:
     cmp_rows = [
-        f'| Benchmark | Baseline (`{BASE_REF}`) | Current | Δ |',
-        '|---|---|---|---|',
+        f'| Benchmark | Baseline (`{BASE_REF}`) | Current | Δ timing | Alloc Δ |',
+        '|---|---|---|---|---|',
     ]
     for key in ORDERED_KEYS:
         if key in metrics:
-            cur  = metrics[key]['mean']
-            prev = baseline.get(key)
-            if prev:
-                d = (cur - prev) / prev * 100
+            cur_ns   = metrics[key]['mean']
+            prev_ns  = get_base_mean(key)
+            alloc_cmp = compare_alloc_str(key, metrics[key]['alloc'])
+            if prev_ns:
+                d = (cur_ns - prev_ns) / prev_ns * 100
                 if abs(d) <= THRESHOLD_PERCENT:
-                    status = f'≈ {d:+.1f}%'
+                    timing_status = f'≈ {d:+.1f}%'
                 elif d < 0:
-                    status = f'✅ {d:+.1f}%'
+                    timing_status = f'✅ {d:+.1f}%'
                 else:
-                    status = f'⚠️ {d:+.1f}%'
-                cmp_rows.append(f'| {KEY_TO_LABEL[key]} | {prev:.2f} ns | {cur:.2f} ns | {status} |')
+                    timing_status = f'⚠️ {d:+.1f}%'
+                cmp_rows.append(
+                    f'| {KEY_TO_LABEL[key]} | {prev_ns:.2f} ns | {cur_ns:.2f} ns'
+                    f' | {timing_status} | {alloc_cmp} |'
+                )
             else:
-                cmp_rows.append(f'| {KEY_TO_LABEL[key]} | — | {cur:.2f} ns | new |')
+                cmp_rows.append(
+                    f'| {KEY_TO_LABEL[key]} | — | {cur_ns:.2f} ns | new | {alloc_cmp} |'
+                )
     comparison_md = '\n'.join(cmp_rows)
 else:
     comparison_md = '_No baseline available — this is the first recorded run._'
@@ -232,9 +365,15 @@ else:
 # ---------------------------------------------------------------------------
 # Build the "Latest CI Benchmark Run" section (summary only, no console log)
 # ---------------------------------------------------------------------------
+_base_note = (
+    '✅ Base branch benchmarked in the same CI job (same machine — direct comparison).'
+    if _using_live_base else
+    'ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).'
+)
 ci_section = (
     '## Latest CI Benchmark Run\n\n'
     f'Run: {DATE} | Branch: `{BRANCH}` | Commit: `{COMMIT}`\n\n'
+    f'> {_base_note}\n\n'
     '### System specification\n\n'
     '```\n'
     f'{os_str}\n'
@@ -245,10 +384,10 @@ ci_section = (
     '### Performance summary (BenchmarkDotNet — Throughput job)\n\n'
     f'{throughput_block}\n\n'
     f'### Comparison vs baseline (`{BASE_REF}`)\n\n'
-    f'> ✅ improved (>{THRESHOLD_PERCENT:.0f}% faster, lower ns)'
-    # \u00a0 = non-breaking space keeps the legend on one line in narrow markdown renders
+    f'> Timing: ✅ improved (>{THRESHOLD_PERCENT:.0f}% faster)'
     f'\u00a0|\u00a0 ≈ no change (±{THRESHOLD_PERCENT:.0f}%)'
-    f'\u00a0|\u00a0 ⚠️ degraded (>{THRESHOLD_PERCENT:.0f}% slower, higher ns)'
+    f'\u00a0|\u00a0 ⚠️ degraded (>{THRESHOLD_PERCENT:.0f}% slower)\n'
+    '> Alloc Δ: ✅ same / ✅ −N B (less) / ⚠️ +N B (more)'
     '\n\n'
     f'{comparison_md}'
 )

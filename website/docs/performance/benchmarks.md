@@ -31,16 +31,20 @@ The table below is updated automatically by CI on every PR benchmark run. System
 ## Core dispatch throughput
 
 Measured with BenchmarkDotNet (`CoreDispatchBenchmarks`) — no behaviors, no resilience, no adapters registered.
-`Mean` is the BenchmarkDotNet Throughput-job mean (ns/op). `Throughput` is the derived ops/s. The `vs baseline` column
-compares against the last recorded values from the target branch (±3% = no change, ✅ = improved, ⚠️ = degraded).
+`Mean` is the BenchmarkDotNet Throughput-job mean (ns/op). `Throughput` is the derived ops/s.
+`Alloc Δ` compares per-call allocation bytes against the baseline run — allocations are deterministic
+and unaffected by CPU load, making this the most reliable regression signal.
+The `vs timing` column compares dispatch time against the same-run base-branch measurement when
+available, or against stored target-branch values otherwise (±10% = no change on shared CI hardware;
+✅ = improved, ⚠️ = degraded).
 
 <!-- ci-throughput-start -->
-| Benchmark | Mean | Error | Gen0 | Allocated | Throughput | vs baseline |
-|---|---|---|---|---|---|---|
-| Command `Send` | 68.01 ns | ±0.268 ns | 0.0018 | 32 B | ~14.7M msg/s | — |
-| Notification `Notify` | 118.54 ns | ±0.877 ns | 0.0162 | 272 B | ~8.4M msg/s | — |
-| Request `Request` | 84.68 ns | ±0.291 ns | 0.0061 | 104 B | ~11.8M msg/s | — |
-| Stream `RequestStream` | 161.33 ns | ±0.484 ns | 0.0117 | 200 B | ~6.2M msg/s | — |
+| Benchmark | Mean | Error | Gen0 | Allocated | Alloc Δ | Throughput | vs timing |
+|---|---|---|---|---|---|---|---|
+| Command `Send` | 68.01 ns | ±0.268 ns | 0.0018 | 32 B | — | ~14.7M msg/s | — |
+| Notification `Notify` | 118.54 ns | ±0.877 ns | 0.0162 | 272 B | — | ~8.4M msg/s | — |
+| Request `Request` | 84.68 ns | ±0.291 ns | 0.0061 | 104 B | — | ~11.8M msg/s | — |
+| Stream `RequestStream` | 161.33 ns | ±0.484 ns | 0.0117 | 200 B | — | ~6.2M msg/s | — |
 <!-- ci-throughput-end -->
 
 > ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.

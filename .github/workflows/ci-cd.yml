@@ -108,16 +108,42 @@ jobs:
         BASE_REF: ${{ github.base_ref }}
         COMMIT_SHA: ${{ github.sha }}
         BENCH_REPORT: ${{ runner.temp }}/bench-report.md
+        BENCH_BASE_REPORT: ${{ runner.temp }}/bench-base-report.md
         BENCH_BASE: ${{ runner.temp }}/benchmarks-base.md
       run: |
+        # ── 1. Run base-branch benchmark on the same machine (isolate execution) ──────
+        # Using git worktree ensures the base branch is measured on identical hardware
+        # in the same CI job, making the timing comparison directly meaningful.
+        if ! git fetch origin "$BASE_REF" 2>/dev/null; then
+          echo "::warning::Could not fetch $BASE_REF — base-branch benchmark will be skipped; timing comparison will use the stored baseline instead."
+        fi
+        BASE_WORKTREE=$(mktemp -d)
+        if git worktree add "$BASE_WORKTREE" "origin/$BASE_REF" 2>/dev/null; then
+          (
+            cd "$BASE_WORKTREE"
+            dotnet restore tests/NetMediate.Benchmarks/NetMediate.Benchmarks.csproj \
+              -q --nologo 2>/dev/null || true
+            dotnet build tests/NetMediate.Benchmarks/NetMediate.Benchmarks.csproj \
+              --configuration Release --no-restore -q --nologo 2>/dev/null || true
+            cd tests/NetMediate.Benchmarks
+            dotnet run --no-build --configuration Release -- \
+              --job Short --exporters GitHub --filter '*' 2>/dev/null || true
+            BASE_RPT=$(find BenchmarkDotNet.Artifacts -name '*-report-github.md' \
+              2>/dev/null | head -1)
+            [ -n "$BASE_RPT" ] && cp "$BASE_RPT" "$BENCH_BASE_REPORT" || true
+          ) 2>/dev/null || true
+          git worktree remove "$BASE_WORKTREE" --force 2>/dev/null || true
+        fi
+
+        # ── 2. Run current-branch benchmark ─────────────────────────────────────────
         cd tests/NetMediate.Benchmarks
-        dotnet run --configuration Release -- --job Short --exporters GitHub --filter '*' 2>&1 | tee "$RUNNER_TEMP/bench-console.txt" || true
+        dotnet run --configuration Release -- --job Short --exporters GitHub --filter '*' \
+          2>&1 | tee "$RUNNER_TEMP/bench-console.txt" || true
         REPORT=$(find BenchmarkDotNet.Artifacts -name '*-report-github.md' 2>/dev/null | head -1)
         if [ -n "$REPORT" ]; then
           cp "$REPORT" "$BENCH_REPORT"
           cd ../..
-          # Fetch base branch BENCHMARKS.md for baseline comparison
-          git fetch origin "$BASE_REF" 2>/dev/null || true
+          # Fetch base branch BENCHMARKS.md as fallback baseline (used when no live base run)
           git show "origin/$BASE_REF:docs/BENCHMARKS.md" > "$BENCH_BASE" 2>/dev/null \
             || echo '<!-- netmediate-bench-baseline: {} -->' > "$BENCH_BASE"
           python3 .github/scripts/update_benchmarks.py
@@ -131,6 +157,38 @@ jobs:
         message: 'chore: update BENCHMARKS.md from CI benchmark run [skip ci]'
         default_author: github_actions
         push: 'origin HEAD:refs/heads/${{ github.head_ref }}'
+
+    - name: Update benchmark baseline (main branch only)
+      # github-actions[bot] guard prevents an infinite CI loop: the commit made by
+      # "Commit baseline update" below carries [skip ci] in the message, but the
+      # actor check adds a second layer of protection for any runner that ignores
+      # [skip ci].  Both the run step and the commit step use the same condition.
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+      env:
+        BENCH_REPORT: ${{ runner.temp }}/bench-report.md
+        BENCH_BASELINE_ONLY: 'true'
+      run: |
+        # Run benchmarks and update only the stored baseline comment in docs/BENCHMARKS.md.
+        # This records post-merge metrics so that the next PR compares against the correct baseline.
+        cd tests/NetMediate.Benchmarks
+        dotnet run --configuration Release -- --job Short --exporters GitHub --filter '*' \
+          2>&1 | tee "$RUNNER_TEMP/bench-console.txt" || true
+        REPORT=$(find BenchmarkDotNet.Artifacts -name '*-report-github.md' 2>/dev/null | head -1)
+        if [ -n "$REPORT" ]; then
+          cp "$REPORT" "$BENCH_REPORT"
+          cd ../..
+          python3 .github/scripts/update_benchmarks.py
+        fi
+
+    - name: Commit baseline update (main branch only)
+      # Same actor guard as the run step above — see comment there for rationale.
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+      uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5 # v9.1.4
+      with:
+        add: 'docs/BENCHMARKS.md'
+        message: 'chore: update benchmark baseline [skip ci]'
+        default_author: github_actions
+        push: 'origin HEAD:refs/heads/main'
 
     - name: Post coverage summary to PR
       if: github.event_name == 'pull_request'

@@ -36,6 +36,13 @@ bld/
 
 # Build results on 'Bin' directories
 **/[Bb]in/*
+# Allow the src/NetMediate/bin/Release directory to be tracked so it always
+# exists on a fresh clone.  The Automatic Dependency Submission workflow runs
+# dotnet restore without a prior build, so RestoreAdditionalProjectSources needs
+# this directory to be present or it errors NU1301.
+!src/NetMediate/bin/
+!src/NetMediate/bin/Release/
+!src/NetMediate/bin/Release/.gitkeep
 # Uncomment if you have tasks that rely on *.refresh files to move binaries
 # (https://github.com/github/gitignore/pull/3736)
 #!**/[Bb]in/*.refresh

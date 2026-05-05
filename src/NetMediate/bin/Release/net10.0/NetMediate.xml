@@ -1,0 +1,790 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>NetMediate</name>
+    </assembly>
+    <members>
+        <member name="T:NetMediate.ABaseHandler`2">
+            <inheritdoc/>
+        </member>
+        <member name="M:NetMediate.ABaseHandler`2.Handle(`0,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:NetMediate.ABaseHandler`2.Handle(System.Object,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:NetMediate.Guard">
+            <summary>
+            Provides guard helper methods for argument validation across framework targets.
+            </summary>
+        </member>
+        <member name="M:NetMediate.Guard.ThrowIfNull(System.Object,System.String)">
+            <summary>
+            Throws <see cref="T:System.ArgumentNullException"/> when the provided argument is null.
+            </summary>
+            <param name="argument">Argument instance to validate.</param>
+            <param name="paramName">Optional argument name.</param>
+        </member>
+        <member name="T:NetMediate.ICommand">
+            <summary>
+            Represents a command that can be executed within an application.
+            </summary>
+            <remarks>Implement this interface to define operations or actions that encapsulate a request as an object.
+            This pattern is commonly used to decouple the sender of a request from its handler, enabling features such as
+            undo/redo, logging, or queuing of operations.</remarks>
+        </member>
+        <member name="T:NetMediate.ICommandHandler`1">
+            <summary>
+            Defines a handler for processing a command message asynchronously.
+            </summary>
+            <remarks>Implement this interface to provide custom logic for handling command messages. The handler executes
+            the command and returns a <see cref="T:System.Threading.Tasks.Task"/> representing the asynchronous operation.</remarks>
+            <typeparam name="TMessage">The type of command message to handle. Must not be null.</typeparam>
+        </member>
+        <member name="T:NetMediate.IHandler`2">
+            <summary>
+            Defines a handler that processes a message of a specified type and returns a result.
+            </summary>
+            <remarks>Implementations should ensure thread safety if handlers are used concurrently. The handler is
+            responsible for processing the message and returning an appropriate result. Cancellation is supported via the
+            provided token.</remarks>
+            <typeparam name="TMessage">The type of message to be handled. Must not be null.</typeparam>
+            <typeparam name="TResult">The type of result produced by handling the message.</typeparam>
+        </member>
+        <member name="M:NetMediate.IHandler`2.Handle(`0,System.Threading.CancellationToken)">
+            <summary>
+            Handles the specified message and returns a result of the operation.
+            </summary>
+            <param name="message">The message to be processed. Cannot be null.</param>
+            <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+            <returns>A result of type <typeparamref name="TResult"/> produced by handling the message.</returns>
+        </member>
+        <member name="T:NetMediate.IMediator">
+            <summary>
+            Defines a mediator for sending messages, notifications, and requests between components.
+            </summary>
+        </member>
+        <member name="M:NetMediate.IMediator.Notify``1(``0,System.Threading.CancellationToken)">
+            <summary>
+            Publishes a notification to all registered handlers.
+            </summary>
+            <typeparam name="TMessage">The type of the notification message.</typeparam>
+            <param name="message">The notification message to publish.</param>
+            <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+            <returns>A task that represents the asynchronous operation.</returns>
+        </member>
+        <member name="M:NetMediate.IMediator.Notify``1(System.Object,``0,System.Threading.CancellationToken)">
+            <summary>
+            Publishes a notification to all registered handlers.
+            </summary>
+            <typeparam name="TMessage">The type of the notification message.</typeparam>
+            <param name="key">An optional key to distinguish this notification from others of the same message type.</param>
+            <param name="message">The notification message to publish.</param>
+            <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+            <returns>A task that represents the asynchronous operation.</returns>
+        </member>
+        <member name="M:NetMediate.IMediator.Notify``1(System.Collections.Generic.IEnumerable{``0},System.Threading.CancellationToken)">
+            <summary>
+            Publishes a collection of notification messages to all registered handlers.
+            </summary>
+            <typeparam name="TMessage">The type of the notification message.</typeparam>
+            <param name="messages">The collection of notification messages to publish.</param>
+            <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+            <returns>A task that represents the asynchronous operation.</returns>
+        </member>
+        <member name="M:NetMediate.IMediator.Notify``1(System.Object,System.Collections.Generic.IEnumerable{``0},System.Threading.CancellationToken)">
+            <summary>
+            Publishes a collection of notification messages to all registered handlers.
+            </summary>
+            <typeparam name="TMessage">The type of the notification message.</typeparam>
+            <param name="key">An optional key to distinguish this notification from others of the same message type.</param>
+            <param name="messages">The collection of notification messages to publish.</param>
+            <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+            <returns>A task that represents the asynchronous operation.</returns>
+        </member>
+        <member name="M:NetMediate.IMediator.Send``1(``0,System.Threading.CancellationToken)">
+            <summary>
+            Sends a command to all registered handlers in parallel.
+            </summary>
+            <remarks>
+            All registered <see cref="T:NetMediate.ICommandHandler`1"/> implementations receive the command
+            concurrently via <c>Task.WhenAll</c>. Use this when you want to trigger an action across
+            multiple consumers with no return value.
+            </remarks>
+            <typeparam name="TMessage">The type of the command message.</typeparam>
+            <param name="message">The command to send.</param>
+            <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+            <returns>A task that represents the asynchronous operation.</returns>
+        </member>
+        <member name="M:NetMediate.IMediator.Send``1(System.Object,``0,System.Threading.CancellationToken)">
+            <summary>
+            Sends a command to all registered handlers in parallel.
+            </summary>
+            <remarks>
+            All registered <see cref="T:NetMediate.ICommandHandler`1"/> implementations receive the command
+            concurrently via <c>Task.WhenAll</c>. Use this when you want to trigger an action across
+            multiple consumers with no return value.
+            </remarks>
+            <typeparam name="TMessage">The type of the command message.</typeparam>
+            <param name="key">An optional key to distinguish this command from others of the same message type.</param>
+            <param name="message">The command to send.</param>
+            <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+            <returns>A task that represents the asynchronous operation.</returns>
+        </member>
+        <member name="M:NetMediate.IMediator.Send``1(System.Collections.Generic.IEnumerable{``0},System.Threading.CancellationToken)">
+            <summary>
+            Sends a command to all registered handlers in parallel.
+            </summary>
+            <remarks>
+            All registered <see cref="T:NetMediate.ICommandHandler`1"/> implementations receive the command
+            concurrently via <c>Task.WhenAll</c>. Use this when you want to trigger an action across
+            multiple consumers with no return value.
+            </remarks>
+            <typeparam name="TMessage">The type of the command message.</typeparam>
+            <param name="messages">The command to send.</param>
+            <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+            <returns>A task that represents the asynchronous operation.</returns>
+        </member>
+        <member name="M:NetMediate.IMediator.Send``1(System.Object,System.Collections.Generic.IEnumerable{``0},System.Threading.CancellationToken)">
+            <summary>
+            Sends a command to all registered handlers in parallel.
+            </summary>
+            <remarks>
+            All registered <see cref="T:NetMediate.ICommandHandler`1"/> implementations receive the command
+            concurrently via <c>Task.WhenAll</c>. Use this when you want to trigger an action across
+            multiple consumers with no return value.
+            </remarks>
+            <typeparam name="TMessage">The type of the command message.</typeparam>
+            <param name="key">An optional key to distinguish this command from others of the same message type.</param>
+            <param name="messages">The command to send.</param>
+            <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+            <returns>A task that represents the asynchronous operation.</returns>
+        </member>
+        <member name="M:NetMediate.IMediator.Request``2(``0,System.Threading.CancellationToken)">
+            <summary>
+            Sends a request to a handler and awaits a response.
+            </summary>
+            <typeparam name="TMessage">The type of the request message.</typeparam>
+            <typeparam name="TResponse">The type of the response.</typeparam>
+            <param name="message">The request to send.</param>
+            <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+            <returns>A task that represents the asynchronous operation and contains the response.</returns>
+        </member>
+        <member name="M:NetMediate.IMediator.Request``2(System.Object,``0,System.Threading.CancellationToken)">
+            <summary>
+            Sends a request to a handler and awaits a response.
+            </summary>
+            <typeparam name="TMessage">The type of the request message.</typeparam>
+            <typeparam name="TResponse">The type of the response.</typeparam>
+            <param name="key">An optional key to distinguish this request from others of the same message type.</param>
+            <param name="message">The request to send.</param>
+            <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
+            <returns>A task that represents the asynchronous operation and contains the response.</returns>
+        </member>
+        <member name="M:NetMediate.IMediator.RequestStream``2(``0,System.Threading.CancellationToken)">
+            <summary>
+            Sends a request to a handler and receives a stream of responses asynchronously.
+            </summary>
+            <typeparam name="TMessage">The type of the request message.</typeparam>
+            <typeparam name="TResponse">The type of the response items in the stream.</typeparam>
+            <param name="message">The request to send.</param>
+            <param name="cancellationToken">A token to observe while waiting for the stream to complete.</param>
+            <returns>An asynchronous stream of responses.</returns>
+        </member>
+        <member name="M:NetMediate.IMediator.RequestStream``2(System.Object,``0,System.Threading.CancellationToken)">
+            <summary>
+            Sends a request to a handler and receives a stream of responses asynchronously.
+            </summary>
+            <typeparam name="TMessage">The type of the request message.</typeparam>
+            <typeparam name="TResponse">The type of the response items in the stream.</typeparam>
+            <param name="key">An optional key to distinguish this request from others of the same message type.</param>
+            <param name="message">The request to send.</param>
+            <param name="cancellationToken">A token to observe while waiting for the stream to complete.</param>
+            <returns>An asynchronous stream of responses.</returns>
+        </member>
+        <member name="T:NetMediate.IMediatorServiceBuilder">
+            <summary>
+            Defines a builder interface for registering handlers in the mediator service.
+            This interface allows for fluent configuration of message handlers,
+            enabling the registration of handlers for specific message types and result types.
+            Handlers can be registered with or without custom instantiation logic,
+            providing flexibility in how handlers are created and managed within the mediator framework.
+            </summary>
+        </member>
+        <member name="P:NetMediate.IMediatorServiceBuilder.Services">
+            <summary>
+            Gets the collection of service descriptors for dependency injection configuration.
+            </summary>
+            <remarks>Use this property to register application services, configure dependencies, or modify the
+            service collection before building the service provider. The returned collection is typically used during
+            application startup or module initialization.</remarks>
+        </member>
+        <member name="M:NetMediate.IMediatorServiceBuilder.RegisterHandler``4(System.Object)">
+            <summary>
+            Registers a handler for a specific message type and result type.
+            </summary>
+            <typeparam name="TInterface">The interface type that the handler implements.</typeparam>
+            <typeparam name="THandler">The concrete handler type.</typeparam>
+            <typeparam name="TMessage">The message type.</typeparam>
+            <typeparam name="TResult">The result type.</typeparam>
+            <param name="key">An optional key to distinguish this handler from others of the same interface type.</param>
+            <returns>The current instance of <see cref="T:NetMediate.IMediatorServiceBuilder"/> for chaining.</returns>
+        </member>
+        <member name="M:NetMediate.IMediatorServiceBuilder.RegisterCommandHandler``2(System.Object)">
+            <summary>
+            Registers a command handler and its closed-type pipeline executor.
+            Prefer this over <see cref="M:NetMediate.IMediatorServiceBuilder.RegisterHandler``4(System.Object)"/> for commands.
+            </summary>
+            <param name="key">An optional key to distinguish this handler from others of the same interface type.</param>
+        </member>
+        <member name="M:NetMediate.IMediatorServiceBuilder.RegisterNotificationHandler``2(System.Object)">
+            <summary>
+            Registers a notification handler and its closed-type pipeline executor.
+            </summary>
+            <param name="key">An optional key to distinguish this handler from others of the same interface type.</param>
+        </member>
+        <member name="M:NetMediate.IMediatorServiceBuilder.RegisterRequestHandler``3(System.Object)">
+            <summary>
+            Registers a request handler and its closed-type pipeline executor.
+            </summary>
+            <param name="key">An optional key to distinguish this handler from others of the same interface type.</param>
+        </member>
+        <member name="M:NetMediate.IMediatorServiceBuilder.RegisterStreamHandler``3(System.Object)">
+            <summary>
+            Registers a stream handler and its closed-type pipeline executor.
+            </summary>
+            <param name="key">An optional key to distinguish this handler from others of the same interface type.</param>
+        </member>
+        <member name="M:NetMediate.IMediatorServiceBuilder.RegisterBehavior``3">
+            <summary>
+            Registers a pipeline behavior for a specific message type and result type.
+            </summary>
+            <typeparam name="TBehavior">The pipeline behavior type.</typeparam>
+            <typeparam name="TMessage">The message type.</typeparam>
+            <typeparam name="TResult">The result type.</typeparam>
+            <returns>The current instance of <see cref="T:NetMediate.IMediatorServiceBuilder"/> for chaining.</returns>
+        </member>
+        <member name="M:NetMediate.IMediatorServiceBuilder.RegisterNotificationBehavior``2">
+            <summary>
+            Registers a notification-specific pipeline behavior.
+            Provides a symmetric registration experience to
+            <see cref="M:NetMediate.IMediatorServiceBuilder.RegisterBehavior``3"/> for notification pipelines.
+            </summary>
+            <typeparam name="TBehavior">The <see cref="T:NetMediate.IPipelineNotificationBehavior`1"/> implementation type.</typeparam>
+            <typeparam name="TMessage">The notification message type.</typeparam>
+            <returns>The current instance of <see cref="T:NetMediate.IMediatorServiceBuilder"/> for chaining.</returns>
+        </member>
+        <member name="T:NetMediate.IMessage">
+            <summary>
+            Represents a message that can be handled or processed by a mediator or messaging infrastructure.
+            </summary>
+            <remarks>Implement this interface to define a message type for use with mediator patterns or message-based
+            systems. This interface serves as a marker and does not specify any members.</remarks>
+        </member>
+        <member name="T:NetMediate.INotification">
+            <summary>
+            Defines a notification message that can be published to multiple handlers.
+            </summary>
+            <remarks>Implement this interface to represent messages that are intended to be broadcast to one or more
+            recipients without expecting a response. Notifications are typically used for event-driven communication within an
+            application.</remarks>
+        </member>
+        <member name="T:NetMediate.INotificationHandler`1">
+            <summary>
+            Defines a handler for notification messages that do not return a result.
+            </summary>
+            <remarks>Notification handlers are typically used to process events or signals that may be handled by zero or
+            more handlers. Unlike request handlers, notification handlers do not return a value to the sender.</remarks>
+            <typeparam name="TMessage">The type of notification message to handle. Must not be null.</typeparam>
+        </member>
+        <member name="M:NetMediate.Internals.Extensions.RegisterPipelineCacheClearing(System.Action{System.IServiceProvider})">
+            <summary>
+            Called once per closed-generic executor type (from a static constructor) to register
+            the cache-clearing action for that type's pre-compiled pipeline cache.
+            </summary>
+        </member>
+        <member name="M:NetMediate.Internals.Extensions.ClearCache(System.IServiceProvider)">
+            <summary>
+            Clears the static handler cache.  Optionally clears the behavior cache and pre-compiled
+            pipeline caches for a specific provider instance.  Intended for test isolation only —
+            in production, prefer using distinct message types per handler registration to avoid
+            cache contamination.
+            </summary>
+        </member>
+        <member name="T:NetMediate.Internals.INotifiable">
+            <summary>
+            Defines a contract for asynchronously dispatching or publishing notification messages to all registered handlers.
+            </summary>
+            <remarks>Implementations of this interface provide mechanisms for notifying multiple handlers about events or
+            messages. The order in which handlers are invoked is not guaranteed unless explicitly documented by the
+            implementation. All notification operations are asynchronous and support cancellation via a cancellation
+            token.</remarks>
+        </member>
+        <member name="M:NetMediate.Internals.INotifiable.DispatchNotifications``1(System.Object,``0,NetMediate.INotificationHandler{``0}[],System.Threading.CancellationToken)">
+            <summary>
+            Dispatches a notification message directly to the provided handlers, bypassing the pipeline.
+            </summary>
+            <typeparam name="TMessage">The notification message type.</typeparam>
+            <param name="key">An optional key to distinguish this notification from others of the same message type.</param>
+            <param name="message">The notification message instance.</param>
+            <param name="handlers">The resolved handlers to invoke.</param>
+            <param name="cancellationToken">A token to observe for cancellation.</param>
+            <returns>A <see cref="T:System.Threading.Tasks.Task"/> that completes when dispatch finishes.</returns>
+        </member>
+        <member name="M:NetMediate.Internals.INotifiable.Notify``1(System.Object,``0,System.Threading.CancellationToken)">
+            <summary>
+            Publishes a single notification through the pipeline and all registered handlers.
+            </summary>
+            <typeparam name="TMessage">The notification message type.</typeparam>
+            <param name="key">An optional key to distinguish this notification from others of the same message type.</param>
+            <param name="message">The notification message instance.</param>
+            <param name="cancellationToken">A token to observe for cancellation.</param>
+            <returns>A <see cref="T:System.Threading.Tasks.Task"/> that completes when all handlers have been notified.</returns>
+        </member>
+        <member name="M:NetMediate.Internals.INotifiable.Notify``1(System.Object,System.Collections.Generic.IEnumerable{``0},System.Threading.CancellationToken)">
+            <summary>
+            Publishes each message in the sequence through the pipeline and all registered handlers.
+            </summary>
+            <typeparam name="TMessage">The notification message type.</typeparam>
+            <param name="key">An optional key to distinguish this notification from others of the same message type.</param>
+            <param name="messages">The sequence of notification messages to publish.</param>
+            <param name="cancellationToken">A token to observe for cancellation.</param>
+            <returns>A <see cref="T:System.Threading.Tasks.Task"/> that completes when all messages have been dispatched.</returns>
+        </member>
+        <member name="M:NetMediate.Internals.Mediator.Notify``1(``0,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:NetMediate.Internals.Mediator.Notify``1(System.Object,``0,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:NetMediate.Internals.Mediator.Notify``1(System.Collections.Generic.IEnumerable{``0},System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:NetMediate.Internals.Mediator.Notify``1(System.Object,System.Collections.Generic.IEnumerable{``0},System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:NetMediate.Internals.Mediator.Send``1(``0,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:NetMediate.Internals.Mediator.Send``1(System.Object,``0,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:NetMediate.Internals.Mediator.Send``1(System.Collections.Generic.IEnumerable{``0},System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:NetMediate.Internals.Mediator.Send``1(System.Object,System.Collections.Generic.IEnumerable{``0},System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:NetMediate.Internals.Mediator.Request``2(``0,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:NetMediate.Internals.Mediator.Request``2(System.Object,``0,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:NetMediate.Internals.Mediator.RequestStream``2(``0,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:NetMediate.Internals.Mediator.RequestStream``2(System.Object,``0,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="T:NetMediate.Internals.NotificationPipelineExecutor`1">
+            <summary>
+            Specialized pipeline executor for notification handlers.
+            Resolves <see cref="T:NetMediate.IPipelineBehavior`2"/> (two-parameter),
+            <see cref="T:NetMediate.IPipelineBehavior`1"/> (one-parameter), and
+            <see cref="T:NetMediate.IPipelineNotificationBehavior`1"/> (notification shorthand) from DI,
+            without needing a runtime type switch.
+            Registered as a closed type by <c>RegisterNotificationHandler&lt;THandler, TMessage&gt;(...)</c>
+            so that no open-generic <c>typeof()</c> resolver is needed.
+            </summary>
+        </member>
+        <member name="M:NetMediate.Internals.NotificationPipelineExecutor`1.#ctor(System.IServiceProvider)">
+            <summary>
+            Specialized pipeline executor for notification handlers.
+            Resolves <see cref="T:NetMediate.IPipelineBehavior`2"/> (two-parameter),
+            <see cref="T:NetMediate.IPipelineBehavior`1"/> (one-parameter), and
+            <see cref="T:NetMediate.IPipelineNotificationBehavior`1"/> (notification shorthand) from DI,
+            without needing a runtime type switch.
+            Registered as a closed type by <c>RegisterNotificationHandler&lt;THandler, TMessage&gt;(...)</c>
+            so that no open-generic <c>typeof()</c> resolver is needed.
+            </summary>
+        </member>
+        <member name="T:NetMediate.Internals.RequestPipelineExecutor`2">
+            <summary>
+            Specialized pipeline executor for request handlers that also resolves
+            <see cref="T:NetMediate.IPipelineRequestBehavior`2"/> registrations in addition
+            to <see cref="T:NetMediate.IPipelineBehavior`2"/>. This avoids the need for
+            MakeGenericType and is fully AOT-compatible.
+            </summary>
+        </member>
+        <member name="M:NetMediate.Internals.RequestPipelineExecutor`2.#ctor(System.IServiceProvider)">
+            <summary>
+            Specialized pipeline executor for request handlers that also resolves
+            <see cref="T:NetMediate.IPipelineRequestBehavior`2"/> registrations in addition
+            to <see cref="T:NetMediate.IPipelineBehavior`2"/>. This avoids the need for
+            MakeGenericType and is fully AOT-compatible.
+            </summary>
+        </member>
+        <member name="T:NetMediate.Internals.StreamPipelineExecutor`2">
+            <summary>
+            Specialized pipeline executor for stream handlers that also resolves
+            <see cref="T:NetMediate.IPipelineStreamBehavior`2"/> registrations in addition
+            to <see cref="T:NetMediate.IPipelineBehavior`2"/>. This avoids the need for
+            MakeGenericType and is fully AOT-compatible.
+            </summary>
+        </member>
+        <member name="M:NetMediate.Internals.StreamPipelineExecutor`2.#ctor(System.IServiceProvider)">
+            <summary>
+            Specialized pipeline executor for stream handlers that also resolves
+            <see cref="T:NetMediate.IPipelineStreamBehavior`2"/> registrations in addition
+            to <see cref="T:NetMediate.IPipelineBehavior`2"/>. This avoids the need for
+            MakeGenericType and is fully AOT-compatible.
+            </summary>
+        </member>
+        <member name="T:NetMediate.IPipelineBehavior`1">
+            <summary>
+            Defines a behavior that can be added to the processing pipeline for a message, allowing custom logic to be executed
+            before or after the main message handler.
+            </summary>
+            <remarks>Implementations of this interface can be used to add cross-cutting concerns, such as logging,
+            validation, or exception handling, to the message processing pipeline. The behavior can invoke the next delegate to
+            continue processing or short-circuit the pipeline as needed.</remarks>
+            <typeparam name="TMessage">The type of the message being processed. Must implement the IMessage interface and cannot be null.</typeparam>
+        </member>
+        <member name="T:NetMediate.IPipelineNotificationBehavior`1">
+            <summary>
+            A dedicated shorthand for notification-specific pipeline behaviors, mirroring the symmetric
+            registration experience of <see cref="T:NetMediate.IPipelineRequestBehavior`2"/> for requests.
+            </summary>
+            <remarks>
+            Implementations of this interface are registered via
+            <see cref="M:NetMediate.IMediatorServiceBuilder.RegisterNotificationBehavior``2"/> and are resolved
+            exclusively for notification pipelines by <c>NotificationPipelineExecutor&lt;TMessage&gt;</c>.
+            This provides a type-safe, AOT-compatible way to add cross-cutting concerns to notification dispatch
+            without registering against the more general <c>IPipelineBehavior&lt;TMessage, Task&gt;</c>.
+            </remarks>
+            <typeparam name="TMessage">The notification message type. Cannot be null.</typeparam>
+        </member>
+        <member name="T:NetMediate.IPipelineRequestBehavior`2">
+            <summary>
+            Defines a behavior that can be added to the processing pipeline for a message, allowing custom logic to be executed
+            before or after the main message handler.
+            </summary>
+            <remarks>Implementations of this interface can be used to add cross-cutting concerns, such as logging,
+            validation, or exception handling, to the message processing pipeline. The behavior can invoke the next delegate to
+            continue processing or short-circuit the pipeline as needed.</remarks>
+            <typeparam name="TMessage">The type of the message being processed. Must implement the IMessage interface and cannot be null.</typeparam>
+            <typeparam name="TResponse">The type of the response returned by the pipeline after processing the message.</typeparam>
+        </member>
+        <member name="T:NetMediate.IPipelineStreamBehavior`2">
+            <summary>
+            Defines a behavior that can be added to the processing pipeline for a message, allowing custom logic to be executed
+            before or after the main message handler.
+            </summary>
+            <remarks>Implementations of this interface can be used to add cross-cutting concerns, such as logging,
+            validation, or exception handling, to the message processing pipeline. The behavior can invoke the next delegate to
+            continue processing or short-circuit the pipeline as needed.</remarks>
+            <typeparam name="TMessage">The type of the message being processed. Must implement the IMessage interface and cannot be null.</typeparam>
+            <typeparam name="TResponse">The type of the response returned by the pipeline after processing the message.</typeparam>
+        </member>
+        <member name="T:NetMediate.IPipelineBehavior`2">
+            <summary>
+            Defines a behavior that can be added to the processing pipeline for a message, allowing custom logic to be executed
+            before or after the main message handler.
+            </summary>
+            <remarks>Implementations of this interface can be used to add cross-cutting concerns, such as logging,
+            validation, or exception handling, to the message processing pipeline. The behavior can invoke the next delegate to
+            continue processing or short-circuit the pipeline as needed.</remarks>
+            <typeparam name="TMessage">The type of the message being processed. Must implement the IMessage interface and cannot be null.</typeparam>
+            <typeparam name="TResult">The type of the result returned by the pipeline after processing the message.</typeparam>
+        </member>
+        <member name="M:NetMediate.IPipelineBehavior`2.Handle(System.Object,`0,NetMediate.PipelineBehaviorDelegate{`0,`1},System.Threading.CancellationToken)">
+            <summary>
+            Handles the specified message by invoking the next delegate in the processing pipeline.
+            </summary>
+            <param name="key">An optional key to distinguish this message from others of the same type. This can be used for scenarios like notifications where multiple handlers may be involved.</param>
+            <param name="message">The message to be processed by the handler.</param>
+            <param name="next">A delegate representing the next handler to invoke in the pipeline.</param>
+            <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+            <returns>The result produced by processing the message through the pipeline.</returns>
+        </member>
+        <member name="T:NetMediate.IRequest`1">
+            <summary>
+            Defines a request message that expects a response of the specified type when processed.
+            </summary>
+            <remarks>Implement this interface to represent a request that is sent through a mediator or messaging pipeline
+            and expects a response. The response type can be any type appropriate for the operation, including void (using Unit)
+            if no response is needed.</remarks>
+            <typeparam name="TResponse">The type of the response that will be returned when the request is handled.</typeparam>
+        </member>
+        <member name="T:NetMediate.IRequestHandler`2">
+            <summary>
+            Defines a handler for processing a request message and returning a response asynchronously.
+            </summary>
+            <remarks>Implement this interface to handle specific request messages and provide a response. Handlers are
+            typically used in request/response messaging patterns to encapsulate business logic for processing
+            requests.</remarks>
+            <typeparam name="TMessage">The type of the request message to handle. Must not be null.</typeparam>
+            <typeparam name="TResponse">The type of the response returned by the handler.</typeparam>
+        </member>
+        <member name="T:NetMediate.IStream`1">
+            <summary>
+            Represents a message that supports streaming of response data of a specified type.
+            </summary>
+            <typeparam name="TResponse">The type of the response elements that are streamed by this message.</typeparam>
+        </member>
+        <member name="T:NetMediate.IStreamHandler`2">
+            <summary>
+            Defines a handler for processing streaming messages and producing a sequence of responses asynchronously.
+            </summary>
+            <remarks>Implement this interface to handle messages that require asynchronous streaming of multiple
+            responses. The handler processes the incoming message and returns an <see cref="T:System.Collections.Generic.IAsyncEnumerable`1"/>
+            representing the response stream.</remarks>
+            <typeparam name="TMessage">The type of the streaming message to handle. Must not be null.</typeparam>
+            <typeparam name="TResponse">The type of the responses produced by the handler.</typeparam>
+        </member>
+        <member name="T:NetMediate.ITerminator">
+            <summary>
+            Defines a contract for terminating an operation or process.
+            </summary>
+            <remarks>Implementations should provide logic to safely and reliably terminate the associated operation. The
+            specific behavior of termination depends on the implementing type and may include resource cleanup or cancellation
+            of ongoing work.</remarks>
+        </member>
+        <member name="M:NetMediate.ITerminator.Terminate">
+            <summary>
+            Performs a termination operation, ending the current process or activity.
+            </summary>
+            <remarks>Call this method to explicitly terminate the associated process or workflow. The specific
+            effects of termination depend on the implementation. After calling this method, further operations may not be
+            possible.</remarks>
+        </member>
+        <member name="T:NetMediate.KeyedServiceAttribute">
+            <summary>
+            Specifies a key that can be used to identify or distinguish a service implementation for dependency injection or
+            service location.
+            </summary>
+            <remarks>Apply this attribute to a class to associate it with a specific key, enabling keyed resolution
+            scenarios in dependency injection frameworks or custom service locators. The key can be any object and is typically
+            used to differentiate between multiple implementations of the same service contract.</remarks>
+        </member>
+        <member name="P:NetMediate.KeyedServiceAttribute.Key">
+            <summary>
+            Gets or sets the key associated with the current object.
+            </summary>
+        </member>
+        <member name="T:NetMediate.MediatorException">
+            <summary>
+            Represents an exception thrown when a mediator handler or pipeline behavior fails,
+            carrying structured context about the originating message type, handler type, and
+            distributed-tracing activity ID.
+            </summary>
+            <remarks>
+            <para>
+            Instances of this exception are created automatically by the mediator when a handler
+            or behavior throws an unhandled exception during <see cref="M:NetMediate.IMediator.Send``1(``0,System.Threading.CancellationToken)"/>
+            or <c>Request</c> calls.  The original exception
+            is preserved as <see cref="P:System.Exception.InnerException"/>.
+            </para>
+            <para>
+            Notification dispatch is fire-and-forget; handler exceptions there are logged rather
+            than surfaced as <see cref="T:NetMediate.MediatorException"/>.
+            </para>
+            </remarks>
+        </member>
+        <member name="P:NetMediate.MediatorException.MessageType">
+            <summary>Gets the CLR type of the message that was being dispatched when the exception occurred.</summary>
+        </member>
+        <member name="P:NetMediate.MediatorException.HandlerType">
+            <summary>
+            Gets the CLR type of the handler interface for which dispatch was attempted
+            (e.g. <c>ICommandHandler&lt;TMessage&gt;</c>, <c>IRequestHandler&lt;TMessage,TResponse&gt;</c>).
+            May be <see langword="null"/> when the handler type cannot be determined.
+            </summary>
+        </member>
+        <member name="P:NetMediate.MediatorException.TraceId">
+            <summary>
+            Gets the <see cref="P:System.Diagnostics.Activity.Id"/> of the ambient <see cref="T:System.Diagnostics.Activity"/> at the time
+            the exception was captured, or <see langword="null"/> when no activity was active.
+            </summary>
+        </member>
+        <member name="M:NetMediate.MediatorException.#ctor(System.Type,System.Type,System.String,System.Exception)">
+            <summary>
+            Initializes a new instance of <see cref="T:NetMediate.MediatorException"/>.
+            </summary>
+            <param name="messageType">The message type being dispatched.</param>
+            <param name="handlerType">The handler interface type, or <see langword="null"/>.</param>
+            <param name="traceId">The activity trace ID, or <see langword="null"/>.</param>
+            <param name="innerException">The original exception thrown by the handler or behavior.</param>
+        </member>
+        <member name="T:NetMediate.MediatorExtensions">
+            <summary>
+            Provides extension methods for the IMediator interface to facilitate sending request and streaming messages.
+            </summary>
+            <remarks>These extension methods offer a simplified way to send requests and initiate streaming operations
+            using an IMediator instance. They support both standard request/response and streaming scenarios, allowing for
+            asynchronous and cancellable operations.</remarks>
+        </member>
+        <member name="M:NetMediate.MediatorExtensions.Request``1(NetMediate.IMediator,NetMediate.IRequest{``0},System.Threading.CancellationToken)">
+            <inheritdoc cref="M:NetMediate.MediatorExtensions.&lt;G&gt;$DA0B55F6AFB7B7467588BB90ED3EF929.Request``1(NetMediate.IRequest{``0},System.Threading.CancellationToken)"/>
+        </member>
+        <member name="M:NetMediate.MediatorExtensions.Request``1(NetMediate.IMediator,System.Object,NetMediate.IRequest{``0},System.Threading.CancellationToken)">
+            <inheritdoc cref="M:NetMediate.MediatorExtensions.&lt;G&gt;$DA0B55F6AFB7B7467588BB90ED3EF929.Request``1(System.Object,NetMediate.IRequest{``0},System.Threading.CancellationToken)"/>
+        </member>
+        <member name="M:NetMediate.MediatorExtensions.RequestStream``1(NetMediate.IMediator,NetMediate.IStream{``0},System.Threading.CancellationToken)">
+            <inheritdoc cref="M:NetMediate.MediatorExtensions.&lt;G&gt;$DA0B55F6AFB7B7467588BB90ED3EF929.RequestStream``1(NetMediate.IStream{``0},System.Threading.CancellationToken)"/>
+        </member>
+        <member name="M:NetMediate.MediatorExtensions.RequestStream``1(NetMediate.IMediator,System.Object,NetMediate.IStream{``0},System.Threading.CancellationToken)">
+            <inheritdoc cref="M:NetMediate.MediatorExtensions.&lt;G&gt;$DA0B55F6AFB7B7467588BB90ED3EF929.RequestStream``1(System.Object,NetMediate.IStream{``0},System.Threading.CancellationToken)"/>
+        </member>
+        <member name="M:NetMediate.MediatorExtensions.&lt;G&gt;$DA0B55F6AFB7B7467588BB90ED3EF929.Request``1(NetMediate.IRequest{``0},System.Threading.CancellationToken)">
+            <summary>
+            Sends a request to a handler and awaits a response.
+            </summary>
+            <remarks>
+            This method uses reflection (<see cref="M:System.Reflection.MethodInfo.MakeGenericMethod(System.Type[])"/>) internally to
+            dispatch the request. It is not compatible with NativeAOT or trimming. Prefer the
+            IMediator.Request{TMessage, TResponse} overload which specifies both type
+            arguments explicitly.
+            </remarks>
+            <typeparam name="TResponse">The response type.</typeparam>
+            <param name="request">Request instance.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>The handler response.</returns>
+        </member>
+        <member name="M:NetMediate.MediatorExtensions.&lt;G&gt;$DA0B55F6AFB7B7467588BB90ED3EF929.Request``1(System.Object,NetMediate.IRequest{``0},System.Threading.CancellationToken)">
+            <summary>
+            Sends a request to a handler and awaits a response.
+            </summary>
+            <remarks>
+            This method uses reflection (<see cref="M:System.Reflection.MethodInfo.MakeGenericMethod(System.Type[])"/>) internally to
+            dispatch the request. It is not compatible with NativeAOT or trimming. Prefer the
+            IMediator.Request{TMessage, TResponse} overload which specifies both type
+            arguments explicitly.
+            </remarks>
+            <typeparam name="TResponse">The response type.</typeparam>
+            <param name="key">An optional key to distinguish this request from others of the same message type.</param>
+            <param name="request">Request instance.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>The handler response.</returns>
+        </member>
+        <member name="M:NetMediate.MediatorExtensions.&lt;G&gt;$DA0B55F6AFB7B7467588BB90ED3EF929.RequestStream``1(NetMediate.IStream{``0},System.Threading.CancellationToken)">
+            <summary>
+            Sends a request to a handler and receives a stream of responses asynchronously.
+            </summary>
+            <remarks>
+            This method uses reflection (<see cref="M:System.Reflection.MethodInfo.MakeGenericMethod(System.Type[])"/>) internally to
+            dispatch the stream request. It is not compatible with NativeAOT or trimming. Prefer the
+            IMediator.RequestStream{TMessage, TResponse} overload which specifies both
+            type arguments explicitly.
+            </remarks>
+            <typeparam name="TResponse">The response item type.</typeparam>
+            <param name="message">Stream request instance.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>An asynchronous response stream.</returns>
+        </member>
+        <member name="M:NetMediate.MediatorExtensions.&lt;G&gt;$DA0B55F6AFB7B7467588BB90ED3EF929.RequestStream``1(System.Object,NetMediate.IStream{``0},System.Threading.CancellationToken)">
+            <summary>
+            Sends a request to a handler and receives a stream of responses asynchronously.
+            </summary>
+            <remarks>
+            This method uses reflection (<see cref="M:System.Reflection.MethodInfo.MakeGenericMethod(System.Type[])"/>) internally to
+            dispatch the stream request. It is not compatible with NativeAOT or trimming. Prefer the
+            IMediator.RequestStream{TMessage, TResponse} overload which specifies both
+            type arguments explicitly.
+            </remarks>
+            <typeparam name="TResponse">The response item type.</typeparam>
+            <param name="key">An optional key to distinguish this request from others of the same message type.</param>
+            <param name="message">Stream request instance.</param>
+            <param name="cancellationToken">Cancellation token.</param>
+            <returns>An asynchronous response stream.</returns>
+        </member>
+        <member name="T:NetMediate.MessageValidationException">
+            <summary>
+            Represents an exception that is thrown when a message fails validation.
+            </summary>
+            <remarks>Use this exception to indicate that a message did not meet validation requirements. The associated
+            ValidationResult provides details about the validation failure.</remarks>
+            <param name="result">The result of the validation operation that caused the exception. Cannot be null.</param>
+        </member>
+        <member name="M:NetMediate.MessageValidationException.#ctor(System.ComponentModel.DataAnnotations.ValidationResult)">
+            <summary>
+            Represents an exception that is thrown when a message fails validation.
+            </summary>
+            <remarks>Use this exception to indicate that a message did not meet validation requirements. The associated
+            ValidationResult provides details about the validation failure.</remarks>
+            <param name="result">The result of the validation operation that caused the exception. Cannot be null.</param>
+        </member>
+        <member name="P:NetMediate.MessageValidationException.ValidationResult">
+            <summary>
+            Gets the result of the validation operation.
+            </summary>
+        </member>
+        <member name="T:NetMediate.NetMediateDI">
+            <summary>
+            Provides the internal extension method used by source-generated code to register NetMediate
+            services with the dependency injection container.
+            </summary>
+            <remarks>
+            <para>
+            <b>Do not call <see cref="M:NetMediate.NetMediateDI.UseNetMediate(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{NetMediate.IMediatorServiceBuilder})"/>
+            directly.</b>  Use the <c>AddNetMediate()</c> extension method emitted by the
+            <c>NetMediate.SourceGeneration</c> source generator instead.  That method is generated at
+            compile time inside your project and calls this method with all discovered handlers
+            registered in an AOT-safe, trim-safe manner.
+            </para>
+            <para>
+            Calling <c>AddNetMediate()</c> more than once on the same <see cref="T:Microsoft.Extensions.DependencyInjection.IServiceCollection"/> is
+            safe: subsequent calls are silently ignored (a debug-level warning is written to
+            <see cref="T:System.Diagnostics.Debug"/>) and the original registration is preserved.
+            </para>
+            </remarks>
+        </member>
+        <member name="M:NetMediate.NetMediateDI.UseNetMediate(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{NetMediate.IMediatorServiceBuilder})">
+            <summary>
+            Configures NetMediate core services and applies the provided explicit handler registration
+            callback.  This overload is <em>intended to be called by source-generated code only</em>
+            — prefer the generated <c>AddNetMediate()</c> extension method over calling this method
+            directly.
+            </summary>
+            <remarks>
+            This overload is AOT- and trim-safe when all handler types are explicitly registered
+            inside <paramref name="configure"/>.  It does <b>not</b> scan assemblies for handlers.
+            Subsequent calls on the same <paramref name="services"/> are silently ignored.
+            </remarks>
+            <param name="services">The service collection to add NetMediate services to.</param>
+            <param name="configure">
+            The callback that performs explicit handler and behavior registrations.
+            </param>
+            <returns>A <see cref="T:NetMediate.IMediatorServiceBuilder"/> instance for additional configuration.</returns>
+        </member>
+        <member name="M:NetMediate.NetMediateDI.UseNetMediate``1(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{NetMediate.IMediatorServiceBuilder})">
+            <summary>
+            Configures NetMediate core services with a custom notifier type and applies the provided
+            explicit handler registration callback.  This overload is <em>intended to be called by
+            source-generated code only</em>.
+            </summary>
+            <typeparam name="TNotifier">
+            The type implementing <see cref="T:NetMediate.Internals.INotifiable"/> to use for notification handling.
+            </typeparam>
+            <param name="services">The service collection to add NetMediate services to.</param>
+            <param name="configure">
+            The callback that performs explicit handler and behavior registrations.
+            </param>
+            <returns>A <see cref="T:NetMediate.IMediatorServiceBuilder"/> instance for additional configuration.</returns>
+        </member>
+        <member name="T:NetMediate.PipelineBehaviorDelegate`2">
+            <summary>
+            Represents a delegate that handles a message asynchronously.
+            </summary>
+            <remarks>Use this delegate to define custom asynchronous logic for processing messages as fire (and may forget [notifications]). The
+            operation may be canceled by the provided cancellationToken.</remarks>
+            <typeparam name="TMessage">The type of the message to handle.</typeparam>
+            <typeparam name="TResult">The type of the response data.</typeparam>
+            <param name="key">An optional key to distinguish this handler from others of the same interface type.</param>
+            <param name="message">The notification message to process.</param>
+            <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+            <returns>A TResult that represents the asynchronous handling operation.</returns>
+        </member>
+    </members>
+</doc>

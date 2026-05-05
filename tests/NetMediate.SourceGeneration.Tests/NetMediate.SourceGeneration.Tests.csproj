@@ -20,7 +20,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.7" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
 	<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />
-	<PackageReference Include="NetMediate" Version="$(Stable).*" PrivateAssets="all" />
+	<PackageReference Include="NetMediate" Version="*" PrivateAssets="all" />
     <PackageReference Include="xunit.v3" Version="3.*" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.*">
       <PrivateAssets>all</PrivateAssets>

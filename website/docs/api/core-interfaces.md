@@ -18,7 +18,7 @@ public interface IMediator
 }
 ```
 
-## ICommandHandler<TMessage>
+## ICommandHandler&lt;TMessage&gt;
 
 Handler for commands.
 
@@ -29,7 +29,7 @@ public interface ICommandHandler<in TMessage> : IHandler<TMessage, Task>
 }
 ```
 
-## IRequestHandler<TMessage, TResponse>
+## IRequestHandler&lt;TMessage, TResponse&gt;
 
 Handler for requests.
 
@@ -40,7 +40,7 @@ public interface IRequestHandler<in TMessage, TResponse> : IHandler<TMessage, Ta
 }
 ```
 
-## INotificationHandler<TMessage>
+## INotificationHandler&lt;TMessage&gt;
 
 Handler for notifications.
 
@@ -51,7 +51,7 @@ public interface INotificationHandler<in TMessage> : IHandler<TMessage, Task>
 }
 ```
 
-## IStreamHandler<TMessage, TResponse>
+## IStreamHandler&lt;TMessage, TResponse&gt;
 
 Handler for streams.
 

@@ -144,7 +144,7 @@ const config = {
       prism: {
         theme: prismThemes.github,
         darkTheme: prismThemes.dracula,
-        additionalLanguages: ['csharp', 'bash', 'powershell', 'json', 'xml'],
+        additionalLanguages: ['csharp', 'bash', 'powershell', 'json'],
       },
       colorMode: {
         defaultMode: 'light',

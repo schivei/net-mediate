@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Behavior Interfaces
 
-## IPipelineBehavior<TMessage, TResult>
+## IPipelineBehavior&lt;TMessage, TResult&gt;
 
 Generic pipeline behavior interface.
 
@@ -18,14 +18,14 @@ public interface IPipelineBehavior<in TMessage, TResult>
 }
 ```
 
-## IPipelineRequestBehavior<TMessage, TResponse>
+## IPipelineRequestBehavior&lt;TMessage, TResponse&gt;
 
 Behavior for request pipeline.
 
-## IPipelineNotificationBehavior<TMessage>
+## IPipelineNotificationBehavior&lt;TMessage&gt;
 
 Behavior for notification pipeline.
 
-## IPipelineStreamBehavior<TMessage, TResponse>
+## IPipelineStreamBehavior&lt;TMessage, TResponse&gt;
 
 Behavior for stream pipeline.

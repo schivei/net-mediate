@@ -1,47 +1,45 @@
 # NetMediate Benchmark Results
 
+<!-- netmediate-bench-baseline: {"cmd": 73.15, "notify": 127.97, "request": 90.91, "stream": 168.96} -->
+
 This document describes the performance characteristics of NetMediate under the current implementation, which uses **explicit handler registration only** (no assembly scanning) and **closed-type pipeline executors** registered at startup.
 
 ---
 
 ## Reference benchmark environment
 
-Results in this document were produced by running `CoreDispatchThroughputTests` and `BenchmarkSystemInfoTests` in Release mode with `NETMEDIATE_RUN_PERFORMANCE_TESTS=true`. System info is always printed automatically when running any benchmark test class.
+The table below is updated automatically by CI on every PR benchmark run. System info comes from the BenchmarkDotNet host environment.
 
+<!-- ci-environment-start -->
 | Key | Value |
 |---|---|
-| OS | Ubuntu 24.04.4 LTS |
-| Architecture | X64 |
-| Logical CPUs | 4 |
-| Total RAM | ~15,989 MB |
-| .NET version | 10.0.5 |
-| Execution mode | JIT (CoreCLR) |
-| TFM | .NETCoreApp,Version=v10.0 |
-
-To capture the specs for your own machine, run:
-
-```bash
-dotnet test tests/NetMediate.Tests/ --configuration Release \
-  --filter "FullyQualifiedName~BenchmarkSystemInfo" \
-  --logger "console;verbosity=detailed"
-```
-
-Output lines are prefixed with `SYSTEM_INFO`.
+| OS | Linux Ubuntu 24.04.4 LTS (Noble Numbat) |
+| CPU | AMD EPYC 7763 2.45GHz, 1 CPU, 4 logical and 2 physical cores |
+| .NET SDK | 10.0.203 |
+| Runtime | .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3 |
+| Last CI run | 2026-05-05 12:03 UTC |
+| Branch | `copilot/implementar-long-term` |
+| Commit | `692888b` |
+<!-- ci-environment-end -->
 
 ---
 
 ## Core dispatch throughput
 
-Measured with `CoreDispatchThroughputTests` — no behaviors, no resilience, no adapters registered. Each test type uses its own unique message type so handler and behavior caches are never shared across tests. A warm-up phase runs before the timed window to prime DI resolution and the handler/behavior caches.
+Measured with BenchmarkDotNet (`CoreDispatchBenchmarks`) — no behaviors, no resilience, no adapters registered.
+`Mean` is the BenchmarkDotNet Throughput-job mean (ns/op). `Throughput` is the derived ops/s. The `vs baseline` column
+compares against the last recorded values from the target branch (±3% = no change, ✅ = improved, ⚠️ = degraded).
 
-| Message type | Method | Operations | Elapsed (ms) | Throughput |
-|---|---|---:|---:|---:|
-| Command | `IMediator.Send<TMsg>` | 50,000 | 40.13 | **~1,246,000 msgs/s** |
-| Notification | `IMediator.Notify<TMsg>` | 50,000 | 33.36 | **~1,499,000 msgs/s** |
-| Request | `IMediator.Request<TMsg, TResp>` | 50,000 | 26.49 | **~1,888,000 msgs/s** |
-| Stream | `IMediator.RequestStream<TMsg, TResp>` | 10,000 | 38.51 | **~260,000 invocations/s** ¹ |
+<!-- ci-throughput-start -->
+| Benchmark | Mean | Error | Gen0 | Allocated | Throughput | vs baseline |
+|---|---|---|---|---|---|---|
+| Command `Send` | 73.15 ns | ±0.732 ns | 0.0018 | 32 B | ~13.7M msg/s | — |
+| Notification `Notify` | 127.97 ns | ±1.502 ns | 0.0161 | 272 B | ~7.8M msg/s | — |
+| Request `Request` | 90.91 ns | ±0.294 ns | 0.0061 | 104 B | ~11.0M msg/s | — |
+| Stream `RequestStream` | 168.96 ns | ±1.156 ns | 0.0117 | 200 B | ~5.9M msg/s | — |
+<!-- ci-throughput-end -->
 
-¹ Stream throughput is measured as complete stream invocations per second, not individual items. Each invocation yields 3 items, giving ~780,000 total items/s.
+> ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.
 
 > **Note on stream vs other types:** Stream invocations are inherently more expensive because each call allocates a new `IAsyncEnumerator<T>` and drives it through multiple `MoveNextAsync` cycles with `Task.Yield()` inside the handler. The per-invocation cost is higher by design.
 

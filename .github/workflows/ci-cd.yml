@@ -95,26 +95,24 @@ jobs:
       
     - name: Run Benchmarks (PR only)
       if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
+      env:
+        BRANCH: ${{ github.head_ref }}
+        BASE_REF: ${{ github.base_ref }}
+        COMMIT_SHA: ${{ github.sha }}
+        BENCH_REPORT: ${{ runner.temp }}/bench-report.md
+        BENCH_BASE: ${{ runner.temp }}/benchmarks-base.md
       run: |
         cd tests/NetMediate.Benchmarks
-        dotnet run --configuration Release -- --job Short --exporters GitHub --filter '*' 2>&1 | tee /tmp/bench-console.txt || true
+        dotnet run --configuration Release -- --job Short --exporters GitHub --filter '*' 2>&1 | tee "$RUNNER_TEMP/bench-console.txt" || true
         REPORT=$(find BenchmarkDotNet.Artifacts -name '*-report-github.md' 2>/dev/null | head -1)
         if [ -n "$REPORT" ]; then
-          # Remove any previous CI section from the static BENCHMARKS.md and append new results
-          sed -i '/^## Latest CI Benchmark Run/,$d' ../../docs/BENCHMARKS.md
-          {
-            echo "## Latest CI Benchmark Run"
-            echo ""
-            echo "Run: $(date -u '+%Y-%m-%d %H:%M UTC') | Branch: $GITHUB_HEAD_REF | Commit: ${GITHUB_SHA:0:7}"
-            echo ""
-            cat "$REPORT"
-            echo ""
-            echo "### Full Console Output"
-            echo ""
-            echo '```'
-            cat /tmp/bench-console.txt
-            echo '```'
-          } >> ../../docs/BENCHMARKS.md
+          cp "$REPORT" "$BENCH_REPORT"
+          cd ../..
+          # Fetch base branch BENCHMARKS.md for baseline comparison
+          git fetch origin "$BASE_REF" 2>/dev/null || true
+          git show "origin/$BASE_REF:docs/BENCHMARKS.md" > "$BENCH_BASE" 2>/dev/null \
+            || echo '<!-- netmediate-bench-baseline: {} -->' > "$BENCH_BASE"
+          python3 .github/scripts/update_benchmarks.py
         fi
 
     - name: Commit benchmark results

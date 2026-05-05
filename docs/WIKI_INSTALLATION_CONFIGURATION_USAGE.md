@@ -89,7 +89,7 @@ await mediator.Send("audit", command, ct);
 
 The same `key` parameter is available on all dispatch methods: `Send(key, ...)`, `Notify(key, ...)`, `Request(key, ...)`, and `RequestStream(key, ...)`.
 
-> **Note:** Keyed handlers use `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**. Use keyed registration only when NativeAOT is not required.
+> **NativeAOT:** Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed registration uses `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**; use it only when NativeAOT is not required.
 
 ### Optional base class
 

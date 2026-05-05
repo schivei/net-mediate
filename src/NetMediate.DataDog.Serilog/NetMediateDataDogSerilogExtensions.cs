@@ -1,6 +1,6 @@
+using System.Data;
 using NetMediate;
 using Serilog;
-using System.Data;
 
 namespace NetMediate.DataDog.Serilog;
 
@@ -30,7 +30,10 @@ public static class NetMediateDataDogSerilogExtensions
             "netmediate.activity_source",
             NetMediateDiagnostics.ActivitySourceName
         );
-        loggerConfiguration.Enrich.WithProperty("netmediate.meter", NetMediateDiagnostics.MeterName);
+        loggerConfiguration.Enrich.WithProperty(
+            "netmediate.meter",
+            NetMediateDiagnostics.MeterName
+        );
 
         if (!options.EnableSink)
             return loggerConfiguration;

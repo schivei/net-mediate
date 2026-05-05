@@ -16,8 +16,10 @@ internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider se
     where TMessage : notnull
 {
     // See PipelineExecutor<,,> for the full rationale on this two-level cache design.
-    private static readonly ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, Task>>>>
-        s_pipelineCache = new();
+    private static readonly ConditionalWeakTable<
+        IServiceProvider,
+        ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, Task>>>
+    > s_pipelineCache = new();
 
     static NotificationPipelineExecutor() =>
         Extensions.RegisterPipelineCacheClearing(sp =>
@@ -31,17 +33,21 @@ internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider se
         object? key,
         TMessage message,
         HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> exec,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         var perProvider = s_pipelineCache.GetValue(
             serviceProvider,
-            _ => new ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, Task>>>());
+            _ => new ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, Task>>>()
+        );
 
         var lazy = perProvider.GetOrAdd(
             key ?? Extensions.DEFAULT_ROUTING_KEY,
             _ => new Lazy<PipelineBehaviorDelegate<TMessage, Task>>(
                 () => BuildPipeline(key, serviceProvider, exec),
-                LazyThreadSafetyMode.ExecutionAndPublication));
+                LazyThreadSafetyMode.ExecutionAndPublication
+            )
+        );
 
         return lazy.Value(key, message, cancellationToken);
     }
@@ -49,12 +55,14 @@ internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider se
     private static PipelineBehaviorDelegate<TMessage, Task> BuildPipeline(
         object? key,
         IServiceProvider sp,
-        HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> exec)
+        HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> exec
+    )
     {
         // Resolve handlers directly from the provider — the pipeline is already cached per-provider,
         // so this runs only once per provider. Using direct resolution avoids cross-provider
         // contamination that would occur with a global static handler cache.
-        var handlers = sp.GetHandlers<INotificationHandler<TMessage>, TMessage, Task>(key).ToArray();
+        var handlers = sp.GetHandlers<INotificationHandler<TMessage>, TMessage, Task>(key)
+            .ToArray();
 
         Task app(object? key, TMessage msg, CancellationToken ct) => exec(key, msg, handlers, ct);
 
@@ -64,18 +72,25 @@ internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider se
         //   3. IPipelineNotificationBehavior<TMessage>    — notification-specific shorthand
         // Results are cached per provider to avoid repeated DI enumeration.
         var behaviorArray = sp.GetCachedBehaviors<IPipelineBehavior<TMessage, Task>>()
-            .Concat(sp.GetCachedBehaviors<IPipelineBehavior<TMessage>>()
-                .Cast<IPipelineBehavior<TMessage, Task>>())
-            .Concat(sp.GetCachedBehaviors<IPipelineNotificationBehavior<TMessage>>()
-                .Cast<IPipelineBehavior<TMessage, Task>>())
+            .Concat(
+                sp.GetCachedBehaviors<IPipelineBehavior<TMessage>>()
+                    .Cast<IPipelineBehavior<TMessage, Task>>()
+            )
+            .Concat(
+                sp.GetCachedBehaviors<IPipelineNotificationBehavior<TMessage>>()
+                    .Cast<IPipelineBehavior<TMessage, Task>>()
+            )
             .ToArray();
 
         if (behaviorArray.Length == 0)
             return app;
 
         // Explicit Enumerable.Reverse avoids ambiguity with MemoryExtensions.Reverse(Span<T>).
-        return Enumerable.Reverse(behaviorArray)
-            .Aggregate((PipelineBehaviorDelegate<TMessage, Task>)app, (current, behavior) => (key, msg, ct) =>
-                behavior.Handle(key, msg, current, ct));
+        return Enumerable
+            .Reverse(behaviorArray)
+            .Aggregate(
+                (PipelineBehaviorDelegate<TMessage, Task>)app,
+                (current, behavior) => (key, msg, ct) => behavior.Handle(key, msg, current, ct)
+            );
     }
 }

@@ -16,8 +16,7 @@ public sealed class CommandTests
             async (sp) =>
             {
                 var mediator = sp.GetRequiredService<IMediator>();
-                await mediator
-                    .Send(message, fixture.CancellationTokenSource.Token);
+                await mediator.Send(message, fixture.CancellationTokenSource.Token);
             }
         );
         // Assert

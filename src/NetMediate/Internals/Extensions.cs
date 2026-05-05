@@ -1,7 +1,7 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace NetMediate.Internals;
 
@@ -15,16 +15,20 @@ internal static class Extensions
     // ConditionalWeakTable keys the per-type handler cache to the concrete IServiceProvider
     // instance so each container gets its own isolated cache.  When the provider is GC'd its
     // cache entry is automatically released — no memory leak.
-    private static readonly ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<ServiceKey, Lazy<object>>>
-        s_handlerCacheByProvider = new();
+    private static readonly ConditionalWeakTable<
+        IServiceProvider,
+        ConcurrentDictionary<ServiceKey, Lazy<object>>
+    > s_handlerCacheByProvider = new();
 
     // Behaviors may differ between service-provider instances (e.g., different test containers
     // register different behaviors for the same message type).  Using a ConditionalWeakTable
     // keys the per-type behavior cache to the concrete IServiceProvider instance, so each
     // container gets its own isolated cache.  When the provider is GC'd its cache entry is
     // automatically released — no memory leak.
-    private static readonly ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<ServiceKey, Lazy<object>>>
-        s_behaviorCacheByProvider = new();
+    private static readonly ConditionalWeakTable<
+        IServiceProvider,
+        ConcurrentDictionary<ServiceKey, Lazy<object>>
+    > s_behaviorCacheByProvider = new();
 
     // Pre-compiled pipeline delegates are cached per provider per executor type.
     // Each concrete executor class (closed generic) registers an Action<IServiceProvider> here
@@ -68,28 +72,40 @@ internal static class Extensions
             where TMessage : notnull
         {
             mediatorServiceBuilder.Services.AddKeyedSingleton(DEFAULT_ROUTING_KEY, handler);
-            mediatorServiceBuilder.Services.TryAddSingleton<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>();
+            mediatorServiceBuilder.Services.TryAddSingleton<
+                PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>
+            >();
         }
 
         internal void RegisterNotificationHandler<TMessage>(INotificationHandler<TMessage> handler)
             where TMessage : notnull
         {
             mediatorServiceBuilder.Services.AddKeyedSingleton(DEFAULT_ROUTING_KEY, handler);
-            mediatorServiceBuilder.Services.TryAddSingleton<NotificationPipelineExecutor<TMessage>>();
+            mediatorServiceBuilder.Services.TryAddSingleton<
+                NotificationPipelineExecutor<TMessage>
+            >();
         }
 
-        internal void RegisterRequestHandler<TMessage, TResponse>(IRequestHandler<TMessage, TResponse> handler)
+        internal void RegisterRequestHandler<TMessage, TResponse>(
+            IRequestHandler<TMessage, TResponse> handler
+        )
             where TMessage : notnull
         {
             mediatorServiceBuilder.Services.AddKeyedSingleton(DEFAULT_ROUTING_KEY, handler);
-            mediatorServiceBuilder.Services.TryAddSingleton<RequestPipelineExecutor<TMessage, TResponse>>();
+            mediatorServiceBuilder.Services.TryAddSingleton<
+                RequestPipelineExecutor<TMessage, TResponse>
+            >();
         }
 
-        internal void RegisterStreamHandler<TMessage, TResponse>(IStreamHandler<TMessage, TResponse> handler)
+        internal void RegisterStreamHandler<TMessage, TResponse>(
+            IStreamHandler<TMessage, TResponse> handler
+        )
             where TMessage : notnull
         {
             mediatorServiceBuilder.Services.AddKeyedSingleton(DEFAULT_ROUTING_KEY, handler);
-            mediatorServiceBuilder.Services.TryAddSingleton<StreamPipelineExecutor<TMessage, TResponse>>();
+            mediatorServiceBuilder.Services.TryAddSingleton<
+                StreamPipelineExecutor<TMessage, TResponse>
+            >();
         }
     }
 
@@ -101,7 +117,12 @@ internal static class Extensions
             where TResult : notnull
         {
             var providerCache = s_handlerCacheByProvider.GetValue(serviceProvider, _ => new());
-            return serviceProvider.GetCachedServices<THandler>(new(typeof(THandler), key ?? DEFAULT_ROUTING_KEY), providerCache).Single();
+            return serviceProvider
+                .GetCachedServices<THandler>(
+                    new(typeof(THandler), key ?? DEFAULT_ROUTING_KEY),
+                    providerCache
+                )
+                .Single();
         }
 
         public THandler[] GetHandlers<THandler, TMessage, TResult>(object? key = null)
@@ -110,10 +131,14 @@ internal static class Extensions
             where TResult : notnull
         {
             var providerCache = s_handlerCacheByProvider.GetValue(serviceProvider, _ => new());
-            return serviceProvider.GetCachedServices<THandler>(new(typeof(THandler), key ?? DEFAULT_ROUTING_KEY), providerCache);
+            return serviceProvider.GetCachedServices<THandler>(
+                new(typeof(THandler), key ?? DEFAULT_ROUTING_KEY),
+                providerCache
+            );
         }
 
-        public T[] GetCachedBehaviors<T>() where T : class
+        public T[] GetCachedBehaviors<T>()
+            where T : class
         {
             var providerCache = s_behaviorCacheByProvider.GetOrCreateValue(serviceProvider);
             var cacheKey = new ServiceKey(typeof(T), DEFAULT_ROUTING_KEY);
@@ -127,10 +152,14 @@ internal static class Extensions
                         // AddScoped/AddSingleton/AddTransient). The keyed set comes first so
                         // the registration order declared through IMediatorServiceBuilder is
                         // preserved; unkeyed registrations are appended for backward compat.
-                        var keyed = serviceProvider.GetKeyedServices<T>(DEFAULT_ROUTING_KEY).ToArray();
+                        var keyed = serviceProvider
+                            .GetKeyedServices<T>(DEFAULT_ROUTING_KEY)
+                            .ToArray();
                         var unkeyed = serviceProvider.GetServices<T>().ToArray();
-                        if (keyed.Length == 0) return unkeyed;
-                        if (unkeyed.Length == 0) return keyed;
+                        if (keyed.Length == 0)
+                            return unkeyed;
+                        if (unkeyed.Length == 0)
+                            return keyed;
                         var combined = new T[keyed.Length + unkeyed.Length];
                         keyed.CopyTo(combined, 0);
                         unkeyed.CopyTo(combined, keyed.Length);
@@ -142,12 +171,19 @@ internal static class Extensions
             return (T[])lazy.Value;
         }
 
-        private T[] GetCachedServices<T>(ServiceKey key, ConcurrentDictionary<ServiceKey, Lazy<object>> cache) where T : class
+        private T[] GetCachedServices<T>(
+            ServiceKey key,
+            ConcurrentDictionary<ServiceKey, Lazy<object>> cache
+        )
+            where T : class
         {
             var lazy = cache.GetOrAdd(
                 key,
                 sk => new Lazy<object>(
-                    () => serviceProvider.GetKeyedServices<T>(sk.Key ?? DEFAULT_ROUTING_KEY).ToArray(),
+                    () =>
+                        serviceProvider
+                            .GetKeyedServices<T>(sk.Key ?? DEFAULT_ROUTING_KEY)
+                            .ToArray(),
                     LazyThreadSafetyMode.ExecutionAndPublication
                 )
             );

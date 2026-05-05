@@ -9,6 +9,7 @@ using System.Runtime.CompilerServices;
 #pragma warning disable IDE0130 // Namespace does not match folder structure
 // ReSharper disable once CheckNamespace
 namespace System.Threading;
+
 #pragma warning restore IDE0130 // Namespace does not match folder structure
 
 /// <summary>

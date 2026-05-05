@@ -11,7 +11,8 @@ public interface INotificationSerializer
     /// <typeparam name="TMessage">The notification message type.</typeparam>
     /// <param name="message">The message to serialize.</param>
     /// <returns>A string representation of the message.</returns>
-    string Serialize<TMessage>(TMessage message) where TMessage : notnull;
+    string Serialize<TMessage>(TMessage message)
+        where TMessage : notnull;
 
     /// <summary>
     /// Deserializes a notification message from its string representation.

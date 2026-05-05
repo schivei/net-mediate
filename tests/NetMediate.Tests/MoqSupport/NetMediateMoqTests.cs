@@ -82,9 +82,19 @@ public class NetMediateMoqTests
         var h2Called = false;
 
         var h1 = new LambdaNotificationHandler<NotifierTestMessage>(
-            (_, _) => { h1Called = true; return Task.CompletedTask; });
+            (_, _) =>
+            {
+                h1Called = true;
+                return Task.CompletedTask;
+            }
+        );
         var h2 = new LambdaNotificationHandler<NotifierTestMessage>(
-            (_, _) => { h2Called = true; return Task.CompletedTask; });
+            (_, _) =>
+            {
+                h2Called = true;
+                return Task.CompletedTask;
+            }
+        );
 
         await notifier.DispatchNotifications(
             null,
@@ -133,10 +143,10 @@ public class NetMediateMoqTests
 
     private sealed class LambdaNotificationHandler<TMessage>(
         Func<TMessage, CancellationToken, Task> fn
-    ) : INotificationHandler<TMessage> where TMessage : notnull
+    ) : INotificationHandler<TMessage>
+        where TMessage : notnull
     {
         public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
             fn(message, cancellationToken);
     }
 }
-

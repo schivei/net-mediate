@@ -89,7 +89,7 @@ NetMediate supports four types of messages, each with a specific purpose:
 | **Command** | `ICommandHandler<TMessage>` | All registered handlers, sequential in registration order |
 | **Request** | `IRequestHandler<TMessage, TResponse>` | First registered handler only; returns `TResponse` |
 | **Notification** | `INotificationHandler<TMessage>` | All registered handlers, individual fire-and-forget per handler |
-| **Stream** | `IStreamHandler<TMessage, TResponse>` | Single registered handler; yields items asynchronously |
+| **Stream** | `IStreamHandler<TMessage, TResponse>` | All registered handlers, items merged sequentially |
 
 ## No Marker Interfaces Required
 

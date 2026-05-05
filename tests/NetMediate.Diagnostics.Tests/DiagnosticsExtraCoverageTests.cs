@@ -37,16 +37,24 @@ public sealed class DiagnosticsExtraCoverageTests
             {
                 reg.RegisterNotificationHandler<NoopNotificationHandler, ErrorNotificationMsg>();
                 // TelemetryNotificationBehavior registered first → becomes outermost
-                reg.RegisterBehavior<TelemetryNotificationBehavior<ErrorNotificationMsg>, ErrorNotificationMsg, Task>();
+                reg.RegisterBehavior<
+                    TelemetryNotificationBehavior<ErrorNotificationMsg>,
+                    ErrorNotificationMsg,
+                    Task
+                >();
                 // ThrowingBehavior registered second → becomes innermost; throws before handler is reached
-                reg.RegisterBehavior<ThrowingNotificationBehavior<ErrorNotificationMsg>, ErrorNotificationMsg, Task>();
+                reg.RegisterBehavior<
+                    ThrowingNotificationBehavior<ErrorNotificationMsg>,
+                    ErrorNotificationMsg,
+                    Task
+                >();
             });
         });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => mediator.Notify(new ErrorNotificationMsg(), TestContext.Current.CancellationToken)
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            mediator.Notify(new ErrorNotificationMsg(), TestContext.Current.CancellationToken)
         );
 
         Assert.Contains("NetMediate.Notify", activityErrors);
@@ -77,15 +85,21 @@ public sealed class DiagnosticsExtraCoverageTests
             {
                 reg.RegisterRequestHandler<ThrowingRequestHandler, ErrorRequestMsg, string>();
                 // TelemetryRequestBehavior registered first → becomes outermost
-                reg.RegisterBehavior<TelemetryRequestBehavior<ErrorRequestMsg, string>, ErrorRequestMsg, Task<string>>();
+                reg.RegisterBehavior<
+                    TelemetryRequestBehavior<ErrorRequestMsg, string>,
+                    ErrorRequestMsg,
+                    Task<string>
+                >();
             });
         });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
 
-        var ex = await Assert.ThrowsAsync<MediatorException>(
-            () => mediator.Request<ErrorRequestMsg, string>(
-                new ErrorRequestMsg(), TestContext.Current.CancellationToken)
+        var ex = await Assert.ThrowsAsync<MediatorException>(() =>
+            mediator.Request<ErrorRequestMsg, string>(
+                new ErrorRequestMsg(),
+                TestContext.Current.CancellationToken
+            )
         );
 
         Assert.IsType<InvalidOperationException>(ex.InnerException);
@@ -117,17 +131,27 @@ public sealed class DiagnosticsExtraCoverageTests
             {
                 reg.RegisterStreamHandler<NoopStreamHandler, ErrorStreamMsg, string>();
                 // TelemetryStreamBehavior registered first → becomes outermost
-                reg.RegisterBehavior<TelemetryStreamBehavior<ErrorStreamMsg, string>, ErrorStreamMsg, IAsyncEnumerable<string>>();
+                reg.RegisterBehavior<
+                    TelemetryStreamBehavior<ErrorStreamMsg, string>,
+                    ErrorStreamMsg,
+                    IAsyncEnumerable<string>
+                >();
                 // ThrowingStreamBehavior registered second → becomes innermost; throws synchronously
-                reg.RegisterBehavior<ThrowingStreamBehavior<ErrorStreamMsg, string>, ErrorStreamMsg, IAsyncEnumerable<string>>();
+                reg.RegisterBehavior<
+                    ThrowingStreamBehavior<ErrorStreamMsg, string>,
+                    ErrorStreamMsg,
+                    IAsyncEnumerable<string>
+                >();
             });
         });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
 
-        Assert.Throws<InvalidOperationException>(
-            () => mediator.RequestStream<ErrorStreamMsg, string>(
-                new ErrorStreamMsg(), TestContext.Current.CancellationToken)
+        Assert.Throws<InvalidOperationException>(() =>
+            mediator.RequestStream<ErrorStreamMsg, string>(
+                new ErrorStreamMsg(),
+                TestContext.Current.CancellationToken
+            )
         );
 
         Assert.Contains("NetMediate.Stream", activityErrors);
@@ -148,8 +172,8 @@ public sealed class DiagnosticsExtraCoverageTests
 
         var mediator = host.Services.GetRequiredService<IMediator>();
 
-        var ex = await Assert.ThrowsAsync<MediatorException>(
-            () => mediator.Send(new ErrorCommandMsg(), TestContext.Current.CancellationToken)
+        var ex = await Assert.ThrowsAsync<MediatorException>(() =>
+            mediator.Send(new ErrorCommandMsg(), TestContext.Current.CancellationToken)
         );
 
         Assert.IsType<InvalidOperationException>(ex.InnerException);
@@ -222,8 +246,10 @@ public sealed class DiagnosticsExtraCoverageTests
         using var meterListener = new MeterListener();
         meterListener.InstrumentPublished = (instrument, l) =>
         {
-            if (instrument.Meter.Name == NetMediateDiagnostics.MeterName
-                && instrument.Name == NetMediateDiagnostics.NotifyCountMetricName)
+            if (
+                instrument.Meter.Name == NetMediateDiagnostics.MeterName
+                && instrument.Name == NetMediateDiagnostics.NotifyCountMetricName
+            )
                 l.EnableMeasurementEvents(instrument);
         };
         meterListener.SetMeasurementEventCallback<long>((_, _, _, _) => dispatched = true);
@@ -243,8 +269,10 @@ public sealed class DiagnosticsExtraCoverageTests
         using var meterListener = new MeterListener();
         meterListener.InstrumentPublished = (instrument, l) =>
         {
-            if (instrument.Meter.Name == NetMediateDiagnostics.MeterName
-                && instrument.Name == NetMediateDiagnostics.SendCountMetricName)
+            if (
+                instrument.Meter.Name == NetMediateDiagnostics.MeterName
+                && instrument.Name == NetMediateDiagnostics.SendCountMetricName
+            )
                 l.EnableMeasurementEvents(instrument);
         };
         meterListener.SetMeasurementEventCallback<long>((_, _, _, _) => emitted = true);
@@ -267,8 +295,10 @@ public sealed class DiagnosticsExtraCoverageTests
         using var meterListener = new MeterListener();
         meterListener.InstrumentPublished = (instrument, l) =>
         {
-            if (instrument.Meter.Name == NetMediateDiagnostics.MeterName
-                && instrument.Name == NetMediateDiagnostics.RequestCountMetricName)
+            if (
+                instrument.Meter.Name == NetMediateDiagnostics.MeterName
+                && instrument.Name == NetMediateDiagnostics.RequestCountMetricName
+            )
                 l.EnableMeasurementEvents(instrument);
         };
         meterListener.SetMeasurementEventCallback<long>((_, _, _, _) => emitted = true);
@@ -291,8 +321,10 @@ public sealed class DiagnosticsExtraCoverageTests
         using var meterListener = new MeterListener();
         meterListener.InstrumentPublished = (instrument, l) =>
         {
-            if (instrument.Meter.Name == NetMediateDiagnostics.MeterName
-                && instrument.Name == NetMediateDiagnostics.StreamCountMetricName)
+            if (
+                instrument.Meter.Name == NetMediateDiagnostics.MeterName
+                && instrument.Name == NetMediateDiagnostics.StreamCountMetricName
+            )
                 l.EnableMeasurementEvents(instrument);
         };
         meterListener.SetMeasurementEventCallback<long>((_, _, _, _) => emitted = true);
@@ -315,8 +347,10 @@ public sealed class DiagnosticsExtraCoverageTests
         using var meterListener = new MeterListener();
         meterListener.InstrumentPublished = (instrument, l) =>
         {
-            if (instrument.Meter.Name == NetMediateDiagnostics.MeterName
-                && instrument.Name == NetMediateDiagnostics.DispatchCountMetricName)
+            if (
+                instrument.Meter.Name == NetMediateDiagnostics.MeterName
+                && instrument.Name == NetMediateDiagnostics.DispatchCountMetricName
+            )
                 l.EnableMeasurementEvents(instrument);
         };
         meterListener.SetMeasurementEventCallback<long>((_, _, _, _) => emitted = true);
@@ -370,7 +404,10 @@ public sealed class DiagnosticsExtraCoverageTests
 
         var mediator = host.Services.GetRequiredService<IMediator>();
         var results = await mediator
-            .RequestStream<DiagStreamMessage, int>(new DiagStreamMessage(), TestContext.Current.CancellationToken)
+            .RequestStream<DiagStreamMessage, int>(
+                new DiagStreamMessage(),
+                TestContext.Current.CancellationToken
+            )
             .AsyncToSync();
 
         Assert.Equal([1, 2, 3, 4], [.. results]);
@@ -393,7 +430,11 @@ public sealed class DiagnosticsExtraCoverageTests
         });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        await mediator.Send("dkey", new DiagKeyedCmdMessage("k"), TestContext.Current.CancellationToken);
+        await mediator.Send(
+            "dkey",
+            new DiagKeyedCmdMessage("k"),
+            TestContext.Current.CancellationToken
+        );
 
         Assert.True(DiagKeyedCmdTrace.Called);
     }
@@ -406,12 +447,18 @@ public sealed class DiagnosticsExtraCoverageTests
             services.UseNetMediate(reg =>
             {
                 reg.RegisterRequestHandler<DiagNoopReqHandler, DiagKeyedReqMessage, string>();
-                reg.RegisterRequestHandler<DiagKeyedReqHandler, DiagKeyedReqMessage, string>("rkey");
+                reg.RegisterRequestHandler<DiagKeyedReqHandler, DiagKeyedReqMessage, string>(
+                    "rkey"
+                );
             });
         });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        var result = await mediator.Request<DiagKeyedReqMessage, string>("rkey", new DiagKeyedReqMessage("v"), TestContext.Current.CancellationToken);
+        var result = await mediator.Request<DiagKeyedReqMessage, string>(
+            "rkey",
+            new DiagKeyedReqMessage("v"),
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal("v", result);
     }
@@ -423,7 +470,8 @@ public sealed class DiagnosticsExtraCoverageTests
         for (var i = 0; i < 200; i++)
         {
             ct.ThrowIfCancellationRequested();
-            if (predicate()) return;
+            if (predicate())
+                return;
             await Task.Delay(10, ct);
         }
         Assert.Fail("Timed out waiting for condition.");
@@ -441,14 +489,23 @@ public sealed class DiagnosticsExtraCoverageTests
     // ── Message types ────────────────────────────────────────────────────────────────────────
 
     public sealed record ErrorNotificationMsg;
+
     public sealed record ErrorRequestMsg;
+
     public sealed record ErrorStreamMsg;
+
     public sealed record ErrorCommandMsg;
+
     public sealed record EnumNotifyMsg(string Value);
+
     public sealed record EnumSendMsg(string Value);
+
     public sealed record DiagMultiCmdMessage(string Value);
+
     public sealed record DiagStreamMessage;
+
     public sealed record DiagKeyedCmdMessage(string Value);
+
     public sealed record DiagKeyedReqMessage(string Value);
 
     // ── Trace helpers ─────────────────────────────────────────────────────────────────────────
@@ -457,7 +514,9 @@ public sealed class DiagnosticsExtraCoverageTests
     {
         private static int _count;
         public static int Count => Volatile.Read(ref _count);
+
         public static void Increment() => Interlocked.Increment(ref _count);
+
         public static void Reset() => Interlocked.Exchange(ref _count, 0);
     }
 
@@ -465,7 +524,9 @@ public sealed class DiagnosticsExtraCoverageTests
     {
         private static int _count;
         public static int Count => Volatile.Read(ref _count);
+
         public static void Increment() => Interlocked.Increment(ref _count);
+
         public static void Reset() => Interlocked.Exchange(ref _count, 0);
     }
 
@@ -473,7 +534,9 @@ public sealed class DiagnosticsExtraCoverageTests
     {
         private static int _count;
         public static int Count => Volatile.Read(ref _count);
+
         public static void Increment() => Interlocked.Increment(ref _count);
+
         public static void Reset() => Interlocked.Exchange(ref _count, 0);
     }
 
@@ -481,7 +544,9 @@ public sealed class DiagnosticsExtraCoverageTests
     {
         private static volatile bool _called;
         public static bool Called => _called;
+
         public static void Set() => _called = true;
+
         public static void Reset() => _called = false;
     }
 
@@ -503,7 +568,8 @@ public sealed class DiagnosticsExtraCoverageTests
     {
         public async IAsyncEnumerable<string> Handle(
             ErrorStreamMsg query,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            [EnumeratorCancellation] CancellationToken ct = default
+        )
         {
             yield return "ok";
             await Task.Yield();
@@ -539,19 +605,24 @@ public sealed class DiagnosticsExtraCoverageTests
     private sealed class ThrowingNotificationBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
         where TMessage : notnull
     {
-        public Task Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
-            throw new InvalidOperationException("inner behavior failure");
+        public Task Handle(
+            object? key,
+            TMessage message,
+            PipelineBehaviorDelegate<TMessage, Task> next,
+            CancellationToken ct = default
+        ) => throw new InvalidOperationException("inner behavior failure");
     }
 
-    private sealed class ThrowingStreamBehavior<TMessage, TResponse> : IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>>
+    private sealed class ThrowingStreamBehavior<TMessage, TResponse>
+        : IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>>
         where TMessage : notnull
     {
         public IAsyncEnumerable<TResponse> Handle(
             object? key,
             TMessage message,
             PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> next,
-            CancellationToken ct = default) =>
-            throw new InvalidOperationException("stream behavior failure");
+            CancellationToken ct = default
+        ) => throw new InvalidOperationException("stream behavior failure");
     }
 
     private sealed class DiagMultiCmdHandlerA : ICommandHandler<DiagMultiCmdMessage>
@@ -576,7 +647,8 @@ public sealed class DiagnosticsExtraCoverageTests
     {
         public async IAsyncEnumerable<int> Handle(
             DiagStreamMessage query,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            [EnumeratorCancellation] CancellationToken ct = default
+        )
         {
             yield return 1;
             yield return 2;
@@ -588,7 +660,8 @@ public sealed class DiagnosticsExtraCoverageTests
     {
         public async IAsyncEnumerable<int> Handle(
             DiagStreamMessage query,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            [EnumeratorCancellation] CancellationToken ct = default
+        )
         {
             yield return 3;
             yield return 4;
@@ -607,7 +680,8 @@ public sealed class DiagnosticsExtraCoverageTests
 
     private sealed class DiagNoopCmdHandler : ICommandHandler<DiagKeyedCmdMessage>
     {
-        public Task Handle(DiagKeyedCmdMessage command, CancellationToken ct = default) => Task.CompletedTask;
+        public Task Handle(DiagKeyedCmdMessage command, CancellationToken ct = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class DiagKeyedReqHandler : IRequestHandler<DiagKeyedReqMessage, string>

@@ -1,9 +1,10 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate;
 
+#pragma warning disable S2436
 /// <summary>
 /// Defines a builder interface for registering handlers in the mediator service.
 /// This interface allows for fluent configuration of message handlers,
@@ -31,11 +32,12 @@ public interface IMediatorServiceBuilder
     /// <typeparam name="TResult">The result type.</typeparam>
     /// <param name="key">An optional key to distinguish this handler from others of the same interface type.</param>
     /// <returns>The current instance of <see cref="IMediatorServiceBuilder"/> for chaining.</returns>
-    IMediatorServiceBuilder RegisterHandler< // NOSONAR S2436
+    IMediatorServiceBuilder RegisterHandler<
         TInterface,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THandler,
         TMessage,
-        TResult>(object? key = null)
+        TResult
+    >(object? key = null)
         where TInterface : class, IHandler<TMessage, TResult>
         where THandler : class, TInterface
         where TMessage : notnull
@@ -50,7 +52,8 @@ public interface IMediatorServiceBuilder
     /// <param name="key">An optional key to distinguish this handler from others of the same interface type.</param>
     IMediatorServiceBuilder RegisterCommandHandler<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THandler,
-        TMessage>(object? key = null)
+        TMessage
+    >(object? key = null)
         where THandler : class, ICommandHandler<TMessage>
         where TMessage : notnull;
 
@@ -60,7 +63,8 @@ public interface IMediatorServiceBuilder
     /// <param name="key">An optional key to distinguish this handler from others of the same interface type.</param>
     IMediatorServiceBuilder RegisterNotificationHandler<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THandler,
-        TMessage>(object? key = null)
+        TMessage
+    >(object? key = null)
         where THandler : class, INotificationHandler<TMessage>
         where TMessage : notnull;
 
@@ -71,7 +75,8 @@ public interface IMediatorServiceBuilder
     IMediatorServiceBuilder RegisterRequestHandler<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THandler,
         TMessage,
-        TResponse>(object? key = null)
+        TResponse
+    >(object? key = null)
         where THandler : class, IRequestHandler<TMessage, TResponse>
         where TMessage : notnull;
 
@@ -82,7 +87,8 @@ public interface IMediatorServiceBuilder
     IMediatorServiceBuilder RegisterStreamHandler<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THandler,
         TMessage,
-        TResponse>(object? key = null)
+        TResponse
+    >(object? key = null)
         where THandler : class, IStreamHandler<TMessage, TResponse>
         where TMessage : notnull;
 
@@ -93,10 +99,11 @@ public interface IMediatorServiceBuilder
     /// <typeparam name="TMessage">The message type.</typeparam>
     /// <typeparam name="TResult">The result type.</typeparam>
     /// <returns>The current instance of <see cref="IMediatorServiceBuilder"/> for chaining.</returns>
-    IMediatorServiceBuilder RegisterBehavior< // NOSONAR S2436
+    IMediatorServiceBuilder RegisterBehavior<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TBehavior,
         TMessage,
-        TResult>()
+        TResult
+    >()
         where TBehavior : class, IPipelineBehavior<TMessage, TResult>
         where TMessage : notnull
         where TResult : notnull;
@@ -111,7 +118,9 @@ public interface IMediatorServiceBuilder
     /// <returns>The current instance of <see cref="IMediatorServiceBuilder"/> for chaining.</returns>
     IMediatorServiceBuilder RegisterNotificationBehavior<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TBehavior,
-        TMessage>()
+        TMessage
+    >()
         where TBehavior : class, IPipelineNotificationBehavior<TMessage>
         where TMessage : notnull;
 }
+#pragma warning restore S2436

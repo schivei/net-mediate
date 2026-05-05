@@ -6,7 +6,10 @@ namespace System.Diagnostics.CodeAnalysis;
 /// Indicates that the specified member requires the ability to generate new code at runtime.
 /// This attribute is polyfilled for pre-.NET 5 TFMs.
 /// </summary>
-[AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Class, Inherited = false)]
+[AttributeUsage(
+    AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Class,
+    Inherited = false
+)]
 internal sealed class RequiresDynamicCodeAttribute(string message) : Attribute
 {
     /// <summary>Gets the message that describes the usage.</summary>

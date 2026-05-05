@@ -144,6 +144,35 @@ public sealed class GeneratorIntegrationTests
         return (generatedSource, generatorDiagnostics);
     }
 
+    /// <summary>
+    /// Runs the generator and returns <em>all</em> generated files, keyed by file name suffix.
+    /// </summary>
+    private static Dictionary<string, string> RunGeneratorAllFiles(
+        string assemblyName,
+        string userSource,
+        bool includeNetMediateDll = true,
+        LanguageVersion langVersion = LanguageVersion.CSharp13)
+    {
+        var references = BuildReferences(includeNetMediateDll);
+
+        var parseOptions = new CSharpParseOptions(languageVersion: langVersion);
+        var compilation = CSharpCompilation.Create(
+            assemblyName,
+            syntaxTrees: [CSharpSyntaxTree.ParseText(userSource, parseOptions)],
+            references: references,
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        var generator = CreateGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator).WithUpdatedParseOptions(parseOptions);
+        driver = (CSharpGeneratorDriver)driver.RunGeneratorsAndUpdateCompilation(
+            compilation, out _, out _);
+
+        return driver.GetRunResult().GeneratedTrees
+            .ToDictionary(
+                t => Path.GetFileName(t.FilePath),
+                t => t.GetText().ToString());
+    }
+
     private static List<MetadataReference> BuildReferences(bool includeNetMediateDll)
     {
         var refs = new List<MetadataReference>
@@ -527,5 +556,204 @@ public sealed class GeneratorIntegrationTests
         Assert.NotNull(mediator);
         var result = await mediator.Request("secondary", new MyCommand(2), TestContext.Current.CancellationToken);
         Assert.Equal(2, result);
+    }
+
+    // ── ServiceOrderAttribute ordering tests ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Verifies that when two command handlers carry <c>[ServiceOrder]</c> attributes with
+    /// different values the generator emits their registrations in ascending order value order
+    /// (lower order = registered first).
+    /// </summary>
+    [Fact]
+    public void Generator_WhenHandlersHaveServiceOrderAttribute_ShouldRegisterInAscendingOrder()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record FirstCommand;
+            public sealed record SecondCommand;
+
+            [ServiceOrder(2)]
+            public sealed class SecondHandler : ICommandHandler<SecondCommand>
+            {
+                public Task Handle(SecondCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+
+            [ServiceOrder(1)]
+            public sealed class FirstHandler : ICommandHandler<FirstCommand>
+            {
+                public Task Handle(FirstCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var (generatedSource, diagnostics) = RunGenerator(assemblyName: "MyApp.Ordered", userSource: userSource);
+
+        var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
+        Assert.Empty(errors);
+        Assert.Contains("class NetMediateGeneratedDI", generatedSource);
+
+        // FirstHandler (order 1) must be registered before SecondHandler (order 2).
+        var firstIdx  = generatedSource.IndexOf("FirstHandler",  StringComparison.Ordinal);
+        var secondIdx = generatedSource.IndexOf("SecondHandler", StringComparison.Ordinal);
+        Assert.True(firstIdx >= 0, "FirstHandler registration not found in generated source");
+        Assert.True(secondIdx >= 0, "SecondHandler registration not found in generated source");
+        Assert.True(firstIdx < secondIdx,
+            $"Expected FirstHandler (order 1) before SecondHandler (order 2), " +
+            $"but found positions {firstIdx} vs {secondIdx}.");
+    }
+
+    /// <summary>
+    /// Verifies that a handler without <c>[ServiceOrder]</c> is registered after handlers that
+    /// carry an explicit order (undecorated handlers get <see cref="int.MaxValue"/> as their
+    /// implicit order, placing them last).
+    /// </summary>
+    [Fact]
+    public void Generator_WhenOnlyOneHandlerHasServiceOrderAttribute_UndecoratedHandlerIsRegisteredLast()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record PriorityCommand;
+            public sealed record DefaultCommand;
+
+            [ServiceOrder(1)]
+            public sealed class PriorityHandler : ICommandHandler<PriorityCommand>
+            {
+                public Task Handle(PriorityCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+
+            public sealed class DefaultHandler : ICommandHandler<DefaultCommand>
+            {
+                public Task Handle(DefaultCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var (generatedSource, diagnostics) = RunGenerator(assemblyName: "MyApp.Priority", userSource: userSource);
+
+        Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        var priorityIdx = generatedSource.IndexOf("PriorityHandler", StringComparison.Ordinal);
+        var defaultIdx  = generatedSource.IndexOf("DefaultHandler",  StringComparison.Ordinal);
+        Assert.True(priorityIdx >= 0 && defaultIdx >= 0, "Both handlers should appear in the generated source");
+        Assert.True(priorityIdx < defaultIdx,
+            "PriorityHandler ([ServiceOrder(1)]) should be registered before undecorated DefaultHandler");
+    }
+
+    // ── Namespace algorithm tests ─────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Verifies that the generated class is placed in a namespace derived from the consuming
+    /// project's assembly name (e.g. "MyCompany.App" produces namespace "MyCompany.App.NetMediate").
+    /// </summary>
+    [Fact]
+    public void Generator_GeneratedClassIsInProjectDerivedNamespace()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace Acme.Core;
+
+            public sealed record AcmeCommand;
+
+            public sealed class AcmeHandler : ICommandHandler<AcmeCommand>
+            {
+                public Task Handle(AcmeCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var (generatedSource, diagnostics) = RunGenerator(assemblyName: "Acme.Core", userSource: userSource);
+
+        Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+        // The namespace in the generated file should include the project's root namespace.
+        Assert.Contains("Acme", generatedSource);
+        Assert.Contains("namespace", generatedSource);
+        Assert.DoesNotContain("namespace NetMediate;", generatedSource); // not the old fixed namespace
+    }
+
+    // ── Global using emission tests ───────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// For C# 10+ compilations the generator must emit a <c>NetMediateGlobalUsings.g.cs</c> file
+    /// containing <c>global using &lt;Namespace&gt;.NetMediate;</c> so that <c>AddNetMediate()</c>
+    /// is discoverable without a manual <c>using</c> directive.
+    /// </summary>
+    [Fact]
+    public void Generator_ForCSharp10Plus_EmitsGlobalUsingFile()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace Sample;
+
+            public sealed record SampleCmd;
+
+            public sealed class SampleCmdHandler : ICommandHandler<SampleCmd>
+            {
+                public Task Handle(SampleCmd command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(
+            assemblyName: "Sample",
+            userSource: userSource,
+            langVersion: LanguageVersion.CSharp10);
+
+        Assert.True(files.ContainsKey("NetMediateGlobalUsings.g.cs"),
+            "Expected NetMediateGlobalUsings.g.cs to be emitted for C# 10+ compilations. " +
+            $"Files emitted: {string.Join(", ", files.Keys)}");
+
+        var globalUsing = files["NetMediateGlobalUsings.g.cs"];
+        Assert.Contains("global using", globalUsing);
+        Assert.Contains(".NetMediate", globalUsing);
+    }
+
+    /// <summary>
+    /// For compilations with a language version below C# 10 the generator must NOT emit the
+    /// <c>NetMediateGlobalUsings.g.cs</c> file, as <c>global using</c> is not supported there.
+    /// </summary>
+    [Fact]
+    public void Generator_BelowCSharp10_DoesNotEmitGlobalUsingFile()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace Sample;
+
+            public sealed record LegacyCmd;
+
+            public sealed class LegacyCmdHandler : ICommandHandler<LegacyCmd>
+            {
+                public Task Handle(LegacyCmd command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(
+            assemblyName: "Sample.Legacy",
+            userSource: userSource,
+            langVersion: LanguageVersion.CSharp9);
+
+        Assert.False(files.ContainsKey("NetMediateGlobalUsings.g.cs"),
+            "NetMediateGlobalUsings.g.cs must NOT be emitted for C# < 10 compilations.");
     }
 }

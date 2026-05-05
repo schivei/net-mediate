@@ -225,7 +225,9 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
         where TMessage : notnull
     {
         foreach (var handler in handlers)
-        await foreach (var item in handler.Handle(message, cancellationToken).ConfigureAwait(false))
-            yield return item;
+        {
+            await foreach (var item in handler.Handle(message, cancellationToken).ConfigureAwait(false))
+                yield return item;
+        }
     }
 }

@@ -6,7 +6,7 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 
 - [x] Pipeline behaviors/interceptors (pre/post processing) via `IPipelineBehavior<TMessage, TResult>`, `IPipelineBehavior<TMessage>`, `IPipelineRequestBehavior<TMessage, TResponse>`, and `IPipelineStreamBehavior<TMessage, TResponse>`.
 - [x] Retry, timeout, and circuit-breaker strategies for notification/request handlers via `NetMediate.Resilience`.
-- [x] Source generator support (`NetMediate.SourceGeneration`) — generates `AddNetMediateGenerated()` with fully AOT-safe closed-type `Register*Handler<>` calls at compile time.
+- [x] Source generator support (`NetMediate.SourceGeneration`) — generates `AddNetMediate()` with fully AOT-safe closed-type `Register*Handler<>` calls at compile time.
 - [x] OpenTelemetry traces and metrics for `Send`/`Request`/`Notify`/`RequestStream` via built-in `ActivitySource`/`Meter` (`NetMediateDiagnostics`).
 - [x] Benchmark suite with load and pipeline-variant tests covering commands, requests, notifications, and streams.
 - [x] NativeAOT and trimming compatibility — no `MakeGenericType`, no assembly scanning, no `typeof(TResult)` runtime switches; closed-type executors registered per handler at startup.

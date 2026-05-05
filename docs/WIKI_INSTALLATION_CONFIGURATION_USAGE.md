@@ -156,25 +156,24 @@ dotnet add package NetMediate.Resilience
 ### Configuration
 
 ```csharp
-using NetMediate.Resilience;
+// Override defaults before calling AddNetMediate() — all options are independent
+builder.Services.Configure<RetryBehaviorOptions>(opts =>
+{
+    opts.MaxRetryCount = 2;
+    opts.Delay = TimeSpan.Zero;
+});
 
-builder.Services.AddNetMediateResilience(
-    configureRetry: retry =>
-    {
-        retry.MaxRetryCount = 2;
-        retry.Delay = TimeSpan.Zero;
-    },
-    configureTimeout: timeout =>
-    {
-        timeout.RequestTimeout = TimeSpan.FromSeconds(30);
-        timeout.NotificationTimeout = TimeSpan.FromSeconds(30);
-    },
-    configureCircuitBreaker: cb =>
-    {
-        cb.FailureThreshold = 5;
-        cb.OpenDuration = TimeSpan.FromSeconds(30);
-    }
-);
+builder.Services.Configure<TimeoutBehaviorOptions>(opts =>
+{
+    opts.RequestTimeout = TimeSpan.FromSeconds(30);
+    opts.NotificationTimeout = TimeSpan.FromSeconds(30);
+});
+
+builder.Services.Configure<CircuitBreakerBehaviorOptions>(opts =>
+{
+    opts.FailureThreshold = 5;
+    opts.OpenDuration = TimeSpan.FromSeconds(30);
+});
 ```
 
 See [RESILIENCE.md](RESILIENCE.md) for full details.

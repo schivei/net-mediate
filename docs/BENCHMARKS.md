@@ -1,6 +1,6 @@
 # NetMediate Benchmark Results
 
-<!-- netmediate-bench-baseline: {"cmd": 67.23, "notify": 100.77, "request": 68.72, "stream": 136.65, "cmd_a": 48.0, "notify_a": 288.0, "request_a": 120.0, "stream_a": 216.0} -->
+<!-- netmediate-bench-baseline: [{"cmd":67.23,"notify":100.77,"request":68.72,"stream":136.65,"cmd_a":48.0,"notify_a":288.0,"request_a":120.0,"stream_a":216.0}] -->
 
 This document describes the performance characteristics of NetMediate under the current implementation, which uses **explicit handler registration only** (no assembly scanning) and **closed-type pipeline executors** registered at startup.
 

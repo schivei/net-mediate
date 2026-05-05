@@ -47,14 +47,16 @@ jobs:
         dotnet build   src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --no-restore
         dotnet restore src/NetMediate/NetMediate.csproj
         dotnet build   src/NetMediate/NetMediate.csproj --configuration Release --no-restore
-      # GeneratePackageOnBuild=true in pack.props places the nupkg in
-      # src/NetMediate/bin/Release/, which is the RestoreAdditionalProjectSources
-      # path used by tests/NetMediate.SourceGeneration.Tests (hardcoded to Release).
+        dotnet pack    src/NetMediate/NetMediate.csproj --configuration Release --no-build --output ./local-packages
+      # Packs the nupkg (with bundled source generator analyzer) into local-packages/ BEFORE
+      # dotnet restore net-mediate.slnx, so that NetMediate.SourceGeneration.Tests (which
+      # references the package via NuGet.Config local feed) can be restored successfully.
 
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx
 
-      run: dotnet build src/NetMediate/NetMediate.csproj --configuration Release
+    - name: Build NetMediate
+      run: dotnet build src/NetMediate/NetMediate.csproj --configuration Release --no-restore
 
     - name: Build NetMediate.Diagnostics
       run: dotnet build src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release
@@ -227,6 +229,14 @@ jobs:
       with:
         dotnet-version: '10.x'
         
+    - name: Pre-build NetMediate (generates nupkg for source generation integration tests)
+      run: |
+        dotnet restore src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj
+        dotnet build   src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --no-restore
+        dotnet restore src/NetMediate/NetMediate.csproj
+        dotnet build   src/NetMediate/NetMediate.csproj --configuration Release --no-restore
+        dotnet pack    src/NetMediate/NetMediate.csproj --configuration Release --no-build --output ./local-packages
+
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx
       

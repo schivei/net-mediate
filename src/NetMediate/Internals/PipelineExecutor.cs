@@ -1,5 +1,5 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
 
@@ -8,46 +8,58 @@ internal class PipelineExecutor<TMessage, TResult, THandler>(IServiceProvider se
     where TResult : notnull
     where THandler : class, IHandler<TMessage, TResult>
 {
-    // Per-provider cache of the pre-compiled pipeline delegate.
-    // The static field is unique per closed generic instantiation, so different message/result/
-    // handler type combinations each maintain their own isolated cache without key collisions.
-    private static readonly ConditionalWeakTable<IServiceProvider, Lazy<PipelineBehaviorDelegate<TMessage, TResult>>>
+    // Per-provider, per-routing-key cache of the pre-compiled pipeline delegate.
+    // The outer ConditionalWeakTable is keyed by IServiceProvider (so entries are released when
+    // the provider is GC'd). The inner ConcurrentDictionary maps routing key → compiled delegate,
+    // ensuring that different routing keys produce different handler selections without
+    // contaminating each other or baking the first key into every subsequent dispatch.
+    private static readonly ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, TResult>>>>
         s_pipelineCache = new();
 
     // Register the cache-clearing action once per closed-generic instantiation (static ctor).
     // ClearCache(IServiceProvider) in Extensions will invoke this to invalidate the pre-compiled
     // chain for a specific provider (used by test isolation helpers).
     static PipelineExecutor() =>
-        Extensions.RegisterPipelineCacheClearing(sp => s_pipelineCache.Remove(sp));
+        Extensions.RegisterPipelineCacheClearing(sp =>
+        {
+            if (s_pipelineCache.TryGetValue(sp, out var cache))
+                cache.Clear();
+            s_pipelineCache.Remove(sp);
+        });
 
-    public TResult Handle(TMessage message, HandlerExecutionDelegate<THandler, TMessage, TResult> exec, CancellationToken cancellationToken)
+    public TResult Handle(object? key, TMessage message, HandlerExecutionDelegate<THandler, TMessage, TResult> exec, CancellationToken cancellationToken)
     {
-        // Build the pipeline delegate once per provider and reuse it on every subsequent call,
-        // eliminating the per-call Reverse/Aggregate/closure allocation.
-        var lazy = s_pipelineCache.GetValue(
+        // Build the pipeline delegate once per (provider, routing-key) pair and reuse it on
+        // every subsequent call, eliminating the per-call Reverse/Aggregate/closure allocation.
+        var perProvider = s_pipelineCache.GetValue(
             serviceProvider,
-            sp => new Lazy<PipelineBehaviorDelegate<TMessage, TResult>>(
-                () => BuildPipeline(sp, exec),
+            _ => new ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, TResult>>>());
+
+        var lazy = perProvider.GetOrAdd(
+            key ?? Extensions.DEFAULT_ROUTING_KEY,
+            _ => new Lazy<PipelineBehaviorDelegate<TMessage, TResult>>(
+                () => BuildPipeline(key, serviceProvider, exec),
                 LazyThreadSafetyMode.ExecutionAndPublication));
 
-        return lazy.Value(message, cancellationToken);
+        return lazy.Value(key, message, cancellationToken);
     }
 
     private static PipelineBehaviorDelegate<TMessage, TResult> BuildPipeline(
+        object? key,
         IServiceProvider sp,
         HandlerExecutionDelegate<THandler, TMessage, TResult> exec)
     {
         // Resolve handlers directly from the provider — the pipeline is already cached per-provider,
         // so this runs only once per provider. Using direct resolution avoids cross-provider
         // contamination that would occur with a global static handler cache.
-        var handlers = sp.GetServices<THandler>().ToArray();
+        var handlers = sp.GetHandlers<THandler, TMessage, TResult>(key).ToArray();
         var behaviors = sp.GetCachedBehaviors<IPipelineBehavior<TMessage, TResult>>();
 
         // Single-handler fast path: bypass the exec delegate's foreach loop and invoke the
         // sole registered handler directly.  Applies regardless of whether behaviors are present.
         PipelineBehaviorDelegate<TMessage, TResult> app = handlers.Length == 1
-            ? (msg, ct) => handlers[0].Handle(msg, ct)
-            : (msg, ct) => exec(msg, handlers, ct);
+            ? (_, msg, ct) => handlers[0].Handle(msg, ct)
+            : (key, msg, ct) => exec(key, msg, handlers, ct);
 
         if (behaviors.Length == 0)
             return app;
@@ -57,7 +69,7 @@ internal class PipelineExecutor<TMessage, TResult, THandler>(IServiceProvider se
         // Explicit Enumerable.Reverse avoids ambiguity with MemoryExtensions.Reverse(Span<T>)
         // when targeting netstandard2.0/2.1 (T[] converts implicitly to Span<T>).
         return Enumerable.Reverse(behaviors)
-            .Aggregate(app, (current, behavior) => (msg, ct) =>
-                behavior.Handle(msg, current, ct));
+            .Aggregate(app, (current, behavior) => (key, msg, ct) =>
+                behavior.Handle(key, msg, current, ct));
     }
 }

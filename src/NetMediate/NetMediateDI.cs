@@ -28,6 +28,12 @@ namespace NetMediate;
 public static class NetMediateDI
 {
     /// <summary>
+    /// The routing key used when no explicit key is provided.
+    /// Handlers and behaviors registered without a key, or dispatched without a key, all use this value.
+    /// <c>mediator.Send(command, ct)</c> and <c>mediator.Send(null, command, ct)</c> are exactly equivalent.
+    /// </summary>
+    public const string DEFAULT_ROUTING_KEY = Internals.Extensions.DEFAULT_ROUTING_KEY;
+    /// <summary>
     /// Configures NetMediate core services and applies the provided explicit handler registration
     /// callback.  This overload is <em>intended to be called by source-generated code only</em>
     /// — prefer the generated <c>AddNetMediate()</c> extension method over calling this method

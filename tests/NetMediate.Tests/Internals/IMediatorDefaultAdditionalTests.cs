@@ -20,7 +20,19 @@ public sealed class IMediatorDefaultAdditionalTests
             await Task.CompletedTask;
         }
 
+        public Task Notify<TMessage>(
+            object? key,
+            TMessage message,
+            CancellationToken cancellationToken = default
+        ) where TMessage : notnull => Notify(message, cancellationToken);
+
         public Task Send<TMessage>(
+            TMessage message,
+            CancellationToken cancellationToken = default
+        ) where TMessage : notnull => Task.CompletedTask;
+
+        public Task Send<TMessage>(
+            object? key,
             TMessage message,
             CancellationToken cancellationToken = default
         ) where TMessage : notnull => Task.CompletedTask;
@@ -28,7 +40,16 @@ public sealed class IMediatorDefaultAdditionalTests
         public Task Send<TMessage>(IEnumerable<TMessage> commands, CancellationToken cancellationToken = default) where TMessage : notnull =>
             Task.CompletedTask;
 
+        public Task Send<TMessage>(object? key, IEnumerable<TMessage> commands, CancellationToken cancellationToken = default) where TMessage : notnull =>
+            Task.CompletedTask;
+
         public Task<TResponse> Request<TMessage, TResponse>(
+            TMessage message,
+            CancellationToken cancellationToken = default
+        ) where TMessage : notnull => Task.FromResult(default(TResponse)!);
+
+        public Task<TResponse> Request<TMessage, TResponse>(
+            object? key,
             TMessage message,
             CancellationToken cancellationToken = default
         ) where TMessage : notnull => Task.FromResult(default(TResponse)!);
@@ -46,8 +67,17 @@ public sealed class IMediatorDefaultAdditionalTests
             }
         }
 
+        public IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
+            object? key,
+            TMessage message,
+            CancellationToken cancellationToken = default
+        ) where TMessage : notnull => RequestStream<TMessage, TResponse>(message, cancellationToken);
+
         public async Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull =>
             await Task.WhenAll(messages.Select(m => Notify(m, cancellationToken)));
+
+        public async Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull =>
+            await Task.WhenAll(messages.Select(m => Notify(key, m, cancellationToken)));
     }
 
     [Fact]

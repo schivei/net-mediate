@@ -14,6 +14,7 @@ public sealed class DataDogIntegrationPackageTests
     {
         var cancellationToken = TestContext.Current.CancellationToken;
         var services = new ServiceCollection();
+        var beforeCount = services.Count;
 
         services.AddNetMediateDataDogOpenTelemetry(options =>
         {
@@ -23,8 +24,40 @@ public sealed class DataDogIntegrationPackageTests
             options.ApiKey = "test-api-key";
         }, cancellationToken);
 
-        using var provider = services.BuildServiceProvider();
-        Assert.NotNull(provider);
+        // AddNetMediateDataDogOpenTelemetry must register OpenTelemetry services.
+        Assert.True(services.Count > beforeCount,
+            "AddNetMediateDataDogOpenTelemetry should register OTel services into the service collection.");
+    }
+
+    [Fact]
+    public void OpenTelemetryPackage_WithNullConfigure_ShouldUseDefaults()
+    {
+        // Covers the configure?.Invoke(options) null branch.
+        // When configure is null the default DataDogOpenTelemetryOptions values are used.
+        var services = new ServiceCollection();
+        var beforeCount = services.Count;
+
+        services.AddNetMediateDataDogOpenTelemetry(configure: null);
+
+        Assert.True(services.Count > beforeCount,
+            "AddNetMediateDataDogOpenTelemetry (null configure) should still register OTel services.");
+    }
+
+    [Fact]
+    public void OpenTelemetryPackage_WithEmptyApiKey_ShouldNotSetHeaders()
+    {
+        // Covers the !string.IsNullOrWhiteSpace(options.ApiKey) = false branch (empty/whitespace key).
+        // The method should complete without throwing even when ApiKey is empty.
+        var services = new ServiceCollection();
+        var beforeCount = services.Count;
+
+        services.AddNetMediateDataDogOpenTelemetry(options =>
+        {
+            options.ApiKey = string.Empty;
+        });
+
+        Assert.True(services.Count > beforeCount,
+            "AddNetMediateDataDogOpenTelemetry should register OTel services even with an empty ApiKey.");
     }
 
     [Fact]
@@ -81,8 +114,10 @@ public sealed class DataDogIntegrationPackageTests
             }, TestContext.Current.CancellationToken);
 
         // CreateLogger() triggers the full Serilog pipeline build.
+        // Verify no exception is raised when writing through the configured sink.
         using var logger = loggerConfig.CreateLogger();
-        Assert.NotNull(logger);
+        var writeEx = Record.Exception(() => logger.Information("coverage-test {Value}", 42));
+        Assert.Null(writeEx);
     }
 
     [Fact]
@@ -103,8 +138,27 @@ public sealed class DataDogIntegrationPackageTests
         var logger = provider.GetRequiredService<ILogger<DataDogIntegrationPackageTests>>();
 
         using var scope = logger.BeginNetMediateDataDogScope(options, cancellationToken);
-        Assert.NotNull(scope);
+        // Verify configured options are reflected in what was registered.
         Assert.Equal("netmediate-tests", options.Service);
+        Assert.Equal("test", options.Environment);
+        Assert.Equal("1.0.0", options.Version);
+    }
+
+    [Fact]
+    public void ILoggerPackage_WithNullConfigure_ShouldUseDefaults()
+    {
+        // Covers the configure?.Invoke(options) null branch in AddNetMediateDataDogILogger.
+        // When configure is null the class-level default values must remain unchanged.
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddNetMediateDataDogILogger(configure: null);
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<DataDogILoggerOptions>();
+
+        // Verify the hard-coded defaults defined in DataDogILoggerOptions.
+        Assert.Equal("netmediate", options.Service);
+        Assert.Equal("dev", options.Environment);
+        Assert.Equal("unknown", options.Version);
     }
 
     [Fact]
@@ -116,8 +170,13 @@ public sealed class DataDogIntegrationPackageTests
         var opts = new DataDogILoggerOptions { Service = "test", Environment = "ci", Version = "0" };
 
         using var scope = nullScopeLogger.BeginNetMediateDataDogScope(opts, TestContext.Current.CancellationToken);
-        // NoopScope.Dispose must not throw.
-        Assert.NotNull(scope);
+
+        // The returned scope must be the NoopScope singleton (private nested class).
+        Assert.Equal("NoopScope", scope.GetType().Name);
+
+        // Dispose must not throw (it is intentionally a no-op).
+        var disposeEx = Record.Exception(() => scope.Dispose());
+        Assert.Null(disposeEx);
     }
 
     /// <summary>Logger that returns <see langword="null"/> from BeginScope, forcing NoopScope.</summary>

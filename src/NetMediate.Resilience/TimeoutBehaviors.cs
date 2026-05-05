@@ -6,6 +6,7 @@ namespace NetMediate.Resilience;
 /// Request pipeline behavior that applies a timeout.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
+[ServiceOrder(int.MinValue + 3)]
 public sealed class TimeoutRequestBehavior<TMessage, TResponse>(IOptions<TimeoutBehaviorOptions> optionsAccessor)
     : IPipelineRequestBehavior<TMessage, TResponse> where TMessage : notnull
 {
@@ -47,6 +48,7 @@ public sealed class TimeoutRequestBehavior<TMessage, TResponse>(IOptions<Timeout
 /// Notification and command pipeline behavior that applies a timeout.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
+[ServiceOrder(int.MinValue + 3)]
 public sealed class TimeoutNotificationBehavior<TMessage>(IOptions<TimeoutBehaviorOptions> optionsAccessor)
     : IPipelineBehavior<TMessage> where TMessage : notnull
 {

@@ -420,7 +420,7 @@ public sealed class ResilienceCoverageTests
 
     private static class NotifBehaviorTrace
     {
-        private static readonly System.Collections.Concurrent.ConcurrentBag<string> _entries = [];
+        private static readonly ConcurrentBag<string> _entries = [];
         public static IReadOnlyCollection<string> Entries => [.. _entries];
         public static int Count => _entries.Count;
         public static void Add(string entry) => _entries.Add(entry);

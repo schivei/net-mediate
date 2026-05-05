@@ -71,7 +71,7 @@ public sealed class DiagnosticsTelemetryTests
     [Fact]
     public async Task StartActivity_WhenParentActivityIsAmbient_ShouldAddLinkToParent()
     {
-        var linkedContexts = new System.Collections.Concurrent.ConcurrentQueue<ActivityContext>();
+        var linkedContexts = new ConcurrentQueue<ActivityContext>();
 
         using var listener = new ActivityListener
         {

@@ -102,7 +102,7 @@ public class InternalNotifierTests
         var notifier = new Notifier(new ThrowingServiceProvider(), logger);
         var messages = new[] { new TestNotification(), new TestNotification() };
 
-        var task = notifier.Notify<TestNotification>(null, (IEnumerable<TestNotification>)messages, CancellationToken.None);
+        var task = notifier.Notify(null, (IEnumerable<TestNotification>)messages, CancellationToken.None);
 
         // Must complete synchronously and not throw — exceptions are caught and logged.
         Assert.True(task.IsCompletedSuccessfully);

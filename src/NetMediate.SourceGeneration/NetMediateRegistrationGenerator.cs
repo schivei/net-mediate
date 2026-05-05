@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -12,7 +13,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     private const string NotifierToken = "{{Notifier}}";
     private const string RegistrationsToken = "{{Registrations}}";
     private const string FrameworkBehaviorsToken = "{{FrameworkBehaviors}}";
+    private const string AssemblyNamespaceToken = "{{AssemblyNamespace}}";
     private const string KeyedServiceAttributeMetadataName = "NetMediate.KeyedServiceAttribute";
+    private const string ServiceOrderAttributeMetadataName = "NetMediate.ServiceOrderAttribute";
 
     // Resolved once; format: <RootNamespace>.<FileName>
     private static readonly string TemplateResourceName =
@@ -31,6 +34,8 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
         var packageInfo = context.CompilationProvider.Select(static (compilation, _) => Selects(compilation));
 
+        packageInfo = Compute(packageInfo);
+
         var combined = handlerTypes.Combine(packageInfo);
 
         context.RegisterSourceOutput(
@@ -39,9 +44,81 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         );
     }
 
-    private static void Accumulate(SourceProductionContext sourceProductionContext, (ImmutableArray<INamedTypeSymbol> Left, (bool hasDiagnostics, bool hasResilience, bool isNetMediateAssembly) Right) input)
+    private static readonly HashSet<string> _names = [];
+
+    private static IncrementalValueProvider<(bool hasDiagnostics, bool hasResilience, bool isNetMediateAssembly, string assemblyName)> Compute(IncrementalValueProvider<(bool hasDiagnostics, bool hasResilience, bool isNetMediateAssembly, string assemblyName)> packageInfo)
     {
-        var (types, (hasDiagnostics, hasResilience, isNetMediateAssembly)) = input;
+        packageInfo.Select(static (input, _) => ExtractNames(input));
+
+        return packageInfo.Select(static (input, _) => CalculateName(input));
+    }
+
+    private static bool ExtractNames((bool hasDiagnostics, bool hasResilience, bool isNetMediateAssembly, string assemblyName) input)
+    {
+        lock (_names)
+        {
+            if (input.assemblyName.StartsWith("Microsoft.", StringComparison.Ordinal))
+                return true;
+
+            if (input.assemblyName.StartsWith("System.", StringComparison.Ordinal))
+                return true;
+
+            if (input.assemblyName.StartsWith("NetMediate.", StringComparison.Ordinal) &&
+                !input.assemblyName.Contains(".Tests", StringComparison.Ordinal) &&
+                !input.assemblyName.Contains(".Benchmarks", StringComparison.Ordinal))
+                return true;
+
+            _names.Add(input.assemblyName);
+        }
+
+        return true;
+    }
+
+    private static string FindMostCommonBaseNamespace()
+    {
+        lock (_names)
+        {
+            if (_names.Count == 0)
+                return "NetMediate";
+
+            var prefixCount = new ConcurrentDictionary<string, int>(StringComparer.Ordinal);
+
+            foreach (var ns in _names)
+            {
+                if (string.IsNullOrWhiteSpace(ns))
+                    continue;
+
+                var parts = ns.Split('.');
+
+                for (int i = 1; i <= parts.Length; i++)
+                {
+                    var prefix = string.Join(".", parts.Take(i));
+                    if (!prefixCount.TryAdd(prefix, 1))
+                        prefixCount[prefix]++;
+                }
+            }
+
+            var best = prefixCount
+            .OrderByDescending(kv => kv.Value)
+            .ThenBy(kv => kv.Key.Count(c => c == '.'))
+            .First();
+
+            return best.Key;
+        }
+    }
+
+    private static (bool hasDiagnostics, bool hasResilience, bool isNetMediateAssembly, string assemblyName) CalculateName((bool hasDiagnostics, bool hasResilience, bool isNetMediateAssembly, string) input)
+    {
+        var (hasDiagnostics, hasResilience, isNetMediateAssembly, _) = input;
+
+        var assemblyName = FindMostCommonBaseNamespace();
+
+        return (hasDiagnostics, hasResilience, isNetMediateAssembly, assemblyName);
+    }
+
+    private static void Accumulate(SourceProductionContext sourceProductionContext, (ImmutableArray<INamedTypeSymbol> Left, (bool hasDiagnostics, bool hasResilience, bool isNetMediateAssembly, string assemblyName) Right) input)
+    {
+        var (types, (hasDiagnostics, hasResilience, isNetMediateAssembly, assemblyName)) = input;
 
         if (isNetMediateAssembly)
         {
@@ -54,21 +131,21 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
         var (registrations, notifier) = BuildRegistrations(types, hasDiagnostics, hasResilience);
         var frameworkBehaviors = BuildFrameworkInfrastructure(hasResilience);
-        var source = BuildSource(registrations, notifier, frameworkBehaviors);
+        var source = BuildSource(registrations, notifier, frameworkBehaviors, assemblyName);
         sourceProductionContext.AddSource(
             "NetMediateGeneratedDI.g.cs",
             source
         );
     }
 
-    private static (bool hasDiagnostics, bool hasResilience, bool isNetMediateAssembly) Selects(Compilation compilation)
+    private static (bool hasDiagnostics, bool hasResilience, bool isNetMediateAssembly, string assemblyName) Selects(Compilation compilation)
     {
         var names = compilation.ReferencedAssemblyNames.Select(name => name.Name);
         bool hasDiagnostics = names.Contains("NetMediate.Diagnostics");
         bool hasResilience = names.Contains("NetMediate.Resilience");
         bool isNetMediateAssembly = compilation.AssemblyName == "NetMediate";
 
-        return (hasDiagnostics, hasResilience, isNetMediateAssembly);
+        return (hasDiagnostics, hasResilience, isNetMediateAssembly, compilation.AssemblyName);
     }
 
     private static bool Search(SyntaxNode node) =>
@@ -101,7 +178,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     private static string BuildFrameworkInfrastructure(bool hasResilience)
     {
         const string indent = "        "; // 8 spaces
-        var sb = new System.Text.StringBuilder();
+        var sb = new StringBuilder();
 
         // Resilience: register default options; user-supplied registrations that were added
         // earlier will be kept (TryAddSingleton is a no-op when the type is already present).
@@ -127,28 +204,35 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         bool hasResilience)
     {
         // Ordered insertion + deduplication: Dictionary<key, bool> preserves insertion order in C#.
-        var diagnosticsBehaviors = new Dictionary<string, bool>(StringComparer.Ordinal);
-        var resilienceBehaviors  = new Dictionary<string, bool>(StringComparer.Ordinal);
-        var handlers             = new Dictionary<string, bool>(StringComparer.Ordinal);
+        var diagnosticsBehaviors = new Dictionary<int, Dictionary<string, bool>>();
+        var resilienceBehaviors  = new Dictionary<int, Dictionary<string, bool>>();
+        var handlers             = new Dictionary<int, Dictionary<string, bool>>();
         var notifier             = new StringBuilder("UseNetMediate");
 
         foreach (var handlerType in types)
         {
             var handlerName = handlerType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
             var handlerKeyArgument = BuildHandlerKeyArgument(handlerType);
-            BuildResgistration(hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers, notifier, handlerType, handlerName, handlerKeyArgument);
+            var order = GetOrderArgument(handlerType);
+
+            diagnosticsBehaviors.AddIfNew(order);
+
+            BuildResgistration((hasDiagnostics, hasResilience, diagnosticsBehaviors[order], resilienceBehaviors[order], handlers[order], notifier, handlerType, handlerName, handlerKeyArgument));
         }
 
         // Final output order: Diagnostics behaviors → Resilience behaviors → handler registrations.
-        var allRegistrations = diagnosticsBehaviors.Keys
-            .Concat(resilienceBehaviors.Keys)
-            .Concat(handlers.Keys);
+        var allRegistrations = diagnosticsBehaviors.OrderBy(d => d.Key).SelectMany(d => d.Value.Keys)
+            .Concat(resilienceBehaviors.OrderBy(r => r.Key).SelectMany(r => r.Value.Keys))
+            .Concat(handlers.OrderBy(h => h.Key).SelectMany(hdls => hdls.Value.Keys))
+            .Distinct();
 
         return (allRegistrations, notifier);
     }
 
-    private static void BuildResgistration(bool hasDiagnostics, bool hasResilience, Dictionary<string, bool> diagnosticsBehaviors, Dictionary<string, bool> resilienceBehaviors, Dictionary<string, bool> handlers, StringBuilder notifier, INamedTypeSymbol handlerType, string handlerName, string handlerKeyArgument) // NOSONAR S107
+    private static void BuildResgistration(BuildResgistrationArguments arguments)
     {
+        var (hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers, notifier, handlerType, handlerName, handlerKeyArgument) = arguments;
+
         foreach (var @interface in handlerType.AllInterfaces)
         {
             var definition = @interface.OriginalDefinition;
@@ -165,32 +249,24 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 continue;
             }
 
-            ProcessHandlerInterface(
+            ProcessHandlerInterface((
                 name, arity, handlerName, handlerKeyArgument, args,
                 hasDiagnostics, hasResilience,
-                diagnosticsBehaviors, resilienceBehaviors, handlers);
+                diagnosticsBehaviors, resilienceBehaviors, handlers));
         }
     }
 
-    private static void ProcessHandlerInterface(
-        string interfaceName,
-        int arity,
-        string handlerName,
-        string handlerKeyArgument,
-        ImmutableArray<ITypeSymbol> args,
-        bool hasDiagnostics,
-        bool hasResilience,
-        Dictionary<string, bool> diagnosticsBehaviors,
-        Dictionary<string, bool> resilienceBehaviors,
-        Dictionary<string, bool> handlers) // NOSONAR S107
+    private static void ProcessHandlerInterface(ProcessHandlerInterfaceArguments arguments)
     {
-        AddCommand(interfaceName, arity, handlerName, handlerKeyArgument, args, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers);
+        AddCommand(arguments);
 
-        AddRequest(interfaceName, arity, handlerName, handlerKeyArgument, args, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers);
+        AddRequest(arguments);
     }
 
-    private static void AddRequest(string interfaceName, int arity, string handlerName, string handlerKeyArgument, ImmutableArray<ITypeSymbol> args, bool hasDiagnostics, bool hasResilience, Dictionary<string, bool> diagnosticsBehaviors, Dictionary<string, bool> resilienceBehaviors, Dictionary<string, bool> handlers)  // NOSONAR S107
+    private static void AddRequest(ProcessHandlerInterfaceArguments arguments)
     {
+        var (interfaceName, arity, handlerName, handlerKeyArgument, args, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers) = arguments;
+
         if (arity == 2 && args.Length == 2)
         {
             if (!IsAccessible(args[0]) || !IsAccessible(args[1])) return;
@@ -213,8 +289,10 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         }
     }
 
-    private static void AddCommand(string interfaceName, int arity, string handlerName, string handlerKeyArgument, ImmutableArray<ITypeSymbol> args, bool hasDiagnostics, bool hasResilience, Dictionary<string, bool> diagnosticsBehaviors, Dictionary<string, bool> resilienceBehaviors, Dictionary<string, bool> handlers)  // NOSONAR S107
+    private static void AddCommand(ProcessHandlerInterfaceArguments arguments)
     {
+        var (interfaceName, arity, handlerName, handlerKeyArgument, args, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers) = arguments;
+
         if (arity == 1 && args.Length == 1)
         {
             if (!IsAccessible(args[0])) return;
@@ -253,6 +331,21 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             : "null";
     }
 
+    private static int GetOrderArgument(INamedTypeSymbol type)
+    {
+        var keyAttribute = type
+            .GetAttributes()
+            .FirstOrDefault(attribute => attribute.AttributeClass?.ToDisplayString() == ServiceOrderAttributeMetadataName);
+
+        if (keyAttribute is null)
+            return int.MaxValue;
+
+        var orderValue = GetConstructorArgumentValue(keyAttribute, 0);
+        var order = TryExtractValue<int>(orderValue, out var ord) ? ord : int.MaxValue;
+
+        return order;
+    }
+
     private static TypedConstant? GetNamedArgumentValue(AttributeData attribute, string argumentName)
     {
         foreach (var argument in attribute.NamedArguments)
@@ -270,6 +363,30 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             return null;
 
         return attribute.ConstructorArguments[index];
+    }
+
+    private static bool TryExtractValue<T>(TypedConstant? constant, out T extracted)
+    {
+        extracted = default!;
+
+        if (constant is null || constant.Value.IsNull)
+            return false;
+
+        if (constant.Value.Kind is not TypedConstantKind.Primitive and not TypedConstantKind.Enum)
+            return false;
+
+        var value = constant.Value.Value;
+        if (value is null)
+            return false;
+
+        switch (value)
+        {
+            case T t:
+                extracted = t;
+                return true;
+        }
+
+        return false;
     }
 
     private static bool TryFormatLiteral(TypedConstant? constant, out string literal)
@@ -386,7 +503,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
     // ── Source building ───────────────────────────────────────────────────────────────────────
 
-    private static string BuildSource(IEnumerable<string> registrations, StringBuilder notifier, string frameworkBehaviors)
+    private static string BuildSource(IEnumerable<string> registrations, StringBuilder notifier, string frameworkBehaviors, string assemblyName)
     {
         const string indent = "            ";
         var registrationsBlock = string.Join(
@@ -397,7 +514,8 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         return LoadTemplate()
             .Replace(NotifierToken, notifier.ToString())
             .Replace(RegistrationsToken, registrationsBlock)
-            .Replace(FrameworkBehaviorsToken, frameworkBehaviors);
+            .Replace(FrameworkBehaviorsToken, frameworkBehaviors)
+            .Replace(AssemblyNamespaceToken, assemblyName);
     }
 
     private static string LoadTemplate()
@@ -463,5 +581,16 @@ file static class DictionaryExtensions
     {
         if (!dict.ContainsKey(key))
             dict[key] = true;
+    }
+
+    /// <summary>
+    /// Inserts <paramref name="key"/> with a <c>true</c> value if the key is not already present.
+    /// Provides insertion-ordered deduplication on <c>netstandard2.0</c> where
+    /// <see cref="Dictionary{TKey,TValue}.TryAdd"/> is unavailable.
+    /// </summary>
+    internal static void AddIfNew(this Dictionary<int, Dictionary<string, bool>> dict, int key)
+    {
+        if (!dict.ContainsKey(key))
+            dict[key] = [];
     }
 }

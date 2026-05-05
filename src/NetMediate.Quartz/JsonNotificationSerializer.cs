@@ -4,7 +4,7 @@ using System.Text.Json;
 namespace NetMediate.Quartz;
 
 /// <summary>
-/// Default implementation of <see cref="INotificationSerializer"/> that uses <see cref="System.Text.Json.JsonSerializer"/>.
+/// Default implementation of <see cref="INotificationSerializer"/> that uses <see cref="JsonSerializer"/>.
 /// </summary>
 [RequiresDynamicCode(
     "QuartzNotificationJob uses MakeGenericMethod for per-type notification dispatch and is not compatible with NativeAOT."

@@ -6,6 +6,7 @@ namespace NetMediate.Resilience;
 /// Request pipeline behavior that applies circuit-breaker logic.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
+[ServiceOrder(int.MinValue + 1)]
 public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
 ) : IPipelineRequestBehavior<TMessage, TResponse> where TMessage : notnull
@@ -86,6 +87,7 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 /// Notification and command pipeline behavior that applies circuit-breaker logic.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
+[ServiceOrder(int.MinValue + 1)]
 public sealed class CircuitBreakerNotificationBehavior<TMessage>(IOptions<CircuitBreakerBehaviorOptions> optionsAccessor)
     : IPipelineBehavior<TMessage> where TMessage : notnull
 {

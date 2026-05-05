@@ -152,7 +152,7 @@ public sealed class GeneratorIntegrationTests
             MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(IAsyncEnumerable<>).Assembly.Location),
             MetadataReference.CreateFromFile(
-                typeof(Microsoft.Extensions.DependencyInjection.IServiceCollection).Assembly.Location),
+                typeof(IServiceCollection).Assembly.Location),
         };
 
         // Add all loaded assemblies to avoid type resolution failures

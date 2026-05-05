@@ -4,6 +4,7 @@ namespace NetMediate.Diagnostics;
 /// Notification and command pipeline behavior that records OpenTelemetry traces and metrics.
 /// Registered per-handler by the source generator when <c>NetMediate.Diagnostics</c> is referenced.
 /// </summary>
+[ServiceOrder(int.MinValue)]
 public sealed class TelemetryNotificationBehavior<TMessage> : IPipelineBehavior<TMessage>
     where TMessage : notnull
 {
@@ -35,6 +36,7 @@ public sealed class TelemetryNotificationBehavior<TMessage> : IPipelineBehavior<
 /// Request pipeline behavior that records OpenTelemetry traces and metrics.
 /// Registered per-handler by the source generator when <c>NetMediate.Diagnostics</c> is referenced.
 /// </summary>
+[ServiceOrder(int.MinValue)]
 public sealed class TelemetryRequestBehavior<TMessage, TResponse> : IPipelineRequestBehavior<TMessage, TResponse>
     where TMessage : notnull
 {
@@ -73,6 +75,7 @@ public sealed class TelemetryRequestBehavior<TMessage, TResponse> : IPipelineReq
 /// enumeration independently. The metric counter is also incremented at dispatch time to
 /// track how many streams were started.
 /// </remarks>
+[ServiceOrder(int.MinValue)]
 public sealed class TelemetryStreamBehavior<TMessage, TResponse> : IPipelineStreamBehavior<TMessage, TResponse>
     where TMessage : notnull
 {

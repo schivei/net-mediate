@@ -6,6 +6,7 @@ namespace NetMediate.Resilience;
 /// Request pipeline behavior that applies retry logic.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
+[ServiceOrder(int.MinValue + 2)]
 public sealed class RetryRequestBehavior<TMessage, TResponse>(IOptions<RetryBehaviorOptions> optionsAccessor)
     : IPipelineRequestBehavior<TMessage, TResponse> where TMessage : notnull
 {
@@ -57,6 +58,7 @@ public sealed class RetryRequestBehavior<TMessage, TResponse>(IOptions<RetryBeha
 /// Notification and command pipeline behavior that applies retry logic.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
+[ServiceOrder(int.MinValue + 2)]
 public sealed class RetryNotificationBehavior<TMessage>(IOptions<RetryBehaviorOptions> optionsAccessor) :
     IPipelineBehavior<TMessage> where TMessage : notnull
 {

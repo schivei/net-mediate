@@ -18,12 +18,12 @@ The table below is updated automatically by CI on every PR benchmark run. System
 | Key | Value |
 |---|---|
 | OS | Linux Ubuntu 24.04.4 LTS (Noble Numbat) |
-| CPU | AMD EPYC 9V74 2.60GHz, 1 CPU, 4 logical and 2 physical cores |
+| CPU | Intel Xeon Platinum 8370C CPU 2.80GHz (Max: 3.25GHz), 1 CPU, 4 logical and 2 physical cores |
 | .NET SDK | 10.0.203 |
 | Runtime | .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v4 |
-| Last CI run | 2026-05-05 22:58 UTC |
+| Last CI run | 2026-05-05 23:20 UTC |
 | Branch | `feature/service-order-long-term` |
-| Commit | `107d59e` |
+| Commit | `cfc3676` |
 <!-- ci-environment-end -->
 
 ---
@@ -41,10 +41,10 @@ available, or against stored target-branch values otherwise (±10% = no change o
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|
-| Command `Send` | 67.23 ns | ±0.038 ns | 0.0028 | 48 B | — | ~14.9M msg/s | ✅ improved (-21.7%) |
-| Notification `Notify` | 100.77 ns | ±0.102 ns | 0.0172 | 288 B | — | ~9.9M msg/s | ✅ improved (-23.8%) |
-| Request `Request` | 68.72 ns | ±0.135 ns | 0.0071 | 120 B | — | ~14.6M msg/s | ✅ improved (-21.4%) |
-| Stream `RequestStream` | 136.65 ns | ±0.222 ns | 0.0127 | 216 B | — | ~7.3M msg/s | ✅ improved (-26.5%) |
+| Command `Send` | 94.61 ns | ±0.071 ns | 0.0018 | 48 B | — | ~10.6M msg/s | ⚠️ degraded (+10.1%) |
+| Notification `Notify` | 153.38 ns | ±0.469 ns | 0.0115 | 288 B | — | ~6.5M msg/s | ⚠️ degraded (+16.0%) |
+| Request `Request` | 102.92 ns | ±0.197 ns | 0.0048 | 120 B | — | ~9.7M msg/s | ⚠️ degraded (+17.8%) |
+| Stream `RequestStream` | 192.11 ns | ±0.201 ns | 0.0085 | 216 B | — | ~5.2M msg/s | ≈ (+3.3%) |
 <!-- ci-throughput-end -->
 
 > ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.
@@ -277,7 +277,7 @@ Thresholds are deliberately lenient to remain green on any CI hardware. Local de
 
 ## Latest CI Benchmark Run
 
-Run: 2026-05-05 22:58 UTC | Branch: `feature/service-order-long-term` | Commit: `107d59e`
+Run: 2026-05-05 23:20 UTC | Branch: `feature/service-order-long-term` | Commit: `cfc3676`
 
 > ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).
 
@@ -285,7 +285,7 @@ Run: 2026-05-05 22:58 UTC | Branch: `feature/service-order-long-term` | Commit: 
 
 ```
 Linux Ubuntu 24.04.4 LTS (Noble Numbat)
-AMD EPYC 9V74 2.60GHz, 1 CPU, 4 logical and 2 physical cores
+Intel Xeon Platinum 8370C CPU 2.80GHz (Max: 3.25GHz), 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.203
 Runtime: .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v4
 ```
@@ -294,19 +294,19 @@ Runtime: .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v4
 
 | Benchmark | Mean | Error | Gen0 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|
-| Command `Send` | 67.23 ns | ±0.038 ns | 0.0028 | 48 B | — | ~14.9M msg/s | ✅ improved (-21.7%) |
-| Notification `Notify` | 100.77 ns | ±0.102 ns | 0.0172 | 288 B | — | ~9.9M msg/s | ✅ improved (-23.8%) |
-| Request `Request` | 68.72 ns | ±0.135 ns | 0.0071 | 120 B | — | ~14.6M msg/s | ✅ improved (-21.4%) |
-| Stream `RequestStream` | 136.65 ns | ±0.222 ns | 0.0127 | 216 B | — | ~7.3M msg/s | ✅ improved (-26.5%) |
+| Command `Send` | 94.61 ns | ±0.071 ns | 0.0018 | 48 B | — | ~10.6M msg/s | ⚠️ degraded (+10.1%) |
+| Notification `Notify` | 153.38 ns | ±0.469 ns | 0.0115 | 288 B | — | ~6.5M msg/s | ⚠️ degraded (+16.0%) |
+| Request `Request` | 102.92 ns | ±0.197 ns | 0.0048 | 120 B | — | ~9.7M msg/s | ⚠️ degraded (+17.8%) |
+| Stream `RequestStream` | 192.11 ns | ±0.201 ns | 0.0085 | 216 B | — | ~5.2M msg/s | ≈ (+3.3%) |
 
-### Comparison vs baseline (`main`)
+### Comparison vs baseline (`main`, median of ≤3 runs)
 
 > Timing: ✅ improved (>10% faster) |  ≈ no change (±10%) |  ⚠️ degraded (>10% slower)
 > Alloc Δ: ✅ same / ✅ −N B (less) / ⚠️ +N B (more)
 
-| Benchmark | Baseline (`main`) | Current | Δ timing | Alloc Δ |
+| Benchmark | Baseline (`main`, median of ≤3 runs) | Current | Δ timing | Alloc Δ |
 |---|---|---|---|---|
-| Command `Send` | 85.91 ns | 67.23 ns | ✅ -21.7% | — |
-| Notification `Notify` | 132.22 ns | 100.77 ns | ✅ -23.8% | — |
-| Request `Request` | 87.39 ns | 68.72 ns | ✅ -21.4% | — |
-| Stream `RequestStream` | 185.95 ns | 136.65 ns | ✅ -26.5% | — |
+| Command `Send` | 85.91 ns | 94.61 ns | ⚠️ +10.1% | — |
+| Notification `Notify` | 132.22 ns | 153.38 ns | ⚠️ +16.0% | — |
+| Request `Request` | 87.39 ns | 102.92 ns | ⚠️ +17.8% | — |
+| Stream `RequestStream` | 185.95 ns | 192.11 ns | ≈ +3.3% | — |

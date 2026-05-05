@@ -3,6 +3,7 @@ import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
+import PropTypes from 'prop-types';
 
 import styles from './index.module.css';
 
@@ -124,13 +125,19 @@ function Feature({emoji, title, description}) {
   );
 }
 
+Feature.propTypes = {
+  emoji: PropTypes.string.isRequired,
+  title: PropTypes.string.isRequired,
+  description: PropTypes.node.isRequired,
+};
+
 function HomepageFeatures() {
   return (
     <section className={styles.features}>
       <div className="container">
         <div className="row">
-          {FeatureList.map((props, idx) => (
-            <Feature key={idx} {...props} />
+          {FeatureList.map((props) => (
+            <Feature key={props.title} {...props} />
           ))}
         </div>
       </div>

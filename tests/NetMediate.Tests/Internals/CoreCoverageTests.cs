@@ -209,13 +209,13 @@ public sealed class CoreCoverageTests
     [Fact]
     public void StartActivity_WhenNoListeners_ReturnsNull()
     {
-        // Ensure no listener is active for the NetMediate source.
-        // StartActivity must return null when HasListeners() is false.
-        var source = NetMediateDiagnostics.ActivitySource;
-        // Default state: no listener → HasListeners() == false
-        var activity = NetMediateDiagnostics.StartActivity<string>("TestOp");
-        // We can't guarantee HasListeners() is false in all CI environments, so just ensure no throw.
-        activity?.Dispose();
+        // No ActivityListener is subscribed to the NetMediate ActivitySource in this test class,
+        // so HasListeners() is false and StartActivity must return null (early-return branch).
+        Assert.False(NetMediateDiagnostics.ActivitySource.HasListeners(),
+            "Expected no ActivityListeners to be active during this test.");
+
+        var activity = NetMediateDiagnostics.StartActivity<string>("NoListenerOp");
+        Assert.Null(activity);
     }
 
     // ── Multi-command-handler fan-out ─────────────────────────────────────────────

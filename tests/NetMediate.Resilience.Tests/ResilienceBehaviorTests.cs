@@ -257,12 +257,6 @@ public sealed class ResilienceBehaviorTests
     [Fact]
     public async Task RequestLoad_WithResilienceBehaviors_ShouldSustainMinimumThroughput()
     {
-        if (!ShouldRunPerformanceTests())
-        {
-            Assert.Skip("Set NETMEDIATE_RUN_PERFORMANCE_TESTS=true to run performance tests.");
-            return;
-        }
-
         using var host = await CreateLoadHostAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
         var ct = TestContext.Current.CancellationToken;
@@ -406,13 +400,6 @@ public sealed class ResilienceBehaviorTests
 
         Assert.Fail("Timed out waiting for notification processing.");
     }
-
-    private static bool ShouldRunPerformanceTests() =>
-        string.Equals(
-            Environment.GetEnvironmentVariable("NETMEDIATE_RUN_PERFORMANCE_TESTS"),
-            "true",
-            StringComparison.OrdinalIgnoreCase
-        );
 
     private static bool IsGitHubActions() =>
         string.Equals(

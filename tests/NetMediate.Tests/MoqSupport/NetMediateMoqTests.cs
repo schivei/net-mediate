@@ -44,7 +44,6 @@ public class NetMediateMoqTests
     public void Mocking_Create_ShouldReturnDefaultBehaviorMock()
     {
         var mock = Mocking.Create<ISampleService>();
-        Assert.NotNull(mock);
         Assert.Equal(global::Moq.MockBehavior.Default, mock.Behavior);
     }
 
@@ -52,7 +51,6 @@ public class NetMediateMoqTests
     public void Mocking_Loose_ShouldReturnLooseMock()
     {
         var mock = Mocking.Loose<ISampleService>();
-        Assert.NotNull(mock);
         Assert.Equal(global::Moq.MockBehavior.Loose, mock.Behavior);
     }
 

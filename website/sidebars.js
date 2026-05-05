@@ -14,6 +14,7 @@ const sidebars = {
         'getting-started/quick-start',
         'getting-started/message-types',
         'getting-started/handlers',
+        'getting-started/installation-config',
       ]],
       ['Usage Guides', [
         'guides/commands',
@@ -22,6 +23,7 @@ const sidebars = {
         'guides/streams',
         'guides/pipeline-behaviors',
         'guides/validation',
+        'guides/samples',
       ]],
       ['Advanced Topics', [
         'advanced/source-generation',
@@ -50,6 +52,7 @@ const sidebars = {
         'community/code-of-conduct',
         'community/security',
         'community/roadmap',
+        'community/emergency-publishing',
       ]],
     ].map(([label, items]) => ({ type: 'category', label, items }))),
   ],

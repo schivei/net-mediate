@@ -265,10 +265,10 @@ public sealed class ResilienceCoverageTests
 
     private sealed class CmdBehavior : IPipelineBehavior<CmdMessage, Task>
     {
-        public async Task Handle(CmdMessage message, PipelineBehaviorDelegate<CmdMessage, Task> next, CancellationToken ct = default)
+        public async Task Handle(object? key, CmdMessage message, PipelineBehaviorDelegate<CmdMessage, Task> next, CancellationToken ct = default)
         {
             CmdTrace.SetBehavior();
-            await next(message, ct);
+            await next(key, message, ct);
         }
     }
 
@@ -304,10 +304,10 @@ public sealed class ResilienceCoverageTests
 
     private sealed class StreamBehavior : IPipelineStreamBehavior<StreamMsg, int>
     {
-        public IAsyncEnumerable<int> Handle(
+        public IAsyncEnumerable<int> Handle(object? key,
             StreamMsg message,
             PipelineBehaviorDelegate<StreamMsg, IAsyncEnumerable<int>> next,
-            CancellationToken ct = default) => next(message, ct);
+            CancellationToken ct = default) => next(key, message, ct);
     }
 
     private sealed class EnumNotifyHandler : INotificationHandler<EnumNotifyMsg>
@@ -330,13 +330,13 @@ public sealed class ResilienceCoverageTests
 
     private sealed class NotifBehaviorImpl : IPipelineNotificationBehavior<NotifBehaviorMsg>
     {
-        public async Task Handle(
+        public async Task Handle(object? key,
             NotifBehaviorMsg message,
             PipelineBehaviorDelegate<NotifBehaviorMsg, Task> next,
             CancellationToken ct = default)
         {
             NotifBehaviorTrace.Add("behavior:pre");
-            await next(message, ct);
+            await next(key, message, ct);
         }
     }
 }

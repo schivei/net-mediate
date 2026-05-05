@@ -118,7 +118,9 @@ internal static class Extensions
             var lazy = cache.GetOrAdd(
                 key,
                 sk => new Lazy<object>(
-                    () => serviceProvider.GetKeyedServices<T>(sk).ToArray(),
+                    () => sk.Key is null
+                        ? serviceProvider.GetServices<T>().ToArray()
+                        : serviceProvider.GetKeyedServices<T>(sk.Key).ToArray(),
                     LazyThreadSafetyMode.ExecutionAndPublication
                 )
             );

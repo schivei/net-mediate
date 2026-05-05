@@ -37,7 +37,9 @@ internal class Notifier(IServiceProvider serviceProvider, ILogger<Notifier> logg
         {
             try
             {
-                _ = Notify(key, message, cancellationToken);
+#pragma warning disable CS4014
+                Notify(key, message, cancellationToken);
+#pragma warning restore CS4014
             }
             catch (Exception ex)
             {

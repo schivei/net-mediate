@@ -11,6 +11,7 @@ public sealed class RetryRequestBehavior<TMessage, TResponse>(IOptions<RetryBeha
 {
     /// <inheritdoc />
     public async Task<TResponse> Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
         CancellationToken cancellationToken
@@ -27,7 +28,7 @@ public sealed class RetryRequestBehavior<TMessage, TResponse>(IOptions<RetryBeha
 
             try
             {
-                return await next(message, cancellationToken).ConfigureAwait(false);
+                return await next(key, message, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
@@ -61,6 +62,7 @@ public sealed class RetryNotificationBehavior<TMessage>(IOptions<RetryBehaviorOp
 {
     /// <inheritdoc />
     public async Task Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task> next,
         CancellationToken cancellationToken
@@ -77,7 +79,7 @@ public sealed class RetryNotificationBehavior<TMessage>(IOptions<RetryBehaviorOp
 
             try
             {
-                await next(message, cancellationToken).ConfigureAwait(false);
+                await next(key, message, cancellationToken).ConfigureAwait(false);
                 return;
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)

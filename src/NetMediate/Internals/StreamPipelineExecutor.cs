@@ -1,5 +1,5 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
 
@@ -12,40 +12,53 @@ namespace NetMediate.Internals;
 internal sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvider serviceProvider)
     where TMessage : notnull
 {
-    // Per-provider pre-compiled pipeline cache — see PipelineExecutor<,,> for the full rationale.
-    private static readonly ConditionalWeakTable<IServiceProvider, Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>>
+    // See PipelineExecutor<,,> for the full rationale on this two-level cache design.
+    private static readonly object s_nullKey = new();
+    private static readonly ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>>>
         s_pipelineCache = new();
 
     static StreamPipelineExecutor() =>
-        Extensions.RegisterPipelineCacheClearing(sp => s_pipelineCache.Remove(sp));
+        Extensions.RegisterPipelineCacheClearing(sp =>
+        {
+            if (s_pipelineCache.TryGetValue(sp, out var cache))
+                cache.Clear();
+            s_pipelineCache.Remove(sp);
+        });
 
     public IAsyncEnumerable<TResponse> Handle(
+        object? key,
         TMessage message,
         HandlerExecutionDelegate<IStreamHandler<TMessage, TResponse>, TMessage, IAsyncEnumerable<TResponse>> exec,
         CancellationToken cancellationToken)
     {
-        var lazy = s_pipelineCache.GetValue(
+        var perProvider = s_pipelineCache.GetValue(
             serviceProvider,
-            sp => new Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>(
-                () => BuildPipeline(sp, exec),
+            _ => new ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>>());
+
+        var dictKey = key ?? s_nullKey;
+        var lazy = perProvider.GetOrAdd(
+            dictKey,
+            _ => new Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>(
+                () => BuildPipeline(key, serviceProvider, exec),
                 LazyThreadSafetyMode.ExecutionAndPublication));
 
-        return lazy.Value(message, cancellationToken);
+        return lazy.Value(key, message, cancellationToken);
     }
 
     private static PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> BuildPipeline(
+        object? key,
         IServiceProvider sp,
         HandlerExecutionDelegate<IStreamHandler<TMessage, TResponse>, TMessage, IAsyncEnumerable<TResponse>> exec)
     {
         // Resolve handlers directly from the provider — the pipeline is already cached per-provider,
         // so this runs only once per provider. Using direct resolution avoids cross-provider
         // contamination that would occur with a global static handler cache.
-        var handlers = sp.GetServices<IStreamHandler<TMessage, TResponse>>().ToArray();
+        var handlers = sp.GetHandlers<IStreamHandler<TMessage, TResponse>, TMessage, IAsyncEnumerable<TResponse>>(key).ToArray();
 
         // Single-handler fast path: invoke the sole registered handler directly.
         PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> app = handlers.Length == 1
-            ? (msg, ct) => handlers[0].Handle(msg, ct)
-            : (msg, ct) => exec(msg, handlers, ct);
+            ? (_, msg, ct) => handlers[0].Handle(msg, ct)
+            : (_, msg, ct) => exec(_, msg, handlers, ct);
 
         // Combine IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>> and IPipelineStreamBehavior<TMessage, TResponse>
         // both AOT-safe (no MakeGenericType). Results are cached per type to avoid repeated DI enumeration.
@@ -59,7 +72,7 @@ internal sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvid
 
         // Explicit Enumerable.Reverse avoids ambiguity with MemoryExtensions.Reverse(Span<T>).
         return Enumerable.Reverse(behaviorArray)
-            .Aggregate(app, (current, behavior) => (msg, ct) =>
-                behavior.Handle(msg, current, ct));
+            .Aggregate(app, (current, behavior) => (key, msg, ct) =>
+                behavior.Handle(key, msg, current, ct));
     }
 }

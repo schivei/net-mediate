@@ -65,9 +65,31 @@ All handler `Handle` methods return `Task` or `Task<TResponse>`:
 | `ICommandHandler<TMessage>` | `Task` | All registered handlers, **sequential** in registration order |
 | `IRequestHandler<TMessage, TResponse>` | `Task<TResponse>` | Single handler (first registered) |
 | `INotificationHandler<TMessage>` | `Task` | All registered handlers, fire-and-forget; errors logged per handler |
-| `IStreamHandler<TMessage, TResponse>` | `IAsyncEnumerable<TResponse>` | Single handler; yields items lazily |
+| `IStreamHandler<TMessage, TResponse>` | `IAsyncEnumerable<TResponse>` | All registered handlers, items merged **sequentially** (handler A items first, then handler B) |
 
 > **Unhandled messages**: `Send` and `Notify` are silent no-ops when no handler is registered. `Request` and `RequestStream` throw `InvalidOperationException`.
+
+### Keyed handler registration
+
+All `Register*Handler` methods accept an optional `key` argument. This lets you register multiple handlers for the same message type under distinct keys and dispatch to a specific one at runtime:
+
+```csharp
+builder.Services.AddNetMediate(configure =>
+{
+    configure.RegisterCommandHandler<DefaultCommandHandler, MyCommand>();          // null key
+    configure.RegisterCommandHandler<AuditCommandHandler, MyCommand>("audit");    // keyed
+});
+
+// Dispatch to the default (null-key) handlers
+await mediator.Send(command, ct);
+
+// Dispatch only to handlers registered under "audit"
+await mediator.Send("audit", command, ct);
+```
+
+The same `key` parameter is available on all dispatch methods: `Send(key, ...)`, `Notify(key, ...)`, `Request(key, ...)`, and `RequestStream(key, ...)`.
+
+> **NativeAOT:** Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed registration uses `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**; use it only when NativeAOT is not required.
 
 ### Optional base class
 
@@ -98,7 +120,7 @@ builder.Services.UseNetMediate(configure =>
 
 ### Usage
 
-The `next` delegate accepts `(message, cancellationToken)`. Behaviors execute in registration order (outer-to-inner for pre, inner-to-outer for post):
+The `next` delegate accepts `(message, cancellationToken)`. Behaviors execute in registration order (outer-to-inner for pre, inner-to-outer for post). Every `Handle` method receives an optional `key` parameter — the same key that was passed to the dispatch call, which you can use for routing or contextual filtering:
 
 ```csharp
 public sealed class AuditRequestBehavior<TMessage, TResponse>
@@ -106,12 +128,13 @@ public sealed class AuditRequestBehavior<TMessage, TResponse>
     where TMessage : notnull
 {
     public async Task<TResponse> Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
         CancellationToken cancellationToken)
     {
-        // pre-processing
-        var result = await next(message, cancellationToken);
+        // pre-processing (key is available for routing/filtering)
+        var result = await next(key, message, cancellationToken);
         // post-processing
         return result;
     }

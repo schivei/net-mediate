@@ -23,6 +23,10 @@
   --ifm-link-color: #0969da;
   --ifm-link-hover-color: #0550ae;
   --ifm-heading-color: #24292f;
+
+  /* Navbar link colors: light text on the dark (#24292f) navbar background */
+  --ifm-navbar-link-color: #f0f6fc;
+  --ifm-navbar-link-hover-color: #ffffff;
 }
 
 /* For readability concerns, you should choose a lighter palette in dark mode. */
@@ -45,11 +49,28 @@
   --ifm-heading-color: #f0f6fc;
 }
 
+/* Dark mode hero: override hero--primary so it doesn't use #58a6ff (light blue) as
+   background. White text on #58a6ff is only 2.53:1, failing WCAG AA. */
+[data-theme='dark'] .hero--primary {
+  background-color: #161b22;
+}
+
+[data-theme='dark'] .hero--primary .hero__title,
+[data-theme='dark'] .hero--primary .hero__subtitle {
+  color: #f0f6fc;
+}
+
 /* Custom styling for a more GitHub-like appearance */
 .navbar {
   box-shadow: 0 1px 0 rgba(27, 31, 36, 0.04),
     0 1px 0 rgba(0, 0, 0, 0.04),
     0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+/* Mobile sidebar has a light background in light mode; restore dark link colors */
+.navbar-sidebar {
+  --ifm-navbar-link-color: #24292f;
+  --ifm-navbar-link-hover-color: #0969da;
 }
 
 .navbar__title {
@@ -100,6 +121,18 @@ table td {
 .button--primary:hover {
   background-color: var(--ifm-color-primary-dark);
   border-color: var(--ifm-color-primary-dark);
+}
+
+/* Dark mode: primary color (#58a6ff) is designed for text, not backgrounds.
+   Use a darker blue so white button text keeps ≥ 4.5:1 contrast. */
+[data-theme='dark'] .button--primary {
+  background-color: #0969da;
+  border-color: #0969da;
+}
+
+[data-theme='dark'] .button--primary:hover {
+  background-color: #085fc4;
+  border-color: #085fc4;
 }
 
 /* Hero section */
@@ -184,6 +217,11 @@ h3 {
 .badge--primary {
   background-color: var(--ifm-color-primary);
   color: white;
+}
+
+/* Dark mode: use darker blue so white badge text keeps ≥ 4.5:1 contrast */
+[data-theme='dark'] .badge--primary {
+  background-color: #0969da;
 }
 
 .badge--success {

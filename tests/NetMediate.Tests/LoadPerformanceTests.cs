@@ -67,7 +67,10 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
             $"LOAD_RESULT command_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected low parallel command throughput: {throughput:F2} ops/s");
+        Assert.True(
+            throughput > 500,
+            $"Unexpected low parallel command throughput: {throughput:F2} ops/s"
+        );
     }
 
     [Fact]
@@ -132,7 +135,10 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
             $"LOAD_RESULT notification tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected low notification throughput: {throughput:F2} ops/s");
+        Assert.True(
+            throughput > 500,
+            $"Unexpected low notification throughput: {throughput:F2} ops/s"
+        );
     }
 
     [Fact]
@@ -169,7 +175,10 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
             $"LOAD_RESULT notification_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected low parallel notification throughput: {throughput:F2} ops/s");
+        Assert.True(
+            throughput > 500,
+            $"Unexpected low parallel notification throughput: {throughput:F2} ops/s"
+        );
     }
 
     [Fact]
@@ -188,8 +197,9 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
 
         for (var i = 0; i < operations; i++)
         {
-            await foreach (var _ in mediator.RequestStream<LoadStreamRequest, int>(
-                new(i), cancellationToken))
+            await foreach (
+                var _ in mediator.RequestStream<LoadStreamRequest, int>(new(i), cancellationToken)
+            )
             {
                 // drain items
             }
@@ -229,8 +239,11 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
         );
 
     public sealed record LoadCommand(int Value);
+
     public sealed record LoadRequest(int Value);
+
     public sealed record LoadNotification(int Value);
+
     public sealed record LoadStreamRequest(int Value);
 
     private sealed class LoadCommandHandler : ICommandHandler<LoadCommand>
@@ -247,15 +260,19 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
 
     private sealed class LoadNotificationHandler : INotificationHandler<LoadNotification>
     {
-        public Task Handle(LoadNotification notification, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task Handle(
+            LoadNotification notification,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
     }
 
     private sealed class LoadStreamHandler : IStreamHandler<LoadStreamRequest, int>
     {
         public async IAsyncEnumerable<int> Handle(
             LoadStreamRequest request,
-            [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+            [System.Runtime.CompilerServices.EnumeratorCancellation]
+                CancellationToken cancellationToken = default
+        )
         {
             for (var i = 0; i < 5; i++)
             {

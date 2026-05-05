@@ -9,19 +9,23 @@ namespace NetMediate.Resilience;
 [ServiceOrder(int.MinValue + 1)]
 public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
-) : IPipelineRequestBehavior<TMessage, TResponse> where TMessage : notnull
+) : IPipelineRequestBehavior<TMessage, TResponse>
+    where TMessage : notnull
 {
     private static readonly Lock s_sync = new();
     private static int s_consecutiveFailures;
     private static DateTimeOffset? s_openUntil;
 
     /// <inheritdoc />
-    public async Task<TResponse> Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task<TResponse>> next, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(
+        object? key,
+        TMessage message,
+        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        CancellationToken cancellationToken
+    )
     {
         if (IsCircuitOpen())
-            throw new InvalidOperationException(
-                "Circuit open for request."
-            );
+            throw new InvalidOperationException("Circuit open for request.");
 
         try
         {
@@ -67,9 +71,7 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     {
         var threshold = Math.Max(1, options.FailureThreshold);
         var openDuration =
-            options.OpenDuration <= TimeSpan.Zero
-                ? TimeSpan.FromSeconds(1)
-                : options.OpenDuration;
+            options.OpenDuration <= TimeSpan.Zero ? TimeSpan.FromSeconds(1) : options.OpenDuration;
 
         lock (s_sync)
         {
@@ -88,8 +90,10 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
 [ServiceOrder(int.MinValue + 1)]
-public sealed class CircuitBreakerNotificationBehavior<TMessage>(IOptions<CircuitBreakerBehaviorOptions> optionsAccessor)
-    : IPipelineBehavior<TMessage> where TMessage : notnull
+public sealed class CircuitBreakerNotificationBehavior<TMessage>(
+    IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
+) : IPipelineBehavior<TMessage>
+    where TMessage : notnull
 {
     private static readonly Lock s_sync = new();
     private static int s_consecutiveFailures;
@@ -104,9 +108,7 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(IOptions<Circui
     )
     {
         if (IsCircuitOpen())
-            throw new InvalidOperationException(
-                "Circuit open for notification."
-            );
+            throw new InvalidOperationException("Circuit open for notification.");
 
         try
         {
@@ -129,11 +131,10 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(IOptions<Circui
 
             if (DateTimeOffset.UtcNow < s_openUntil.Value)
                 return true;
-            
+
             s_openUntil = null;
             s_consecutiveFailures = 0;
             return false;
-
         }
     }
 
@@ -150,9 +151,7 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(IOptions<Circui
     {
         var threshold = Math.Max(1, options.FailureThreshold);
         var openDuration =
-            options.OpenDuration <= TimeSpan.Zero
-                ? TimeSpan.FromSeconds(1)
-                : options.OpenDuration;
+            options.OpenDuration <= TimeSpan.Zero ? TimeSpan.FromSeconds(1) : options.OpenDuration;
 
         lock (s_sync)
         {

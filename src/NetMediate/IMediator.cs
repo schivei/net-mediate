@@ -12,10 +12,8 @@ public interface IMediator
     /// <param name="message">The notification message to publish.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    Task Notify<TMessage>(
-        TMessage message,
-        CancellationToken cancellationToken = default
-    ) where TMessage : notnull;
+    Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+        where TMessage : notnull;
 
     /// <summary>
     /// Publishes a notification to all registered handlers.
@@ -29,7 +27,8 @@ public interface IMediator
         object? key,
         TMessage message,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull;
+    )
+        where TMessage : notnull;
 
     /// <summary>
     /// Publishes a collection of notification messages to all registered handlers.
@@ -41,7 +40,8 @@ public interface IMediator
     Task Notify<TMessage>(
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull;
+    )
+        where TMessage : notnull;
 
     /// <summary>
     /// Publishes a collection of notification messages to all registered handlers.
@@ -55,7 +55,8 @@ public interface IMediator
         object? key,
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull;
+    )
+        where TMessage : notnull;
 
     /// <summary>
     /// Sends a command to all registered handlers in parallel.
@@ -69,10 +70,8 @@ public interface IMediator
     /// <param name="message">The command to send.</param>
     /// <param name="cancellationToken">A token to observe while waiting for the task to complete.</param>
     /// <returns>A task that represents the asynchronous operation.</returns>
-    Task Send<TMessage>(
-        TMessage message,
-        CancellationToken cancellationToken = default
-    ) where TMessage : notnull;
+    Task Send<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+        where TMessage : notnull;
 
     /// <summary>
     /// Sends a command to all registered handlers in parallel.
@@ -91,7 +90,8 @@ public interface IMediator
         object? key,
         TMessage message,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull;
+    )
+        where TMessage : notnull;
 
     /// <summary>
     /// Sends a command to all registered handlers in parallel.
@@ -108,7 +108,8 @@ public interface IMediator
     Task Send<TMessage>(
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull;
+    )
+        where TMessage : notnull;
 
     /// <summary>
     /// Sends a command to all registered handlers in parallel.
@@ -127,7 +128,8 @@ public interface IMediator
         object? key,
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull;
+    )
+        where TMessage : notnull;
 
     /// <summary>
     /// Sends a request to a handler and awaits a response.
@@ -140,7 +142,8 @@ public interface IMediator
     Task<TResponse> Request<TMessage, TResponse>(
         TMessage message,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull;
+    )
+        where TMessage : notnull;
 
     /// <summary>
     /// Sends a request to a handler and awaits a response.
@@ -155,7 +158,8 @@ public interface IMediator
         object? key,
         TMessage message,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull;
+    )
+        where TMessage : notnull;
 
     /// <summary>
     /// Sends a request to a handler and receives a stream of responses asynchronously.
@@ -168,7 +172,8 @@ public interface IMediator
     IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
         TMessage message,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull;
+    )
+        where TMessage : notnull;
 
     /// <summary>
     /// Sends a request to a handler and receives a stream of responses asynchronously.
@@ -183,6 +188,6 @@ public interface IMediator
         object? key,
         TMessage message,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull;
-
+    )
+        where TMessage : notnull;
 }

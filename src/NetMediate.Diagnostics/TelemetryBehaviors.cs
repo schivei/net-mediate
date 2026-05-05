@@ -13,7 +13,8 @@ public sealed class TelemetryNotificationBehavior<TMessage> : IPipelineBehavior<
         object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task> next,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Notify");
         try
@@ -37,7 +38,8 @@ public sealed class TelemetryNotificationBehavior<TMessage> : IPipelineBehavior<
 /// Registered per-handler by the source generator when <c>NetMediate.Diagnostics</c> is referenced.
 /// </summary>
 [ServiceOrder(int.MinValue)]
-public sealed class TelemetryRequestBehavior<TMessage, TResponse> : IPipelineRequestBehavior<TMessage, TResponse>
+public sealed class TelemetryRequestBehavior<TMessage, TResponse>
+    : IPipelineRequestBehavior<TMessage, TResponse>
     where TMessage : notnull
 {
     /// <inheritdoc />
@@ -45,7 +47,8 @@ public sealed class TelemetryRequestBehavior<TMessage, TResponse> : IPipelineReq
         object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Request");
         try
@@ -76,7 +79,8 @@ public sealed class TelemetryRequestBehavior<TMessage, TResponse> : IPipelineReq
 /// track how many streams were started.
 /// </remarks>
 [ServiceOrder(int.MinValue)]
-public sealed class TelemetryStreamBehavior<TMessage, TResponse> : IPipelineStreamBehavior<TMessage, TResponse>
+public sealed class TelemetryStreamBehavior<TMessage, TResponse>
+    : IPipelineStreamBehavior<TMessage, TResponse>
     where TMessage : notnull
 {
     /// <inheritdoc />
@@ -84,7 +88,8 @@ public sealed class TelemetryStreamBehavior<TMessage, TResponse> : IPipelineStre
         object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> next,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken
+    )
     {
         // Activity covers stream dispatch only; disposed when this method returns.
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Stream");

@@ -7,8 +7,10 @@ namespace NetMediate.Resilience;
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
 [ServiceOrder(int.MinValue + 3)]
-public sealed class TimeoutRequestBehavior<TMessage, TResponse>(IOptions<TimeoutBehaviorOptions> optionsAccessor)
-    : IPipelineRequestBehavior<TMessage, TResponse> where TMessage : notnull
+public sealed class TimeoutRequestBehavior<TMessage, TResponse>(
+    IOptions<TimeoutBehaviorOptions> optionsAccessor
+) : IPipelineRequestBehavior<TMessage, TResponse>
+    where TMessage : notnull
 {
     /// <inheritdoc />
     public async Task<TResponse> Handle(
@@ -32,14 +34,11 @@ public sealed class TimeoutRequestBehavior<TMessage, TResponse>(IOptions<Timeout
             return await next(key, message, timeoutTokenSource.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException ex)
-            when (
-                timeoutTokenSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested
+            when (timeoutTokenSource.IsCancellationRequested
+                && !cancellationToken.IsCancellationRequested
             )
         {
-            throw new TimeoutException(
-                $"Request exceeded timeout '{timeout}'.",
-                ex
-            );
+            throw new TimeoutException($"Request exceeded timeout '{timeout}'.", ex);
         }
     }
 }
@@ -49,8 +48,10 @@ public sealed class TimeoutRequestBehavior<TMessage, TResponse>(IOptions<Timeout
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
 [ServiceOrder(int.MinValue + 3)]
-public sealed class TimeoutNotificationBehavior<TMessage>(IOptions<TimeoutBehaviorOptions> optionsAccessor)
-    : IPipelineBehavior<TMessage> where TMessage : notnull
+public sealed class TimeoutNotificationBehavior<TMessage>(
+    IOptions<TimeoutBehaviorOptions> optionsAccessor
+) : IPipelineBehavior<TMessage>
+    where TMessage : notnull
 {
     /// <inheritdoc />
     public async Task Handle(
@@ -77,14 +78,11 @@ public sealed class TimeoutNotificationBehavior<TMessage>(IOptions<TimeoutBehavi
             await next(key, message, timeoutTokenSource.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException ex)
-            when (
-                timeoutTokenSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested
+            when (timeoutTokenSource.IsCancellationRequested
+                && !cancellationToken.IsCancellationRequested
             )
         {
-            throw new TimeoutException(
-                $"Notification exceeded timeout '{timeout}'.",
-                ex
-            );
+            throw new TimeoutException($"Notification exceeded timeout '{timeout}'.", ex);
         }
     }
 }

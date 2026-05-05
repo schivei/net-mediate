@@ -36,11 +36,21 @@ public static class NetMediateDiagnostics
     public static readonly ActivitySource ActivitySource = new(ActivitySourceName);
 
     private static readonly Meter s_meter = new(MeterName);
-    private static readonly Counter<long> s_sendCount = s_meter.CreateCounter<long>(SendCountMetricName);
-    private static readonly Counter<long> s_requestCount = s_meter.CreateCounter<long>(RequestCountMetricName);
-    private static readonly Counter<long> s_notifyCount = s_meter.CreateCounter<long>(NotifyCountMetricName);
-    private static readonly Counter<long> s_streamCount = s_meter.CreateCounter<long>(StreamCountMetricName);
-    private static readonly Counter<long> s_dispatchCount = s_meter.CreateCounter<long>(DispatchCountMetricName);
+    private static readonly Counter<long> s_sendCount = s_meter.CreateCounter<long>(
+        SendCountMetricName
+    );
+    private static readonly Counter<long> s_requestCount = s_meter.CreateCounter<long>(
+        RequestCountMetricName
+    );
+    private static readonly Counter<long> s_notifyCount = s_meter.CreateCounter<long>(
+        NotifyCountMetricName
+    );
+    private static readonly Counter<long> s_streamCount = s_meter.CreateCounter<long>(
+        StreamCountMetricName
+    );
+    private static readonly Counter<long> s_dispatchCount = s_meter.CreateCounter<long>(
+        DispatchCountMetricName
+    );
 
     /// <summary>Starts a new activity for the given message type and operation.</summary>
     public static Activity? StartActivity<TMessage>(string operation)
@@ -59,7 +69,8 @@ public static class NetMediateDiagnostics
             $"NetMediate.{operation}",
             ActivityKind.Internal,
             parentContext: default,
-            links: links);
+            links: links
+        );
 
         activity?.SetTag("netmediate.operation", operation);
         activity?.SetTag("netmediate.message_type", typeof(TMessage).Name);
@@ -69,35 +80,55 @@ public static class NetMediateDiagnostics
     /// <summary>Records a Send metric increment.</summary>
     public static void RecordSend<TMessage>()
     {
-        if (!s_sendCount.Enabled) return;
-        s_sendCount.Add(1, new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name));
+        if (!s_sendCount.Enabled)
+            return;
+        s_sendCount.Add(
+            1,
+            new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name)
+        );
     }
 
     /// <summary>Records a Request metric increment.</summary>
     public static void RecordRequest<TMessage>()
     {
-        if (!s_requestCount.Enabled) return;
-        s_requestCount.Add(1, new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name));
+        if (!s_requestCount.Enabled)
+            return;
+        s_requestCount.Add(
+            1,
+            new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name)
+        );
     }
 
     /// <summary>Records a Notify metric increment.</summary>
     public static void RecordNotify<TMessage>(long size = 1)
     {
-        if (!s_notifyCount.Enabled) return;
-        s_notifyCount.Add(size, new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name));
+        if (!s_notifyCount.Enabled)
+            return;
+        s_notifyCount.Add(
+            size,
+            new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name)
+        );
     }
 
     /// <summary>Records a Dispatch metric increment.</summary>
     public static void RecordDispatch<TMessage>()
     {
-        if (!s_dispatchCount.Enabled) return;
-        s_dispatchCount.Add(1, new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name));
+        if (!s_dispatchCount.Enabled)
+            return;
+        s_dispatchCount.Add(
+            1,
+            new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name)
+        );
     }
 
     /// <summary>Records a Stream metric increment.</summary>
     public static void RecordStream<TMessage>()
     {
-        if (!s_streamCount.Enabled) return;
-        s_streamCount.Add(1, new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name));
+        if (!s_streamCount.Enabled)
+            return;
+        s_streamCount.Add(
+            1,
+            new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name)
+        );
     }
 }

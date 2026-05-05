@@ -49,21 +49,25 @@ public sealed class GeneratorIntegrationTests
                 "analyzers",
                 "dotnet",
                 "cs",
-                "NetMediate.SourceGeneration.dll");
+                "NetMediate.SourceGeneration.dll"
+            );
         }
 
         if (!File.Exists(generatorDll))
             throw new FileNotFoundException(
-                $"NetMediate.SourceGeneration.dll not found at '{generatorDll}'. " +
-                $"Ensure the referenced NetMediate package contains the bundled analyzer.",
-                generatorDll);
+                $"NetMediate.SourceGeneration.dll not found at '{generatorDll}'. "
+                    + $"Ensure the referenced NetMediate package contains the bundled analyzer.",
+                generatorDll
+            );
 
         // Assembly.LoadFrom resolves Microsoft.CodeAnalysis from the already-loaded instance in
         // the default load context, so IIncrementalGenerator identity is preserved.
         var asm = Assembly.LoadFrom(generatorDll);
-        var type = asm.GetType("NetMediate.SourceGeneration.NetMediateRegistrationGenerator")
+        var type =
+            asm.GetType("NetMediate.SourceGeneration.NetMediateRegistrationGenerator")
             ?? throw new InvalidOperationException(
-                   "NetMediateRegistrationGenerator type not found in the loaded assembly.");
+                "NetMediateRegistrationGenerator type not found in the loaded assembly."
+            );
 
         return (IIncrementalGenerator)Activator.CreateInstance(type)!;
     }
@@ -71,10 +75,22 @@ public sealed class GeneratorIntegrationTests
     private static string GetLocalGeneratorDllPath()
     {
         var configuration = GetBuildConfiguration();
-        return Path.GetFullPath(Path.Combine(
-            AppContext.BaseDirectory,
-            "..", "..", "..", "..", "..",
-            "src", "NetMediate.SourceGeneration", "bin", configuration, "netstandard2.0", "NetMediate.SourceGeneration.dll"));
+        return Path.GetFullPath(
+            Path.Combine(
+                AppContext.BaseDirectory,
+                "..",
+                "..",
+                "..",
+                "..",
+                "..",
+                "src",
+                "NetMediate.SourceGeneration",
+                "bin",
+                configuration,
+                "netstandard2.0",
+                "NetMediate.SourceGeneration.dll"
+            )
+        );
     }
 
     private static string GetBuildConfiguration()
@@ -88,25 +104,42 @@ public sealed class GeneratorIntegrationTests
 
     private static string GetNetMediatePackageRoot()
     {
-        var assetsFile = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "obj", "project.assets.json"));
+        var assetsFile = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "obj", "project.assets.json")
+        );
 
         if (!File.Exists(assetsFile))
-            throw new FileNotFoundException($"Restore assets file not found at '{assetsFile}'.", assetsFile);
+            throw new FileNotFoundException(
+                $"Restore assets file not found at '{assetsFile}'.",
+                assetsFile
+            );
 
         using var stream = File.OpenRead(assetsFile);
         using var document = JsonDocument.Parse(stream);
 
         if (!document.RootElement.TryGetProperty("libraries", out var libraries))
-            throw new InvalidOperationException("The restore assets file does not contain a libraries section.");
+            throw new InvalidOperationException(
+                "The restore assets file does not contain a libraries section."
+            );
 
-        var packagePath = libraries.EnumerateObject()
-            .Select(static library => library.Name)
-            .FirstOrDefault(static name => name.StartsWith("NetMediate/", StringComparison.OrdinalIgnoreCase)) ??
-            throw new InvalidOperationException("The restore assets file does not contain the NetMediate package entry.");
+        var packagePath =
+            libraries
+                .EnumerateObject()
+                .Select(static library => library.Name)
+                .FirstOrDefault(static name =>
+                    name.StartsWith("NetMediate/", StringComparison.OrdinalIgnoreCase)
+                )
+            ?? throw new InvalidOperationException(
+                "The restore assets file does not contain the NetMediate package entry."
+            );
 
         var nugetPackages =
             Environment.GetEnvironmentVariable("NUGET_PACKAGES")
-            ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
+            ?? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                ".nuget",
+                "packages"
+            );
 
         var packageVersion = packagePath[(packagePath.IndexOf('/') + 1)..];
         return Path.Combine(nugetPackages, "netmediate", packageVersion);
@@ -120,7 +153,8 @@ public sealed class GeneratorIntegrationTests
     private static (string generatedSource, ImmutableArray<Diagnostic> diagnostics) RunGenerator(
         string assemblyName,
         string userSource,
-        bool includeNetMediateDll = true)
+        bool includeNetMediateDll = true
+    )
     {
         var references = BuildReferences(includeNetMediateDll);
 
@@ -128,18 +162,27 @@ public sealed class GeneratorIntegrationTests
             assemblyName,
             syntaxTrees: [CSharpSyntaxTree.ParseText(userSource)],
             references: references,
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+        );
 
         var generator = CreateGenerator();
         var driver = CSharpGeneratorDriver.Create(generator);
-        driver = (CSharpGeneratorDriver)driver.RunGeneratorsAndUpdateCompilation(
-            compilation, out _, out var generatorDiagnostics);
+        driver = (CSharpGeneratorDriver)
+            driver.RunGeneratorsAndUpdateCompilation(
+                compilation,
+                out _,
+                out var generatorDiagnostics
+            );
 
         var runResult = driver.GetRunResult();
-        var generatedSource = runResult.GeneratedTrees
-            .FirstOrDefault(t => t.FilePath.EndsWith("NetMediateGeneratedDI.g.cs"))
-            ?.GetText()
-            .ToString() ?? string.Empty;
+        var generatedSource =
+            runResult
+                .GeneratedTrees.FirstOrDefault(t =>
+                    t.FilePath.EndsWith("NetMediateGeneratedDI.g.cs")
+                )
+                ?.GetText()
+                .ToString()
+            ?? string.Empty;
 
         return (generatedSource, generatorDiagnostics);
     }
@@ -151,7 +194,8 @@ public sealed class GeneratorIntegrationTests
         string assemblyName,
         string userSource,
         bool includeNetMediateDll = true,
-        LanguageVersion langVersion = LanguageVersion.CSharp13)
+        LanguageVersion langVersion = LanguageVersion.CSharp13
+    )
     {
         var references = BuildReferences(includeNetMediateDll);
 
@@ -160,17 +204,20 @@ public sealed class GeneratorIntegrationTests
             assemblyName,
             syntaxTrees: [CSharpSyntaxTree.ParseText(userSource, parseOptions)],
             references: references,
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+        );
 
         var generator = CreateGenerator();
         var driver = CSharpGeneratorDriver.Create(generator).WithUpdatedParseOptions(parseOptions);
-        driver = (CSharpGeneratorDriver)driver.RunGeneratorsAndUpdateCompilation(
-            compilation, out _, out _);
+        driver = (CSharpGeneratorDriver)
+            driver.RunGeneratorsAndUpdateCompilation(compilation, out _, out _);
 
-        return driver.GetRunResult().GeneratedTrees
-            .ToDictionary(
+        return driver
+            .GetRunResult()
+            .GeneratedTrees.ToDictionary(
                 t => Path.GetFileName(t.FilePath),
-                t => t.GetText().ToString());
+                t => t.GetText().ToString()
+            );
     }
 
     private static List<MetadataReference> BuildReferences(bool includeNetMediateDll)
@@ -180,8 +227,7 @@ public sealed class GeneratorIntegrationTests
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Task).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(IAsyncEnumerable<>).Assembly.Location),
-            MetadataReference.CreateFromFile(
-                typeof(IServiceCollection).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(IServiceCollection).Assembly.Location),
         };
 
         // Add all loaded assemblies to avoid type resolution failures
@@ -189,8 +235,13 @@ public sealed class GeneratorIntegrationTests
         {
             if (!asm.IsDynamic && !string.IsNullOrEmpty(asm.Location))
             {
-                try { refs.Add(MetadataReference.CreateFromFile(asm.Location)); }
-                catch { /* ignore unloadable assemblies */ }
+                try
+                {
+                    refs.Add(MetadataReference.CreateFromFile(asm.Location));
+                }
+                catch
+                { /* ignore unloadable assemblies */
+                }
             }
         }
 
@@ -214,7 +265,8 @@ public sealed class GeneratorIntegrationTests
     {
         // The generated class namespace is dynamically computed from the project's root namespace.
         // Search by class name only so this test is resilient to namespace changes.
-        var generatedType = Assembly.GetExecutingAssembly()
+        var generatedType = Assembly
+            .GetExecutingAssembly()
             .GetTypes()
             .FirstOrDefault(t => t.Name == "NetMediateGeneratedDI");
 
@@ -233,7 +285,8 @@ public sealed class GeneratorIntegrationTests
         var (generatedSource, _) = RunGenerator(
             assemblyName: "NetMediate",
             userSource: "// empty project",
-            includeNetMediateDll: false);
+            includeNetMediateDll: false
+        );
 
         Assert.DoesNotContain("class NetMediateGeneratedDI", generatedSource);
         Assert.DoesNotContain("public static", generatedSource);
@@ -264,7 +317,10 @@ public sealed class GeneratorIntegrationTests
             }
             """;
 
-        var (generatedSource, diagnostics) = RunGenerator(assemblyName: "MyApp", userSource: userSource);
+        var (generatedSource, diagnostics) = RunGenerator(
+            assemblyName: "MyApp",
+            userSource: userSource
+        );
 
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         Assert.Empty(errors);
@@ -374,7 +430,10 @@ public sealed class GeneratorIntegrationTests
         var (generatedSource, _) = RunGenerator("MyApp", userSource);
 
         Assert.Contains("primary", generatedSource);
-        Assert.Contains("RegisterCommandHandler<global::MyApp.PingHandler, global::MyApp.PingCommand>(\"primary\")", generatedSource);
+        Assert.Contains(
+            "RegisterCommandHandler<global::MyApp.PingHandler, global::MyApp.PingCommand>(\"primary\")",
+            generatedSource
+        );
     }
 
     [Fact]
@@ -400,7 +459,10 @@ public sealed class GeneratorIntegrationTests
         var (generatedSource, _) = RunGenerator("MyApp", userSource);
 
         Assert.Contains("42", generatedSource);
-        Assert.Contains("RegisterRequestHandler<global::MyApp.GetHandler, global::MyApp.GetQuery, string>(42)", generatedSource);
+        Assert.Contains(
+            "RegisterRequestHandler<global::MyApp.GetHandler, global::MyApp.GetQuery, string>(42)",
+            generatedSource
+        );
     }
 
     [Fact]
@@ -426,7 +488,10 @@ public sealed class GeneratorIntegrationTests
         var (generatedSource, _) = RunGenerator("MyApp", userSource);
 
         Assert.Contains("true", generatedSource);
-        Assert.Contains("RegisterNotificationHandler<global::MyApp.AlertHandler, global::MyApp.AlertNotification>(true)", generatedSource);
+        Assert.Contains(
+            "RegisterNotificationHandler<global::MyApp.AlertHandler, global::MyApp.AlertNotification>(true)",
+            generatedSource
+        );
     }
 
     [Fact]
@@ -455,7 +520,10 @@ public sealed class GeneratorIntegrationTests
         var (generatedSource, _) = RunGenerator("MyApp", userSource);
 
         Assert.Contains("'a'", generatedSource);
-        Assert.Contains("RegisterStreamHandler<global::MyApp.StreamHandler, global::MyApp.StreamQuery, int>('a')", generatedSource);
+        Assert.Contains(
+            "RegisterStreamHandler<global::MyApp.StreamHandler, global::MyApp.StreamQuery, int>('a')",
+            generatedSource
+        );
     }
 
     /// <summary>
@@ -487,13 +555,15 @@ public sealed class GeneratorIntegrationTests
             "MyApp",
             syntaxTrees: [CSharpSyntaxTree.ParseText(userSource)],
             references: refs,
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+        );
 
         var generator = CreateGenerator();
         var driver = CSharpGeneratorDriver.Create(generator);
         driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out _);
 
-        var errors = outputCompilation.GetDiagnostics()
+        var errors = outputCompilation
+            .GetDiagnostics()
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ToList();
 
@@ -530,7 +600,9 @@ public sealed class GeneratorIntegrationTests
 
         // Handlers without [KeyedService] are registered under DEFAULT_ROUTING_KEY ("__default"),
         // not as unkeyed services, so GetKeyedService must be used here.
-        var hasHandler = service.GetKeyedService<IRequestHandler<MyCommand, int>>(NetMediateDI.DEFAULT_ROUTING_KEY);
+        var hasHandler = service.GetKeyedService<IRequestHandler<MyCommand, int>>(
+            NetMediateDI.DEFAULT_ROUTING_KEY
+        );
         Assert.IsType<MyCommandHandler>(hasHandler);
 
         var mediator = service.GetRequiredService<IMediator>();
@@ -554,7 +626,11 @@ public sealed class GeneratorIntegrationTests
         Assert.IsType<AnotherCommandHandler>(hasHandler);
         var mediator = service.GetRequiredService<IMediator>();
         Assert.NotNull(mediator);
-        var result = await mediator.Request("secondary", new MyCommand(2), TestContext.Current.CancellationToken);
+        var result = await mediator.Request(
+            "secondary",
+            new MyCommand(2),
+            TestContext.Current.CancellationToken
+        );
         Assert.Equal(2, result);
     }
 
@@ -593,20 +669,25 @@ public sealed class GeneratorIntegrationTests
             }
             """;
 
-        var (generatedSource, diagnostics) = RunGenerator(assemblyName: "MyApp.Ordered", userSource: userSource);
+        var (generatedSource, diagnostics) = RunGenerator(
+            assemblyName: "MyApp.Ordered",
+            userSource: userSource
+        );
 
         var errors = diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ToList();
         Assert.Empty(errors);
         Assert.Contains("class NetMediateGeneratedDI", generatedSource);
 
         // FirstHandler (order 1) must be registered before SecondHandler (order 2).
-        var firstIdx  = generatedSource.IndexOf("FirstHandler",  StringComparison.Ordinal);
+        var firstIdx = generatedSource.IndexOf("FirstHandler", StringComparison.Ordinal);
         var secondIdx = generatedSource.IndexOf("SecondHandler", StringComparison.Ordinal);
         Assert.True(firstIdx >= 0, "FirstHandler registration not found in generated source");
         Assert.True(secondIdx >= 0, "SecondHandler registration not found in generated source");
-        Assert.True(firstIdx < secondIdx,
-            $"Expected FirstHandler (order 1) before SecondHandler (order 2), " +
-            $"but found positions {firstIdx} vs {secondIdx}.");
+        Assert.True(
+            firstIdx < secondIdx,
+            $"Expected FirstHandler (order 1) before SecondHandler (order 2), "
+                + $"but found positions {firstIdx} vs {secondIdx}."
+        );
     }
 
     /// <summary>
@@ -641,14 +722,22 @@ public sealed class GeneratorIntegrationTests
             }
             """;
 
-        var (generatedSource, diagnostics) = RunGenerator(assemblyName: "MyApp.Priority", userSource: userSource);
+        var (generatedSource, diagnostics) = RunGenerator(
+            assemblyName: "MyApp.Priority",
+            userSource: userSource
+        );
 
         Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
         var priorityIdx = generatedSource.IndexOf("PriorityHandler", StringComparison.Ordinal);
-        var defaultIdx  = generatedSource.IndexOf("DefaultHandler",  StringComparison.Ordinal);
-        Assert.True(priorityIdx >= 0 && defaultIdx >= 0, "Both handlers should appear in the generated source");
-        Assert.True(priorityIdx < defaultIdx,
-            "PriorityHandler ([ServiceOrder(1)]) should be registered before undecorated DefaultHandler");
+        var defaultIdx = generatedSource.IndexOf("DefaultHandler", StringComparison.Ordinal);
+        Assert.True(
+            priorityIdx >= 0 && defaultIdx >= 0,
+            "Both handlers should appear in the generated source"
+        );
+        Assert.True(
+            priorityIdx < defaultIdx,
+            "PriorityHandler ([ServiceOrder(1)]) should be registered before undecorated DefaultHandler"
+        );
     }
 
     // ── Namespace algorithm tests ─────────────────────────────────────────────────────────────
@@ -676,7 +765,10 @@ public sealed class GeneratorIntegrationTests
             }
             """;
 
-        var (generatedSource, diagnostics) = RunGenerator(assemblyName: "Acme.Core", userSource: userSource);
+        var (generatedSource, diagnostics) = RunGenerator(
+            assemblyName: "Acme.Core",
+            userSource: userSource
+        );
 
         Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
         // The namespace in the generated file should include the project's root namespace.
@@ -714,11 +806,14 @@ public sealed class GeneratorIntegrationTests
         var files = RunGeneratorAllFiles(
             assemblyName: "Sample",
             userSource: userSource,
-            langVersion: LanguageVersion.CSharp10);
+            langVersion: LanguageVersion.CSharp10
+        );
 
-        Assert.True(files.ContainsKey("NetMediateGlobalUsings.g.cs"),
-            "Expected NetMediateGlobalUsings.g.cs to be emitted for C# 10+ compilations. " +
-            $"Files emitted: {string.Join(", ", files.Keys)}");
+        Assert.True(
+            files.ContainsKey("NetMediateGlobalUsings.g.cs"),
+            "Expected NetMediateGlobalUsings.g.cs to be emitted for C# 10+ compilations. "
+                + $"Files emitted: {string.Join(", ", files.Keys)}"
+        );
 
         var globalUsing = files["NetMediateGlobalUsings.g.cs"];
         Assert.Contains("global using", globalUsing);
@@ -751,9 +846,12 @@ public sealed class GeneratorIntegrationTests
         var files = RunGeneratorAllFiles(
             assemblyName: "Sample.Legacy",
             userSource: userSource,
-            langVersion: LanguageVersion.CSharp9);
+            langVersion: LanguageVersion.CSharp9
+        );
 
-        Assert.False(files.ContainsKey("NetMediateGlobalUsings.g.cs"),
-            "NetMediateGlobalUsings.g.cs must NOT be emitted for C# < 10 compilations.");
+        Assert.False(
+            files.ContainsKey("NetMediateGlobalUsings.g.cs"),
+            "NetMediateGlobalUsings.g.cs must NOT be emitted for C# < 10 compilations."
+        );
     }
 }

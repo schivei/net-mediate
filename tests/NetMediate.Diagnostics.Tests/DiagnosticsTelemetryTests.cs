@@ -17,7 +17,6 @@ internal static class AsyncExtensions
     }
 }
 
-
 public sealed class DiagnosticsTelemetryTests
 {
     [Fact]
@@ -53,8 +52,7 @@ public sealed class DiagnosticsTelemetryTests
         await mediator.Send(new TestMessage("ok"), ct);
         _ = await mediator.Request<TestMessage, string>(new("ok"), ct);
         await mediator.Notify(new TestMessage("ok"), ct);
-        _ = await mediator.RequestStream<TestMessage, string>(new("ok"), ct)
-            .AsyncToSync();
+        _ = await mediator.RequestStream<TestMessage, string>(new("ok"), ct).AsyncToSync();
 
         var activityNamesSnapshot = activityNames.ToArray();
         var counterNamesSnapshot = counterNames.ToArray();
@@ -138,16 +136,28 @@ public sealed class DiagnosticsTelemetryTests
         builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterCommandHandler<TestCommandHandler, TestMessage>();
-            configure.RegisterBehavior<TelemetryNotificationBehavior<TestMessage>, TestMessage, Task>();
+            configure.RegisterBehavior<
+                TelemetryNotificationBehavior<TestMessage>,
+                TestMessage,
+                Task
+            >();
 
             configure.RegisterRequestHandler<TestRequestHandler, TestMessage, string>();
-            configure.RegisterBehavior<TelemetryRequestBehavior<TestMessage, string>, TestMessage, Task<string>>();
+            configure.RegisterBehavior<
+                TelemetryRequestBehavior<TestMessage, string>,
+                TestMessage,
+                Task<string>
+            >();
 
             configure.RegisterNotificationHandler<TestNotificationHandler, TestMessage>();
             // TelemetryNotificationBehavior<TestMessage> already registered above for the command.
 
             configure.RegisterStreamHandler<TestStreamHandler, TestMessage, string>();
-            configure.RegisterBehavior<TelemetryStreamBehavior<TestMessage, string>, TestMessage, IAsyncEnumerable<string>>();
+            configure.RegisterBehavior<
+                TelemetryStreamBehavior<TestMessage, string>,
+                TestMessage,
+                IAsyncEnumerable<string>
+            >();
         });
         var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
@@ -164,14 +174,18 @@ public sealed class DiagnosticsTelemetryTests
 
     private sealed class TestRequestHandler : IRequestHandler<TestMessage, string>
     {
-        public Task<string> Handle(TestMessage query, CancellationToken cancellationToken = default) =>
-            Task.FromResult(query.Name);
+        public Task<string> Handle(
+            TestMessage query,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult(query.Name);
     }
 
     private sealed class TestNotificationHandler : INotificationHandler<TestMessage>
     {
-        public Task Handle(TestMessage notification, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task Handle(
+            TestMessage notification,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
     }
 
     private sealed class TestStreamHandler : IStreamHandler<TestMessage, string>
@@ -179,7 +193,7 @@ public sealed class DiagnosticsTelemetryTests
         public async IAsyncEnumerable<string> Handle(
             TestMessage query,
             [System.Runtime.CompilerServices.EnumeratorCancellation]
-            CancellationToken cancellationToken = default
+                CancellationToken cancellationToken = default
         )
         {
             yield return query.Name;

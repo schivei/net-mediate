@@ -12,7 +12,8 @@ public class InternalNotifierTests
     public record TestNotification;
 
     private static (Notifier notifier, ServiceProvider provider) BuildNotifier(
-        Action<IMediatorServiceBuilder>? configure = null)
+        Action<IMediatorServiceBuilder>? configure = null
+    )
     {
         var services = new ServiceCollection();
         services.AddLogging();
@@ -27,7 +28,8 @@ public class InternalNotifierTests
         for (var i = 0; i < 100; i++)
         {
             ct.ThrowIfCancellationRequested();
-            if (predicate()) return;
+            if (predicate())
+                return;
             await Task.Delay(10, ct);
         }
     }
@@ -41,7 +43,12 @@ public class InternalNotifierTests
         await using var _ = provider;
         var message = new TestNotification();
 
-        await notifier.DispatchNotifications(null, message, [handler], TestContext.Current.CancellationToken);
+        await notifier.DispatchNotifications(
+            null,
+            message,
+            [handler],
+            TestContext.Current.CancellationToken
+        );
         await WaitForAsync(() => tcs.Task.IsCompleted, TestContext.Current.CancellationToken);
 
         Assert.True(tcs.Task.IsCompletedSuccessfully);
@@ -56,7 +63,12 @@ public class InternalNotifierTests
         var message = new TestNotification();
 
         // Fire-and-forget: returns Task.CompletedTask immediately, exception is swallowed/logged
-        var task = notifier.DispatchNotifications(null, message, [handler], TestContext.Current.CancellationToken);
+        var task = notifier.DispatchNotifications(
+            null,
+            message,
+            [handler],
+            TestContext.Current.CancellationToken
+        );
         Assert.True(task.IsCompleted);
         await task; // must not throw
     }
@@ -68,7 +80,12 @@ public class InternalNotifierTests
         await using var _ = provider;
         var message = new TestNotification();
 
-        var task = notifier.DispatchNotifications(null, message, [], TestContext.Current.CancellationToken);
+        var task = notifier.DispatchNotifications(
+            null,
+            message,
+            [],
+            TestContext.Current.CancellationToken
+        );
         Assert.True(task.IsCompleted);
         await task;
     }
@@ -78,8 +95,7 @@ public class InternalNotifierTests
     {
         var tcs = new TaskCompletionSource<bool>();
         var handler = new TcsNotificationHandler<TestNotification>(tcs);
-        var (notifier, provider) = BuildNotifier(b =>
-            b.RegisterNotificationHandler(handler));
+        var (notifier, provider) = BuildNotifier(b => b.RegisterNotificationHandler(handler));
         await using var _ = provider;
         var message = new TestNotification();
 
@@ -102,7 +118,11 @@ public class InternalNotifierTests
         var notifier = new Notifier(new ThrowingServiceProvider(), logger);
         var messages = new[] { new TestNotification(), new TestNotification() };
 
-        var task = notifier.Notify(null, (IEnumerable<TestNotification>)messages, CancellationToken.None);
+        var task = notifier.Notify(
+            null,
+            (IEnumerable<TestNotification>)messages,
+            CancellationToken.None
+        );
 
         // Must complete synchronously and not throw — exceptions are caught and logged.
         Assert.True(task.IsCompletedSuccessfully);
@@ -114,7 +134,8 @@ public class InternalNotifierTests
             throw new InvalidOperationException("test-throw");
     }
 
-    private sealed class TcsNotificationHandler<T>(TaskCompletionSource<bool> tcs) : INotificationHandler<T>
+    private sealed class TcsNotificationHandler<T>(TaskCompletionSource<bool> tcs)
+        : INotificationHandler<T>
         where T : notnull
     {
         public Task Handle(T notification, CancellationToken ct = default)

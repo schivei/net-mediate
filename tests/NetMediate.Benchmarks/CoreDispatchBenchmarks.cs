@@ -42,7 +42,11 @@ public class CoreDispatchBenchmarks
             configure.RegisterCommandHandler<BenchCommandHandler, BenchCommand>();
             configure.RegisterNotificationHandler<BenchNotificationHandler, BenchNotification>();
             configure.RegisterRequestHandler<BenchRequestHandler, BenchRequest, BenchResponse>();
-            configure.RegisterStreamHandler<BenchStreamHandler, BenchStreamRequest, BenchStreamItem>();
+            configure.RegisterStreamHandler<
+                BenchStreamHandler,
+                BenchStreamRequest,
+                BenchStreamItem
+            >();
         });
 
         _provider = services.BuildServiceProvider();
@@ -53,7 +57,9 @@ public class CoreDispatchBenchmarks
         _mediator.Send(s_command).GetAwaiter().GetResult();
         _mediator.Notify(s_notification).GetAwaiter().GetResult();
         _mediator.Request<BenchRequest, BenchResponse>(s_request).GetAwaiter().GetResult();
-        DrainStream(_mediator.RequestStream<BenchStreamRequest, BenchStreamItem>(s_streamRequest)).GetAwaiter().GetResult();
+        DrainStream(_mediator.RequestStream<BenchStreamRequest, BenchStreamItem>(s_streamRequest))
+            .GetAwaiter()
+            .GetResult();
     }
 
     /// <summary>Tears down the DI container after all iterations.</summary>
@@ -90,15 +96,22 @@ public class CoreDispatchBenchmarks
     /// Measures the end-to-end cost of a single stream invocation including draining all
     /// yielded items.  Each invocation yields 3 items.
     /// </summary>
-    [Benchmark(Description = "Stream  RequestStream (3 items/call)", OperationsPerInvoke = OpsPerInvoke)]
+    [Benchmark(
+        Description = "Stream  RequestStream (3 items/call)",
+        OperationsPerInvoke = OpsPerInvoke
+    )]
     public async Task Stream()
     {
         for (int i = 0; i < OpsPerInvoke; i++)
-            await DrainStream(_mediator.RequestStream<BenchStreamRequest, BenchStreamItem>(s_streamRequest));
+            await DrainStream(
+                _mediator.RequestStream<BenchStreamRequest, BenchStreamItem>(s_streamRequest)
+            );
     }
 
     private static async Task DrainStream(IAsyncEnumerable<BenchStreamItem> stream)
     {
-        await foreach (var _ in stream) { } // NOSONAR S108
+#pragma warning disable S108
+        await foreach (var _ in stream) { }
+#pragma warning restore S108
     }
 }

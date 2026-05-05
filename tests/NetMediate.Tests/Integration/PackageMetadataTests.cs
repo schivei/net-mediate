@@ -13,7 +13,9 @@ public class PackageMetadataTests
 
         if (!File.Exists(packagePath))
         {
-            Assert.Fail("Package not found in src/NetMediate/bin/Release/; run `dotnet build src/NetMediate/NetMediate.csproj --configuration Release` first.");
+            Assert.Fail(
+                "Package not found in src/NetMediate/bin/Release/; run `dotnet build src/NetMediate/NetMediate.csproj --configuration Release` first."
+            );
         }
 
         using var archive = ZipFile.OpenRead(packagePath);
@@ -32,7 +34,9 @@ public class PackageMetadataTests
 
         if (!File.Exists(packagePath))
         {
-            Assert.Fail("Package not found in src/NetMediate/bin/Release/; run `dotnet build src/NetMediate/NetMediate.csproj --configuration Release` first.");
+            Assert.Fail(
+                "Package not found in src/NetMediate/bin/Release/; run `dotnet build src/NetMediate/NetMediate.csproj --configuration Release` first."
+            );
         }
 
         using var archive = ZipFile.OpenRead(packagePath);

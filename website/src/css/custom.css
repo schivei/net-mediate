@@ -68,7 +68,7 @@
 }
 
 /* Mobile sidebar has a light background in light mode; restore dark link colors */
-.navbar-sidebar {
+[data-theme='light'] .navbar-sidebar {
   --ifm-navbar-link-color: #24292f;
   --ifm-navbar-link-hover-color: #0969da;
 }

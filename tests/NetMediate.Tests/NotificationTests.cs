@@ -5,9 +5,8 @@ namespace NetMediate.Tests;
 
 public sealed class NotificationTests
 {
-    private static async Task NotificationHandle<T>(
-        IEnumerable<T> values = null!
-    ) where T : BaseMessage
+    private static async Task NotificationHandle<T>(IEnumerable<T> values = null!)
+        where T : BaseMessage
     {
         using var fixture = new NetMediateFixture();
         await fixture.RunAsync(

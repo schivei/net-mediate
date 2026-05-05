@@ -33,6 +33,7 @@ public static class NetMediateDI
     /// <c>mediator.Send(command, ct)</c> and <c>mediator.Send(null, command, ct)</c> are exactly equivalent.
     /// </summary>
     public const string DEFAULT_ROUTING_KEY = Internals.Extensions.DEFAULT_ROUTING_KEY;
+
     /// <summary>
     /// Configures NetMediate core services and applies the provided explicit handler registration
     /// callback.  This overload is <em>intended to be called by source-generated code only</em>
@@ -62,9 +63,9 @@ public static class NetMediateDI
         if (services.Any(static s => s.ServiceType == typeof(IMediator)))
         {
             Debug.WriteLine(
-                "[NetMediate] UseNetMediate was called more than once on the same IServiceCollection. " +
-                "The duplicate call is ignored. Ensure AddNetMediate() is called only once " +
-                "at application startup."
+                "[NetMediate] UseNetMediate was called more than once on the same IServiceCollection. "
+                    + "The duplicate call is ignored. Ensure AddNetMediate() is called only once "
+                    + "at application startup."
             );
             return new MediatorServiceBuilder<Notifier>(services, skipCoreRegistration: true);
         }
@@ -89,19 +90,17 @@ public static class NetMediateDI
     /// <returns>A <see cref="IMediatorServiceBuilder"/> instance for additional configuration.</returns>
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static IMediatorServiceBuilder UseNetMediate<
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)]
-    TNotifier>(
-        this IServiceCollection services,
-        Action<IMediatorServiceBuilder> configure
-    ) where TNotifier : class, INotifiable
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TNotifier
+    >(this IServiceCollection services, Action<IMediatorServiceBuilder> configure)
+        where TNotifier : class, INotifiable
     {
         Guard.ThrowIfNull(configure);
 
         if (services.Any(static s => s.ServiceType == typeof(IMediator)))
         {
             Debug.WriteLine(
-                "[NetMediate] UseNetMediate was called more than once on the same IServiceCollection. " +
-                "The duplicate call is ignored."
+                "[NetMediate] UseNetMediate was called more than once on the same IServiceCollection. "
+                    + "The duplicate call is ignored."
             );
             return new MediatorServiceBuilder<TNotifier>(services, skipCoreRegistration: true);
         }

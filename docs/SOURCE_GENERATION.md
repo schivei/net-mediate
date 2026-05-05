@@ -43,3 +43,64 @@ If a class also implements `INotifiable` (e.g. a custom notifier), the generator
 ## AOT / NativeAOT
 
 The source-generator path is fully AOT-safe — no reflection, no `MakeGenericType`, no assembly scanning. See [AOT.md](AOT.md) for the complete compatibility guide.
+
+## Controlling registration order with `[ServiceOrder]`
+
+Apply `[ServiceOrder(n)]` to a handler class to control the order in which it is registered by
+the source generator. Lower values are registered first.
+
+```csharp
+[ServiceOrder(1)]
+public sealed class AuditHandler : ICommandHandler<AuditCommand> { ... }
+
+[ServiceOrder(2)]
+public sealed class MetricsHandler : ICommandHandler<MetricsCommand> { ... }
+
+// No attribute → registered last (implicit order = int.MaxValue).
+public sealed class FallbackHandler : ICommandHandler<FallbackCommand> { ... }
+```
+
+Registration order affects the **pipeline wrapping order**: behaviors registered earlier wrap
+the pipeline *outermost*, so they run before later-registered behaviors.
+
+> **Scope**: `[ServiceOrder]` is respected only by the source generator. Handlers registered
+> manually via `UseNetMediate(configure => ...)` follow the order you write them in code.
+
+## Generated namespace and `AddNetMediate()` discoverability
+
+The generator places `NetMediateGeneratedDI` (and its `AddNetMediate()` extension method) in a
+namespace derived from your project's root namespace:
+
+```
+<YourRootNamespace>.NetMediate
+```
+
+For C# 10 and later the generator also emits a companion `NetMediateGlobalUsings.g.cs` file that
+adds `global using <YourRootNamespace>.NetMediate;` to the project automatically. This means
+`AddNetMediate()` is available everywhere in your project without any manual `using` directive.
+
+If your project targets C# 9 or earlier, add the using directive explicitly in your entry-point
+file:
+
+```csharp
+// Program.cs or Startup.cs
+using MyApp.NetMediate;          // the generated namespace
+
+builder.Services.AddNetMediate();
+```
+
+### Namespace selection algorithm
+
+When a solution contains multiple projects, the generator determines the **most common
+base namespace prefix** across all project assemblies that ran through the generator in the
+current build session. For example:
+
+| Assemblies in session | Resolved namespace |
+|---|---|
+| `Acme.Web` only | `Acme.Web.NetMediate` |
+| `Acme.Web`, `Acme.Api` | `Acme.NetMediate` (common prefix `Acme`) |
+| `Acme.Web`, `Acme.Api`, `Acme.Core` | `Acme.NetMediate` |
+
+Projects whose names start with `Microsoft.` or `System.` are always excluded. Built-in
+NetMediate packages (e.g. `NetMediate.Diagnostics`) are also excluded so they do not
+influence the namespace selection of your project.

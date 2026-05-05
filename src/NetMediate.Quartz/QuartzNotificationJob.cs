@@ -1,8 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
-using Quartz;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NetMediate.Internals;
+using Quartz;
 
 namespace NetMediate.Quartz;
 
@@ -52,8 +52,10 @@ public sealed class QuartzNotificationJob(
     public const string KeyTypeDataKey = "netmediate_key_type";
 
     // Cached delegate invoker keyed by message type to avoid per-call MakeGenericMethod on hot paths.
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, Func<INotifiable, object?, object, CancellationToken, Task>>
-        s_dispatcherCache = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<
+        Type,
+        Func<INotifiable, object?, object, CancellationToken, Task>
+    > s_dispatcherCache = new();
 
     /// <inheritdoc />
     public async Task Execute(IJobExecutionContext context)
@@ -66,7 +68,8 @@ public sealed class QuartzNotificationJob(
         {
             logger.LogWarning(
                 "QuartzNotificationJob: missing message data in job {JobKey}.",
-                context.JobDetail.Key);
+                context.JobDetail.Key
+            );
             return;
         }
 
@@ -76,7 +79,8 @@ public sealed class QuartzNotificationJob(
             logger.LogError(
                 "QuartzNotificationJob: cannot resolve type '{TypeName}' for job {JobKey}.",
                 typeName,
-                context.JobDetail.Key);
+                context.JobDetail.Key
+            );
             return;
         }
 
@@ -85,7 +89,8 @@ public sealed class QuartzNotificationJob(
         {
             logger.LogWarning(
                 "QuartzNotificationJob: deserialized message is null for job {JobKey}.",
-                context.JobDetail.Key);
+                context.JobDetail.Key
+            );
             return;
         }
 
@@ -103,10 +108,13 @@ public sealed class QuartzNotificationJob(
         var notifiable = serviceProvider.GetRequiredService<INotifiable>();
         var dispatcher = s_dispatcherCache.GetOrAdd(messageType, BuildDispatcher);
 
-        await dispatcher(notifiable, routingKey, message, context.CancellationToken).ConfigureAwait(false);
+        await dispatcher(notifiable, routingKey, message, context.CancellationToken)
+            .ConfigureAwait(false);
     }
 
-    private static Func<INotifiable, object?, object, CancellationToken, Task> BuildDispatcher(Type messageType)
+    private static Func<INotifiable, object?, object, CancellationToken, Task> BuildDispatcher(
+        Type messageType
+    )
     {
         // Use Notify(key, message, ct) rather than DispatchNotifications so that the full
         // behavior pipeline runs and the routing key is properly forwarded.

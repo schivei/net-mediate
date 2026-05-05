@@ -149,10 +149,9 @@ public sealed class ResilienceBehaviorTests
         });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        var ex = await mediator.Notify(
-            new TimeoutNotificationMessage("pass"),
-            TestContext.Current.CancellationToken
-        ).ContinueWith(task => task.Exception);
+        var ex = await mediator
+            .Notify(new TimeoutNotificationMessage("pass"), TestContext.Current.CancellationToken)
+            .ContinueWith(task => task.Exception);
 
         Assert.Null(ex);
     }
@@ -163,10 +162,21 @@ public sealed class ResilienceBehaviorTests
         var builder = Host.CreateApplicationBuilder();
         builder.Services.UseNetMediate(configure =>
         {
-            configure.RegisterNotificationHandler<SlowTimeoutNotificationHandler, SlowTimeoutNotificationMessage>();
+            configure.RegisterNotificationHandler<
+                SlowTimeoutNotificationHandler,
+                SlowTimeoutNotificationMessage
+            >();
             // Timeout registered first → becomes outermost after Reverse(); SlowBehavior becomes inner
-            configure.RegisterBehavior<TimeoutNotificationBehavior<SlowTimeoutNotificationMessage>, SlowTimeoutNotificationMessage, Task>();
-            configure.RegisterBehavior<SlowPipelineBehavior<SlowTimeoutNotificationMessage>, SlowTimeoutNotificationMessage, Task>();
+            configure.RegisterBehavior<
+                TimeoutNotificationBehavior<SlowTimeoutNotificationMessage>,
+                SlowTimeoutNotificationMessage,
+                Task
+            >();
+            configure.RegisterBehavior<
+                SlowPipelineBehavior<SlowTimeoutNotificationMessage>,
+                SlowTimeoutNotificationMessage,
+                Task
+            >();
         });
         builder.Services.Configure<TimeoutBehaviorOptions>(opts =>
         {
@@ -192,10 +202,21 @@ public sealed class ResilienceBehaviorTests
         var builder = Host.CreateApplicationBuilder();
         builder.Services.UseNetMediate(configure =>
         {
-            configure.RegisterNotificationHandler<ThrowingCbNotificationHandler2, ThrowingCbMessage>();
+            configure.RegisterNotificationHandler<
+                ThrowingCbNotificationHandler2,
+                ThrowingCbMessage
+            >();
             // CircuitBreaker registered first → becomes outermost after Reverse(); Throwing becomes inner
-            configure.RegisterBehavior<CircuitBreakerNotificationBehavior<ThrowingCbMessage>, ThrowingCbMessage, Task>();
-            configure.RegisterBehavior<ThrowingPipelineBehavior<ThrowingCbMessage>, ThrowingCbMessage, Task>();
+            configure.RegisterBehavior<
+                CircuitBreakerNotificationBehavior<ThrowingCbMessage>,
+                ThrowingCbMessage,
+                Task
+            >();
+            configure.RegisterBehavior<
+                ThrowingPipelineBehavior<ThrowingCbMessage>,
+                ThrowingCbMessage,
+                Task
+            >();
         });
         builder.Services.Configure<CircuitBreakerBehaviorOptions>(opts =>
         {
@@ -229,10 +250,21 @@ public sealed class ResilienceBehaviorTests
         var builder = Host.CreateApplicationBuilder();
         builder.Services.UseNetMediate(configure =>
         {
-            configure.RegisterNotificationHandler<CountingThrowNotificationHandler, CountingThrowMessage>();
+            configure.RegisterNotificationHandler<
+                CountingThrowNotificationHandler,
+                CountingThrowMessage
+            >();
             // Retry registered first → becomes outermost after Reverse(); CountingThrow becomes inner
-            configure.RegisterBehavior<RetryNotificationBehavior<CountingThrowMessage>, CountingThrowMessage, Task>();
-            configure.RegisterBehavior<CountingThrowBehavior<CountingThrowMessage>, CountingThrowMessage, Task>();
+            configure.RegisterBehavior<
+                RetryNotificationBehavior<CountingThrowMessage>,
+                CountingThrowMessage,
+                Task
+            >();
+            configure.RegisterBehavior<
+                CountingThrowBehavior<CountingThrowMessage>,
+                CountingThrowMessage,
+                Task
+            >();
         });
         builder.Services.Configure<RetryBehaviorOptions>(opts =>
         {
@@ -291,7 +323,9 @@ public sealed class ResilienceBehaviorTests
 
     // ── Host builders ───────────────────────────────────────────────────────────────────────
 
-    private static async Task<IHost> CreateRequestHostAsync(Action<IServiceCollection> configureServices)
+    private static async Task<IHost> CreateRequestHostAsync(
+        Action<IServiceCollection> configureServices
+    )
     {
         RetryRequestHandler.Reset();
         RetryNotificationViaMediatorHandler.Reset();
@@ -299,25 +333,84 @@ public sealed class ResilienceBehaviorTests
         builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterRequestHandler<RetryRequestHandler, RetryRequestMessage, string>();
-            configure.RegisterRequestHandler<TimeoutRequestHandler, TimeoutRequestMessage, string>();
-            configure.RegisterRequestHandler<CircuitBreakerRequestHandler, CircuitBreakerRequestMessage, string>();
-            configure.RegisterNotificationHandler<RetryNotificationViaMediatorHandler, RetryNotificationViaMediatorMessage>();
+            configure.RegisterRequestHandler<
+                TimeoutRequestHandler,
+                TimeoutRequestMessage,
+                string
+            >();
+            configure.RegisterRequestHandler<
+                CircuitBreakerRequestHandler,
+                CircuitBreakerRequestMessage,
+                string
+            >();
+            configure.RegisterNotificationHandler<
+                RetryNotificationViaMediatorHandler,
+                RetryNotificationViaMediatorMessage
+            >();
 
-            configure.RegisterBehavior<RetryRequestBehavior<RetryRequestMessage, string>, RetryRequestMessage, Task<string>>();
-            configure.RegisterBehavior<TimeoutRequestBehavior<RetryRequestMessage, string>, RetryRequestMessage, Task<string>>();
-            configure.RegisterBehavior<CircuitBreakerRequestBehavior<RetryRequestMessage, string>, RetryRequestMessage, Task<string>>();
+            configure.RegisterBehavior<
+                RetryRequestBehavior<RetryRequestMessage, string>,
+                RetryRequestMessage,
+                Task<string>
+            >();
+            configure.RegisterBehavior<
+                TimeoutRequestBehavior<RetryRequestMessage, string>,
+                RetryRequestMessage,
+                Task<string>
+            >();
+            configure.RegisterBehavior<
+                CircuitBreakerRequestBehavior<RetryRequestMessage, string>,
+                RetryRequestMessage,
+                Task<string>
+            >();
 
-            configure.RegisterBehavior<RetryRequestBehavior<TimeoutRequestMessage, string>, TimeoutRequestMessage, Task<string>>();
-            configure.RegisterBehavior<TimeoutRequestBehavior<TimeoutRequestMessage, string>, TimeoutRequestMessage, Task<string>>();
-            configure.RegisterBehavior<CircuitBreakerRequestBehavior<TimeoutRequestMessage, string>, TimeoutRequestMessage, Task<string>>();
+            configure.RegisterBehavior<
+                RetryRequestBehavior<TimeoutRequestMessage, string>,
+                TimeoutRequestMessage,
+                Task<string>
+            >();
+            configure.RegisterBehavior<
+                TimeoutRequestBehavior<TimeoutRequestMessage, string>,
+                TimeoutRequestMessage,
+                Task<string>
+            >();
+            configure.RegisterBehavior<
+                CircuitBreakerRequestBehavior<TimeoutRequestMessage, string>,
+                TimeoutRequestMessage,
+                Task<string>
+            >();
 
-            configure.RegisterBehavior<RetryRequestBehavior<CircuitBreakerRequestMessage, string>, CircuitBreakerRequestMessage, Task<string>>();
-            configure.RegisterBehavior<TimeoutRequestBehavior<CircuitBreakerRequestMessage, string>, CircuitBreakerRequestMessage, Task<string>>();
-            configure.RegisterBehavior<CircuitBreakerRequestBehavior<CircuitBreakerRequestMessage, string>, CircuitBreakerRequestMessage, Task<string>>();
+            configure.RegisterBehavior<
+                RetryRequestBehavior<CircuitBreakerRequestMessage, string>,
+                CircuitBreakerRequestMessage,
+                Task<string>
+            >();
+            configure.RegisterBehavior<
+                TimeoutRequestBehavior<CircuitBreakerRequestMessage, string>,
+                CircuitBreakerRequestMessage,
+                Task<string>
+            >();
+            configure.RegisterBehavior<
+                CircuitBreakerRequestBehavior<CircuitBreakerRequestMessage, string>,
+                CircuitBreakerRequestMessage,
+                Task<string>
+            >();
 
-            configure.RegisterBehavior<RetryNotificationBehavior<RetryNotificationViaMediatorMessage>, RetryNotificationViaMediatorMessage, Task>();
-            configure.RegisterBehavior<TimeoutNotificationBehavior<RetryNotificationViaMediatorMessage>, RetryNotificationViaMediatorMessage, Task>();
-            configure.RegisterBehavior<CircuitBreakerNotificationBehavior<RetryNotificationViaMediatorMessage>, RetryNotificationViaMediatorMessage, Task>();
+            configure.RegisterBehavior<
+                RetryNotificationBehavior<RetryNotificationViaMediatorMessage>,
+                RetryNotificationViaMediatorMessage,
+                Task
+            >();
+            configure.RegisterBehavior<
+                TimeoutNotificationBehavior<RetryNotificationViaMediatorMessage>,
+                RetryNotificationViaMediatorMessage,
+                Task
+            >();
+            configure.RegisterBehavior<
+                CircuitBreakerNotificationBehavior<RetryNotificationViaMediatorMessage>,
+                RetryNotificationViaMediatorMessage,
+                Task
+            >();
         });
 
         configureServices(builder.Services);
@@ -327,26 +420,70 @@ public sealed class ResilienceBehaviorTests
         return host;
     }
 
-    private static async Task<IHost> CreateNotificationHostAsync(Action<IServiceCollection> configureServices)
+    private static async Task<IHost> CreateNotificationHostAsync(
+        Action<IServiceCollection> configureServices
+    )
     {
         var builder = Host.CreateApplicationBuilder();
         builder.Services.UseNetMediate(configure =>
         {
-            configure.RegisterNotificationHandler<TimeoutNotificationHandler, TimeoutNotificationMessage>();
+            configure.RegisterNotificationHandler<
+                TimeoutNotificationHandler,
+                TimeoutNotificationMessage
+            >();
             configure.RegisterNotificationHandler<CbNotificationHandler, CbNotificationMessage>();
-            configure.RegisterNotificationHandler<RetryNotificationHandler, RetryNotificationMessage>();
+            configure.RegisterNotificationHandler<
+                RetryNotificationHandler,
+                RetryNotificationMessage
+            >();
 
-            configure.RegisterBehavior<RetryNotificationBehavior<TimeoutNotificationMessage>, TimeoutNotificationMessage, Task>();
-            configure.RegisterBehavior<TimeoutNotificationBehavior<TimeoutNotificationMessage>, TimeoutNotificationMessage, Task>();
-            configure.RegisterBehavior<CircuitBreakerNotificationBehavior<TimeoutNotificationMessage>, TimeoutNotificationMessage, Task>();
+            configure.RegisterBehavior<
+                RetryNotificationBehavior<TimeoutNotificationMessage>,
+                TimeoutNotificationMessage,
+                Task
+            >();
+            configure.RegisterBehavior<
+                TimeoutNotificationBehavior<TimeoutNotificationMessage>,
+                TimeoutNotificationMessage,
+                Task
+            >();
+            configure.RegisterBehavior<
+                CircuitBreakerNotificationBehavior<TimeoutNotificationMessage>,
+                TimeoutNotificationMessage,
+                Task
+            >();
 
-            configure.RegisterBehavior<RetryNotificationBehavior<CbNotificationMessage>, CbNotificationMessage, Task>();
-            configure.RegisterBehavior<TimeoutNotificationBehavior<CbNotificationMessage>, CbNotificationMessage, Task>();
-            configure.RegisterBehavior<CircuitBreakerNotificationBehavior<CbNotificationMessage>, CbNotificationMessage, Task>();
+            configure.RegisterBehavior<
+                RetryNotificationBehavior<CbNotificationMessage>,
+                CbNotificationMessage,
+                Task
+            >();
+            configure.RegisterBehavior<
+                TimeoutNotificationBehavior<CbNotificationMessage>,
+                CbNotificationMessage,
+                Task
+            >();
+            configure.RegisterBehavior<
+                CircuitBreakerNotificationBehavior<CbNotificationMessage>,
+                CbNotificationMessage,
+                Task
+            >();
 
-            configure.RegisterBehavior<RetryNotificationBehavior<RetryNotificationMessage>, RetryNotificationMessage, Task>();
-            configure.RegisterBehavior<TimeoutNotificationBehavior<RetryNotificationMessage>, RetryNotificationMessage, Task>();
-            configure.RegisterBehavior<CircuitBreakerNotificationBehavior<RetryNotificationMessage>, RetryNotificationMessage, Task>();
+            configure.RegisterBehavior<
+                RetryNotificationBehavior<RetryNotificationMessage>,
+                RetryNotificationMessage,
+                Task
+            >();
+            configure.RegisterBehavior<
+                TimeoutNotificationBehavior<RetryNotificationMessage>,
+                RetryNotificationMessage,
+                Task
+            >();
+            configure.RegisterBehavior<
+                CircuitBreakerNotificationBehavior<RetryNotificationMessage>,
+                RetryNotificationMessage,
+                Task
+            >();
         });
 
         configureServices(builder.Services);
@@ -362,9 +499,21 @@ public sealed class ResilienceBehaviorTests
         builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterRequestHandler<LoadRequestHandler, LoadRequest, int>();
-            configure.RegisterBehavior<RetryRequestBehavior<LoadRequest, int>, LoadRequest, Task<int>>();
-            configure.RegisterBehavior<TimeoutRequestBehavior<LoadRequest, int>, LoadRequest, Task<int>>();
-            configure.RegisterBehavior<CircuitBreakerRequestBehavior<LoadRequest, int>, LoadRequest, Task<int>>();
+            configure.RegisterBehavior<
+                RetryRequestBehavior<LoadRequest, int>,
+                LoadRequest,
+                Task<int>
+            >();
+            configure.RegisterBehavior<
+                TimeoutRequestBehavior<LoadRequest, int>,
+                LoadRequest,
+                Task<int>
+            >();
+            configure.RegisterBehavior<
+                CircuitBreakerRequestBehavior<LoadRequest, int>,
+                LoadRequest,
+                Task<int>
+            >();
         });
 
         builder.Services.Configure<RetryBehaviorOptions>(opts =>
@@ -389,12 +538,16 @@ public sealed class ResilienceBehaviorTests
 
     // ── Helpers ─────────────────────────────────────────────────────────────────────────────
 
-    private static async Task WaitForAsync(Func<bool> predicate, CancellationToken cancellationToken)
+    private static async Task WaitForAsync(
+        Func<bool> predicate,
+        CancellationToken cancellationToken
+    )
     {
         for (var attempt = 0; attempt < 100; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (predicate()) return;
+            if (predicate())
+                return;
             await Task.Delay(10, cancellationToken);
         }
 
@@ -411,16 +564,26 @@ public sealed class ResilienceBehaviorTests
     // ── Message types ────────────────────────────────────────────────────────────────────────
 
     public sealed record RetryRequestMessage(string Value);
+
     public sealed record RetryNotificationViaMediatorMessage(string Value);
+
     public sealed record TimeoutRequestMessage(string Value);
+
     public sealed record CircuitBreakerRequestMessage(string Value);
+
     public sealed record TimeoutNotificationMessage(string Value = "");
+
     public sealed record CbNotificationMessage;
+
     public sealed record RetryNotificationMessage;
+
     public sealed record LoadRequest(int Value);
+
     // Unique message types for handler-based resilience tests (avoids static handler cache contamination)
     public sealed record SlowTimeoutNotificationMessage(string Value = "");
+
     public sealed record ThrowingCbMessage;
+
     public sealed record CountingThrowMessage;
 
     // ── Handlers ─────────────────────────────────────────────────────────────────────────────
@@ -429,9 +592,13 @@ public sealed class ResilienceBehaviorTests
     {
         private static int s_attempts;
         public static int Attempts => Volatile.Read(ref s_attempts);
+
         public static void Reset() => Interlocked.Exchange(ref s_attempts, 0);
 
-        public async Task<string> Handle(RetryRequestMessage query, CancellationToken cancellationToken = default)
+        public async Task<string> Handle(
+            RetryRequestMessage query,
+            CancellationToken cancellationToken = default
+        )
         {
             var attempt = Interlocked.Increment(ref s_attempts);
             if (attempt < 3)
@@ -442,26 +609,37 @@ public sealed class ResilienceBehaviorTests
 
     private sealed class TimeoutRequestHandler : IRequestHandler<TimeoutRequestMessage, string>
     {
-        public async Task<string> Handle(TimeoutRequestMessage query, CancellationToken cancellationToken = default)
+        public async Task<string> Handle(
+            TimeoutRequestMessage query,
+            CancellationToken cancellationToken = default
+        )
         {
             await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
             return query.Value;
         }
     }
 
-    private sealed class CircuitBreakerRequestHandler : IRequestHandler<CircuitBreakerRequestMessage, string>
+    private sealed class CircuitBreakerRequestHandler
+        : IRequestHandler<CircuitBreakerRequestMessage, string>
     {
-        public Task<string> Handle(CircuitBreakerRequestMessage query, CancellationToken cancellationToken = default)
-            => throw new InvalidOperationException("request failure");
+        public Task<string> Handle(
+            CircuitBreakerRequestMessage query,
+            CancellationToken cancellationToken = default
+        ) => throw new InvalidOperationException("request failure");
     }
 
-    private sealed class RetryNotificationViaMediatorHandler : INotificationHandler<RetryNotificationViaMediatorMessage>
+    private sealed class RetryNotificationViaMediatorHandler
+        : INotificationHandler<RetryNotificationViaMediatorMessage>
     {
         private static int s_attempts;
         public static int Attempts => Volatile.Read(ref s_attempts);
+
         public static void Reset() => Interlocked.Exchange(ref s_attempts, 0);
 
-        public async Task Handle(RetryNotificationViaMediatorMessage notification, CancellationToken cancellationToken = default)
+        public async Task Handle(
+            RetryNotificationViaMediatorMessage notification,
+            CancellationToken cancellationToken = default
+        )
         {
             var attempt = Interlocked.Increment(ref s_attempts);
             if (attempt < 3)
@@ -469,28 +647,35 @@ public sealed class ResilienceBehaviorTests
         }
     }
 
-    private sealed class TimeoutNotificationHandler : INotificationHandler<TimeoutNotificationMessage>
+    private sealed class TimeoutNotificationHandler
+        : INotificationHandler<TimeoutNotificationMessage>
     {
-        public Task Handle(TimeoutNotificationMessage notification, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
+        public Task Handle(
+            TimeoutNotificationMessage notification,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
     }
 
     private sealed class CbNotificationHandler : INotificationHandler<CbNotificationMessage>
     {
-        public Task Handle(CbNotificationMessage notification, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
+        public Task Handle(
+            CbNotificationMessage notification,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
     }
 
     private sealed class RetryNotificationHandler : INotificationHandler<RetryNotificationMessage>
     {
-        public Task Handle(RetryNotificationMessage notification, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
+        public Task Handle(
+            RetryNotificationMessage notification,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
     }
 
     private sealed class LoadRequestHandler : IRequestHandler<LoadRequest, int>
     {
-        public Task<int> Handle(LoadRequest query, CancellationToken cancellationToken = default)
-            => Task.FromResult(query.Value + 1);
+        public Task<int> Handle(LoadRequest query, CancellationToken cancellationToken = default) =>
+            Task.FromResult(query.Value + 1);
     }
 
     // ── Pipeline behaviors for notification resilience tests ─────────────────────────────────
@@ -499,7 +684,12 @@ public sealed class ResilienceBehaviorTests
     private sealed class SlowPipelineBehavior<TMessage> : IPipelineBehavior<TMessage>
         where TMessage : notnull
     {
-        public async Task Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken cancellationToken)
+        public async Task Handle(
+            object? key,
+            TMessage message,
+            PipelineBehaviorDelegate<TMessage, Task> next,
+            CancellationToken cancellationToken
+        )
         {
             await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
             await next(key, message, cancellationToken);
@@ -510,8 +700,12 @@ public sealed class ResilienceBehaviorTests
     private sealed class ThrowingPipelineBehavior<TMessage> : IPipelineBehavior<TMessage>
         where TMessage : notnull
     {
-        public Task Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken cancellationToken)
-            => throw new InvalidOperationException("behavior failure");
+        public Task Handle(
+            object? key,
+            TMessage message,
+            PipelineBehaviorDelegate<TMessage, Task> next,
+            CancellationToken cancellationToken
+        ) => throw new InvalidOperationException("behavior failure");
     }
 
     /// <summary>Always throws and counts invocations — used to test retry behavior.</summary>
@@ -520,9 +714,15 @@ public sealed class ResilienceBehaviorTests
     {
         private static int s_invocations;
         public static int Invocations => Volatile.Read(ref s_invocations);
+
         public static void Reset() => Interlocked.Exchange(ref s_invocations, 0);
 
-        public Task Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken cancellationToken)
+        public Task Handle(
+            object? key,
+            TMessage message,
+            PipelineBehaviorDelegate<TMessage, Task> next,
+            CancellationToken cancellationToken
+        )
         {
             Interlocked.Increment(ref s_invocations);
             throw new InvalidOperationException("retry trigger");
@@ -531,21 +731,29 @@ public sealed class ResilienceBehaviorTests
 
     // ── Notification handlers for the new message types ──────────────────────────────────────
 
-    private sealed class SlowTimeoutNotificationHandler : INotificationHandler<SlowTimeoutNotificationMessage>
+    private sealed class SlowTimeoutNotificationHandler
+        : INotificationHandler<SlowTimeoutNotificationMessage>
     {
-        public Task Handle(SlowTimeoutNotificationMessage notification, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
+        public Task Handle(
+            SlowTimeoutNotificationMessage notification,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
     }
 
     private sealed class ThrowingCbNotificationHandler2 : INotificationHandler<ThrowingCbMessage>
     {
-        public Task Handle(ThrowingCbMessage notification, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
+        public Task Handle(
+            ThrowingCbMessage notification,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
     }
 
-    private sealed class CountingThrowNotificationHandler : INotificationHandler<CountingThrowMessage>
+    private sealed class CountingThrowNotificationHandler
+        : INotificationHandler<CountingThrowMessage>
     {
-        public Task Handle(CountingThrowMessage notification, CancellationToken cancellationToken = default)
-            => Task.CompletedTask;
+        public Task Handle(
+            CountingThrowMessage notification,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
     }
 }

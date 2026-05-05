@@ -1,7 +1,7 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using NetMediate.Internals;
 using Quartz;
-using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.Quartz;
 
@@ -20,17 +20,24 @@ public sealed class QuartzNotifier(
 ) : INotifiable
 {
     /// <inheritdoc />
-    public async Task Notify<TMessage>(object? key, TMessage message, CancellationToken cancellationToken = default)
+    public async Task Notify<TMessage>(
+        object? key,
+        TMessage message,
+        CancellationToken cancellationToken = default
+    )
         where TMessage : notnull
     {
         var json = serializer.Serialize(message);
-        var typeName = typeof(TMessage).AssemblyQualifiedName
-                       ?? throw new InvalidOperationException(
-                           $"Cannot determine assembly-qualified name for type '{typeof(TMessage).FullName}'.");
+        var typeName =
+            typeof(TMessage).AssemblyQualifiedName
+            ?? throw new InvalidOperationException(
+                $"Cannot determine assembly-qualified name for type '{typeof(TMessage).FullName}'."
+            );
 
         var jobKey = new JobKey($"{typeof(TMessage).Name}_{Guid.NewGuid():N}", options.GroupName);
 
-        var jobBuilder = JobBuilder.Create<QuartzNotificationJob>()
+        var jobBuilder = JobBuilder
+            .Create<QuartzNotificationJob>()
             .WithIdentity(jobKey)
             .UsingJobData(QuartzNotificationJob.MessageDataKey, json)
             .UsingJobData(QuartzNotificationJob.TypeDataKey, typeName)
@@ -42,13 +49,20 @@ public sealed class QuartzNotifier(
         if (key is not null)
         {
             jobBuilder = jobBuilder
-                .UsingJobData(QuartzNotificationJob.KeyDataKey, System.Text.Json.JsonSerializer.Serialize(key))
-                .UsingJobData(QuartzNotificationJob.KeyTypeDataKey, key.GetType().AssemblyQualifiedName ?? key.GetType().FullName ?? "System.Object");
+                .UsingJobData(
+                    QuartzNotificationJob.KeyDataKey,
+                    System.Text.Json.JsonSerializer.Serialize(key)
+                )
+                .UsingJobData(
+                    QuartzNotificationJob.KeyTypeDataKey,
+                    key.GetType().AssemblyQualifiedName ?? key.GetType().FullName ?? "System.Object"
+                );
         }
 
         var job = jobBuilder.Build();
 
-        var trigger = TriggerBuilder.Create()
+        var trigger = TriggerBuilder
+            .Create()
             .WithIdentity($"{jobKey.Name}_trigger", options.GroupName)
             .StartNow()
             .Build();
@@ -58,11 +72,16 @@ public sealed class QuartzNotifier(
         logger.LogDebug(
             "QuartzNotifier: scheduled notification job {JobKey} for message type {MessageType}.",
             jobKey,
-            typeof(TMessage).Name);
+            typeof(TMessage).Name
+        );
     }
 
     /// <inheritdoc />
-    public async Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default)
+    public async Task Notify<TMessage>(
+        object? key,
+        IEnumerable<TMessage> messages,
+        CancellationToken cancellationToken = default
+    )
         where TMessage : notnull
     {
         foreach (var message in messages)
@@ -70,14 +89,20 @@ public sealed class QuartzNotifier(
     }
 
     /// <inheritdoc />
-    public async Task DispatchNotifications<TMessage>(object? key, TMessage message, INotificationHandler<TMessage>[] handlers,
-        CancellationToken cancellationToken = default) where TMessage : notnull
+    public async Task DispatchNotifications<TMessage>(
+        object? key,
+        TMessage message,
+        INotificationHandler<TMessage>[] handlers,
+        CancellationToken cancellationToken = default
+    )
+        where TMessage : notnull
     {
         if (handlers.Length == 0)
         {
             logger.LogDebug(
                 "QuartzNotifier: no handlers registered for notification type {MessageType}.",
-                typeof(TMessage).Name);
+                typeof(TMessage).Name
+            );
         }
 
         foreach (var handler in handlers)

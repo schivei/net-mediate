@@ -2,7 +2,7 @@
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
     <Suffix></Suffix>
-	<Stable>$([System.DateTime]::UtcNow.ToString("yy.MM.dd"))</Stable>
+    <Stable>$([System.DateTime]::UtcNow.ToString("yy.MM.dd"))</Stable>
     <Version>$([System.DateTime]::UtcNow.ToString("yy.MM.dd")).$([System.DateTime]::UtcNow.Subtract($([System.DateTime]::UtcNow.Date)).TotalMinutes.ToString("F0"))$(Suffix)</Version>
     <NoWarn>nullable;NU5118;$(NoWarn)</NoWarn>
   </PropertyGroup>

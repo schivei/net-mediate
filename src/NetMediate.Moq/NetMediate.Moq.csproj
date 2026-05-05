@@ -20,7 +20,10 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
+    <PackageReference
+      Include="Microsoft.Extensions.DependencyInjection.Abstractions"
+      Version="10.*"
+    />
     <PackageReference Include="Moq" Version="4.*" />
   </ItemGroup>
 </Project>

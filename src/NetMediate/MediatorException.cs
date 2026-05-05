@@ -48,7 +48,8 @@ public sealed class MediatorException : Exception
         Type messageType,
         Type? handlerType,
         string? traceId,
-        Exception innerException)
+        Exception innerException
+    )
         : base(BuildMessage(messageType, handlerType), innerException)
     {
         MessageType = messageType;

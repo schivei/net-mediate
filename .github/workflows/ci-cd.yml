@@ -40,7 +40,12 @@ jobs:
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
         restore-keys: |
           ${{ runner.os }}-nuget-
-          
+
+    - name: Pack NetMediate (internal version for source generation integration tests)
+      run: |
+        dotnet build src/NetMediate/NetMediate.csproj --configuration Release /p:Version=0.0.1-internal
+        dotnet pack src/NetMediate/NetMediate.csproj --configuration Release --no-build /p:Version=0.0.1-internal --output ./local-packages
+
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx
       
@@ -81,7 +86,7 @@ jobs:
       run: dotnet test tests/NetMediate.Diagnostics.Tests/NetMediate.Diagnostics.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
 
     - name: Test SourceGeneration (package-reference integration)
-      run: dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+      run: dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj /p:Version=0.0.1-internal --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
       
     - name: Run Benchmarks (PR only)
       if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
@@ -218,6 +223,13 @@ jobs:
       with:
         dotnet-version: '10.x'
         
+    - name: Pack NetMediate (internal version for source generation integration tests)
+      # Must run before restore so that NetMediate@0.0.1-internal is available to the solution.
+      # GeneratePackageOnBuild=true requires an explicit build before pack --no-build.
+      run: |
+        dotnet build src/NetMediate/NetMediate.csproj --configuration Release /p:Version=0.0.1-internal
+        dotnet pack src/NetMediate/NetMediate.csproj --configuration Release --no-build /p:Version=0.0.1-internal --output ./local-packages
+
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx
       

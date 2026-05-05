@@ -41,10 +41,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     {
         var (types, (hasDiagnostics, hasResilience, isNetMediateAssembly)) = input;
 
-        // When compiling the NetMediate package itself the generator should not emit a real
-        // NetMediateGeneratedDI class: the class would get baked into NetMediate.dll, and
-        // when a downstream project references that DLL the generator would try to emit the
-        // same class again in the same namespace, causing a duplicate-type compile error.
         if (isNetMediateAssembly)
         {
             sourceProductionContext.AddSource(

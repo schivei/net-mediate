@@ -420,3 +420,8 @@ FodyWeavers.xsd
 
 # Downloaded temporary files
 *.tar.gz
+
+# Local NuGet feed populated by the pre-restore pack step (source generation integration tests)
+# Ignore the packages but keep the directory (tracked via .gitkeep so NuGet.Config finds it)
+local-packages/*.nupkg
+local-packages/*.snupkg

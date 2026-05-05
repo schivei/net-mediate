@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using NetMediate;
 
 namespace NetMediate.DataDog.ILogger;
 

@@ -38,7 +38,7 @@ internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider se
             _ => new ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, Task>>>());
 
         var lazy = perProvider.GetOrAdd(
-            key ?? new(),
+            key ?? Extensions.DEFAULT_ROUTING_KEY,
             _ => new Lazy<PipelineBehaviorDelegate<TMessage, Task>>(
                 () => BuildPipeline(key, serviceProvider, exec),
                 LazyThreadSafetyMode.ExecutionAndPublication));

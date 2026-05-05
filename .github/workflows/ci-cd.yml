@@ -6,9 +6,14 @@ on:
     tags: [ 'v*' ]
     paths:
       - 'src/**'
+      - 'tests/**'
       - '.github/workflows/ci-cd.yml'
   pull_request:
     branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/ci-cd.yml'
   workflow_dispatch:
 
 env:

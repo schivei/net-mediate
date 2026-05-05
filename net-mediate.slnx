@@ -14,9 +14,7 @@
     <Project Path="src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj" Id="2aabfa26-9c0d-4a0f-80f2-f5f2d1b13f2a" />
     <Project Path="src/NetMediate.DataDog.OpenTelemetry/NetMediate.DataDog.OpenTelemetry.csproj" Id="dc9d6521-e745-44d8-8e4b-4d5c4f4eb070" />
     <Project Path="src/NetMediate.DataDog.Serilog/NetMediate.DataDog.Serilog.csproj" Id="141fb2d3-cd7b-4184-9b6a-a1f7d18db143" />
-    <Project Path="src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj" Id="e5f6a7b8-c9d0-4e1f-a2b3-c4d5e6f7a8b9">
-      <Build Solution="Debug|*" Project="false" />
-    </Project>
+    <Project Path="src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj" Id="e5f6a7b8-c9d0-4e1f-a2b3-c4d5e6f7a8b9" />
     <Project Path="src/NetMediate.Moq/NetMediate.Moq.csproj" Id="9d54e570-e883-4296-b281-c8d40ed4e8af" />
     <Project Path="src/NetMediate.Quartz/NetMediate.Quartz.csproj" Id="c2d3e4f5-a6b7-48c9-d0e1-f2a3b4c5d6e7">
       <Build Solution="Debug|*" Project="false" />

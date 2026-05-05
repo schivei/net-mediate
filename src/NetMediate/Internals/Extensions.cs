@@ -116,7 +116,27 @@ internal static class Extensions
         public T[] GetCachedBehaviors<T>() where T : class
         {
             var providerCache = s_behaviorCacheByProvider.GetOrCreateValue(serviceProvider);
-            return serviceProvider.GetCachedServices<T>(new(typeof(T), DEFAULT_ROUTING_KEY), providerCache);
+            var cacheKey = new ServiceKey(typeof(T), DEFAULT_ROUTING_KEY);
+            var lazy = providerCache.GetOrAdd(
+                cacheKey,
+                _ => new Lazy<object>(
+                    () =>
+                    {
+                        // Combine behaviors registered under the default routing key (via
+                        // RegisterBehavior) with any behaviors registered without a key (plain
+                        // AddScoped/AddSingleton/AddTransient).  The keyed set comes first so
+                        // the registration-order declared through IMediatorServiceBuilder is
+                        // preserved; unkeyed registrations are appended for backward compat.
+                        var keyed = serviceProvider.GetKeyedServices<T>(DEFAULT_ROUTING_KEY).ToArray();
+                        var unkeyed = serviceProvider.GetServices<T>().ToArray();
+                        if (keyed.Length == 0) return unkeyed;
+                        if (unkeyed.Length == 0) return keyed;
+                        return keyed.Concat(unkeyed).ToArray();
+                    },
+                    LazyThreadSafetyMode.ExecutionAndPublication
+                )
+            );
+            return (T[])lazy.Value;
         }
 
         private T[] GetCachedServices<T>(ServiceKey key, ConcurrentDictionary<ServiceKey, Lazy<object>> cache) where T : class

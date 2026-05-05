@@ -9,15 +9,11 @@ namespace NetMediate.Resilience;
 [ServiceOrder(int.MinValue + 1)]
 public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
-) : IPipelineRequestBehavior<TMessage, TResponse>
+) : ACircuitBreakerBehavior<TMessage, Task<TResponse>>(optionsAccessor), IPipelineRequestBehavior<TMessage, TResponse>
     where TMessage : notnull
 {
-    private static readonly Lock s_sync = new();
-    private static int s_consecutiveFailures;
-    private static DateTimeOffset? s_openUntil;
-
     /// <inheritdoc />
-    public async Task<TResponse> Handle(
+    public override async Task<TResponse> Handle(
         object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
@@ -35,52 +31,8 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
         }
         catch
         {
-            RegisterFailure(optionsAccessor.Value);
+            RegisterFailure();
             throw;
-        }
-    }
-
-    private static bool IsCircuitOpen()
-    {
-        lock (s_sync)
-        {
-            if (s_openUntil is null)
-                return false;
-
-            if (DateTimeOffset.UtcNow >= s_openUntil.Value)
-            {
-                s_openUntil = null;
-                s_consecutiveFailures = 0;
-                return false;
-            }
-
-            return true;
-        }
-    }
-
-    private static void RegisterSuccess()
-    {
-        lock (s_sync)
-        {
-            s_consecutiveFailures = 0;
-            s_openUntil = null;
-        }
-    }
-
-    private static void RegisterFailure(CircuitBreakerBehaviorOptions options)
-    {
-        var threshold = Math.Max(1, options.FailureThreshold);
-        var openDuration =
-            options.OpenDuration <= TimeSpan.Zero ? TimeSpan.FromSeconds(1) : options.OpenDuration;
-
-        lock (s_sync)
-        {
-            s_consecutiveFailures++;
-            if (s_consecutiveFailures < threshold)
-                return;
-
-            s_openUntil = DateTimeOffset.UtcNow.Add(openDuration);
-            s_consecutiveFailures = 0;
         }
     }
 }
@@ -92,15 +44,11 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 [ServiceOrder(int.MinValue + 1)]
 public sealed class CircuitBreakerNotificationBehavior<TMessage>(
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
-) : IPipelineBehavior<TMessage>
+) : ACircuitBreakerBehavior<TMessage, Task>(optionsAccessor), IPipelineBehavior<TMessage>
     where TMessage : notnull
 {
-    private static readonly Lock s_sync = new();
-    private static int s_consecutiveFailures;
-    private static DateTimeOffset? s_openUntil;
-
     /// <inheritdoc />
-    public async Task Handle(
+    public override async Task Handle(
         object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task> next,
@@ -117,12 +65,22 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(
         }
         catch
         {
-            RegisterFailure(optionsAccessor.Value);
+            RegisterFailure();
             throw;
         }
     }
+}
 
-    private static bool IsCircuitOpen()
+public abstract class ACircuitBreakerBehavior<TMessage, TResult>(
+    IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
+) : IPipelineBehavior<TMessage, TResult>
+    where TMessage : notnull
+{
+    private static readonly Lock s_sync = new();
+    private static int s_consecutiveFailures;
+    private static DateTimeOffset? s_openUntil;
+
+    protected static bool IsCircuitOpen()
     {
         lock (s_sync)
         {
@@ -138,7 +96,7 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(
         }
     }
 
-    private static void RegisterSuccess()
+    protected static void RegisterSuccess()
     {
         lock (s_sync)
         {
@@ -147,12 +105,18 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(
         }
     }
 
-    private static void RegisterFailure(CircuitBreakerBehaviorOptions options)
+    protected void RegisterFailure()
     {
+        var options = optionsAccessor.Value;
         var threshold = Math.Max(1, options.FailureThreshold);
         var openDuration =
             options.OpenDuration <= TimeSpan.Zero ? TimeSpan.FromSeconds(1) : options.OpenDuration;
 
+        RegisterFailure(threshold, openDuration);
+    }
+
+    private static void RegisterFailure(int threshold, TimeSpan openDuration)
+    {
         lock (s_sync)
         {
             s_consecutiveFailures++;
@@ -163,4 +127,6 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(
             s_consecutiveFailures = 0;
         }
     }
+
+    public abstract TResult Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, TResult> next, CancellationToken cancellationToken);
 }

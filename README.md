@@ -2,6 +2,7 @@
 
 [![CI/CD Pipeline](https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml)
 [![NuGet](https://img.shields.io/nuget/v/NetMediate?style=flat)](https://www.nuget.org/packages/NetMediate/)
+[![Documentation](https://img.shields.io/badge/docs-website-blue)](https://elton.schivei.nom.br/net-mediate)
 
 A lightweight and efficient .NET implementation of the Mediator pattern for in-process messaging and communication between components.
 
@@ -78,6 +79,7 @@ dotnet add package NetMediate
 
 ## Companion Guides
 
+- [Full documentation website](https://elton.schivei.nom.br/net-mediate)
 - [NetMediate.Moq recipes](docs/NETMEDIATE_MOQ_RECIPES.md)
 - [API/Worker/Minimal API samples](docs/SAMPLES.md)
 - [Diagnostics (traces + metrics)](docs/DIAGNOSTICS.md)

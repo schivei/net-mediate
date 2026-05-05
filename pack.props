@@ -7,10 +7,10 @@
     <Title>NetMediate</Title>
     <Description>Mediator alternative for MediatR.</Description>
     <PackageTags>Mediator</PackageTags>
-    <PackageIcon>icon.png</PackageIcon>
+    <PackageIcon>logo.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <PackageProjectUrl>https://github.com/schivei/net-mediate</PackageProjectUrl>
+    <PackageProjectUrl>https://elton.schivei.nom.br/net-mediate</PackageProjectUrl>
     <RepositoryUrl>https://github.com/schivei/net-mediate</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <DebugType>Full</DebugType>

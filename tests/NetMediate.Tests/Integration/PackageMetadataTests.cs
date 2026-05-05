@@ -21,7 +21,7 @@ public class PackageMetadataTests
         // Verify required files are included
         Assert.Contains(archive.Entries, e => e.FullName == "LICENSE");
         Assert.Contains(archive.Entries, e => e.FullName == "README.md");
-        Assert.Contains(archive.Entries, e => e.FullName == "icon.png");
+        Assert.Contains(archive.Entries, e => e.FullName == "logo.png");
         Assert.Contains(archive.Entries, e => e.FullName.EndsWith(".nuspec"));
     }
 
@@ -50,7 +50,7 @@ public class PackageMetadataTests
         Assert.Equal("NetMediate", metadata.Element(ns + "id")?.Value);
         Assert.Equal("NetMediate", metadata.Element(ns + "title")?.Value);
         Assert.Equal("Elton Schivei Costa", metadata.Element(ns + "authors")?.Value);
-        Assert.Equal("icon.png", metadata.Element(ns + "icon")?.Value);
+        Assert.Equal("logo.png", metadata.Element(ns + "icon")?.Value);
         Assert.Equal("README.md", metadata.Element(ns + "readme")?.Value);
         Assert.Equal(
             "LICENSE",
@@ -59,7 +59,7 @@ public class PackageMetadataTests
                 : null
         );
         Assert.Equal(
-            "https://github.com/schivei/net-mediate",
+            "https://elton.schivei.nom.br/net-mediate",
             metadata.Element(ns + "projectUrl")?.Value
         );
 

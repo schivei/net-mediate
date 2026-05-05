@@ -7,7 +7,7 @@
     <PackageTags>Mediator;NetMediate;DataDog;ILogger;Logs;Tracing;Metrics;APM</PackageTags>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="..\..\assets\icon.png" Pack="true" PackagePath="\" />
+    <None Include="..\..\assets\logo.png" Pack="true" PackagePath="\" />
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>

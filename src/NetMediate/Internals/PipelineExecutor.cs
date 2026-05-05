@@ -8,10 +8,6 @@ internal class PipelineExecutor<TMessage, TResult, THandler>(IServiceProvider se
     where TResult : notnull
     where THandler : class, IHandler<TMessage, TResult>
 {
-    // Sentinel used as dictionary key when the routing key is null, because
-    // ConcurrentDictionary does not support null keys.
-    private static readonly object s_nullKey = new();
-
     // Per-provider, per-routing-key cache of the pre-compiled pipeline delegate.
     // The outer ConditionalWeakTable is keyed by IServiceProvider (so entries are released when
     // the provider is GC'd). The inner ConcurrentDictionary maps routing key → compiled delegate,
@@ -39,9 +35,8 @@ internal class PipelineExecutor<TMessage, TResult, THandler>(IServiceProvider se
             serviceProvider,
             _ => new ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, TResult>>>());
 
-        var dictKey = key ?? s_nullKey;
         var lazy = perProvider.GetOrAdd(
-            dictKey,
+            key ?? Extensions.DEFAULT_ROUTING_KEY,
             _ => new Lazy<PipelineBehaviorDelegate<TMessage, TResult>>(
                 () => BuildPipeline(key, serviceProvider, exec),
                 LazyThreadSafetyMode.ExecutionAndPublication));

@@ -7,6 +7,8 @@ namespace NetMediate.Internals;
 
 internal static class Extensions
 {
+    public const string DEFAULT_ROUTING_KEY = "__default";
+
     // Handlers are registered as Singletons, but resolving them via a global static cache would
     // contaminate distinct IServiceProvider instances (e.g., separate test containers) that
     // register different handlers for the same message/key combination.  Using a
@@ -65,28 +67,28 @@ internal static class Extensions
         internal void RegisterCommandHandler<TMessage>(ICommandHandler<TMessage> handler)
             where TMessage : notnull
         {
-            mediatorServiceBuilder.Services.AddSingleton(handler);
+            mediatorServiceBuilder.Services.AddKeyedSingleton(DEFAULT_ROUTING_KEY, handler);
             mediatorServiceBuilder.Services.TryAddSingleton<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>();
         }
 
         internal void RegisterNotificationHandler<TMessage>(INotificationHandler<TMessage> handler)
             where TMessage : notnull
         {
-            mediatorServiceBuilder.Services.AddSingleton(handler);
+            mediatorServiceBuilder.Services.AddKeyedSingleton(DEFAULT_ROUTING_KEY, handler);
             mediatorServiceBuilder.Services.TryAddSingleton<NotificationPipelineExecutor<TMessage>>();
         }
 
         internal void RegisterRequestHandler<TMessage, TResponse>(IRequestHandler<TMessage, TResponse> handler)
             where TMessage : notnull
         {
-            mediatorServiceBuilder.Services.AddSingleton(handler);
+            mediatorServiceBuilder.Services.AddKeyedSingleton(DEFAULT_ROUTING_KEY, handler);
             mediatorServiceBuilder.Services.TryAddSingleton<RequestPipelineExecutor<TMessage, TResponse>>();
         }
 
         internal void RegisterStreamHandler<TMessage, TResponse>(IStreamHandler<TMessage, TResponse> handler)
             where TMessage : notnull
         {
-            mediatorServiceBuilder.Services.AddSingleton(handler);
+            mediatorServiceBuilder.Services.AddKeyedSingleton(DEFAULT_ROUTING_KEY, handler);
             mediatorServiceBuilder.Services.TryAddSingleton<StreamPipelineExecutor<TMessage, TResponse>>();
         }
     }
@@ -99,7 +101,7 @@ internal static class Extensions
             where TResult : notnull
         {
             var providerCache = s_handlerCacheByProvider.GetValue(serviceProvider, _ => new());
-            return serviceProvider.GetCachedServices<THandler>(new(typeof(THandler), key), providerCache).Single();
+            return serviceProvider.GetCachedServices<THandler>(new(typeof(THandler), key ?? DEFAULT_ROUTING_KEY), providerCache).Single();
         }
 
         public THandler[] GetHandlers<THandler, TMessage, TResult>(object? key = null)
@@ -108,13 +110,13 @@ internal static class Extensions
             where TResult : notnull
         {
             var providerCache = s_handlerCacheByProvider.GetValue(serviceProvider, _ => new());
-            return serviceProvider.GetCachedServices<THandler>(new(typeof(THandler), key), providerCache);
+            return serviceProvider.GetCachedServices<THandler>(new(typeof(THandler), key ?? DEFAULT_ROUTING_KEY), providerCache);
         }
 
         public T[] GetCachedBehaviors<T>() where T : class
         {
             var providerCache = s_behaviorCacheByProvider.GetOrCreateValue(serviceProvider);
-            return serviceProvider.GetCachedServices<T>(new(typeof(T), null), providerCache);
+            return serviceProvider.GetCachedServices<T>(new(typeof(T), DEFAULT_ROUTING_KEY), providerCache);
         }
 
         private T[] GetCachedServices<T>(ServiceKey key, ConcurrentDictionary<ServiceKey, Lazy<object>> cache) where T : class
@@ -122,9 +124,7 @@ internal static class Extensions
             var lazy = cache.GetOrAdd(
                 key,
                 sk => new Lazy<object>(
-                    () => sk.Key is null
-                        ? serviceProvider.GetServices<T>().ToArray()
-                        : serviceProvider.GetKeyedServices<T>(sk.Key).ToArray(),
+                    () => serviceProvider.GetKeyedServices<T>(sk.Key ?? DEFAULT_ROUTING_KEY).ToArray(),
                     LazyThreadSafetyMode.ExecutionAndPublication
                 )
             );

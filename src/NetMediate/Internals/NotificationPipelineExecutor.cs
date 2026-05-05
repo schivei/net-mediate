@@ -16,7 +16,6 @@ internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider se
     where TMessage : notnull
 {
     // See PipelineExecutor<,,> for the full rationale on this two-level cache design.
-    private static readonly object s_nullKey = new();
     private static readonly ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, Task>>>>
         s_pipelineCache = new();
 
@@ -38,9 +37,8 @@ internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider se
             serviceProvider,
             _ => new ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, Task>>>());
 
-        var dictKey = key ?? s_nullKey;
         var lazy = perProvider.GetOrAdd(
-            dictKey,
+            key ?? new(),
             _ => new Lazy<PipelineBehaviorDelegate<TMessage, Task>>(
                 () => BuildPipeline(key, serviceProvider, exec),
                 LazyThreadSafetyMode.ExecutionAndPublication));

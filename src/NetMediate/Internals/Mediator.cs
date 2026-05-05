@@ -22,14 +22,14 @@ internal sealed class Mediator(
         CancellationToken cancellationToken = default
     )
     {
-        await notifier.Notify(key, message, cancellationToken).ConfigureAwait(false);
+        await notifier.Notify(key ?? Extensions.DEFAULT_ROUTING_KEY, message, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public Task Notify<TMessage>(
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull => Notify(null, messages, cancellationToken);
+    ) where TMessage : notnull => Notify(Extensions.DEFAULT_ROUTING_KEY, messages, cancellationToken);
 
     /// <inheritdoc/>
     public async Task Notify<TMessage>(
@@ -38,14 +38,14 @@ internal sealed class Mediator(
         CancellationToken cancellationToken = default
     ) where TMessage : notnull
     {
-        await notifier.Notify(key, messages, cancellationToken).ConfigureAwait(false);
+        await notifier.Notify(key ?? Extensions.DEFAULT_ROUTING_KEY, messages, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public Task Send<TMessage>(
         TMessage message,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull => Send(null, message, cancellationToken);
+    ) where TMessage : notnull => Send(Extensions.DEFAULT_ROUTING_KEY, message, cancellationToken);
 
     /// <inheritdoc/>
     public async Task Send<TMessage>(
@@ -64,7 +64,7 @@ internal sealed class Mediator(
 
         try
         {
-            await pipeline.Handle(key, message, CommandHandlers, cancellationToken).ConfigureAwait(false);
+            await pipeline.Handle(key ?? Extensions.DEFAULT_ROUTING_KEY, message, CommandHandlers, cancellationToken).ConfigureAwait(false);
         }
         catch (MediatorException)
         {
@@ -82,12 +82,12 @@ internal sealed class Mediator(
 
     /// <inheritdoc/>
     public Task Send<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull =>
-        Send(null, messages, cancellationToken);
+        Send(Extensions.DEFAULT_ROUTING_KEY, messages, cancellationToken);
 
     /// <inheritdoc/>
     public async Task Send<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
     {
-        await Task.WhenAll(messages.Select(message => Send(key, message, cancellationToken)));
+        await Task.WhenAll(messages.Select(message => Send(key ?? Extensions.DEFAULT_ROUTING_KEY, message, cancellationToken)));
     }
 
     private static async Task CommandHandlers<TMessage>(
@@ -104,7 +104,7 @@ internal sealed class Mediator(
     public Task<TResponse> Request<TMessage, TResponse>(
         TMessage message,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull => Request<TMessage, TResponse>(null, message, cancellationToken);
+    ) where TMessage : notnull => Request<TMessage, TResponse>(Extensions.DEFAULT_ROUTING_KEY, message, cancellationToken);
 
     /// <inheritdoc/>
     public async Task<TResponse> Request<TMessage, TResponse>(
@@ -118,7 +118,7 @@ internal sealed class Mediator(
 
         try
         {
-            return await pipeline.Handle(key, message, RequestHandlers, cancellationToken).ConfigureAwait(false);
+            return await pipeline.Handle(key ?? Extensions.DEFAULT_ROUTING_KEY, message, RequestHandlers, cancellationToken).ConfigureAwait(false);
         }
         catch (MediatorException)
         {
@@ -147,7 +147,7 @@ internal sealed class Mediator(
     public IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
         TMessage message,
         CancellationToken cancellationToken = default
-    ) where TMessage : notnull => RequestStream<TMessage, TResponse>(null, message, cancellationToken);
+    ) where TMessage : notnull => RequestStream<TMessage, TResponse>(Extensions.DEFAULT_ROUTING_KEY, message, cancellationToken);
 
     /// <inheritdoc/>
     public IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
@@ -159,7 +159,7 @@ internal sealed class Mediator(
         var pipeline = serviceProvider
             .GetRequiredService<StreamPipelineExecutor<TMessage, TResponse>>();
 
-        return pipeline.Handle(key, message, StreamHandlers, cancellationToken);
+        return pipeline.Handle(key ?? Extensions.DEFAULT_ROUTING_KEY, message, StreamHandlers, cancellationToken);
     }
 
     private static async IAsyncEnumerable<TResponse> StreamHandlers<TMessage, TResponse>(

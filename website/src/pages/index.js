@@ -111,7 +111,7 @@ const FeatureList = [
   },
 ];
 
-function Feature({emoji, title, description}) {
+function Feature({ emoji, title, description }) {
   return (
     <div className={clsx('col col--4')}>
       <div className="text--center">
@@ -137,7 +137,7 @@ function HomepageFeatures() {
       <div className="container">
         <div className="row">
           {FeatureList.map((props) => (
-            <Feature key={props.title} {...props} />
+            <Feature key={props.title} {...props} /> // NOSONAR S6774
           ))}
         </div>
       </div>

@@ -28,7 +28,7 @@ internal class Notifier(IServiceProvider serviceProvider, ILogger<Notifier> logg
 
         if (pipeline is null) return Task.CompletedTask;
         
-        return pipeline.Handle(key, message, DispatchNotifications, cancellationToken);
+        return pipeline.Handle(key ?? Extensions.DEFAULT_ROUTING_KEY, message, DispatchNotifications, cancellationToken);
     }
 
     public Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
@@ -38,7 +38,7 @@ internal class Notifier(IServiceProvider serviceProvider, ILogger<Notifier> logg
             try
             {
 #pragma warning disable CS4014
-                Notify(key, message, cancellationToken);
+                Notify(key ?? Extensions.DEFAULT_ROUTING_KEY, message, cancellationToken);
 #pragma warning restore CS4014
             }
             catch (Exception ex)

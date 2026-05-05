@@ -12,8 +12,6 @@ namespace NetMediate.Internals;
 internal sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvider serviceProvider)
     where TMessage : notnull
 {
-    // See PipelineExecutor<,,> for the full rationale on this two-level cache design.
-    private static readonly object s_nullKey = new();
     private static readonly ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>>>
         s_pipelineCache = new();
 
@@ -35,9 +33,8 @@ internal sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvid
             serviceProvider,
             _ => new ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>>());
 
-        var dictKey = key ?? s_nullKey;
         var lazy = perProvider.GetOrAdd(
-            dictKey,
+            key ?? Extensions.DEFAULT_ROUTING_KEY,
             _ => new Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>(
                 () => BuildPipeline(key, serviceProvider, exec),
                 LazyThreadSafetyMode.ExecutionAndPublication));

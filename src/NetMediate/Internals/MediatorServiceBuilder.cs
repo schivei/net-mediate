@@ -43,13 +43,9 @@ internal sealed class MediatorServiceBuilder<
         where TMessage : notnull
         where TResult : notnull
     {
-        if (key is not null)
-        {
-            _services.AddKeyedSingleton<TInterface, THandler>(key);
-            return this;
-        }
+        _services.TryAddSingleton<PipelineExecutor<TMessage, TResult, TInterface>>();
+        _services.AddKeyedSingleton<TInterface, THandler>(key ?? Extensions.DEFAULT_ROUTING_KEY);
 
-        _services.AddSingleton<TInterface, THandler>();
         return this;
     }
 
@@ -68,10 +64,7 @@ internal sealed class MediatorServiceBuilder<
         // unreachable from Mediator.Send(key, ...) which resolves the unkeyed executor.
         _services.TryAddSingleton<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>();
 
-        if (key is not null)
-            _services.AddKeyedSingleton<ICommandHandler<TMessage>, THandler>(key);
-        else
-            _services.AddSingleton<ICommandHandler<TMessage>, THandler>();
+        _services.AddKeyedSingleton<ICommandHandler<TMessage>, THandler>(key ?? Extensions.DEFAULT_ROUTING_KEY);
         return this;
     }
 
@@ -85,10 +78,7 @@ internal sealed class MediatorServiceBuilder<
         // Always register the executor as unkeyed — see RegisterCommandHandler for rationale.
         _services.TryAddSingleton<NotificationPipelineExecutor<TMessage>>();
 
-        if (key is not null)
-            _services.AddKeyedSingleton<INotificationHandler<TMessage>, THandler>(key);
-        else
-            _services.AddSingleton<INotificationHandler<TMessage>, THandler>();
+        _services.AddKeyedSingleton<INotificationHandler<TMessage>, THandler>(key ?? Extensions.DEFAULT_ROUTING_KEY);
         return this;
     }
 
@@ -103,10 +93,7 @@ internal sealed class MediatorServiceBuilder<
         // Always register the executor as unkeyed — see RegisterCommandHandler for rationale.
         _services.TryAddSingleton<RequestPipelineExecutor<TMessage, TResponse>>();
 
-        if (key is not null)
-            _services.AddKeyedSingleton<IRequestHandler<TMessage, TResponse>, THandler>(key);
-        else
-            _services.AddSingleton<IRequestHandler<TMessage, TResponse>, THandler>();
+        _services.AddKeyedSingleton<IRequestHandler<TMessage, TResponse>, THandler>(key ?? Extensions.DEFAULT_ROUTING_KEY);
         return this;
     }
 
@@ -121,10 +108,7 @@ internal sealed class MediatorServiceBuilder<
         // Always register the executor as unkeyed — see RegisterCommandHandler for rationale.
         _services.TryAddSingleton<StreamPipelineExecutor<TMessage, TResponse>>();
 
-        if (key is not null)
-            _services.AddKeyedSingleton<IStreamHandler<TMessage, TResponse>, THandler>(key);
-        else
-            _services.AddSingleton<IStreamHandler<TMessage, TResponse>, THandler>();
+        _services.AddKeyedSingleton<IStreamHandler<TMessage, TResponse>, THandler>(key ?? Extensions.DEFAULT_ROUTING_KEY);
         return this;
     }
 
@@ -137,7 +121,7 @@ internal sealed class MediatorServiceBuilder<
         where TMessage : notnull
         where TResult : notnull
     {
-        _services.AddTransient<IPipelineBehavior<TMessage, TResult>, TBehavior>();
+        _services.AddKeyedTransient<IPipelineBehavior<TMessage, TResult>, TBehavior>(Extensions.DEFAULT_ROUTING_KEY);
         return this;
     }
 
@@ -148,7 +132,7 @@ internal sealed class MediatorServiceBuilder<
         where TBehavior : class, IPipelineNotificationBehavior<TMessage>
         where TMessage : notnull
     {
-        _services.AddTransient<IPipelineNotificationBehavior<TMessage>, TBehavior>();
+        _services.AddKeyedTransient<IPipelineNotificationBehavior<TMessage>, TBehavior>(Extensions.DEFAULT_ROUTING_KEY);
         return this;
     }
 }

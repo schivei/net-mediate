@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 
 namespace NetMediate.Internals;
@@ -14,12 +15,18 @@ namespace NetMediate.Internals;
 internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serviceProvider)
     where TMessage : notnull
 {
-    // Per-provider pre-compiled pipeline cache — see PipelineExecutor<,,> for the full rationale.
-    private static readonly ConditionalWeakTable<IServiceProvider, Lazy<PipelineBehaviorDelegate<TMessage, Task>>>
+    // See PipelineExecutor<,,> for the full rationale on this two-level cache design.
+    private static readonly object s_nullKey = new();
+    private static readonly ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, Task>>>>
         s_pipelineCache = new();
 
     static NotificationPipelineExecutor() =>
-        Extensions.RegisterPipelineCacheClearing(sp => s_pipelineCache.Remove(sp));
+        Extensions.RegisterPipelineCacheClearing(sp =>
+        {
+            if (s_pipelineCache.TryGetValue(sp, out var cache))
+                cache.Clear();
+            s_pipelineCache.Remove(sp);
+        });
 
     public Task Handle(
         object? key,
@@ -27,10 +34,15 @@ internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider se
         HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> exec,
         CancellationToken cancellationToken)
     {
-        var lazy = s_pipelineCache.GetValue(
+        var perProvider = s_pipelineCache.GetValue(
             serviceProvider,
-            sp => new Lazy<PipelineBehaviorDelegate<TMessage, Task>>(
-                () => BuildPipeline(key, sp, exec),
+            _ => new ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, Task>>>());
+
+        var dictKey = key ?? s_nullKey;
+        var lazy = perProvider.GetOrAdd(
+            dictKey,
+            _ => new Lazy<PipelineBehaviorDelegate<TMessage, Task>>(
+                () => BuildPipeline(key, serviceProvider, exec),
                 LazyThreadSafetyMode.ExecutionAndPublication));
 
         return lazy.Value(key, message, cancellationToken);

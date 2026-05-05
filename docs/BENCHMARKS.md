@@ -1,6 +1,6 @@
 # NetMediate Benchmark Results
 
-<!-- netmediate-bench-baseline: {"cmd": 88.04, "notify": 156.78, "request": 105.1, "stream": 191.39} -->
+<!-- netmediate-bench-baseline: {"cmd": 85.91, "notify": 132.22, "request": 87.39, "stream": 185.95} -->
 
 This document describes the performance characteristics of NetMediate under the current implementation, which uses **explicit handler registration only** (no assembly scanning) and **closed-type pipeline executors** registered at startup.
 
@@ -14,12 +14,12 @@ The table below is updated automatically by CI on every PR benchmark run. System
 | Key | Value |
 |---|---|
 | OS | Linux Ubuntu 24.04.4 LTS (Noble Numbat) |
-| CPU | Intel Xeon Platinum 8370C CPU 2.80GHz (Max: 2.75GHz), 1 CPU, 4 logical and 2 physical cores |
+| CPU | AMD EPYC 9V74 2.60GHz, 1 CPU, 4 logical and 2 physical cores |
 | .NET SDK | 10.0.203 |
-| Runtime | .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v4 |
-| Last CI run | 2026-05-05 16:59 UTC |
-| Branch | `copilot/implementar-long-term` |
-| Commit | `5b6a076` |
+| Runtime | .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3 |
+| Last CI run | 2026-05-05 17:42 UTC |
+| Branch | `copilot/ensure-action-runs-on-publish` |
+| Commit | `dd2f37b` |
 <!-- ci-environment-end -->
 
 ---
@@ -33,10 +33,10 @@ compares against the last recorded values from the target branch (±3% = no chan
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Allocated | Throughput | vs baseline |
 |---|---|---|---|---|---|---|
-| Command `Send` | 88.04 ns | ±0.054 ns | 0.0018 | 48 B | ~11.4M msg/s | ≈ (-2.0%) |
-| Notification `Notify` | 156.78 ns | ±0.535 ns | 0.0115 | 288 B | ~6.4M msg/s | ⚠️ degraded (+13.0%) |
-| Request `Request` | 105.10 ns | ±0.143 ns | 0.0048 | 120 B | ~9.5M msg/s | ≈ (+1.3%) |
-| Stream `RequestStream` | 191.39 ns | ±0.255 ns | 0.0085 | 216 B | ~5.2M msg/s | ≈ (-1.4%) |
+| Command `Send` | 85.91 ns | ±0.166 ns | 0.0028 | 48 B | ~11.6M msg/s | ≈ (-2.4%) |
+| Notification `Notify` | 132.22 ns | ±0.898 ns | 0.0171 | 288 B | ~7.6M msg/s | ✅ improved (-15.7%) |
+| Request `Request` | 87.39 ns | ±0.179 ns | 0.0071 | 120 B | ~11.4M msg/s | ✅ improved (-16.9%) |
+| Stream `RequestStream` | 185.95 ns | ±0.754 ns | 0.0127 | 216 B | ~5.4M msg/s | ≈ (-2.8%) |
 <!-- ci-throughput-end -->
 
 > ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.
@@ -269,25 +269,25 @@ Thresholds are deliberately lenient to remain green on any CI hardware. Local de
 
 ## Latest CI Benchmark Run
 
-Run: 2026-05-05 16:59 UTC | Branch: `copilot/implementar-long-term` | Commit: `5b6a076`
+Run: 2026-05-05 17:42 UTC | Branch: `copilot/ensure-action-runs-on-publish` | Commit: `dd2f37b`
 
 ### System specification
 
 ```
 Linux Ubuntu 24.04.4 LTS (Noble Numbat)
-Intel Xeon Platinum 8370C CPU 2.80GHz (Max: 2.75GHz), 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 9V74 2.60GHz, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.203
-Runtime: .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v4
+Runtime: .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3
 ```
 
 ### Performance summary (BenchmarkDotNet — Throughput job)
 
 | Benchmark | Mean | Error | Gen0 | Allocated | Throughput | vs baseline |
 |---|---|---|---|---|---|---|
-| Command `Send` | 88.04 ns | ±0.054 ns | 0.0018 | 48 B | ~11.4M msg/s | ≈ (-2.0%) |
-| Notification `Notify` | 156.78 ns | ±0.535 ns | 0.0115 | 288 B | ~6.4M msg/s | ⚠️ degraded (+13.0%) |
-| Request `Request` | 105.10 ns | ±0.143 ns | 0.0048 | 120 B | ~9.5M msg/s | ≈ (+1.3%) |
-| Stream `RequestStream` | 191.39 ns | ±0.255 ns | 0.0085 | 216 B | ~5.2M msg/s | ≈ (-1.4%) |
+| Command `Send` | 85.91 ns | ±0.166 ns | 0.0028 | 48 B | ~11.6M msg/s | ≈ (-2.4%) |
+| Notification `Notify` | 132.22 ns | ±0.898 ns | 0.0171 | 288 B | ~7.6M msg/s | ✅ improved (-15.7%) |
+| Request `Request` | 87.39 ns | ±0.179 ns | 0.0071 | 120 B | ~11.4M msg/s | ✅ improved (-16.9%) |
+| Stream `RequestStream` | 185.95 ns | ±0.754 ns | 0.0127 | 216 B | ~5.4M msg/s | ≈ (-2.8%) |
 
 ### Comparison vs baseline (`main`)
 
@@ -295,7 +295,7 @@ Runtime: .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v4
 
 | Benchmark | Baseline (`main`) | Current | Δ |
 |---|---|---|---|
-| Command `Send` | 89.83 ns | 88.04 ns | ≈ -2.0% |
-| Notification `Notify` | 138.71 ns | 156.78 ns | ⚠️ +13.0% |
-| Request `Request` | 103.71 ns | 105.10 ns | ≈ +1.3% |
-| Stream `RequestStream` | 194.04 ns | 191.39 ns | ≈ -1.4% |
+| Command `Send` | 88.04 ns | 85.91 ns | ≈ -2.4% |
+| Notification `Notify` | 156.78 ns | 132.22 ns | ✅ -15.7% |
+| Request `Request` | 105.10 ns | 87.39 ns | ✅ -16.9% |
+| Stream `RequestStream` | 191.39 ns | 185.95 ns | ≈ -2.8% |

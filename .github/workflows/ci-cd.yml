@@ -99,17 +99,19 @@ jobs:
         BRANCH: ${{ github.head_ref }}
         BASE_REF: ${{ github.base_ref }}
         COMMIT_SHA: ${{ github.sha }}
+        BENCH_REPORT: ${{ runner.temp }}/bench-report.md
+        BENCH_BASE: ${{ runner.temp }}/benchmarks-base.md
       run: |
         cd tests/NetMediate.Benchmarks
-        dotnet run --configuration Release -- --job Short --exporters GitHub --filter '*' 2>&1 | tee /tmp/bench-console.txt || true
+        dotnet run --configuration Release -- --job Short --exporters GitHub --filter '*' 2>&1 | tee "$RUNNER_TEMP/bench-console.txt" || true
         REPORT=$(find BenchmarkDotNet.Artifacts -name '*-report-github.md' 2>/dev/null | head -1)
         if [ -n "$REPORT" ]; then
-          cp "$REPORT" /tmp/bench-report.md
+          cp "$REPORT" "$BENCH_REPORT"
           cd ../..
           # Fetch base branch BENCHMARKS.md for baseline comparison
           git fetch origin "$BASE_REF" 2>/dev/null || true
-          git show "origin/$BASE_REF:docs/BENCHMARKS.md" > /tmp/benchmarks-base.md 2>/dev/null \
-            || echo '<!-- netmediate-bench-baseline: {} -->' > /tmp/benchmarks-base.md
+          git show "origin/$BASE_REF:docs/BENCHMARKS.md" > "$BENCH_BASE" 2>/dev/null \
+            || echo '<!-- netmediate-bench-baseline: {} -->' > "$BENCH_BASE"
           python3 .github/scripts/update_benchmarks.py
         fi
 

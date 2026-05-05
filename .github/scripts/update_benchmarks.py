@@ -3,11 +3,13 @@
 Update docs/BENCHMARKS.md with the latest BenchmarkDotNet results.
 
 Called by CI after running the benchmarks.  Reads three files:
-  /tmp/bench-report.md  – BenchmarkDotNet GitHub markdown report
-  /tmp/benchmarks-base.md – BENCHMARKS.md from the target branch (for baseline)
+  $BENCH_REPORT (default: bench-report.md)  – BenchmarkDotNet GitHub markdown report
+  $BENCH_BASE   (default: benchmarks-base.md) – BENCHMARKS.md from the target branch (for baseline)
   docs/BENCHMARKS.md  – the file to be updated (in the current workspace)
 
 Environment variables consumed:
+  BENCH_REPORT  – path to the BenchmarkDotNet markdown report (set by CI to runner.temp)
+  BENCH_BASE    – path to the base-branch BENCHMARKS.md (set by CI to runner.temp)
   BRANCH      – current PR head branch name
   COMMIT_SHA  – full SHA of the head commit
   BASE_REF    – target branch name (for labelling the baseline column)
@@ -19,18 +21,20 @@ import sys
 import os
 from datetime import datetime, timezone
 
-BRANCH   = os.environ.get('BRANCH', 'unknown')
-COMMIT   = os.environ.get('COMMIT_SHA', 'unknown')[:7]
-BASE_REF = os.environ.get('BASE_REF', 'main')
-DATE     = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
-DOC_PATH = os.environ.get('BENCHMARKS_MD', 'docs/BENCHMARKS.md')
+BRANCH      = os.environ.get('BRANCH', 'unknown')
+COMMIT      = os.environ.get('COMMIT_SHA', 'unknown')[:7]
+BASE_REF    = os.environ.get('BASE_REF', 'main')
+DATE        = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
+DOC_PATH    = os.environ.get('BENCHMARKS_MD', 'docs/BENCHMARKS.md')
+REPORT_PATH = os.environ.get('BENCH_REPORT', 'bench-report.md')
+BASE_PATH   = os.environ.get('BENCH_BASE', 'benchmarks-base.md')
 
 # ---------------------------------------------------------------------------
 # Read input files
 # ---------------------------------------------------------------------------
-with open('/tmp/bench-report.md') as f:
+with open(REPORT_PATH) as f:
     report = f.read()
-with open('/tmp/benchmarks-base.md') as f:
+with open(BASE_PATH) as f:
     base_doc = f.read()
 with open(DOC_PATH) as f:
     doc = f.read()

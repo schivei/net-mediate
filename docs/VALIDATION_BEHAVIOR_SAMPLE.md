@@ -31,7 +31,7 @@ public sealed class DataAnnotationsRequestBehavior<TMessage, TResponse>
             throw new MessageValidationException(results[0]);
         }
 
-        return next(message, cancellationToken);
+        return next(key, message, cancellationToken);
     }
 }
 ```
@@ -69,7 +69,7 @@ public sealed class FluentValidationRequestBehavior<TMessage, TResponse>(
                 throw new ValidationException(result.Errors);
         }
 
-        return await next(message, cancellationToken);
+        return await next(key, message, cancellationToken);
     }
 }
 ```
@@ -107,7 +107,7 @@ public sealed class DataAnnotationsNotificationBehavior<TMessage>
         if (!Validator.TryValidateObject(message, context, results, validateAllProperties: true))
             throw new MessageValidationException(results[0]);
 
-        return next(message, cancellationToken);
+        return next(key, message, cancellationToken);
     }
 }
 ```

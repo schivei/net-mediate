@@ -30,12 +30,23 @@ public sealed class QuartzNotifier(
 
         var jobKey = new JobKey($"{typeof(TMessage).Name}_{Guid.NewGuid():N}", options.GroupName);
 
-        var job = JobBuilder.Create<QuartzNotificationJob>()
+        var jobBuilder = JobBuilder.Create<QuartzNotificationJob>()
             .WithIdentity(jobKey)
             .UsingJobData(QuartzNotificationJob.MessageDataKey, json)
             .UsingJobData(QuartzNotificationJob.TypeDataKey, typeName)
-            .StoreDurably(false)
-            .Build();
+            .StoreDurably(false);
+
+        // Persist the routing key so that the job can replay the notification under the
+        // same key when it fires. Only serialisable keys (primitives, strings, enums) are
+        // supported; complex object keys are stored via their JSON representation.
+        if (key is not null)
+        {
+            jobBuilder = jobBuilder
+                .UsingJobData(QuartzNotificationJob.KeyDataKey, System.Text.Json.JsonSerializer.Serialize(key))
+                .UsingJobData(QuartzNotificationJob.KeyTypeDataKey, key.GetType().AssemblyQualifiedName ?? key.GetType().FullName ?? "System.Object");
+        }
+
+        var job = jobBuilder.Build();
 
         var trigger = TriggerBuilder.Create()
             .WithIdentity($"{jobKey.Name}_trigger", options.GroupName)

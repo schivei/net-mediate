@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 
 namespace NetMediate.Internals;
@@ -11,12 +12,18 @@ namespace NetMediate.Internals;
 internal sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvider serviceProvider)
     where TMessage : notnull
 {
-    // Per-provider pre-compiled pipeline cache — see PipelineExecutor<,,> for the full rationale.
-    private static readonly ConditionalWeakTable<IServiceProvider, Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>>
+    // See PipelineExecutor<,,> for the full rationale on this two-level cache design.
+    private static readonly object s_nullKey = new();
+    private static readonly ConditionalWeakTable<IServiceProvider, ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>>>
         s_pipelineCache = new();
 
     static StreamPipelineExecutor() =>
-        Extensions.RegisterPipelineCacheClearing(sp => s_pipelineCache.Remove(sp));
+        Extensions.RegisterPipelineCacheClearing(sp =>
+        {
+            if (s_pipelineCache.TryGetValue(sp, out var cache))
+                cache.Clear();
+            s_pipelineCache.Remove(sp);
+        });
 
     public IAsyncEnumerable<TResponse> Handle(
         object? key,
@@ -24,10 +31,15 @@ internal sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvid
         HandlerExecutionDelegate<IStreamHandler<TMessage, TResponse>, TMessage, IAsyncEnumerable<TResponse>> exec,
         CancellationToken cancellationToken)
     {
-        var lazy = s_pipelineCache.GetValue(
+        var perProvider = s_pipelineCache.GetValue(
             serviceProvider,
-            sp => new Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>(
-                () => BuildPipeline(key, sp, exec),
+            _ => new ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>>());
+
+        var dictKey = key ?? s_nullKey;
+        var lazy = perProvider.GetOrAdd(
+            dictKey,
+            _ => new Lazy<PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>>>(
+                () => BuildPipeline(key, serviceProvider, exec),
                 LazyThreadSafetyMode.ExecutionAndPublication));
 
         return lazy.Value(key, message, cancellationToken);

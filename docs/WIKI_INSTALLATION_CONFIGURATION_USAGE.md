@@ -134,7 +134,7 @@ public sealed class AuditRequestBehavior<TMessage, TResponse>
         CancellationToken cancellationToken)
     {
         // pre-processing (key is available for routing/filtering)
-        var result = await next(message, cancellationToken);
+        var result = await next(key, message, cancellationToken);
         // post-processing
         return result;
     }

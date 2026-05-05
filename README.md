@@ -415,7 +415,7 @@ public sealed class AuditRequestBehavior<TMessage, TResponse>
         CancellationToken cancellationToken)
     {
         var startedAt = DateTimeOffset.UtcNow;
-        var response = await next(message, cancellationToken);
+        var response = await next(key, message, cancellationToken);
         Console.WriteLine($"{typeof(TMessage).Name} handled in {DateTimeOffset.UtcNow - startedAt}");
         return response;
     }
@@ -436,7 +436,7 @@ public sealed class LogNotificationBehavior<TMessage>
         CancellationToken cancellationToken)
     {
         Console.WriteLine($"Dispatching {typeof(TMessage).Name} (key={key})");
-        await next(message, cancellationToken);
+        await next(key, message, cancellationToken);
         Console.WriteLine($"Dispatched {typeof(TMessage).Name}");
     }
 }

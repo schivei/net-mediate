@@ -63,16 +63,15 @@ internal sealed class MediatorServiceBuilder<
         where THandler : class, ICommandHandler<TMessage>
         where TMessage : notnull
     {
+        // Always register the executor as unkeyed — the executor is stateless and the routing key
+        // is passed as a runtime parameter to Handle(). Registering it keyed would make it
+        // unreachable from Mediator.Send(key, ...) which resolves the unkeyed executor.
+        _services.TryAddSingleton<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>();
 
         if (key is not null)
-        {
-            _services.TryAddKeyedSingleton<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>(key);
             _services.AddKeyedSingleton<ICommandHandler<TMessage>, THandler>(key);
-            return this;
-        }
-
-        _services.TryAddSingleton<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>();
-        _services.AddSingleton<ICommandHandler<TMessage>, THandler>();
+        else
+            _services.AddSingleton<ICommandHandler<TMessage>, THandler>();
         return this;
     }
 
@@ -83,14 +82,13 @@ internal sealed class MediatorServiceBuilder<
         where THandler : class, INotificationHandler<TMessage>
         where TMessage : notnull
     {
-        if (key is not null)
-        {
-            _services.TryAddKeyedSingleton<NotificationPipelineExecutor<TMessage>>(key);
-            _services.AddKeyedSingleton<INotificationHandler<TMessage>, THandler>(key);
-            return this;
-        }
+        // Always register the executor as unkeyed — see RegisterCommandHandler for rationale.
         _services.TryAddSingleton<NotificationPipelineExecutor<TMessage>>();
-        _services.AddSingleton<INotificationHandler<TMessage>, THandler>();
+
+        if (key is not null)
+            _services.AddKeyedSingleton<INotificationHandler<TMessage>, THandler>(key);
+        else
+            _services.AddSingleton<INotificationHandler<TMessage>, THandler>();
         return this;
     }
 
@@ -102,15 +100,13 @@ internal sealed class MediatorServiceBuilder<
         where THandler : class, IRequestHandler<TMessage, TResponse>
         where TMessage : notnull
     {
-        if (key is not null)
-        {
-            _services.TryAddKeyedSingleton<RequestPipelineExecutor<TMessage, TResponse>>(key);
-            _services.AddKeyedSingleton<IRequestHandler<TMessage, TResponse>, THandler>(key);
-            return this;
-        }
-
+        // Always register the executor as unkeyed — see RegisterCommandHandler for rationale.
         _services.TryAddSingleton<RequestPipelineExecutor<TMessage, TResponse>>();
-        _services.AddSingleton<IRequestHandler<TMessage, TResponse>, THandler>();
+
+        if (key is not null)
+            _services.AddKeyedSingleton<IRequestHandler<TMessage, TResponse>, THandler>(key);
+        else
+            _services.AddSingleton<IRequestHandler<TMessage, TResponse>, THandler>();
         return this;
     }
 
@@ -122,15 +118,13 @@ internal sealed class MediatorServiceBuilder<
         where THandler : class, IStreamHandler<TMessage, TResponse>
         where TMessage : notnull
     {
-        if (key is not null)
-        {
-            _services.TryAddKeyedSingleton<StreamPipelineExecutor<TMessage, TResponse>>(key);
-            _services.AddKeyedSingleton<IStreamHandler<TMessage, TResponse>, THandler>(key);
-            return this;
-        }
-
+        // Always register the executor as unkeyed — see RegisterCommandHandler for rationale.
         _services.TryAddSingleton<StreamPipelineExecutor<TMessage, TResponse>>();
-        _services.AddSingleton<IStreamHandler<TMessage, TResponse>, THandler>();
+
+        if (key is not null)
+            _services.AddKeyedSingleton<IStreamHandler<TMessage, TResponse>, THandler>(key);
+        else
+            _services.AddSingleton<IStreamHandler<TMessage, TResponse>, THandler>();
         return this;
     }
 

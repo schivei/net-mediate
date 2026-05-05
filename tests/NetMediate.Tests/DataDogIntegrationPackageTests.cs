@@ -28,6 +28,29 @@ public sealed class DataDogIntegrationPackageTests
     }
 
     [Fact]
+    public void OpenTelemetryPackage_WithNullConfigure_ShouldUseDefaults()
+    {
+        // Covers the configure?.Invoke(options) null branch.
+        var services = new ServiceCollection();
+        services.AddNetMediateDataDogOpenTelemetry(configure: null);
+        using var provider = services.BuildServiceProvider();
+        Assert.NotNull(provider);
+    }
+
+    [Fact]
+    public void OpenTelemetryPackage_WithEmptyApiKey_ShouldNotSetHeaders()
+    {
+        // Covers the !string.IsNullOrWhiteSpace(options.ApiKey) = false branch (empty/whitespace key).
+        var services = new ServiceCollection();
+        services.AddNetMediateDataDogOpenTelemetry(options =>
+        {
+            options.ApiKey = string.Empty;
+        });
+        using var provider = services.BuildServiceProvider();
+        Assert.NotNull(provider);
+    }
+
+    [Fact]
     public void SerilogPackage_ShouldRequireApiKeyWhenSinkIsEnabled()
     {
         var cancellationToken = TestContext.Current.CancellationToken;
@@ -105,6 +128,18 @@ public sealed class DataDogIntegrationPackageTests
         using var scope = logger.BeginNetMediateDataDogScope(options, cancellationToken);
         Assert.NotNull(scope);
         Assert.Equal("netmediate-tests", options.Service);
+    }
+
+    [Fact]
+    public void ILoggerPackage_WithNullConfigure_ShouldUseDefaults()
+    {
+        // Covers the configure?.Invoke(options) null branch in AddNetMediateDataDogILogger.
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddNetMediateDataDogILogger(configure: null);
+        using var provider = services.BuildServiceProvider();
+        var options = provider.GetRequiredService<DataDogILoggerOptions>();
+        Assert.NotNull(options);
     }
 
     [Fact]

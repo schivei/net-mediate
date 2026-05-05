@@ -512,10 +512,10 @@ public sealed class ResilienceBehaviorTests
     private sealed class SlowPipelineBehavior<TMessage> : IPipelineBehavior<TMessage>
         where TMessage : notnull
     {
-        public async Task Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken cancellationToken)
+        public async Task Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken cancellationToken)
         {
             await Task.Delay(TimeSpan.FromMilliseconds(200), cancellationToken);
-            await next(message, cancellationToken);
+            await next(key, message, cancellationToken);
         }
     }
 
@@ -523,7 +523,7 @@ public sealed class ResilienceBehaviorTests
     private sealed class ThrowingPipelineBehavior<TMessage> : IPipelineBehavior<TMessage>
         where TMessage : notnull
     {
-        public Task Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken cancellationToken)
+        public Task Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken cancellationToken)
             => throw new InvalidOperationException("behavior failure");
     }
 
@@ -535,7 +535,7 @@ public sealed class ResilienceBehaviorTests
         public static int Invocations => Volatile.Read(ref s_invocations);
         public static void Reset() => Interlocked.Exchange(ref s_invocations, 0);
 
-        public Task Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken cancellationToken)
+        public Task Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken cancellationToken)
         {
             Interlocked.Increment(ref s_invocations);
             throw new InvalidOperationException("retry trigger");

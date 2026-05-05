@@ -8,76 +8,50 @@ const sidebars = {
       id: 'intro',
       label: 'Introduction',
     },
-    {
-      type: 'category',
-      label: 'Getting Started',
-      items: [
+    ...([
+      ['Getting Started', [
         'getting-started/installation',
         'getting-started/quick-start',
         'getting-started/message-types',
         'getting-started/handlers',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Usage Guides',
-      items: [
+      ]],
+      ['Usage Guides', [
         'guides/commands',
         'guides/requests',
         'guides/notifications',
         'guides/streams',
         'guides/pipeline-behaviors',
         'guides/validation',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Advanced Topics',
-      items: [
+      ]],
+      ['Advanced Topics', [
         'advanced/source-generation',
         'advanced/aot-support',
         'advanced/resilience',
         'advanced/diagnostics',
         'advanced/quartz',
         'advanced/datadog',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Testing',
-      items: [
+      ]],
+      ['Testing', [
         'testing/moq-recipes',
         'testing/unit-testing',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Performance',
-      items: [
+      ]],
+      ['Performance', [
         'performance/benchmarks',
         'performance/best-practices',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'API Reference',
-      items: [
+      ]],
+      ['API Reference', [
         'api/core-interfaces',
         'api/handlers',
         'api/behaviors',
         'api/extensions',
-      ],
-    },
-    {
-      type: 'category',
-      label: 'Community',
-      items: [
+      ]],
+      ['Community', [
         'community/contributing',
         'community/code-of-conduct',
         'community/security',
         'community/roadmap',
-      ],
-    },
+      ]],
+    ].map(([label, items]) => ({ type: 'category', label, items }))),
   ],
 };
 

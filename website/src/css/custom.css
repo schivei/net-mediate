@@ -1,0 +1,182 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+/* You can override the default Infima variables here. */
+:root {
+  --ifm-color-primary: #0969da;
+  --ifm-color-primary-dark: #085fc4;
+  --ifm-color-primary-darker: #0859b8;
+  --ifm-color-primary-darkest: #064a97;
+  --ifm-color-primary-light: #0a73f0;
+  --ifm-color-primary-lighter: #1179f7;
+  --ifm-color-primary-lightest: #318bff;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+
+  /* GitHub-inspired colors */
+  --ifm-background-color: #ffffff;
+  --ifm-navbar-background-color: #24292f;
+  --ifm-footer-background-color: #1c1e21;
+  --ifm-link-color: #0969da;
+  --ifm-link-hover-color: #0550ae;
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  --ifm-color-primary: #58a6ff;
+  --ifm-color-primary-dark: #4097fe;
+  --ifm-color-primary-darker: #348ffe;
+  --ifm-color-primary-darkest: #0d6efd;
+  --ifm-color-primary-light: #74b5ff;
+  --ifm-color-primary-lighter: #81bcff;
+  --ifm-color-primary-lightest: #a8d0ff;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+
+  /* GitHub dark theme colors */
+  --ifm-background-color: #0d1117;
+  --ifm-navbar-background-color: #161b22;
+  --ifm-footer-background-color: #0d1117;
+  --ifm-link-color: #58a6ff;
+  --ifm-link-hover-color: #79b8ff;
+}
+
+/* Custom styling for a more GitHub-like appearance */
+.navbar {
+  box-shadow: 0 1px 0 rgba(27, 31, 36, 0.04),
+    0 1px 0 rgba(0, 0, 0, 0.04),
+    0 1px 0 rgba(0, 0, 0, 0.04);
+}
+
+.navbar__title {
+  font-weight: 600;
+}
+
+.footer {
+  border-top: 1px solid var(--ifm-toc-border-color);
+}
+
+/* Code blocks */
+pre {
+  border-radius: 6px;
+}
+
+/* Table styling */
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+table thead tr {
+  background-color: var(--ifm-table-head-background);
+  border-top: 1px solid var(--ifm-table-border-color);
+}
+
+table tr {
+  border-top: 1px solid var(--ifm-table-border-color);
+}
+
+table th,
+table td {
+  padding: 6px 13px;
+  border: 1px solid var(--ifm-table-border-color);
+}
+
+/* Button styling */
+.button {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.button--primary {
+  background-color: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary);
+}
+
+.button--primary:hover {
+  background-color: var(--ifm-color-primary-dark);
+  border-color: var(--ifm-color-primary-dark);
+}
+
+/* Hero section */
+.hero {
+  background-color: var(--ifm-background-surface-color);
+  border-bottom: 1px solid var(--ifm-toc-border-color);
+}
+
+/* Accessibility improvements */
+.navbar__link:focus,
+.menu__link:focus,
+.button:focus {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 2px;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 996px) {
+  .hero {
+    padding: 2rem 0;
+  }
+}
+
+/* Custom homepage styles */
+.features {
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
+  width: 100%;
+}
+
+.feature {
+  text-align: center;
+  padding: 0 2rem;
+}
+
+.feature h3 {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+/* Announcement bar */
+.announcement {
+  background-color: var(--ifm-color-primary);
+  color: white;
+  font-weight: 500;
+  text-align: center;
+  padding: 0.75rem;
+}
+
+.announcement a {
+  color: white;
+  text-decoration: underline;
+}
+
+/* Badge styling */
+.badge {
+  display: inline-block;
+  padding: 0.25em 0.6em;
+  font-size: 75%;
+  font-weight: 600;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: baseline;
+  border-radius: 6px;
+}
+
+.badge--primary {
+  background-color: var(--ifm-color-primary);
+  color: white;
+}
+
+.badge--success {
+  background-color: #2da44e;
+  color: white;
+}
+
+.badge--warning {
+  background-color: #bf8700;
+  color: white;
+}

@@ -1,0 +1,73 @@
+.heroBanner {
+  padding: 4rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 2rem;
+  }
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 2rem;
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.badges img {
+  height: 20px;
+}
+
+.features {
+  padding: 4rem 0;
+  background-color: var(--ifm-background-surface-color);
+}
+
+.featureEmoji {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+}
+
+.quickExample {
+  padding: 4rem 0;
+  background-color: var(--ifm-background-color);
+}
+
+.quickExample pre {
+  background-color: var(--ifm-code-background);
+  border-radius: 6px;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+.quickExample code {
+  font-family: 'Monaco', 'Consolas', 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+@media screen and (max-width: 996px) {
+  .features,
+  .quickExample {
+    padding: 2rem 0;
+  }
+
+  .featureEmoji {
+    font-size: 3rem;
+  }
+}

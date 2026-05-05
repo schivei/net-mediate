@@ -147,9 +147,15 @@ table td {
   border-color: #085fc4;
 }
 
-/* Hero section */
-.hero {
+/* Hero section: base style for non-primary heroes only.
+   .hero--primary overrides are handled per-theme below. */
+.hero:not(.hero--primary) {
   background-color: var(--ifm-background-surface-color);
+  border-bottom: 1px solid var(--ifm-toc-border-color);
+}
+
+/* hero--primary border */
+.hero--primary {
   border-bottom: 1px solid var(--ifm-toc-border-color);
 }
 

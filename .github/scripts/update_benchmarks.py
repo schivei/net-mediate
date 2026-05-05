@@ -93,7 +93,7 @@ if not metrics:
 # Extract system info from the report's fenced ini block at the top
 # ---------------------------------------------------------------------------
 os_m    = re.search(r'BenchmarkDotNet v[\d.]+, (.+)', report)
-cpu_m   = re.search(r'^([ \t]*[\w][ \t\w\d.()/,]*GHz[^\n]*)', report, re.MULTILINE)
+cpu_m   = re.search(r'^([ \t]*[\w][ \t\w.()/,]*GHz[^\n]*)', report, re.MULTILINE)
 sdk_m   = re.search(r'\.NET SDK ([\d.]+)', report)
 host_m  = re.search(r'\[Host\]\s+: (.+)', report)
 os_str   = os_m.group(1).strip()   if os_m   else 'unknown'
@@ -102,15 +102,21 @@ sdk_str  = sdk_m.group(1).strip()  if sdk_m  else 'unknown'
 host_str = host_m.group(1).strip() if host_m else 'unknown'
 
 # ---------------------------------------------------------------------------
-# Read baseline from base-branch doc (stored as an HTML comment)
+# Read baseline from base-branch doc (stored as an HTML comment).
+# Fall back to the current branch doc when the base branch has no stored
+# baseline (e.g. first run before the PR is merged into main).
 # ---------------------------------------------------------------------------
 baseline: dict[str, float] = {}
-bl_m = re.search(r'<!-- netmediate-bench-baseline: ({.+?}) -->', base_doc, re.DOTALL)
-if bl_m:
-    try:
-        baseline = json.loads(bl_m.group(1))
-    except Exception:
-        pass
+_BL_PAT = re.compile(r'<!-- netmediate-bench-baseline: ({[^}]+}) -->')
+for candidate_doc in (base_doc, doc):
+    bl_m = _BL_PAT.search(candidate_doc)
+    if bl_m:
+        try:
+            baseline = json.loads(bl_m.group(1))
+        except json.JSONDecodeError:
+            pass
+        if baseline:
+            break
 
 # ---------------------------------------------------------------------------
 # Helpers

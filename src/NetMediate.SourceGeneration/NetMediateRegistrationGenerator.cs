@@ -48,9 +48,13 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
     private static IncrementalValueProvider<(bool hasDiagnostics, bool hasResilience, bool isNetMediateAssembly, string assemblyName)> Compute(IncrementalValueProvider<(bool hasDiagnostics, bool hasResilience, bool isNetMediateAssembly, string assemblyName)> packageInfo)
     {
-        packageInfo.Select(static (input, _) => ExtractNames(input));
+        var packageInfoWithNames = packageInfo.Select(static (input, _) =>
+        {
+            ExtractNames(input);
+            return input;
+        });
 
-        return packageInfo.Select(static (input, _) => CalculateName(input));
+        return packageInfoWithNames.Select(static (input, _) => CalculateName(input));
     }
 
     private static bool ExtractNames((bool hasDiagnostics, bool hasResilience, bool isNetMediateAssembly, string assemblyName) input)

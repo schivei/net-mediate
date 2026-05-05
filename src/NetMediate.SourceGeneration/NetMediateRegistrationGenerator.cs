@@ -335,17 +335,53 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
     private static int GetOrderArgument(INamedTypeSymbol type)
     {
-        var keyAttribute = type
-            .GetAttributes()
+        var attributes = type.GetAttributes();
+
+        var serviceOrderAttribute = attributes
             .FirstOrDefault(attribute => attribute.AttributeClass?.ToDisplayString() == ServiceOrderAttributeMetadataName);
 
-        if (keyAttribute is null)
-            return int.MaxValue;
+        if (TryGetOrderValue(serviceOrderAttribute, out var serviceOrder))
+            return serviceOrder;
 
-        var orderValue = GetConstructorArgumentValue(keyAttribute, 0);
-        var order = TryExtractValue<int>(orderValue, out var ord) ? ord : int.MaxValue;
+        foreach (var attribute in attributes)
+        {
+            if (!IsBehaviorOrderAttribute(attribute.AttributeClass))
+                continue;
 
-        return order;
+            if (TryGetOrderValue(attribute, out var attributeOrder))
+                return attributeOrder;
+        }
+
+        return int.MaxValue;
+    }
+
+    private static bool TryGetOrderValue(AttributeData? attribute, out int order)
+    {
+        order = int.MaxValue;
+
+        if (attribute is null)
+            return false;
+
+        var orderValue = GetNamedArgumentValue(attribute, "Order")
+            ?? GetConstructorArgumentValue(attribute, 0);
+
+        if (!TryExtractValue<int>(orderValue, out var extractedOrder))
+            return false;
+
+        order = extractedOrder;
+        return true;
+    }
+
+    private static bool IsBehaviorOrderAttribute(INamedTypeSymbol? attributeClass)
+    {
+        var attributeName = attributeClass?.Name;
+        if (string.IsNullOrEmpty(attributeName))
+            return false;
+
+        return attributeName.StartsWith("Telemetry", StringComparison.Ordinal)
+            || attributeName.StartsWith("Retry", StringComparison.Ordinal)
+            || attributeName.StartsWith("Timeout", StringComparison.Ordinal)
+            || attributeName.StartsWith("CircuitBreaker", StringComparison.Ordinal);
     }
 
     private static TypedConstant? GetNamedArgumentValue(AttributeData attribute, string argumentName)

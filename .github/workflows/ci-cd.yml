@@ -40,12 +40,22 @@ jobs:
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
         restore-keys: |
           ${{ runner.os }}-nuget-
-          
+
+    - name: Pre-build NetMediate (generates nupkg for source generation integration tests)
+      run: |
+        dotnet restore src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj
+        dotnet build   src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --no-restore
+        dotnet restore src/NetMediate/NetMediate.csproj
+        dotnet build   src/NetMediate/NetMediate.csproj --configuration Release --no-restore
+      # GeneratePackageOnBuild=true in pack.props places the nupkg in
+      # src/NetMediate/bin/Release/, which is the RestoreAdditionalProjectSources
+      # path used by tests/NetMediate.SourceGeneration.Tests (hardcoded to Release).
+
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx
-      
+
     - name: Build NetMediate
-      run: dotnet build src/NetMediate/NetMediate.csproj --configuration Release
+      run: dotnet build src/NetMediate/NetMediate.csproj --configuration Release --no-restore
 
     - name: Build NetMediate.Diagnostics
       run: dotnet build src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release
@@ -79,6 +89,9 @@ jobs:
 
     - name: Test Diagnostics
       run: dotnet test tests/NetMediate.Diagnostics.Tests/NetMediate.Diagnostics.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+    - name: Test SourceGeneration (package-reference integration)
+      run: dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
       
     - name: Run Benchmarks (PR only)
       if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
@@ -215,6 +228,14 @@ jobs:
       with:
         dotnet-version: '10.x'
         
+    - name: Pre-build NetMediate (generates nupkg for source generation integration tests)
+      run: |
+        dotnet restore src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj
+        dotnet build   src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --no-restore
+        dotnet restore src/NetMediate/NetMediate.csproj
+        dotnet build   src/NetMediate/NetMediate.csproj --configuration Release --no-restore
+      # GeneratePackageOnBuild=true places the nupkg in src/NetMediate/bin/Release/.
+
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx
       

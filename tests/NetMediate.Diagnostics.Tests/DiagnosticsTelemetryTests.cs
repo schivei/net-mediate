@@ -68,6 +68,69 @@ public sealed class DiagnosticsTelemetryTests
         Assert.Contains(NetMediateDiagnostics.StreamCountMetricName, counterNamesSnapshot);
     }
 
+    [Fact]
+    public async Task StartActivity_WhenParentActivityIsAmbient_ShouldAddLinkToParent()
+    {
+        var linkedContexts = new System.Collections.Concurrent.ConcurrentQueue<ActivityContext>();
+
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == NetMediateDiagnostics.ActivitySourceName,
+            Sample = static (ref _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStarted = activity =>
+            {
+                foreach (var link in activity.Links)
+                    linkedContexts.Enqueue(link.Context);
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        // Start a parent activity to act as the ambient Activity.Current.
+        using var parentSource = new ActivitySource("Test.Parent");
+        using var parentListener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == "Test.Parent",
+            Sample = static (ref _) => ActivitySamplingResult.AllDataAndRecorded,
+        };
+        ActivitySource.AddActivityListener(parentListener);
+
+        using var parentActivity = parentSource.StartActivity("ParentOperation");
+        Assert.NotNull(parentActivity);
+
+        var parentContext = parentActivity.Context;
+
+        // StartActivity should link to the ambient parent.
+        using var mediatorActivity = NetMediateDiagnostics.StartActivity<string>("Request");
+        Assert.NotNull(mediatorActivity);
+
+        Assert.Contains(parentContext, linkedContexts);
+    }
+
+    [Fact]
+    public void StartActivity_WhenNoParentActivity_ShouldNotAddLinks()
+    {
+        // Ensure no ambient activity.
+        Assert.Null(Activity.Current);
+
+        var linksObserved = false;
+
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == NetMediateDiagnostics.ActivitySourceName,
+            Sample = static (ref _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStarted = activity =>
+            {
+                if (activity.Links.GetEnumerator().MoveNext())
+                    linksObserved = true;
+            },
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        using var mediatorActivity = NetMediateDiagnostics.StartActivity<string>("Request");
+
+        Assert.False(linksObserved);
+    }
+
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();

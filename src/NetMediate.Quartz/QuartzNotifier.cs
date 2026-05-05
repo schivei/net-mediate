@@ -20,7 +20,7 @@ public sealed class QuartzNotifier(
 ) : INotifiable
 {
     /// <inheritdoc />
-    public async Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+    public async Task Notify<TMessage>(object? key, TMessage message, CancellationToken cancellationToken = default)
         where TMessage : notnull
     {
         var json = serializer.Serialize(message);
@@ -51,15 +51,15 @@ public sealed class QuartzNotifier(
     }
 
     /// <inheritdoc />
-    public async Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default)
+    public async Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default)
         where TMessage : notnull
     {
         foreach (var message in messages)
-            await Notify(message, cancellationToken).ConfigureAwait(false);
+            await Notify(key, message, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task DispatchNotifications<TMessage>(TMessage message, INotificationHandler<TMessage>[] handlers,
+    public async Task DispatchNotifications<TMessage>(object? key, TMessage message, INotificationHandler<TMessage>[] handlers,
         CancellationToken cancellationToken = default) where TMessage : notnull
     {
         if (handlers.Length == 0)

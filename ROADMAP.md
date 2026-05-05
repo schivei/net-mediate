@@ -37,7 +37,7 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 ## Long term
 
 - [x] **`NetMediate.Diagnostics` package** — `NetMediateDiagnostics` (`ActivitySource`/`Meter`) extracted from the core assembly into `NetMediate.Diagnostics`; implemented as pipeline behaviors (`TelemetryNotificationBehavior`, `TelemetryRequestBehavior`, `TelemetryStreamBehavior`); auto-registered by the source generator when the package is referenced (first in pipeline order).
-- [ ] **Streaming fan-out** — allow multiple `IStreamHandler<TMsg, TResp>` registrations whose items are merged into a single `IAsyncEnumerable<TResp>`, analogous to how `Send` fans out to multiple command handlers.
-- [ ] **Keyed handler registration** — support `IKeyedServiceProvider` so multiple handlers for the same message type can be addressed by a named key, enabling runtime routing strategies.
-- [ ] **Activity-link propagation** — automatically link the mediator `Activity` to the parent `Activity` from the ambient `Activity.Current`, ensuring distributed traces are correctly parented across async boundaries.
+- [x] **Streaming fan-out** — multiple `IStreamHandler<TMsg, TResp>` registrations are supported; their items are merged sequentially into a single `IAsyncEnumerable<TResp>`, analogous to how `Send` fans out to multiple command handlers.
+- [x] **Keyed handler registration** — runtime routing via service keys. Handlers can be registered with an optional key (`RegisterCommandHandler<THandler, TMsg>("routingKey")`) and dispatched with `Send(key, message)`, `Request(key, ...)`, `Notify(key, ...)`, or `RequestStream(key, ...)`. Non-keyed registration and dispatch (using `null` key) continues to work as before.
+- [x] **Activity-link propagation** — `NetMediateDiagnostics.StartActivity<TMessage>` now adds an `ActivityLink` to the ambient `Activity.Current` at dispatch time, ensuring distributed traces are correctly connected across async boundaries (especially important for fire-and-forget notifications).
 

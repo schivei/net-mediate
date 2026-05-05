@@ -89,6 +89,7 @@ public class NetMediateMoqTests
             (_, _) => { h2Called = true; return Task.CompletedTask; });
 
         await notifier.DispatchNotifications(
+            null,
             new NotifierTestMessage(),
             [h1, h2],
             TestContext.Current.CancellationToken

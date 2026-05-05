@@ -337,7 +337,7 @@ public sealed class DiagnosticsExtraCoverageTests
     private sealed class ThrowingNotificationBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
         where TMessage : notnull
     {
-        public Task Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
+        public Task Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
             throw new InvalidOperationException("inner behavior failure");
     }
 
@@ -345,6 +345,7 @@ public sealed class DiagnosticsExtraCoverageTests
         where TMessage : notnull
     {
         public IAsyncEnumerable<TResponse> Handle(
+            object? key,
             TMessage message,
             PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> next,
             CancellationToken ct = default) =>

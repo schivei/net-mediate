@@ -48,10 +48,11 @@ public sealed class MediatorNotifiesContinuationTests
     private sealed class PassThroughBehavior : IPipelineBehavior<Msg, Task>
     {
         public Task Handle(
+            object? key,
             Msg message,
             PipelineBehaviorDelegate<Msg, Task> next,
             CancellationToken cancellationToken = default
-        ) => next(message.Mark(), cancellationToken);
+        ) => next(key, message.Mark(), cancellationToken);
     }
 
     private static ServiceProvider BuildProvider(Action<IMediatorServiceBuilder> configure)

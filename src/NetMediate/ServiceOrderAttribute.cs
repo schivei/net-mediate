@@ -1,17 +1,19 @@
 ﻿namespace NetMediate;
 
 /// <summary>
-/// Specifies the processing or application order for a class when multiple services are present.
+/// Specifies the relative order used when NetMediate source-generated handler registrations are emitted for a class.
 /// </summary>
-/// <remarks>Apply this attribute to service classes to control their execution or registration order in scenarios
-/// where order matters, such as dependency injection pipelines or service initialization.</remarks>
-/// <param name="order">The relative order in which the attributed class should be processed or applied. Lower values indicate higher
-/// priority.</param>
+/// <remarks>
+/// Apply this attribute to handler classes when using NetMediate's source-generated registration support and registration
+/// order matters. Lower values are registered first. This attribute does not, by itself, affect manual registration paths
+/// or user-defined pipeline behavior ordering.
+/// </remarks>
+/// <param name="order">The relative order to use for source-generated registration. Lower values indicate higher priority.</param>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 public sealed class ServiceOrderAttribute(int order) : Attribute
 {
     /// <summary>
-    /// Gets the order in which this element is processed or applied.
+    /// Gets the relative order used for source-generated registration.
     /// </summary>
     public int Order { get; } = order;
 }

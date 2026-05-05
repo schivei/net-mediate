@@ -2,11 +2,20 @@ using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using NetMediate.Internals;
 
 namespace NetMediate.Tests;
 
 public sealed class PipelineBehaviorTests
 {
+    public PipelineBehaviorTests()
+    {
+        // Clear the global handler cache to prevent cross-test contamination.
+        // Each test creates its own DI container with different handler instances;
+        // the static cache would otherwise return stale instances from a prior test.
+        Extensions.ClearCache();
+    }
+
     [Fact]
     public async Task RequestBehavior_ShouldRunInOrderAndWrapResponse()
     {
@@ -216,13 +225,14 @@ public sealed class PipelineBehaviorTests
         : IPipelineRequestBehavior<PipelineRequest, string>
     {
         public async Task<string> Handle(
+            object? key,
             PipelineRequest message,
             PipelineBehaviorDelegate<PipelineRequest, Task<string>> next,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("request:first:pre");
-            var response = await next(message, cancellationToken);
+            var response = await next(key, message, cancellationToken);
             trace.Add("request:first:post");
             return $"{response}:first";
         }
@@ -232,13 +242,14 @@ public sealed class PipelineBehaviorTests
         : IPipelineRequestBehavior<PipelineRequest, string>
     {
         public async Task<string> Handle(
+            object? key,
             PipelineRequest message,
             PipelineBehaviorDelegate<PipelineRequest, Task<string>> next,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("request:second:pre");
-            var response = await next(message, cancellationToken);
+            var response = await next(key, message, cancellationToken);
             trace.Add("request:second:post");
             return $"{response}:second";
         }
@@ -258,13 +269,14 @@ public sealed class PipelineBehaviorTests
         : IPipelineBehavior<PipelineCommand, Task>
     {
         public async Task Handle(
+            object? key,
             PipelineCommand message,
             PipelineBehaviorDelegate<PipelineCommand, Task> next,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("command:pre");
-            await next(message, cancellationToken);
+            await next(key, message, cancellationToken);
             trace.Add("command:post");
         }
     }
@@ -292,19 +304,21 @@ public sealed class PipelineBehaviorTests
         : IPipelineStreamBehavior<PipelineStream, int>
     {
         public IAsyncEnumerable<int> Handle(
+            object? key,
             PipelineStream message,
             PipelineBehaviorDelegate<PipelineStream, IAsyncEnumerable<int>> next,
             CancellationToken cancellationToken = default
-        ) => Execute(message, next, cancellationToken);
+        ) => Execute(key, message, next, cancellationToken);
 
         private async IAsyncEnumerable<int> Execute(
+            object? key,
             PipelineStream message,
             PipelineBehaviorDelegate<PipelineStream, IAsyncEnumerable<int>> next,
             [EnumeratorCancellation] CancellationToken cancellationToken
         )
         {
             trace.Add("stream:pre");
-            await foreach (var item in next(message, cancellationToken).WithCancellation(cancellationToken))
+            await foreach (var item in next(key, message, cancellationToken).WithCancellation(cancellationToken))
                 yield return item;
             trace.Add("stream:post");
         }
@@ -340,13 +354,14 @@ public sealed class PipelineBehaviorTests
         : IPipelineBehavior<PipelineNotification, Task>
     {
         public async Task Handle(
+            object? key,
             PipelineNotification message,
             PipelineBehaviorDelegate<PipelineNotification, Task> next,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("notification:pre");
-            await next(message, cancellationToken);
+            await next(key, message, cancellationToken);
             trace.Add("notification:post");
             trace.Add("notification:after-await");
         }
@@ -356,13 +371,14 @@ public sealed class PipelineBehaviorTests
         : IPipelineNotificationBehavior<PipelineNotification>
     {
         public async Task Handle(
+            object? key,
             PipelineNotification message,
             PipelineBehaviorDelegate<PipelineNotification, Task> next,
             CancellationToken cancellationToken = default
         )
         {
             trace.Add("notification:pre");
-            await next(message, cancellationToken);
+            await next(key, message, cancellationToken);
             trace.Add("notification:post");
             trace.Add("notification:after-await");
         }

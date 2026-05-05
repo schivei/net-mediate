@@ -584,28 +584,28 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     private sealed class NoOpCommandBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
         where TMessage : notnull
     {
-        public Task Handle(TMessage msg, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
-            next(msg, ct);
+        public Task Handle(object? key, TMessage msg, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
+            next(key, msg, ct);
     }
 
     private sealed class NoOpCommandBehavior2<TMessage> : IPipelineBehavior<TMessage, Task>
         where TMessage : notnull
     {
-        public Task Handle(TMessage msg, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
-            next(msg, ct);
+        public Task Handle(object? key, TMessage msg, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
+            next(key, msg, ct);
     }
 
     private sealed class NoOpNotificationBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
         where TMessage : notnull
     {
-        public Task Handle(TMessage msg, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
-            next(msg, ct);
+        public Task Handle(object? key, TMessage msg, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
+            next(key, msg, ct);
     }
 
     private sealed class NoOpNotificationBehavior2<TMessage> : IPipelineBehavior<TMessage, Task>
         where TMessage : notnull
     {
-        public Task Handle(TMessage msg, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
-            next(msg, ct);
+        public Task Handle(object? key, TMessage msg, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
+            next(key, msg, ct);
     }
 }

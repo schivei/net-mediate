@@ -31,6 +31,7 @@ public sealed class NetMediateFixture : IDisposable
             configure.RegisterNotificationHandler<SimpleValidatableNotifyHandler, SimpleValidatableMessage>();
             configure.RegisterRequestHandler<MessageRequestHandler, MessageRequest, int>();
             configure.RegisterStreamHandler<MessageStreamHandler, MessageStream, int>();
+            configure.RegisterRequestHandler<KeyedRequestHandler, MessageRequest, int>("routing");
         });
     }
 

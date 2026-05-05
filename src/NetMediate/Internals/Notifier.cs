@@ -5,12 +5,12 @@ namespace NetMediate.Internals;
 
 internal class Notifier(IServiceProvider serviceProvider, ILogger<Notifier> logger) : INotifiable
 {
-    public virtual Task DispatchNotifications<TMessage>(object? _, TMessage message, INotificationHandler<TMessage>[] handlers,
+    public virtual Task DispatchNotifications<TMessage>(object? key, TMessage message, INotificationHandler<TMessage>[] handlers,
         CancellationToken cancellationToken = default) where TMessage : notnull
     {
         foreach (var handler in handlers)
         {
-            _ = handler.Handle(message, cancellationToken)
+            handler.Handle(message, cancellationToken)
                 .ContinueWith(
                     t => logger.LogError(t.Exception, "{Message}", t.Exception!.Message),
                     CancellationToken.None,

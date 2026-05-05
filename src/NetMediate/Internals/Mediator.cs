@@ -10,25 +10,46 @@ internal sealed class Mediator(
 ) : IMediator
 {
     /// <inheritdoc/>
+    public Task Notify<TMessage>(
+        TMessage message,
+        CancellationToken cancellationToken = default
+    ) => Notify(null, message, cancellationToken);
+    
+    /// <inheritdoc/>
     public async Task Notify<TMessage>(
+        object? key,
         TMessage message,
         CancellationToken cancellationToken = default
     )
     {
-        await notifier.Notify(message, cancellationToken).ConfigureAwait(false);
+        await notifier.Notify(key, message, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
+    public Task Notify<TMessage>(
+        IEnumerable<TMessage> messages,
+        CancellationToken cancellationToken = default
+    ) where TMessage : notnull => Notify(null, messages, cancellationToken);
+
+    /// <inheritdoc/>
     public async Task Notify<TMessage>(
+        object? key,
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
     ) where TMessage : notnull
     {
-        await notifier.Notify(messages, cancellationToken).ConfigureAwait(false);
+        await notifier.Notify(key, messages, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
+    public Task Send<TMessage>(
+        TMessage message,
+        CancellationToken cancellationToken = default
+    ) where TMessage : notnull => Send(null, message, cancellationToken);
+
+    /// <inheritdoc/>
     public async Task Send<TMessage>(
+        object? key,
         TMessage message,
         CancellationToken cancellationToken = default
     ) where TMessage : notnull
@@ -43,7 +64,7 @@ internal sealed class Mediator(
 
         try
         {
-            await pipeline.Handle(message, CommandHandlers, cancellationToken).ConfigureAwait(false);
+            await pipeline.Handle(key, message, CommandHandlers, cancellationToken).ConfigureAwait(false);
         }
         catch (MediatorException)
         {
@@ -60,12 +81,18 @@ internal sealed class Mediator(
     }
 
     /// <inheritdoc/>
-    public async Task Send<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
+    public Task Send<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull =>
+        Send(null, messages, cancellationToken);
+
+    /// <inheritdoc/>
+    public async Task Send<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
     {
-        await Task.WhenAll(messages.Select(message => Send(message, cancellationToken)));
+        await Task.WhenAll(messages.Select(message => Send(key, message, cancellationToken)));
     }
 
-    private static async Task CommandHandlers<TMessage>(TMessage message,
+    private static async Task CommandHandlers<TMessage>(
+        object? _,
+        TMessage message,
         IEnumerable<ICommandHandler<TMessage>> handlers,
         CancellationToken ct) where TMessage : notnull
     {
@@ -74,7 +101,14 @@ internal sealed class Mediator(
     }
 
     /// <inheritdoc/>
+    public Task<TResponse> Request<TMessage, TResponse>(
+        TMessage message,
+        CancellationToken cancellationToken = default
+    ) where TMessage : notnull => Request<TMessage, TResponse>(null, message, cancellationToken);
+
+    /// <inheritdoc/>
     public async Task<TResponse> Request<TMessage, TResponse>(
+        object? key,
         TMessage message,
         CancellationToken cancellationToken = default
     ) where TMessage : notnull
@@ -84,7 +118,7 @@ internal sealed class Mediator(
 
         try
         {
-            return await pipeline.Handle(message, RequestHandlers, cancellationToken).ConfigureAwait(false);
+            return await pipeline.Handle(key, message, RequestHandlers, cancellationToken).ConfigureAwait(false);
         }
         catch (MediatorException)
         {
@@ -100,7 +134,11 @@ internal sealed class Mediator(
         }
     }
 
-    private static Task<TResponse> RequestHandlers<TMessage, TResponse>(TMessage message, IRequestHandler<TMessage, TResponse>[] handlers, CancellationToken cancellationToken) where TMessage : notnull
+    private static Task<TResponse> RequestHandlers<TMessage, TResponse>(
+        object? _,
+        TMessage message,
+        IRequestHandler<TMessage, TResponse>[] handlers,
+        CancellationToken cancellationToken) where TMessage : notnull
     {
         return handlers.Single().Handle(message, cancellationToken);
     }
@@ -109,15 +147,23 @@ internal sealed class Mediator(
     public IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
         TMessage message,
         CancellationToken cancellationToken = default
+    ) where TMessage : notnull => RequestStream<TMessage, TResponse>(null, message, cancellationToken);
+
+    /// <inheritdoc/>
+    public IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
+        object? key,
+        TMessage message,
+        CancellationToken cancellationToken = default
     ) where TMessage : notnull
     {
         var pipeline = serviceProvider
             .GetRequiredService<StreamPipelineExecutor<TMessage, TResponse>>();
 
-        return pipeline.Handle(message, StreamHandlers, cancellationToken);
+        return pipeline.Handle(key, message, StreamHandlers, cancellationToken);
     }
 
     private static async IAsyncEnumerable<TResponse> StreamHandlers<TMessage, TResponse>(
+        object? _,
         TMessage message,
         IStreamHandler<TMessage, TResponse>[] handlers,
         [EnumeratorCancellation] CancellationToken cancellationToken)

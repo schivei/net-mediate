@@ -22,8 +22,9 @@ public sealed class GeneratorIntegrationTests
     // ── helpers ──────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Loads <c>NetMediateRegistrationGenerator</c> from the analyzer DLL that is bundled inside
-    /// the <c>NetMediate</c> NuGet package.  The package layout is:
+    /// Loads <c>NetMediateRegistrationGenerator</c> from the local source-generator build output
+    /// when available, falling back to the analyzer DLL bundled inside the <c>NetMediate</c>
+    /// package. The package layout is:
     /// <code>
     ///   lib/{tfm}/NetMediate.dll                           ← runtime reference
     ///   analyzers/dotnet/cs/NetMediate.SourceGeneration.dll ← source generator
@@ -38,14 +39,18 @@ public sealed class GeneratorIntegrationTests
     /// </summary>
     private static IIncrementalGenerator CreateGenerator()
     {
-        var packageRoot = GetNetMediatePackageRoot();
+        var generatorDll = GetLocalGeneratorDllPath();
 
-        var generatorDll = Path.Combine(
-            packageRoot,
-            "analyzers",
-            "dotnet",
-            "cs",
-            "NetMediate.SourceGeneration.dll");
+        if (!File.Exists(generatorDll))
+        {
+            var packageRoot = GetNetMediatePackageRoot();
+            generatorDll = Path.Combine(
+                packageRoot,
+                "analyzers",
+                "dotnet",
+                "cs",
+                "NetMediate.SourceGeneration.dll");
+        }
 
         if (!File.Exists(generatorDll))
             throw new FileNotFoundException(
@@ -55,12 +60,30 @@ public sealed class GeneratorIntegrationTests
 
         // Assembly.LoadFrom resolves Microsoft.CodeAnalysis from the already-loaded instance in
         // the default load context, so IIncrementalGenerator identity is preserved.
-        var asm  = Assembly.LoadFrom(generatorDll);
+        var asm = Assembly.LoadFrom(generatorDll);
         var type = asm.GetType("NetMediate.SourceGeneration.NetMediateRegistrationGenerator")
             ?? throw new InvalidOperationException(
                    "NetMediateRegistrationGenerator type not found in the loaded assembly.");
 
         return (IIncrementalGenerator)Activator.CreateInstance(type)!;
+    }
+
+    private static string GetLocalGeneratorDllPath()
+    {
+        var configuration = GetBuildConfiguration();
+        return Path.GetFullPath(Path.Combine(
+            AppContext.BaseDirectory,
+            "..", "..", "..", "..", "..",
+            "src", "NetMediate.SourceGeneration", "bin", configuration, "netstandard2.0", "NetMediate.SourceGeneration.dll"));
+    }
+
+    private static string GetBuildConfiguration()
+    {
+#if DEBUG
+        return "Debug";
+#else
+        return "Release";
+#endif
     }
 
     private static string GetNetMediatePackageRoot()
@@ -78,9 +101,7 @@ public sealed class GeneratorIntegrationTests
 
         var packagePath = libraries.EnumerateObject()
             .Select(static library => library.Name)
-            .FirstOrDefault(static name => name.StartsWith("NetMediate/", StringComparison.OrdinalIgnoreCase));
-
-        if (packagePath is null)
+            .FirstOrDefault(static name => name.StartsWith("NetMediate/", StringComparison.OrdinalIgnoreCase)) ??
             throw new InvalidOperationException("The restore assets file does not contain the NetMediate package entry.");
 
         var nugetPackages =
@@ -299,6 +320,113 @@ public sealed class GeneratorIntegrationTests
         Assert.Contains("AlertHandler", generatedSource);
     }
 
+    [Fact]
+    public void Generator_WhenCommandHandlerHasKeyedServiceAttribute_ShouldRegisterWithKey()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record PingCommand;
+
+            [KeyedService(Key = "primary")]
+            public sealed class PingHandler : ICommandHandler<PingCommand>
+            {
+                public Task Handle(PingCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var (generatedSource, _) = RunGenerator("MyApp", userSource);
+
+        Assert.Contains("primary", generatedSource);
+        Assert.Contains("RegisterCommandHandler<global::MyApp.PingHandler, global::MyApp.PingCommand>(\"primary\")", generatedSource);
+    }
+
+    [Fact]
+    public void Generator_WhenRequestHandlerHasKeyedServiceAttribute_ShouldRegisterWithKey()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record GetQuery(int Id);
+
+            [KeyedService(Key = 42)]
+            public sealed class GetHandler : IRequestHandler<GetQuery, string>
+            {
+                public Task<string> Handle(GetQuery query, CancellationToken cancellationToken = default)
+                    => Task.FromResult(query.Id.ToString());
+            }
+            """;
+
+        var (generatedSource, _) = RunGenerator("MyApp", userSource);
+
+        Assert.Contains("42", generatedSource);
+        Assert.Contains("RegisterRequestHandler<global::MyApp.GetHandler, global::MyApp.GetQuery, string>(42)", generatedSource);
+    }
+
+    [Fact]
+    public void Generator_WhenNotificationHandlerHasKeyedServiceAttribute_ShouldRegisterWithKey()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record AlertNotification(string Message);
+
+            [KeyedService(Key = true)]
+            public sealed class AlertHandler : INotificationHandler<AlertNotification>
+            {
+                public Task Handle(AlertNotification notification, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var (generatedSource, _) = RunGenerator("MyApp", userSource);
+
+        Assert.Contains("true", generatedSource);
+        Assert.Contains("RegisterNotificationHandler<global::MyApp.AlertHandler, global::MyApp.AlertNotification>(true)", generatedSource);
+    }
+
+    [Fact]
+    public void Generator_WhenStreamHandlerHasKeyedServiceAttribute_ShouldRegisterWithKey()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Collections.Generic;
+            using System.Threading;
+
+            namespace MyApp;
+
+            public sealed record StreamQuery;
+
+            [KeyedService(Key = 'a')]
+            public sealed class StreamHandler : IStreamHandler<StreamQuery, int>
+            {
+                public async IAsyncEnumerable<int> Handle(StreamQuery query, CancellationToken cancellationToken = default)
+                {
+                    yield return 1;
+                    await Task.CompletedTask;
+                }
+            }
+            """;
+
+        var (generatedSource, _) = RunGenerator("MyApp", userSource);
+
+        Assert.Contains("'a'", generatedSource);
+        Assert.Contains("RegisterStreamHandler<global::MyApp.StreamHandler, global::MyApp.StreamQuery, int>('a')", generatedSource);
+    }
+
     /// <summary>
     /// Validates that the generated <c>AddNetMediate()</c> compiles successfully when combined
     /// with the user's handler code.
@@ -350,6 +478,13 @@ public sealed class GeneratorIntegrationTests
             Task.FromResult(message.Key);
     }
 
+    [KeyedService(Key = "secondary")]
+    public sealed class AnotherCommandHandler : IRequestHandler<MyCommand, int>
+    {
+        public Task<int> Handle(MyCommand message, CancellationToken cancellationToken = default) =>
+            Task.FromResult(message.Key);
+    }
+
     [Fact]
     public async Task Generator_LocalInstance()
     {
@@ -371,5 +506,22 @@ public sealed class GeneratorIntegrationTests
         var result = await mediator.Request(new MyCommand(1));
         Assert.Equal(1, result);
     }
-}
 
+    [Fact]
+    public async Task Generator_SecondaryHandler()
+    {
+        var serviceCollection = new ServiceCollection();
+        serviceCollection.AddNetMediate();
+        var loggerFactory = LoggerFactory.Create(_ => { });
+        serviceCollection.AddSingleton(loggerFactory);
+        serviceCollection.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
+        serviceCollection.AddSingleton<ILogger, Logger<GeneratorIntegrationTests>>();
+        var service = serviceCollection.BuildServiceProvider();
+        var hasHandler = service.GetKeyedService<IRequestHandler<MyCommand, int>>("secondary");
+        Assert.IsType<AnotherCommandHandler>(hasHandler);
+        var mediator = service.GetRequiredService<IMediator>();
+        Assert.NotNull(mediator);
+        var result = await mediator.Request("secondary", new MyCommand(2), TestContext.Current.CancellationToken);
+        Assert.Equal(2, result);
+    }
+}

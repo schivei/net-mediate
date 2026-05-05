@@ -1,6 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
 
@@ -57,8 +58,47 @@ internal static class Extensions
         }
     }
 
+    extension(IMediatorServiceBuilder mediatorServiceBuilder)
+    {
+        internal void RegisterCommandHandler<TMessage>(ICommandHandler<TMessage> handler)
+            where TMessage : notnull
+        {
+            mediatorServiceBuilder.Services.AddSingleton(handler);
+            mediatorServiceBuilder.Services.TryAddSingleton<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>();
+        }
+
+        internal void RegisterNotificationHandler<TMessage>(INotificationHandler<TMessage> handler)
+            where TMessage : notnull
+        {
+            mediatorServiceBuilder.Services.AddSingleton(handler);
+            mediatorServiceBuilder.Services.TryAddSingleton<NotificationPipelineExecutor<TMessage>>();
+        }
+
+        internal void RegisterRequestHandler<TMessage, TResponse>(IRequestHandler<TMessage, TResponse> handler)
+            where TMessage : notnull
+        {
+            mediatorServiceBuilder.Services.AddSingleton(handler);
+            mediatorServiceBuilder.Services.TryAddSingleton<RequestPipelineExecutor<TMessage, TResponse>>();
+        }
+
+        internal void RegisterStreamHandler<TMessage, TResponse>(IStreamHandler<TMessage, TResponse> handler)
+            where TMessage : notnull
+        {
+            mediatorServiceBuilder.Services.AddSingleton(handler);
+            mediatorServiceBuilder.Services.TryAddSingleton<StreamPipelineExecutor<TMessage, TResponse>>();
+        }
+    }
+
     extension(IServiceProvider serviceProvider)
     {
+        public THandler GetHandler<THandler, TMessage, TResult>(object? key = null)
+            where THandler : class, IHandler<TMessage, TResult>
+            where TMessage : notnull
+            where TResult : notnull
+        {
+            return serviceProvider.GetCachedServices<THandler>(new(typeof(THandler), key), s_handlerCache).Single();
+        }
+
         public THandler[] GetHandlers<THandler, TMessage, TResult>(object? key = null)
             where THandler : class, IHandler<TMessage, TResult>
             where TMessage : notnull
@@ -67,19 +107,21 @@ internal static class Extensions
             return serviceProvider.GetCachedServices<THandler>(new(typeof(THandler), key), s_handlerCache);
         }
 
-        public T[] GetCachedBehaviors<T>(object? key = null) where T : class
+        public T[] GetCachedBehaviors<T>() where T : class
         {
             var providerCache = s_behaviorCacheByProvider.GetOrCreateValue(serviceProvider);
-            return serviceProvider.GetCachedServices<T>(new(typeof(T), key), providerCache);
+            return serviceProvider.GetCachedServices<T>(new(typeof(T), null), providerCache);
         }
 
         private T[] GetCachedServices<T>(ServiceKey key, ConcurrentDictionary<ServiceKey, Lazy<object>> cache) where T : class
         {
             var lazy = cache.GetOrAdd(
                 key,
-                _ => new Lazy<object>(
-                    () => serviceProvider.GetKeyedServices<T>(key).ToArray(),
-                    LazyThreadSafetyMode.ExecutionAndPublication));
+                sk => new Lazy<object>(
+                    () => serviceProvider.GetKeyedServices<T>(sk).ToArray(),
+                    LazyThreadSafetyMode.ExecutionAndPublication
+                )
+            );
 
             return (T[])lazy.Value;
         }

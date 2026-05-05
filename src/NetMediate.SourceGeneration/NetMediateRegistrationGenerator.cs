@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Text;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace NetMediate.SourceGeneration;
@@ -11,6 +12,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     private const string NotifierToken = "{{Notifier}}";
     private const string RegistrationsToken = "{{Registrations}}";
     private const string FrameworkBehaviorsToken = "{{FrameworkBehaviors}}";
+    private const string KeyedServiceAttributeMetadataName = "NetMediate.KeyedServiceAttribute";
 
     // Resolved once; format: <RootNamespace>.<FileName>
     private static readonly string TemplateResourceName =
@@ -133,7 +135,8 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         foreach (var handlerType in types)
         {
             var handlerName = handlerType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            BuildResgistration(hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers, notifier, handlerType, handlerName);
+            var handlerKeyArgument = BuildHandlerKeyArgument(handlerType);
+            BuildResgistration(hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers, notifier, handlerType, handlerName, handlerKeyArgument);
         }
 
         // Final output order: Diagnostics behaviors → Resilience behaviors → handler registrations.
@@ -144,7 +147,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         return (allRegistrations, notifier);
     }
 
-    private static void BuildResgistration(bool hasDiagnostics, bool hasResilience, Dictionary<string, bool> diagnosticsBehaviors, Dictionary<string, bool> resilienceBehaviors, Dictionary<string, bool> handlers, StringBuilder notifier, INamedTypeSymbol handlerType, string handlerName) // NOSONAR S107
+    private static void BuildResgistration(bool hasDiagnostics, bool hasResilience, Dictionary<string, bool> diagnosticsBehaviors, Dictionary<string, bool> resilienceBehaviors, Dictionary<string, bool> handlers, StringBuilder notifier, INamedTypeSymbol handlerType, string handlerName, string handlerKeyArgument) // NOSONAR S107
     {
         foreach (var @interface in handlerType.AllInterfaces)
         {
@@ -163,7 +166,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             }
 
             ProcessHandlerInterface(
-                name, arity, handlerName, args,
+                name, arity, handlerName, handlerKeyArgument, args,
                 hasDiagnostics, hasResilience,
                 diagnosticsBehaviors, resilienceBehaviors, handlers);
         }
@@ -173,6 +176,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         string interfaceName,
         int arity,
         string handlerName,
+        string handlerKeyArgument,
         ImmutableArray<ITypeSymbol> args,
         bool hasDiagnostics,
         bool hasResilience,
@@ -180,12 +184,12 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         Dictionary<string, bool> resilienceBehaviors,
         Dictionary<string, bool> handlers) // NOSONAR S107
     {
-        AddCommand(interfaceName, arity, handlerName, args, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers);
+        AddCommand(interfaceName, arity, handlerName, handlerKeyArgument, args, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers);
 
-        AddRequest(interfaceName, arity, handlerName, args, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers);
+        AddRequest(interfaceName, arity, handlerName, handlerKeyArgument, args, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors, handlers);
     }
 
-    private static void AddRequest(string interfaceName, int arity, string handlerName, ImmutableArray<ITypeSymbol> args, bool hasDiagnostics, bool hasResilience, Dictionary<string, bool> diagnosticsBehaviors, Dictionary<string, bool> resilienceBehaviors, Dictionary<string, bool> handlers)  // NOSONAR S107
+    private static void AddRequest(string interfaceName, int arity, string handlerName, string handlerKeyArgument, ImmutableArray<ITypeSymbol> args, bool hasDiagnostics, bool hasResilience, Dictionary<string, bool> diagnosticsBehaviors, Dictionary<string, bool> resilienceBehaviors, Dictionary<string, bool> handlers)  // NOSONAR S107
     {
         if (arity == 2 && args.Length == 2)
         {
@@ -198,18 +202,18 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             {
                 case "IRequestHandler":
                     AddRequestBehaviors(msg, resp, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors);
-                    handlers.AddIfNew($"configure.RegisterRequestHandler<{handlerName}, {msg}, {resp}>();");
+                    handlers.AddIfNew($"configure.RegisterRequestHandler<{handlerName}, {msg}, {resp}>({handlerKeyArgument});");
                     break;
 
                 case "IStreamHandler":
                     AddStreamBehaviors(msg, resp, hasDiagnostics, diagnosticsBehaviors);
-                    handlers.AddIfNew($"configure.RegisterStreamHandler<{handlerName}, {msg}, {resp}>();");
+                    handlers.AddIfNew($"configure.RegisterStreamHandler<{handlerName}, {msg}, {resp}>({handlerKeyArgument});");
                     break;
             }
         }
     }
 
-    private static void AddCommand(string interfaceName, int arity, string handlerName, ImmutableArray<ITypeSymbol> args, bool hasDiagnostics, bool hasResilience, Dictionary<string, bool> diagnosticsBehaviors, Dictionary<string, bool> resilienceBehaviors, Dictionary<string, bool> handlers)  // NOSONAR S107
+    private static void AddCommand(string interfaceName, int arity, string handlerName, string handlerKeyArgument, ImmutableArray<ITypeSymbol> args, bool hasDiagnostics, bool hasResilience, Dictionary<string, bool> diagnosticsBehaviors, Dictionary<string, bool> resilienceBehaviors, Dictionary<string, bool> handlers)  // NOSONAR S107
     {
         if (arity == 1 && args.Length == 1)
         {
@@ -221,16 +225,106 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             {
                 case "ICommandHandler":
                     AddCommandNotificationBehaviors(msg, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors);
-                    handlers.AddIfNew($"configure.RegisterCommandHandler<{handlerName}, {msg}>();");
+                    handlers.AddIfNew($"configure.RegisterCommandHandler<{handlerName}, {msg}>({handlerKeyArgument});");
                     break;
 
                 case "INotificationHandler":
                     AddCommandNotificationBehaviors(msg, hasDiagnostics, hasResilience, diagnosticsBehaviors, resilienceBehaviors);
-                    handlers.AddIfNew($"configure.RegisterNotificationHandler<{handlerName}, {msg}>();");
+                    handlers.AddIfNew($"configure.RegisterNotificationHandler<{handlerName}, {msg}>({handlerKeyArgument});");
                     break;
             }
         }
     }
+
+    private static string BuildHandlerKeyArgument(INamedTypeSymbol handlerType)
+    {
+        var keyAttribute = handlerType
+            .GetAttributes()
+            .FirstOrDefault(attribute => attribute.AttributeClass?.ToDisplayString() == KeyedServiceAttributeMetadataName);
+
+        if (keyAttribute is null)
+            return "null";
+
+        var keyValue = GetNamedArgumentValue(keyAttribute, "Key")
+            ?? GetConstructorArgumentValue(keyAttribute, 0);
+
+        return TryFormatLiteral(keyValue, out var keyLiteral)
+            ? keyLiteral
+            : "null";
+    }
+
+    private static TypedConstant? GetNamedArgumentValue(AttributeData attribute, string argumentName)
+    {
+        foreach (var argument in attribute.NamedArguments)
+        {
+            if (argument.Key == argumentName)
+                return argument.Value;
+        }
+
+        return null;
+    }
+
+    private static TypedConstant? GetConstructorArgumentValue(AttributeData attribute, int index)
+    {
+        if (index < 0 || index >= attribute.ConstructorArguments.Length)
+            return null;
+
+        return attribute.ConstructorArguments[index];
+    }
+
+    private static bool TryFormatLiteral(TypedConstant? constant, out string literal)
+    {
+        literal = "null";
+
+        if (constant is null || constant.Value.IsNull)
+            return true;
+
+        if (constant.Value.Kind is not TypedConstantKind.Primitive and not TypedConstantKind.Enum)
+            return false;
+
+        var value = constant.Value.Value;
+        if (value is null)
+            return true;
+
+        switch (value)
+        {
+            case string text:
+                literal = SymbolDisplay.FormatLiteral(text, true);
+                return true;
+            case char character:
+                literal = SymbolDisplay.FormatLiteral(character, true);
+                return true;
+            case bool boolean:
+                literal = boolean ? "true" : "false";
+                return true;
+        }
+
+        if (constant.Value.Type?.TypeKind == TypeKind.Enum)
+        {
+            var enumTypeName = constant.Value.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            literal = $"({enumTypeName}){FormatPrimitiveLiteral(value)}";
+            return true;
+        }
+
+        literal = FormatPrimitiveLiteral(value);
+        return true;
+    }
+
+    private static string FormatPrimitiveLiteral(object value) => value switch
+    {
+        byte number => number.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        sbyte number => number.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        short number => number.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        ushort number => number.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        int number => number.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        uint number => $"{number.ToString(System.Globalization.CultureInfo.InvariantCulture)}U",
+        long number => $"{number.ToString(System.Globalization.CultureInfo.InvariantCulture)}L",
+        ulong number => $"{number.ToString(System.Globalization.CultureInfo.InvariantCulture)}UL",
+        float number => SymbolDisplay.FormatPrimitive(number, quoteStrings: true, useHexadecimalNumbers: false),
+        double number => SymbolDisplay.FormatPrimitive(number, quoteStrings: true, useHexadecimalNumbers: false),
+        decimal number => $"{number.ToString(System.Globalization.CultureInfo.InvariantCulture)}M",
+        _ => Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? "null",
+    };
 
     // ── Behavior registration helpers ────────────────────────────────────────────────────────
 

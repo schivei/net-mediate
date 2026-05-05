@@ -361,14 +361,14 @@ public class MediatorTests
 
     private sealed class ThrowingNotifier : INotifiable
     {
-        public Task DispatchNotifications<TMessage>(TMessage message, INotificationHandler<TMessage>[] handlers,
+        public Task DispatchNotifications<TMessage>(object? key, TMessage message, INotificationHandler<TMessage>[] handlers,
             CancellationToken cancellationToken = default) where TMessage : notnull => Task.CompletedTask;
 
         // Throws synchronously so the catch block in Mediator.Notify is exercised.
-        public Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+        public Task Notify<TMessage>(object? key, TMessage message, CancellationToken cancellationToken = default)
             where TMessage : notnull => throw new InvalidOperationException("notifier error");
 
-        public Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default)
+        public Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default)
             where TMessage : notnull => throw new InvalidOperationException("notifier error");
     }
 

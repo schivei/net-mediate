@@ -251,15 +251,15 @@ public class MediatorServiceBuilderTests
     private sealed class NoOpBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
         where TMessage : notnull
     {
-        public Task Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
-            next(message, ct);
+        public Task Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
+            next(key, message, ct);
     }
 
     private sealed class NoOpNotificationBehavior<TMessage> : IPipelineNotificationBehavior<TMessage>
         where TMessage : notnull
     {
-        public Task Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
-            next(message, ct);
+        public Task Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
+            next(key, message, ct);
     }
 }
 

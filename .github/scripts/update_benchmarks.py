@@ -115,13 +115,15 @@ THRESHOLD_PERCENT = 3.0  # ±3% band for "no change" classification
 
 
 def throughput_str(ns: float) -> str:
+    if ns <= 0:
+        return 'N/A'
     t = 1e9 / ns
     return f'~{t/1e6:.1f}M msg/s' if t >= 1e6 else f'~{t/1e3:.0f}K msg/s'
 
 
 def compare_str(key: str, new_ns: float) -> str:
     old_ns = baseline.get(key)
-    if old_ns is None:
+    if old_ns is None or old_ns <= 0:
         return '—'
     d = (new_ns - old_ns) / old_ns * 100
     if abs(d) <= THRESHOLD_PERCENT:
@@ -164,8 +166,12 @@ throughput_block = tput_header + '\n' + '\n'.join(tput_rows)
 
 def replace_between(text: str, start_marker: str, end_marker: str, new_content: str) -> str:
     pat = re.compile(re.escape(start_marker) + r'.*?' + re.escape(end_marker), re.DOTALL)
+    if not pat.search(text):
+        print(f'Warning: marker {start_marker!r} not found in {DOC_PATH} — block not updated.',
+              file=sys.stderr)
+        return text
     replacement = start_marker + '\n' + new_content + '\n' + end_marker
-    return pat.sub(replacement, text) if pat.search(text) else text
+    return pat.sub(replacement, text)
 
 
 doc = replace_between(doc, '<!-- ci-environment-start -->', '<!-- ci-environment-end -->', env_block)
@@ -230,8 +236,9 @@ ci_section = (
     f'{throughput_block}\n\n'
     f'### Comparison vs baseline (`{BASE_REF}`)\n\n'
     f'> ✅ improved (>{THRESHOLD_PERCENT:.0f}% faster, lower ns)'
-    f' \u00a0|\u00a0 ≈ no change (±{THRESHOLD_PERCENT:.0f}%)'
-    f' \u00a0|\u00a0 ⚠️ degraded (>{THRESHOLD_PERCENT:.0f}% slower, higher ns)'
+    # \u00a0 = non-breaking space keeps the legend on one line in narrow markdown renders
+    f'\u00a0|\u00a0 ≈ no change (±{THRESHOLD_PERCENT:.0f}%)'
+    f'\u00a0|\u00a0 ⚠️ degraded (>{THRESHOLD_PERCENT:.0f}% slower, higher ns)'
     '\n\n'
     f'{comparison_md}'
 )

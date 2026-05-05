@@ -12,11 +12,34 @@ Commands are dispatched to **all** registered handlers **sequentially** in regis
 
 For the complete commands documentation, see the main [README](https://github.com/schivei/net-mediate#commands).
 
-## Usage
+## Basic Usage
 
 ```csharp
 await mediator.Send(new CreateUserCommand("john@example.com", "John Doe"));
 ```
+
+## Keyed Dispatch
+
+Register handlers under routing keys and dispatch to a specific subset at runtime. This is useful for scenarios such as queue/topic routing, tenant isolation, or environment-specific handling:
+
+```csharp
+// Registration — same message type, different keys
+builder.Services.AddNetMediate(configure =>
+{
+    configure.RegisterCommandHandler<DefaultHandler, MyCommand>();        // null key
+    configure.RegisterCommandHandler<AuditHandler, MyCommand>("audit");  // keyed
+});
+
+// Dispatch to null-key (default) handlers
+await mediator.Send(new MyCommand(), cancellationToken);
+
+// Dispatch only to "audit" handlers
+await mediator.Send("audit", new MyCommand(), cancellationToken);
+```
+
+The `key` is propagated through the entire pipeline — behaviors receive it in their `Handle(object? key, ...)` signature and can use it for routing, logging, or conditional logic.
+
+> **NativeAOT:** Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed registration uses `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**; use it only when NativeAOT is not required.
 
 ## See Also
 

@@ -13,7 +13,7 @@ NetMediate supports four different message types, each designed for specific com
 | **Command** | Side-effects, multi-handler actions | Multiple (sequential) | `Task` |
 | **Request** | Query/response pattern | Single | `Task<TResponse>` |
 | **Notification** | Fire-and-forget events | Multiple (parallel) | `Task` |
-| **Stream** | Async data streams | Single | `IAsyncEnumerable<T>` |
+| **Stream** | Async data streams | Multiple (merged) | `IAsyncEnumerable<T>` |
 
 ## Commands
 

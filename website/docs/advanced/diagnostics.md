@@ -78,7 +78,6 @@ Environment used for these measurements:
 > - command throughput improved slightly with the current branch in this environment.
 > - request throughput is lower because this branch adds extra per-request work in the hot path (behavior-chain resolution + diagnostics counters/tags + activity lifecycle checks).
 > - benchmark results are sensitive to runtime environment noise. Re-run multiple times for stable medians before release decisions.
-> - CI/unit runs keep performance tests opt-in; set `NETMEDIATE_RUN_PERFORMANCE_TESTS=true` to execute throughput assertions locally.
 
 ## See Also
 

@@ -15,12 +15,15 @@ public sealed class LoggingBehavior<TMessage, TResponse>
     : IPipelineRequestBehavior<TMessage, TResponse>
     where TMessage : notnull
 {
+    // Handle receives object? key — the same key passed to the dispatch call.
+    // Use it for routing (e.g. queue/topic selection) or contextual filtering.
     public async Task<TResponse> Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
         CancellationToken cancellationToken)
     {
-        Console.WriteLine($"Before: {typeof(TMessage).Name}");
+        Console.WriteLine($"Before: {typeof(TMessage).Name} (key={key})");
         var response = await next(message, cancellationToken);
         Console.WriteLine($"After: {typeof(TMessage).Name}");
         return response;

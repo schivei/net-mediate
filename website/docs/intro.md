@@ -36,8 +36,11 @@ Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream operations with
 ### 🐕 **Optional DataDog Integrations**
 OpenTelemetry, Serilog, and ILogger support packages for comprehensive observability.
 
-### 💉 **Dependency Injection**
-Seamless integration with Microsoft.Extensions.DependencyInjection.
+### 🔑 **Keyed Handler Routing**
+Register handlers under named keys and dispatch to specific subsets at runtime.
+
+### 🌊 **Streaming Fan-Out**
+Multiple `IStreamHandler` registrations supported — their items are merged sequentially.
 
 ### ⏹️ **Cancellation Support**
 Full cancellation token support across all operations.

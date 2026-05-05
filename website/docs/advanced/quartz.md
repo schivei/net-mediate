@@ -126,19 +126,20 @@ builder.Services.AddQuartz(q =>
 
 ```
 IMediator.Notify(message)
-    └─► INotifiable.Notify (QuartzNotifier)
+    └─► INotifiable.Notify(key, message) (QuartzNotifier)
             └─► Quartz schedules QuartzNotificationJob
                     └─► (job fires) QuartzNotificationJob.Execute
-                            └─► INotifiable.DispatchNotifications (QuartzNotifier)
+                            └─► INotifiable.DispatchNotifications(key, message, handlers)
                                     └─► Validation + Behaviors + Handlers
 ```
 
-`QuartzNotificationJob` stores two values in the Quartz `JobDataMap`:
+`QuartzNotificationJob` stores three values in the Quartz `JobDataMap`:
 
 | Key | Value |
 |---|---|
 | `netmediate_message` | JSON-serialized notification payload |
 | `netmediate_type` | Assembly-qualified CLR type name |
+| `netmediate_key` | Routing key (null if not keyed) |
 
 The generic dispatch is cached per message type using a `ConcurrentDictionary` to minimise reflection overhead after the first invocation.
 

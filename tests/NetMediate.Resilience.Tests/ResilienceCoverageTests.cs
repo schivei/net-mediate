@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -128,6 +129,180 @@ public sealed class ResilienceCoverageTests
 
         Assert.Null(ex.HandlerType);
         Assert.Contains("CmdMessage", ex.Message);
+    }
+
+    // ── Multi-command-handler fan-out ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Send_WithTwoCommandHandlers_InvokesAll()
+    {
+        ResMultiCmdTrace.Reset();
+
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.UseNetMediate(reg =>
+        {
+            reg.RegisterCommandHandler<ResMultiCmdHandlerA, ResMultiCmdMessage>();
+            reg.RegisterCommandHandler<ResMultiCmdHandlerB, ResMultiCmdMessage>();
+        });
+        using var host = builder.Build();
+        await host.StartAsync(TestContext.Current.CancellationToken);
+
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        await mediator.Send(new ResMultiCmdMessage("x"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, ResMultiCmdTrace.Count);
+    }
+
+    // ── Multi-stream-handler fan-out ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task RequestStream_WithTwoStreamHandlers_MergesItems()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.UseNetMediate(reg =>
+        {
+            reg.RegisterStreamHandler<ResStreamHandlerA, ResStreamMessage, int>();
+            reg.RegisterStreamHandler<ResStreamHandlerB, ResStreamMessage, int>();
+        });
+        using var host = builder.Build();
+        await host.StartAsync(TestContext.Current.CancellationToken);
+
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        var results = new List<int>();
+        await foreach (var item in mediator.RequestStream<ResStreamMessage, int>(
+            new ResStreamMessage(), TestContext.Current.CancellationToken))
+            results.Add(item);
+
+        Assert.Equal([10, 20, 30, 40], results);
+    }
+
+    // ── Keyed handler registration and dispatch ───────────────────────────────────────────────
+
+    [Fact]
+    public async Task RegisterCommandHandler_WithKey_DispatchesToKeyedHandler()
+    {
+        ResKeyedCmdTrace.Reset();
+
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.UseNetMediate(reg =>
+        {
+            reg.RegisterCommandHandler<ResNoopCmdHandler, ResKeyedCmdMessage>();
+            reg.RegisterCommandHandler<ResKeyedCmdHandler, ResKeyedCmdMessage>("reskey");
+        });
+        using var host = builder.Build();
+        await host.StartAsync(TestContext.Current.CancellationToken);
+
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        await mediator.Send("reskey", new ResKeyedCmdMessage("v"), TestContext.Current.CancellationToken);
+
+        Assert.True(ResKeyedCmdTrace.Called);
+    }
+
+    [Fact]
+    public async Task RegisterNotificationHandler_WithKey_DispatchesToKeyedHandler()
+    {
+        ResKeyedNotifTrace.Reset();
+
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.UseNetMediate(reg =>
+        {
+            reg.RegisterNotificationHandler<ResNoopNotifHandler, ResKeyedNotifMessage>();
+            reg.RegisterNotificationHandler<ResKeyedNotifHandler, ResKeyedNotifMessage>("nreskey");
+        });
+        using var host = builder.Build();
+        await host.StartAsync(TestContext.Current.CancellationToken);
+
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        await mediator.Notify("nreskey", new ResKeyedNotifMessage("n"), TestContext.Current.CancellationToken);
+
+        await WaitForAsync(() => ResKeyedNotifTrace.Called, TestContext.Current.CancellationToken);
+        Assert.True(ResKeyedNotifTrace.Called);
+    }
+
+    [Fact]
+    public async Task RegisterRequestHandler_WithKey_DispatchesToKeyedHandler()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.UseNetMediate(reg =>
+        {
+            reg.RegisterRequestHandler<ResNoopReqHandler, ResKeyedReqMessage, string>();
+            reg.RegisterRequestHandler<ResKeyedReqHandler, ResKeyedReqMessage, string>("rreskey");
+        });
+        using var host = builder.Build();
+        await host.StartAsync(TestContext.Current.CancellationToken);
+
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        var result = await mediator.Request<ResKeyedReqMessage, string>("rreskey", new ResKeyedReqMessage("val"), TestContext.Current.CancellationToken);
+
+        Assert.Equal("val", result);
+    }
+
+    [Fact]
+    public async Task RegisterStreamHandler_WithKey_DispatchesToKeyedHandler()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.UseNetMediate(reg =>
+        {
+            reg.RegisterStreamHandler<ResNoopStreamHandler, ResKeyedStreamMessage, int>();
+            reg.RegisterStreamHandler<ResKeyedStreamHandler, ResKeyedStreamMessage, int>("sreskey");
+        });
+        using var host = builder.Build();
+        await host.StartAsync(TestContext.Current.CancellationToken);
+
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        var results = new List<int>();
+        await foreach (var item in mediator.RequestStream<ResKeyedStreamMessage, int>("sreskey", new ResKeyedStreamMessage(2), TestContext.Current.CancellationToken))
+            results.Add(item);
+
+        Assert.Equal([1, 2], results);
+    }
+
+    // ── RetryBehavior with non-zero delay ─────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task RetryRequestBehavior_WithDelay_ShouldRetryAfterDelay()
+    {
+        using var host = await CreateRequestHostAsync(services =>
+        {
+            services.Configure<RetryBehaviorOptions>(opts =>
+            {
+                opts.MaxRetryCount = 2;
+                opts.Delay = TimeSpan.FromMilliseconds(5);
+            });
+        });
+
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        var response = await mediator.Request<RetryWithDelayMessage, string>(
+            new RetryWithDelayMessage("ok"),
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal("ok", response);
+    }
+
+    [Fact]
+    public async Task RetryNotificationBehavior_WithDelay_ShouldRetryAfterDelay()
+    {
+        using var host = await CreateRequestHostAsync(services =>
+        {
+            services.Configure<RetryBehaviorOptions>(opts =>
+            {
+                opts.MaxRetryCount = 2;
+                opts.Delay = TimeSpan.FromMilliseconds(5);
+            });
+        });
+
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        await mediator.Notify(
+            new RetryWithDelayNotifMessage("ok"),
+            TestContext.Current.CancellationToken
+        );
+
+        await WaitForAsync(
+            () => RetryWithDelayNotifHandler.Handled,
+            TestContext.Current.CancellationToken
+        );
+        Assert.True(RetryWithDelayNotifHandler.Handled);
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────────────────────
@@ -338,5 +513,197 @@ public sealed class ResilienceCoverageTests
             NotifBehaviorTrace.Add("behavior:pre");
             await next(key, message, ct);
         }
+    }
+
+    // ── New types, trace helpers, and handlers for new coverage tests ─────────────────────────
+
+    public sealed record ResMultiCmdMessage(string Value);
+    public sealed record ResStreamMessage;
+    public sealed record ResKeyedCmdMessage(string Value);
+    public sealed record ResKeyedNotifMessage(string Value);
+    public sealed record ResKeyedReqMessage(string Value);
+    public sealed record ResKeyedStreamMessage(int Count);
+    public sealed record RetryWithDelayMessage(string Value);
+    public sealed record RetryWithDelayNotifMessage(string Value);
+
+    private static class ResMultiCmdTrace
+    {
+        private static int _count;
+        public static int Count => Volatile.Read(ref _count);
+        public static void Increment() => Interlocked.Increment(ref _count);
+        public static void Reset() => Interlocked.Exchange(ref _count, 0);
+    }
+
+    private static class ResKeyedCmdTrace
+    {
+        private static volatile bool _called;
+        public static bool Called => _called;
+        public static void Set() => _called = true;
+        public static void Reset() => _called = false;
+    }
+
+    private static class ResKeyedNotifTrace
+    {
+        private static volatile bool _called;
+        public static bool Called => _called;
+        public static void Set() => _called = true;
+        public static void Reset() => _called = false;
+    }
+
+    private sealed class ResMultiCmdHandlerA : ICommandHandler<ResMultiCmdMessage>
+    {
+        public Task Handle(ResMultiCmdMessage command, CancellationToken ct = default)
+        {
+            ResMultiCmdTrace.Increment();
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ResMultiCmdHandlerB : ICommandHandler<ResMultiCmdMessage>
+    {
+        public Task Handle(ResMultiCmdMessage command, CancellationToken ct = default)
+        {
+            ResMultiCmdTrace.Increment();
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ResStreamHandlerA : IStreamHandler<ResStreamMessage, int>
+    {
+        public async IAsyncEnumerable<int> Handle(
+            ResStreamMessage query,
+            [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            yield return 10;
+            yield return 20;
+            await Task.Yield();
+        }
+    }
+
+    private sealed class ResStreamHandlerB : IStreamHandler<ResStreamMessage, int>
+    {
+        public async IAsyncEnumerable<int> Handle(
+            ResStreamMessage query,
+            [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            yield return 30;
+            yield return 40;
+            await Task.Yield();
+        }
+    }
+
+    private sealed class ResKeyedCmdHandler : ICommandHandler<ResKeyedCmdMessage>
+    {
+        public Task Handle(ResKeyedCmdMessage command, CancellationToken ct = default)
+        {
+            ResKeyedCmdTrace.Set();
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ResNoopCmdHandler : ICommandHandler<ResKeyedCmdMessage>
+    {
+        public Task Handle(ResKeyedCmdMessage command, CancellationToken ct = default) => Task.CompletedTask;
+    }
+
+    private sealed class ResKeyedNotifHandler : INotificationHandler<ResKeyedNotifMessage>
+    {
+        public Task Handle(ResKeyedNotifMessage notification, CancellationToken ct = default)
+        {
+            ResKeyedNotifTrace.Set();
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ResNoopNotifHandler : INotificationHandler<ResKeyedNotifMessage>
+    {
+        public Task Handle(ResKeyedNotifMessage notification, CancellationToken ct = default) => Task.CompletedTask;
+    }
+
+    private sealed class ResKeyedReqHandler : IRequestHandler<ResKeyedReqMessage, string>
+    {
+        public Task<string> Handle(ResKeyedReqMessage query, CancellationToken ct = default) =>
+            Task.FromResult(query.Value);
+    }
+
+    private sealed class ResNoopReqHandler : IRequestHandler<ResKeyedReqMessage, string>
+    {
+        public Task<string> Handle(ResKeyedReqMessage query, CancellationToken ct = default) =>
+            Task.FromResult(string.Empty);
+    }
+
+    private sealed class ResKeyedStreamHandler : IStreamHandler<ResKeyedStreamMessage, int>
+    {
+        public async IAsyncEnumerable<int> Handle(
+            ResKeyedStreamMessage query,
+            [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            for (var i = 1; i <= query.Count; i++)
+            {
+                yield return i;
+                await Task.Yield();
+            }
+        }
+    }
+
+    private sealed class ResNoopStreamHandler : IStreamHandler<ResKeyedStreamMessage, int>
+    {
+        public async IAsyncEnumerable<int> Handle(
+            ResKeyedStreamMessage query,
+            [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            await Task.CompletedTask;
+            yield break;
+        }
+    }
+
+    private sealed class RetryWithDelayRequestHandler : IRequestHandler<RetryWithDelayMessage, string>
+    {
+        private static int s_attempts;
+        public static void Reset() => Interlocked.Exchange(ref s_attempts, 0);
+
+        public async Task<string> Handle(RetryWithDelayMessage query, CancellationToken ct = default)
+        {
+            var attempt = Interlocked.Increment(ref s_attempts);
+            if (attempt < 2)
+                throw new InvalidOperationException("transient failure");
+            await Task.Yield();
+            return query.Value;
+        }
+    }
+
+    private sealed class RetryWithDelayNotifHandler : INotificationHandler<RetryWithDelayNotifMessage>
+    {
+        private static volatile bool s_handled;
+        public static bool Handled => s_handled;
+        public static void Reset() => s_handled = false;
+
+        public Task Handle(RetryWithDelayNotifMessage notification, CancellationToken ct = default)
+        {
+            s_handled = true;
+            return Task.CompletedTask;
+        }
+    }
+
+    private static async Task<IHost> CreateRequestHostAsync(Action<IServiceCollection> configureServices)
+    {
+        RetryWithDelayRequestHandler.Reset();
+        RetryWithDelayNotifHandler.Reset();
+
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.UseNetMediate(configure =>
+        {
+            configure.RegisterRequestHandler<RetryWithDelayRequestHandler, RetryWithDelayMessage, string>();
+            configure.RegisterBehavior<RetryRequestBehavior<RetryWithDelayMessage, string>, RetryWithDelayMessage, Task<string>>();
+
+            configure.RegisterNotificationHandler<RetryWithDelayNotifHandler, RetryWithDelayNotifMessage>();
+            configure.RegisterBehavior<RetryNotificationBehavior<RetryWithDelayNotifMessage>, RetryWithDelayNotifMessage, Task>();
+        });
+
+        configureServices(builder.Services);
+
+        var host = builder.Build();
+        await host.StartAsync(TestContext.Current.CancellationToken);
+        return host;
     }
 }

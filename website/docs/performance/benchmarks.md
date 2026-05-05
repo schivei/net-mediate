@@ -265,9 +265,9 @@ Thresholds are deliberately lenient to remain green on any CI hardware. Local de
 
 ## See Also
 
-- [RESILIENCE.md](RESILIENCE.md) — resilience package guide
-- [AOT.md](AOT.md) — AOT/NativeAOT compatibility guide
-- [SOURCE_GENERATION.md](SOURCE_GENERATION.md) — source generator guide
+- [Resilience](../advanced/resilience) — resilience package guide
+- [Native AOT Support](../advanced/aot-support) — AOT/NativeAOT compatibility guide
+- [Source Generation](../advanced/source-generation) — source generator guide
 
 ---
 

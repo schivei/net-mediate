@@ -61,7 +61,7 @@ Requests follow the request-response pattern. Only one handler is invoked, retur
 ### Characteristics
 - ✅ Single handler only (first registered)
 - ✅ Returns a typed response
-- ✅ Synchronous execution
+- ✅ Async execution (`Task<TResponse>`)
 - ✅ Exceptions propagate to caller
 
 ### Example

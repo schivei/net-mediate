@@ -11,10 +11,37 @@ The main interface for sending messages.
 ```csharp
 public interface IMediator
 {
-    Task Send<TMessage>(TMessage message, CancellationToken cancellationToken = default);
-    Task<TResponse> Request<TMessage, TResponse>(TMessage message, CancellationToken cancellationToken = default);
-    Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default);
-    IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(TMessage message, CancellationToken cancellationToken = default);
+    // --- Notify overloads ---
+    Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+        where TMessage : notnull;
+    Task Notify<TMessage>(object? key, TMessage message, CancellationToken cancellationToken = default)
+        where TMessage : notnull;
+    Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default)
+        where TMessage : notnull;
+    Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default)
+        where TMessage : notnull;
+
+    // --- Send overloads ---
+    Task Send<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+        where TMessage : notnull;
+    Task Send<TMessage>(object? key, TMessage message, CancellationToken cancellationToken = default)
+        where TMessage : notnull;
+    Task Send<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default)
+        where TMessage : notnull;
+    Task Send<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default)
+        where TMessage : notnull;
+
+    // --- Request overloads ---
+    Task<TResponse> Request<TMessage, TResponse>(TMessage message, CancellationToken cancellationToken = default)
+        where TMessage : notnull;
+    Task<TResponse> Request<TMessage, TResponse>(object? key, TMessage message, CancellationToken cancellationToken = default)
+        where TMessage : notnull;
+
+    // --- RequestStream overloads ---
+    IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(TMessage message, CancellationToken cancellationToken = default)
+        where TMessage : notnull;
+    IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(object? key, TMessage message, CancellationToken cancellationToken = default)
+        where TMessage : notnull;
 }
 ```
 

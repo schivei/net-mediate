@@ -81,5 +81,5 @@ Environment used for these measurements:
 
 ## See Also
 
-- [BENCHMARKS.md](BENCHMARKS.md) — full benchmark matrix and reproduction steps
-- [DATADOG.md](DATADOG.md) — DataDog integration guide
+- [Benchmarks](../performance/benchmarks) — full benchmark matrix and reproduction steps
+- [DataDog Integration](./datadog) — DataDog integration guide

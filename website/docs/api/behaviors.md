@@ -10,8 +10,11 @@ Generic pipeline behavior interface.
 
 ```csharp
 public interface IPipelineBehavior<in TMessage, TResult>
+    where TMessage : notnull
+    where TResult : notnull
 {
-    Task<TResult> Handle(
+    TResult Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, TResult> next,
         CancellationToken cancellationToken);

@@ -19,7 +19,7 @@ Thank you for your interest in contributing to NetMediate! We welcome contributi
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+This project and everyone participating in it is governed by our [Code of Conduct](./code-of-conduct). By participating, you are expected to uphold this code.
 
 ## Getting Started
 

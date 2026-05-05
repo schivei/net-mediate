@@ -57,8 +57,8 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
-      // Replace with your project's social card
-      image: 'img/netmediate-social-card.jpg',
+      // Social card image for OG/Twitter previews
+      // image: 'img/netmediate-social-card.jpg',
       navbar: {
         title: 'NetMediate',
         logo: {

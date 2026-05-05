@@ -42,4 +42,4 @@ If a class also implements `INotifiable` (e.g. a custom notifier), the generator
 
 ## AOT / NativeAOT
 
-The source-generator path is fully AOT-safe — no reflection, no `MakeGenericType`, no assembly scanning. See [AOT.md](AOT.md) for the complete compatibility guide.
+The source-generator path is fully AOT-safe — no reflection, no `MakeGenericType`, no assembly scanning. See [Native AOT Support](./aot-support) for the complete compatibility guide.

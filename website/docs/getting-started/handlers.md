@@ -165,7 +165,7 @@ public class MyHandler : ICommandHandler<MyCommand>
 
 ## Handler Lifetime
 
-All handlers are registered as **Transient** services by default. A new instance is created for each mediator operation.
+All handlers are registered as **Singleton** services by default. The same instance is reused across mediator operations.
 
 ## Multiple Handlers
 
@@ -200,7 +200,9 @@ public class Handler2 : ICommandHandler<MyCommand>
 
 ### Requests and Streams
 
-Only **one** handler can be registered for requests and streams. Registering multiple handlers will result in only the first registered handler being invoked.
+Only **one** handler can be registered for requests. Registering multiple handlers will result in only the first registered handler being invoked.
+
+For streams, **multiple** `IStreamHandler<TMessage, TResponse>` implementations can be registered. Their results are merged sequentially — each handler's async-enumerable output is yielded in registration order.
 
 ## Error Handling
 

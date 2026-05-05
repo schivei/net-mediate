@@ -497,7 +497,9 @@ public sealed class GeneratorIntegrationTests
 
         var service = serviceCollection.BuildServiceProvider();
 
-        var hasHandler = service.GetRequiredService<IRequestHandler<MyCommand, int>>();
+        // Handlers without [KeyedService] are registered under DEFAULT_ROUTING_KEY ("__default"),
+        // not as unkeyed services, so GetKeyedService must be used here.
+        var hasHandler = service.GetKeyedService<IRequestHandler<MyCommand, int>>(NetMediateDI.DEFAULT_ROUTING_KEY);
         Assert.IsType<MyCommandHandler>(hasHandler);
 
         var mediator = service.GetRequiredService<IMediator>();

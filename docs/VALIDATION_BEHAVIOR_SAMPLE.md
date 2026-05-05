@@ -17,6 +17,7 @@ public sealed class DataAnnotationsRequestBehavior<TMessage, TResponse>
     where TMessage : notnull
 {
     public Task<TResponse> Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
         CancellationToken cancellationToken)
@@ -56,6 +57,7 @@ public sealed class FluentValidationRequestBehavior<TMessage, TResponse>(
     where TMessage : notnull
 {
     public async Task<TResponse> Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
         CancellationToken cancellationToken)
@@ -94,6 +96,7 @@ public sealed class DataAnnotationsNotificationBehavior<TMessage>
     where TMessage : notnull
 {
     public Task Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task> next,
         CancellationToken cancellationToken)

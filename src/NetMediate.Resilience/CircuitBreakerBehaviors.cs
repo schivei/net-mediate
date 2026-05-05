@@ -15,7 +15,7 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     private static DateTimeOffset? s_openUntil;
 
     /// <inheritdoc />
-    public async Task<TResponse> Handle(TMessage message, PipelineBehaviorDelegate<TMessage, Task<TResponse>> next, CancellationToken cancellationToken)
+    public async Task<TResponse> Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task<TResponse>> next, CancellationToken cancellationToken)
     {
         if (IsCircuitOpen())
             throw new InvalidOperationException(
@@ -24,7 +24,7 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 
         try
         {
-            var result = await next(message, cancellationToken).ConfigureAwait(false);
+            var result = await next(key, message, cancellationToken).ConfigureAwait(false);
             RegisterSuccess();
             return result;
         }
@@ -95,6 +95,7 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(IOptions<Circui
 
     /// <inheritdoc />
     public async Task Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task> next,
         CancellationToken cancellationToken
@@ -107,7 +108,7 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(IOptions<Circui
 
         try
         {
-            await next(message, cancellationToken).ConfigureAwait(false);
+            await next(key, message, cancellationToken).ConfigureAwait(false);
             RegisterSuccess();
         }
         catch

@@ -34,6 +34,8 @@ The generated method is decorated with `[ExcludeFromCodeCoverage]` — you do no
 
 If a class also implements `INotifiable` (e.g. a custom notifier), the generator uses `UseNetMediate<TNotifier>` instead of `UseNetMediate`.
 
+> **Keyed handlers** (registered with a `key` argument, e.g. `RegisterCommandHandler<T,M>("audit")`) are **not** auto-discovered by the source generator. Register keyed handlers manually via `UseNetMediate` if needed.
+
 ## AOT / NativeAOT
 
 The source-generator path is fully AOT-safe — no reflection, no `MakeGenericType`, no assembly scanning. See [AOT.md](AOT.md) for the complete compatibility guide.

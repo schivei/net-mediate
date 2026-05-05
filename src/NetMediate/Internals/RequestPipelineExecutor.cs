@@ -1,5 +1,4 @@
 using System.Runtime.CompilerServices;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
 
@@ -20,6 +19,7 @@ internal sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvi
         Extensions.RegisterPipelineCacheClearing(sp => s_pipelineCache.Remove(sp));
 
     public Task<TResponse> Handle(
+        object? key,
         TMessage message,
         HandlerExecutionDelegate<IRequestHandler<TMessage, TResponse>, TMessage, Task<TResponse>> exec,
         CancellationToken cancellationToken)
@@ -27,25 +27,26 @@ internal sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvi
         var lazy = s_pipelineCache.GetValue(
             serviceProvider,
             sp => new Lazy<PipelineBehaviorDelegate<TMessage, Task<TResponse>>>(
-                () => BuildPipeline(sp, exec),
+                () => BuildPipeline(key, sp, exec),
                 LazyThreadSafetyMode.ExecutionAndPublication));
 
-        return lazy.Value(message, cancellationToken);
+        return lazy.Value(key, message, cancellationToken);
     }
 
     private static PipelineBehaviorDelegate<TMessage, Task<TResponse>> BuildPipeline(
+        object? key,
         IServiceProvider sp,
         HandlerExecutionDelegate<IRequestHandler<TMessage, TResponse>, TMessage, Task<TResponse>> exec)
     {
         // Resolve handlers directly from the provider — the pipeline is already cached per-provider,
         // so this runs only once per provider. Using direct resolution avoids cross-provider
         // contamination that would occur with a global static handler cache.
-        var handlers = sp.GetServices<IRequestHandler<TMessage, TResponse>>().ToArray();
+        var handlers = sp.GetHandlers<IRequestHandler<TMessage, TResponse>, TMessage, Task<TResponse>>(key).ToArray();
 
         // Single-handler fast path: requests always have exactly one handler; bypass exec.
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> app = handlers.Length == 1
-            ? (msg, ct) => handlers[0].Handle(msg, ct)
-            : (msg, ct) => exec(msg, handlers, ct);
+            ? (_, msg, ct) => handlers[0].Handle(msg, ct)
+            : (key, msg, ct) => exec(key, msg, handlers, ct);
 
         // Combine IPipelineBehavior<TMessage, Task<TResponse>> and IPipelineRequestBehavior<TMessage, TResponse>
         // both AOT-safe (no MakeGenericType). Results are cached per type to avoid repeated DI enumeration.
@@ -59,7 +60,7 @@ internal sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvi
 
         // Explicit Enumerable.Reverse avoids ambiguity with MemoryExtensions.Reverse(Span<T>).
         return Enumerable.Reverse(behaviorArray)
-            .Aggregate(app, (current, behavior) => (msg, ct) =>
-                behavior.Handle(msg, current, ct));
+            .Aggregate(app, (current, behavior) => (key, msg, ct) =>
+                behavior.Handle(key, msg, current, ct));
     }
 }

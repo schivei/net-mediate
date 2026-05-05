@@ -11,6 +11,7 @@ public sealed class TimeoutRequestBehavior<TMessage, TResponse>(IOptions<Timeout
 {
     /// <inheritdoc />
     public async Task<TResponse> Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
         CancellationToken cancellationToken
@@ -18,7 +19,7 @@ public sealed class TimeoutRequestBehavior<TMessage, TResponse>(IOptions<Timeout
     {
         var timeout = optionsAccessor.Value.RequestTimeout;
         if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
-            return await next(message, cancellationToken).ConfigureAwait(false);
+            return await next(key, message, cancellationToken).ConfigureAwait(false);
 
         using var timeoutTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken
@@ -27,7 +28,7 @@ public sealed class TimeoutRequestBehavior<TMessage, TResponse>(IOptions<Timeout
 
         try
         {
-            return await next(message, timeoutTokenSource.Token).ConfigureAwait(false);
+            return await next(key, message, timeoutTokenSource.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException ex)
             when (
@@ -51,6 +52,7 @@ public sealed class TimeoutNotificationBehavior<TMessage>(IOptions<TimeoutBehavi
 {
     /// <inheritdoc />
     public async Task Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task> next,
         CancellationToken cancellationToken
@@ -59,7 +61,7 @@ public sealed class TimeoutNotificationBehavior<TMessage>(IOptions<TimeoutBehavi
         var timeout = optionsAccessor.Value.NotificationTimeout;
         if (timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
         {
-            await next(message, cancellationToken).ConfigureAwait(false);
+            await next(key, message, cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -70,7 +72,7 @@ public sealed class TimeoutNotificationBehavior<TMessage>(IOptions<TimeoutBehavi
 
         try
         {
-            await next(message, timeoutTokenSource.Token).ConfigureAwait(false);
+            await next(key, message, timeoutTokenSource.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException ex)
             when (

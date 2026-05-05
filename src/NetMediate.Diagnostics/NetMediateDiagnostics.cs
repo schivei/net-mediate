@@ -48,7 +48,19 @@ public static class NetMediateDiagnostics
         if (!ActivitySource.HasListeners())
             return null;
 
-        var activity = ActivitySource.StartActivity($"NetMediate.{operation}", ActivityKind.Internal);
+        // Capture a link to the ambient activity at dispatch time so that the mediator span
+        // is correctly connected to the caller's trace — especially important for
+        // fire-and-forget notifications where Activity.Current may differ at handler execution time.
+        var links = Activity.Current is { } parent
+            ? (IEnumerable<ActivityLink>)[new ActivityLink(parent.Context)]
+            : null;
+
+        var activity = ActivitySource.StartActivity(
+            $"NetMediate.{operation}",
+            ActivityKind.Internal,
+            parentContext: default,
+            links: links);
+
         activity?.SetTag("netmediate.operation", operation);
         activity?.SetTag("netmediate.message_type", typeof(TMessage).Name);
         return activity;

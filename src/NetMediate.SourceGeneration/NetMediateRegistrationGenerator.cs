@@ -216,6 +216,8 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             var order = GetOrderArgument(handlerType);
 
             diagnosticsBehaviors.AddIfNew(order);
+            resilienceBehaviors.AddIfNew(order);
+            handlers.AddIfNew(order);
 
             BuildResgistration((hasDiagnostics, hasResilience, diagnosticsBehaviors[order], resilienceBehaviors[order], handlers[order], notifier, handlerType, handlerName, handlerKeyArgument));
         }

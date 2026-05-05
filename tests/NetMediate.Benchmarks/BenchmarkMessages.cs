@@ -10,8 +10,8 @@ public sealed record BenchCommand : ICommand;
 public sealed class BenchCommandHandler : ICommandHandler<BenchCommand>
 {
     /// <inheritdoc/>
-    public Task Handle(BenchCommand message, CancellationToken cancellationToken = default)
-        => Task.CompletedTask;
+    public Task Handle(BenchCommand message, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
 }
 
 // ── Notification ─────────────────────────────────────────────────────────────
@@ -22,8 +22,8 @@ public sealed record BenchNotification : INotification;
 public sealed class BenchNotificationHandler : INotificationHandler<BenchNotification>
 {
     /// <inheritdoc/>
-    public Task Handle(BenchNotification message, CancellationToken cancellationToken = default)
-        => Task.CompletedTask;
+    public Task Handle(BenchNotification message, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
 }
 
 // ── Request ───────────────────────────────────────────────────────────────────
@@ -39,8 +39,10 @@ public sealed class BenchRequestHandler : IRequestHandler<BenchRequest, BenchRes
     private static readonly Task<BenchResponse> s_response = Task.FromResult(new BenchResponse(42));
 
     /// <inheritdoc/>
-    public Task<BenchResponse> Handle(BenchRequest message, CancellationToken cancellationToken = default)
-        => s_response;
+    public Task<BenchResponse> Handle(
+        BenchRequest message,
+        CancellationToken cancellationToken = default
+    ) => s_response;
 }
 
 // ── Stream ────────────────────────────────────────────────────────────────────
@@ -56,7 +58,9 @@ public sealed class BenchStreamHandler : IStreamHandler<BenchStreamRequest, Benc
     /// <inheritdoc/>
     public async IAsyncEnumerable<BenchStreamItem> Handle(
         BenchStreamRequest message,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
+        [System.Runtime.CompilerServices.EnumeratorCancellation]
+            CancellationToken cancellationToken = default
+    )
     {
         yield return new BenchStreamItem(1);
         yield return new BenchStreamItem(2);

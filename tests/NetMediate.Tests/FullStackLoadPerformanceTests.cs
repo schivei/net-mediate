@@ -76,7 +76,10 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
             $"LOAD_RESULT fullstack_notification tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected full-stack notification throughput: {throughput:F2} ops/s");
+        Assert.True(
+            throughput > 500,
+            $"Unexpected full-stack notification throughput: {throughput:F2} ops/s"
+        );
     }
 
     [Fact]
@@ -113,7 +116,10 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
             $"LOAD_RESULT fullstack_notification_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected parallel full-stack notification throughput: {throughput:F2} ops/s");
+        Assert.True(
+            throughput > 500,
+            $"Unexpected parallel full-stack notification throughput: {throughput:F2} ops/s"
+        );
     }
 
     private static async Task<IHost> CreateHostAsync()
@@ -122,7 +128,10 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
         builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterRequestHandler<FullStackRequestHandler, FullStackRequest, int>();
-            configure.RegisterNotificationHandler<FullStackNotificationHandler, FullStackNotification>();
+            configure.RegisterNotificationHandler<
+                FullStackNotificationHandler,
+                FullStackNotification
+            >();
         });
 
         var host = builder.Build();
@@ -147,17 +156,22 @@ public sealed class FullStackLoadPerformanceTests(ITestOutputHelper output)
             : 40_000d;
 
     public sealed record FullStackRequest(int Value);
+
     public sealed record FullStackNotification(int Value);
 
     private sealed class FullStackRequestHandler : IRequestHandler<FullStackRequest, int>
     {
-        public Task<int> Handle(FullStackRequest query, CancellationToken cancellationToken = default) =>
-            Task.FromResult(query.Value + 1);
+        public Task<int> Handle(
+            FullStackRequest query,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult(query.Value + 1);
     }
 
     private sealed class FullStackNotificationHandler : INotificationHandler<FullStackNotification>
     {
-        public Task Handle(FullStackNotification notification, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task Handle(
+            FullStackNotification notification,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
     }
 }

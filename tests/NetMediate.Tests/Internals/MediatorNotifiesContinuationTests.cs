@@ -71,7 +71,8 @@ public sealed class MediatorNotifiesContinuationTests
         for (var i = 0; i < 100; i++)
         {
             ct.ThrowIfCancellationRequested();
-            if (predicate()) return;
+            if (predicate())
+                return;
             await Task.Delay(10, ct);
         }
     }
@@ -81,7 +82,8 @@ public sealed class MediatorNotifiesContinuationTests
     {
         var message = new Msg();
         await using var provider = BuildProvider(b =>
-            b.RegisterNotificationHandler(new OkHandler()));
+            b.RegisterNotificationHandler(new OkHandler())
+        );
         var sut = BuildMediator(provider);
 
         await sut.Notify(message, TestContext.Current.CancellationToken);
@@ -96,7 +98,8 @@ public sealed class MediatorNotifiesContinuationTests
     {
         var message = new Msg();
         await using var provider = BuildProvider(b =>
-            b.RegisterNotificationHandler(new FaultHandler()));
+            b.RegisterNotificationHandler(new FaultHandler())
+        );
         var sut = BuildMediator(provider);
 
         // Fire-and-forget: no exception propagated
@@ -121,7 +124,7 @@ public sealed class MediatorNotifiesContinuationTests
         await sut.Notify(message, TestContext.Current.CancellationToken);
         await Task.Delay(100, TestContext.Current.CancellationToken);
 
-        Assert.True(message.Maked);  // Behavior ran and called Mark() before dispatching
+        Assert.True(message.Maked); // Behavior ran and called Mark() before dispatching
         Assert.False(message.Checked); // Handler faulted, Check() never called
     }
 

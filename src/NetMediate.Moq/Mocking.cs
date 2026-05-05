@@ -46,7 +46,8 @@ public static class Mocking
     public static global::Moq.Mock<TService> AddMockSingleton<TService>(
         this IServiceCollection services,
         global::Moq.MockBehavior behavior = global::Moq.MockBehavior.Default
-    ) where TService : class
+    )
+        where TService : class
     {
         Guard.ThrowIfNull(services);
 
@@ -66,7 +67,8 @@ public static class Mocking
     public static global::Moq.Mock<TService> AddMockSingleton<TService>(
         this IServiceCollection services,
         global::Moq.Mock<TService> mock
-    ) where TService : class
+    )
+        where TService : class
     {
         Guard.ThrowIfNull(services);
         Guard.ThrowIfNull(mock);
@@ -89,7 +91,8 @@ public static class Mocking
     private static void ReplaceWithMock<TService>(
         this IServiceCollection services,
         global::Moq.Mock<TService> mock
-    ) where TService : class
+    )
+        where TService : class
     {
         services.RemoveAll<TService>();
         services.RemoveAll<global::Moq.Mock<TService>>();

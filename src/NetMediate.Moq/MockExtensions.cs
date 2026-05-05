@@ -13,7 +13,8 @@ public static class MockExtensions
     /// <returns>Setup continuation for fluent assertions.</returns>
     public static global::Moq.Language.Flow.IReturnsResult<TMock> ReturnsCompletedTask<TMock>(
         this global::Moq.Language.Flow.ISetup<TMock, Task> setup
-    ) where TMock : class => setup.Returns(Task.CompletedTask);
+    )
+        where TMock : class => setup.Returns(Task.CompletedTask);
 
     /// <summary>
     /// Returns a constant value wrapped in a task.
@@ -26,7 +27,8 @@ public static class MockExtensions
     public static global::Moq.Language.Flow.IReturnsResult<TMock> ReturnsTaskResult<TMock, TResult>(
         this global::Moq.Language.Flow.ISetup<TMock, Task<TResult>> setup,
         TResult value
-    ) where TMock : class => setup.Returns(Task.FromResult(value));
+    )
+        where TMock : class => setup.Returns(Task.FromResult(value));
 
     /// <summary>
     /// Returns a constant value wrapped in a value task.
@@ -39,5 +41,6 @@ public static class MockExtensions
     public static global::Moq.Language.Flow.IReturnsResult<TMock> ReturnsTask<TMock, TResult>(
         this global::Moq.Language.Flow.ISetup<TMock, Task<TResult>> setup,
         TResult value
-    ) where TMock : class => setup.ReturnsTaskResult(value);
+    )
+        where TMock : class => setup.ReturnsTaskResult(value);
 }

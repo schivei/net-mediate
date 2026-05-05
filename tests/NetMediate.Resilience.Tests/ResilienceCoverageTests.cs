@@ -34,8 +34,8 @@ public sealed class ResilienceCoverageTests
         using var host = await CreateHostWithThrowingCommandAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
 
-        var ex = await Assert.ThrowsAsync<MediatorException>(
-            () => mediator.Send(new ThrowingCmdMessage("fail"), TestContext.Current.CancellationToken)
+        var ex = await Assert.ThrowsAsync<MediatorException>(() =>
+            mediator.Send(new ThrowingCmdMessage("fail"), TestContext.Current.CancellationToken)
         );
 
         Assert.IsType<InvalidOperationException>(ex.InnerException);
@@ -65,8 +65,12 @@ public sealed class ResilienceCoverageTests
         var mediator = host.Services.GetRequiredService<IMediator>();
 
         var results = new List<int>();
-        await foreach (var item in mediator.RequestStream<StreamMsg, int>(
-            new StreamMsg(3), TestContext.Current.CancellationToken))
+        await foreach (
+            var item in mediator.RequestStream<StreamMsg, int>(
+                new StreamMsg(3),
+                TestContext.Current.CancellationToken
+            )
+        )
         {
             results.Add(item);
         }
@@ -113,7 +117,10 @@ public sealed class ResilienceCoverageTests
         var mediator = host.Services.GetRequiredService<IMediator>();
         await mediator.Notify(new NotifBehaviorMsg("test"), TestContext.Current.CancellationToken);
 
-        await WaitForAsync(() => NotifBehaviorTrace.Count >= 2, TestContext.Current.CancellationToken);
+        await WaitForAsync(
+            () => NotifBehaviorTrace.Count >= 2,
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Contains("behavior:pre", NotifBehaviorTrace.Entries);
         Assert.Contains("handler", NotifBehaviorTrace.Entries);
@@ -169,8 +176,12 @@ public sealed class ResilienceCoverageTests
 
         var mediator = host.Services.GetRequiredService<IMediator>();
         var results = new List<int>();
-        await foreach (var item in mediator.RequestStream<ResStreamMessage, int>(
-            new ResStreamMessage(), TestContext.Current.CancellationToken))
+        await foreach (
+            var item in mediator.RequestStream<ResStreamMessage, int>(
+                new ResStreamMessage(),
+                TestContext.Current.CancellationToken
+            )
+        )
             results.Add(item);
 
         Assert.Equal([10, 20, 30, 40], results);
@@ -193,7 +204,11 @@ public sealed class ResilienceCoverageTests
         await host.StartAsync(TestContext.Current.CancellationToken);
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        await mediator.Send("reskey", new ResKeyedCmdMessage("v"), TestContext.Current.CancellationToken);
+        await mediator.Send(
+            "reskey",
+            new ResKeyedCmdMessage("v"),
+            TestContext.Current.CancellationToken
+        );
 
         Assert.True(ResKeyedCmdTrace.Called);
     }
@@ -213,7 +228,11 @@ public sealed class ResilienceCoverageTests
         await host.StartAsync(TestContext.Current.CancellationToken);
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        await mediator.Notify("nreskey", new ResKeyedNotifMessage("n"), TestContext.Current.CancellationToken);
+        await mediator.Notify(
+            "nreskey",
+            new ResKeyedNotifMessage("n"),
+            TestContext.Current.CancellationToken
+        );
 
         await WaitForAsync(() => ResKeyedNotifTrace.Called, TestContext.Current.CancellationToken);
         Assert.True(ResKeyedNotifTrace.Called);
@@ -232,7 +251,11 @@ public sealed class ResilienceCoverageTests
         await host.StartAsync(TestContext.Current.CancellationToken);
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        var result = await mediator.Request<ResKeyedReqMessage, string>("rreskey", new ResKeyedReqMessage("val"), TestContext.Current.CancellationToken);
+        var result = await mediator.Request<ResKeyedReqMessage, string>(
+            "rreskey",
+            new ResKeyedReqMessage("val"),
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal("val", result);
     }
@@ -251,7 +274,13 @@ public sealed class ResilienceCoverageTests
 
         var mediator = host.Services.GetRequiredService<IMediator>();
         var results = new List<int>();
-        await foreach (var item in mediator.RequestStream<ResKeyedStreamMessage, int>("sreskey", new ResKeyedStreamMessage(2), TestContext.Current.CancellationToken))
+        await foreach (
+            var item in mediator.RequestStream<ResKeyedStreamMessage, int>(
+                "sreskey",
+                new ResKeyedStreamMessage(2),
+                TestContext.Current.CancellationToken
+            )
+        )
             results.Add(item);
 
         Assert.Equal([1, 2], results);
@@ -312,7 +341,8 @@ public sealed class ResilienceCoverageTests
         for (var i = 0; i < 200; i++)
         {
             ct.ThrowIfCancellationRequested();
-            if (predicate()) return;
+            if (predicate())
+                return;
             await Task.Delay(10, ct);
         }
         Assert.Fail("Timed out waiting for condition.");
@@ -383,10 +413,15 @@ public sealed class ResilienceCoverageTests
     // ── Message types ────────────────────────────────────────────────────────────────────────
 
     public sealed record CmdMessage(string Value);
+
     public sealed record ThrowingCmdMessage(string Value);
+
     public sealed record MultiCmdMessage(string Value);
+
     public sealed record StreamMsg(int Count);
+
     public sealed record EnumNotifyMsg(string Value);
+
     public sealed record NotifBehaviorMsg(string Value);
 
     // ── Trace helpers ─────────────────────────────────────────────────────────────────────────
@@ -397,16 +432,25 @@ public sealed class ResilienceCoverageTests
         private static volatile bool _handlerCalled;
         public static bool BehaviorCalled => _behaviorCalled;
         public static bool HandlerCalled => _handlerCalled;
+
         public static void SetBehavior() => _behaviorCalled = true;
+
         public static void SetHandler() => _handlerCalled = true;
-        public static void Reset() { _behaviorCalled = false; _handlerCalled = false; }
+
+        public static void Reset()
+        {
+            _behaviorCalled = false;
+            _handlerCalled = false;
+        }
     }
 
     private static class MultiCmdTrace
     {
         private static int _count;
         public static int Count => Volatile.Read(ref _count);
+
         public static void Increment() => Interlocked.Increment(ref _count);
+
         public static void Reset() => Interlocked.Exchange(ref _count, 0);
     }
 
@@ -414,17 +458,24 @@ public sealed class ResilienceCoverageTests
     {
         private static int _count;
         public static int Count => Volatile.Read(ref _count);
+
         public static void Increment() => Interlocked.Increment(ref _count);
+
         public static void Reset() => Interlocked.Exchange(ref _count, 0);
     }
 
     private static class NotifBehaviorTrace
     {
-        private static readonly System.Collections.Concurrent.ConcurrentBag<string> _entries = [];
+        private static readonly ConcurrentBag<string> _entries = [];
         public static IReadOnlyCollection<string> Entries => [.. _entries];
         public static int Count => _entries.Count;
+
         public static void Add(string entry) => _entries.Add(entry);
-        public static void Reset() { while (_entries.TryTake(out _)) { } }
+
+        public static void Reset()
+        {
+            while (_entries.TryTake(out _)) { }
+        }
     }
 
     // ── Handlers ────────────────────────────────────────────────────────────────────────────
@@ -440,7 +491,12 @@ public sealed class ResilienceCoverageTests
 
     private sealed class CmdBehavior : IPipelineBehavior<CmdMessage, Task>
     {
-        public async Task Handle(object? key, CmdMessage message, PipelineBehaviorDelegate<CmdMessage, Task> next, CancellationToken ct = default)
+        public async Task Handle(
+            object? key,
+            CmdMessage message,
+            PipelineBehaviorDelegate<CmdMessage, Task> next,
+            CancellationToken ct = default
+        )
         {
             CmdTrace.SetBehavior();
             await next(key, message, ct);
@@ -466,7 +522,8 @@ public sealed class ResilienceCoverageTests
     {
         public async IAsyncEnumerable<int> Handle(
             StreamMsg query,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            [EnumeratorCancellation] CancellationToken ct = default
+        )
         {
             for (var i = 1; i <= query.Count; i++)
             {
@@ -479,10 +536,12 @@ public sealed class ResilienceCoverageTests
 
     private sealed class StreamBehavior : IPipelineStreamBehavior<StreamMsg, int>
     {
-        public IAsyncEnumerable<int> Handle(object? key,
+        public IAsyncEnumerable<int> Handle(
+            object? key,
             StreamMsg message,
             PipelineBehaviorDelegate<StreamMsg, IAsyncEnumerable<int>> next,
-            CancellationToken ct = default) => next(key, message, ct);
+            CancellationToken ct = default
+        ) => next(key, message, ct);
     }
 
     private sealed class EnumNotifyHandler : INotificationHandler<EnumNotifyMsg>
@@ -505,10 +564,12 @@ public sealed class ResilienceCoverageTests
 
     private sealed class NotifBehaviorImpl : IPipelineNotificationBehavior<NotifBehaviorMsg>
     {
-        public async Task Handle(object? key,
+        public async Task Handle(
+            object? key,
             NotifBehaviorMsg message,
             PipelineBehaviorDelegate<NotifBehaviorMsg, Task> next,
-            CancellationToken ct = default)
+            CancellationToken ct = default
+        )
         {
             NotifBehaviorTrace.Add("behavior:pre");
             await next(key, message, ct);
@@ -518,19 +579,28 @@ public sealed class ResilienceCoverageTests
     // ── New types, trace helpers, and handlers for new coverage tests ─────────────────────────
 
     public sealed record ResMultiCmdMessage(string Value);
+
     public sealed record ResStreamMessage;
+
     public sealed record ResKeyedCmdMessage(string Value);
+
     public sealed record ResKeyedNotifMessage(string Value);
+
     public sealed record ResKeyedReqMessage(string Value);
+
     public sealed record ResKeyedStreamMessage(int Count);
+
     public sealed record RetryWithDelayMessage(string Value);
+
     public sealed record RetryWithDelayNotifMessage(string Value);
 
     private static class ResMultiCmdTrace
     {
         private static int _count;
         public static int Count => Volatile.Read(ref _count);
+
         public static void Increment() => Interlocked.Increment(ref _count);
+
         public static void Reset() => Interlocked.Exchange(ref _count, 0);
     }
 
@@ -538,7 +608,9 @@ public sealed class ResilienceCoverageTests
     {
         private static volatile bool _called;
         public static bool Called => _called;
+
         public static void Set() => _called = true;
+
         public static void Reset() => _called = false;
     }
 
@@ -546,7 +618,9 @@ public sealed class ResilienceCoverageTests
     {
         private static volatile bool _called;
         public static bool Called => _called;
+
         public static void Set() => _called = true;
+
         public static void Reset() => _called = false;
     }
 
@@ -572,7 +646,8 @@ public sealed class ResilienceCoverageTests
     {
         public async IAsyncEnumerable<int> Handle(
             ResStreamMessage query,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            [EnumeratorCancellation] CancellationToken ct = default
+        )
         {
             yield return 10;
             yield return 20;
@@ -584,7 +659,8 @@ public sealed class ResilienceCoverageTests
     {
         public async IAsyncEnumerable<int> Handle(
             ResStreamMessage query,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            [EnumeratorCancellation] CancellationToken ct = default
+        )
         {
             yield return 30;
             yield return 40;
@@ -603,7 +679,8 @@ public sealed class ResilienceCoverageTests
 
     private sealed class ResNoopCmdHandler : ICommandHandler<ResKeyedCmdMessage>
     {
-        public Task Handle(ResKeyedCmdMessage command, CancellationToken ct = default) => Task.CompletedTask;
+        public Task Handle(ResKeyedCmdMessage command, CancellationToken ct = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class ResKeyedNotifHandler : INotificationHandler<ResKeyedNotifMessage>
@@ -617,7 +694,8 @@ public sealed class ResilienceCoverageTests
 
     private sealed class ResNoopNotifHandler : INotificationHandler<ResKeyedNotifMessage>
     {
-        public Task Handle(ResKeyedNotifMessage notification, CancellationToken ct = default) => Task.CompletedTask;
+        public Task Handle(ResKeyedNotifMessage notification, CancellationToken ct = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class ResKeyedReqHandler : IRequestHandler<ResKeyedReqMessage, string>
@@ -636,7 +714,8 @@ public sealed class ResilienceCoverageTests
     {
         public async IAsyncEnumerable<int> Handle(
             ResKeyedStreamMessage query,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            [EnumeratorCancellation] CancellationToken ct = default
+        )
         {
             for (var i = 1; i <= query.Count; i++)
             {
@@ -650,19 +729,25 @@ public sealed class ResilienceCoverageTests
     {
         public async IAsyncEnumerable<int> Handle(
             ResKeyedStreamMessage query,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            [EnumeratorCancellation] CancellationToken ct = default
+        )
         {
             await Task.CompletedTask;
             yield break;
         }
     }
 
-    private sealed class RetryWithDelayRequestHandler : IRequestHandler<RetryWithDelayMessage, string>
+    private sealed class RetryWithDelayRequestHandler
+        : IRequestHandler<RetryWithDelayMessage, string>
     {
         private static int s_attempts;
+
         public static void Reset() => Interlocked.Exchange(ref s_attempts, 0);
 
-        public async Task<string> Handle(RetryWithDelayMessage query, CancellationToken ct = default)
+        public async Task<string> Handle(
+            RetryWithDelayMessage query,
+            CancellationToken ct = default
+        )
         {
             var attempt = Interlocked.Increment(ref s_attempts);
             if (attempt < 2)
@@ -672,10 +757,12 @@ public sealed class ResilienceCoverageTests
         }
     }
 
-    private sealed class RetryWithDelayNotifHandler : INotificationHandler<RetryWithDelayNotifMessage>
+    private sealed class RetryWithDelayNotifHandler
+        : INotificationHandler<RetryWithDelayNotifMessage>
     {
         private static volatile bool s_handled;
         public static bool Handled => s_handled;
+
         public static void Reset() => s_handled = false;
 
         public Task Handle(RetryWithDelayNotifMessage notification, CancellationToken ct = default)
@@ -685,7 +772,9 @@ public sealed class ResilienceCoverageTests
         }
     }
 
-    private static async Task<IHost> CreateRequestHostAsync(Action<IServiceCollection> configureServices)
+    private static async Task<IHost> CreateRequestHostAsync(
+        Action<IServiceCollection> configureServices
+    )
     {
         RetryWithDelayRequestHandler.Reset();
         RetryWithDelayNotifHandler.Reset();
@@ -693,11 +782,26 @@ public sealed class ResilienceCoverageTests
         var builder = Host.CreateApplicationBuilder();
         builder.Services.UseNetMediate(configure =>
         {
-            configure.RegisterRequestHandler<RetryWithDelayRequestHandler, RetryWithDelayMessage, string>();
-            configure.RegisterBehavior<RetryRequestBehavior<RetryWithDelayMessage, string>, RetryWithDelayMessage, Task<string>>();
+            configure.RegisterRequestHandler<
+                RetryWithDelayRequestHandler,
+                RetryWithDelayMessage,
+                string
+            >();
+            configure.RegisterBehavior<
+                RetryRequestBehavior<RetryWithDelayMessage, string>,
+                RetryWithDelayMessage,
+                Task<string>
+            >();
 
-            configure.RegisterNotificationHandler<RetryWithDelayNotifHandler, RetryWithDelayNotifMessage>();
-            configure.RegisterBehavior<RetryNotificationBehavior<RetryWithDelayNotifMessage>, RetryWithDelayNotifMessage, Task>();
+            configure.RegisterNotificationHandler<
+                RetryWithDelayNotifHandler,
+                RetryWithDelayNotifMessage
+            >();
+            configure.RegisterBehavior<
+                RetryNotificationBehavior<RetryWithDelayNotifMessage>,
+                RetryWithDelayNotifMessage,
+                Task
+            >();
         });
 
         configureServices(builder.Services);

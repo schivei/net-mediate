@@ -14,12 +14,9 @@ namespace NetMediate.Tests;
 /// runtimes can be compared directly.
 ///
 /// <para>
-/// <b>JIT run (standard):</b> <c>NETMEDIATE_RUN_PERFORMANCE_TESTS=true dotnet test</c><br/>
-/// <b>NativeAOT run:</b> publish with <c>-p:PublishAot=true</c> and run the native binary with
-/// the same environment variable set.
+/// <b>JIT run (standard):</b> <c>dotnet test</c><br/>
+/// <b>NativeAOT run:</b> publish with <c>-p:PublishAot=true</c> and run the native binary.
 /// </para>
-///
-/// Run with <c>NETMEDIATE_RUN_PERFORMANCE_TESTS=true</c> to enable.
 /// </summary>
 public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
 {
@@ -42,8 +39,6 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
     [Fact]
     public async Task CoreCommand_DispatchThroughput()
     {
-        if (!ShouldRun()) Assert.Skip("NETMEDIATE_RUN_PERFORMANCE_TESTS not set.");
-
         using var host = await CreateHostAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
         var ct = TestContext.Current.CancellationToken;
@@ -82,8 +77,6 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
     [Fact]
     public async Task CoreNotification_DispatchThroughput()
     {
-        if (!ShouldRun()) Assert.Skip("NETMEDIATE_RUN_PERFORMANCE_TESTS not set.");
-
         using var host = await CreateHostAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
         var ct = TestContext.Current.CancellationToken;
@@ -121,8 +114,6 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
     [Fact]
     public async Task CoreRequest_DispatchThroughput()
     {
-        if (!ShouldRun()) Assert.Skip("NETMEDIATE_RUN_PERFORMANCE_TESTS not set.");
-
         using var host = await CreateHostAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
         var ct = TestContext.Current.CancellationToken;
@@ -161,8 +152,6 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
     [Fact]
     public async Task CoreStream_DispatchThroughput()
     {
-        if (!ShouldRun()) Assert.Skip("NETMEDIATE_RUN_PERFORMANCE_TESTS not set.");
-
         using var host = await CreateHostAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
         var ct = TestContext.Current.CancellationToken;
@@ -213,13 +202,6 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         await host.StartAsync(TestContext.Current.CancellationToken);
         return host;
     }
-
-    private static bool ShouldRun() =>
-        string.Equals(
-            Environment.GetEnvironmentVariable("NETMEDIATE_RUN_PERFORMANCE_TESTS"),
-            "true",
-            StringComparison.OrdinalIgnoreCase
-        );
 
     // ─────────────────────────────────────────────────────────────────────────
     // Message types (unique to this class — no cross-test cache pollution)

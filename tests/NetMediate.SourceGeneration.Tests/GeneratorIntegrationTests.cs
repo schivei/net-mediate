@@ -183,9 +183,11 @@ public sealed class GeneratorIntegrationTests
     [Fact]
     public void TestProject_ReferencesNetMediatePackage_GeneratorRanOnBuildAndClassExists()
     {
-        // The generated class lives in namespace NetMediate inside the test assembly.
+        // The generated class namespace is dynamically computed from the project's root namespace.
+        // Search by class name only so this test is resilient to namespace changes.
         var generatedType = Assembly.GetExecutingAssembly()
-            .GetType("NetMediate.NetMediateGeneratedDI");
+            .GetTypes()
+            .FirstOrDefault(t => t.Name == "NetMediateGeneratedDI");
 
         Assert.NotNull(generatedType);
     }

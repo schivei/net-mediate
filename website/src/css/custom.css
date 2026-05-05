@@ -49,6 +49,18 @@
   --ifm-heading-color: #f0f6fc;
 }
 
+/* Light mode hero: .hero { background-color: var(--ifm-background-surface-color) } (further
+   below) overrides the hero--primary blue background in all themes. Restore the dark-blue
+   background explicitly for light mode so white text on the hero remains legible. */
+[data-theme='light'] .hero--primary {
+  background-color: #0969da;
+}
+
+[data-theme='light'] .hero--primary .hero__title,
+[data-theme='light'] .hero--primary .hero__subtitle {
+  color: #ffffff;
+}
+
 /* Dark mode hero: override hero--primary so it doesn't use #58a6ff (light blue) as
    background. White text on #58a6ff is only 2.53:1, failing WCAG AA. */
 [data-theme='dark'] .hero--primary {
@@ -182,10 +194,7 @@ h3 {
   color: var(--ifm-heading-color);
 }
 
-/* Hero title needs special handling when in hero--primary */
-.hero--primary .hero__title {
-  color: #ffffff;
-}
+/* Hero title/subtitle color is handled per-theme above; no blanket override needed here. */
 
 /* Announcement bar */
 .announcement {

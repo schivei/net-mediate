@@ -20,7 +20,7 @@ public sealed class QuartzNotifier(
 ) : INotifiable
 {
     /// <inheritdoc />
-    public async Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+    public async Task Notify<TMessage>(object? key, TMessage message, CancellationToken cancellationToken = default)
         where TMessage : notnull
     {
         var json = serializer.Serialize(message);
@@ -30,12 +30,23 @@ public sealed class QuartzNotifier(
 
         var jobKey = new JobKey($"{typeof(TMessage).Name}_{Guid.NewGuid():N}", options.GroupName);
 
-        var job = JobBuilder.Create<QuartzNotificationJob>()
+        var jobBuilder = JobBuilder.Create<QuartzNotificationJob>()
             .WithIdentity(jobKey)
             .UsingJobData(QuartzNotificationJob.MessageDataKey, json)
             .UsingJobData(QuartzNotificationJob.TypeDataKey, typeName)
-            .StoreDurably(false)
-            .Build();
+            .StoreDurably(false);
+
+        // Persist the routing key so that the job can replay the notification under the
+        // same key when it fires. Only serialisable keys (primitives, strings, enums) are
+        // supported; complex object keys are stored via their JSON representation.
+        if (key is not null)
+        {
+            jobBuilder = jobBuilder
+                .UsingJobData(QuartzNotificationJob.KeyDataKey, System.Text.Json.JsonSerializer.Serialize(key))
+                .UsingJobData(QuartzNotificationJob.KeyTypeDataKey, key.GetType().AssemblyQualifiedName ?? key.GetType().FullName ?? "System.Object");
+        }
+
+        var job = jobBuilder.Build();
 
         var trigger = TriggerBuilder.Create()
             .WithIdentity($"{jobKey.Name}_trigger", options.GroupName)
@@ -51,15 +62,15 @@ public sealed class QuartzNotifier(
     }
 
     /// <inheritdoc />
-    public async Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default)
+    public async Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default)
         where TMessage : notnull
     {
         foreach (var message in messages)
-            await Notify(message, cancellationToken).ConfigureAwait(false);
+            await Notify(key, message, cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
-    public async Task DispatchNotifications<TMessage>(TMessage message, INotificationHandler<TMessage>[] handlers,
+    public async Task DispatchNotifications<TMessage>(object? key, TMessage message, INotificationHandler<TMessage>[] handlers,
         CancellationToken cancellationToken = default) where TMessage : notnull
     {
         if (handlers.Length == 0)

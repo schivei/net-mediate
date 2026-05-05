@@ -44,7 +44,6 @@ public class NetMediateMoqTests
     public void Mocking_Create_ShouldReturnDefaultBehaviorMock()
     {
         var mock = Mocking.Create<ISampleService>();
-        Assert.NotNull(mock);
         Assert.Equal(global::Moq.MockBehavior.Default, mock.Behavior);
     }
 
@@ -52,7 +51,6 @@ public class NetMediateMoqTests
     public void Mocking_Loose_ShouldReturnLooseMock()
     {
         var mock = Mocking.Loose<ISampleService>();
-        Assert.NotNull(mock);
         Assert.Equal(global::Moq.MockBehavior.Loose, mock.Behavior);
     }
 
@@ -89,6 +87,7 @@ public class NetMediateMoqTests
             (_, _) => { h2Called = true; return Task.CompletedTask; });
 
         await notifier.DispatchNotifications(
+            null,
             new NotifierTestMessage(),
             [h1, h2],
             TestContext.Current.CancellationToken

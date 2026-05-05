@@ -1,8 +1,9 @@
+using Microsoft.Extensions.DependencyInjection;
+using NetMediate;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.DataDog.OpenTelemetry;
 

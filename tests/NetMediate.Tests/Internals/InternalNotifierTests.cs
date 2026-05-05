@@ -41,7 +41,7 @@ public class InternalNotifierTests
         await using var _ = provider;
         var message = new TestNotification();
 
-        await notifier.DispatchNotifications(message, [handler], TestContext.Current.CancellationToken);
+        await notifier.DispatchNotifications(null, message, [handler], TestContext.Current.CancellationToken);
         await WaitForAsync(() => tcs.Task.IsCompleted, TestContext.Current.CancellationToken);
 
         Assert.True(tcs.Task.IsCompletedSuccessfully);
@@ -56,7 +56,7 @@ public class InternalNotifierTests
         var message = new TestNotification();
 
         // Fire-and-forget: returns Task.CompletedTask immediately, exception is swallowed/logged
-        var task = notifier.DispatchNotifications(message, [handler], TestContext.Current.CancellationToken);
+        var task = notifier.DispatchNotifications(null, message, [handler], TestContext.Current.CancellationToken);
         Assert.True(task.IsCompleted);
         await task; // must not throw
     }
@@ -68,7 +68,7 @@ public class InternalNotifierTests
         await using var _ = provider;
         var message = new TestNotification();
 
-        var task = notifier.DispatchNotifications(message, [], TestContext.Current.CancellationToken);
+        var task = notifier.DispatchNotifications(null, message, [], TestContext.Current.CancellationToken);
         Assert.True(task.IsCompleted);
         await task;
     }
@@ -83,7 +83,7 @@ public class InternalNotifierTests
         await using var _ = provider;
         var message = new TestNotification();
 
-        await notifier.Notify(message, TestContext.Current.CancellationToken);
+        await notifier.Notify(null, message, TestContext.Current.CancellationToken);
         await WaitForAsync(() => tcs.Task.IsCompleted, TestContext.Current.CancellationToken);
 
         Assert.True(tcs.Task.IsCompletedSuccessfully);
@@ -102,7 +102,7 @@ public class InternalNotifierTests
         var notifier = new Notifier(new ThrowingServiceProvider(), logger);
         var messages = new[] { new TestNotification(), new TestNotification() };
 
-        var task = notifier.Notify<TestNotification>(messages, CancellationToken.None);
+        var task = notifier.Notify<TestNotification>(null, (IEnumerable<TestNotification>)messages, CancellationToken.None);
 
         // Must complete synchronously and not throw — exceptions are caught and logged.
         Assert.True(task.IsCompletedSuccessfully);

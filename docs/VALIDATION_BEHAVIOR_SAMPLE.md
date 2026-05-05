@@ -17,6 +17,7 @@ public sealed class DataAnnotationsRequestBehavior<TMessage, TResponse>
     where TMessage : notnull
 {
     public Task<TResponse> Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
         CancellationToken cancellationToken)
@@ -30,7 +31,7 @@ public sealed class DataAnnotationsRequestBehavior<TMessage, TResponse>
             throw new MessageValidationException(results[0]);
         }
 
-        return next(message, cancellationToken);
+        return next(key, message, cancellationToken);
     }
 }
 ```
@@ -56,6 +57,7 @@ public sealed class FluentValidationRequestBehavior<TMessage, TResponse>(
     where TMessage : notnull
 {
     public async Task<TResponse> Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
         CancellationToken cancellationToken)
@@ -67,7 +69,7 @@ public sealed class FluentValidationRequestBehavior<TMessage, TResponse>(
                 throw new ValidationException(result.Errors);
         }
 
-        return await next(message, cancellationToken);
+        return await next(key, message, cancellationToken);
     }
 }
 ```
@@ -94,6 +96,7 @@ public sealed class DataAnnotationsNotificationBehavior<TMessage>
     where TMessage : notnull
 {
     public Task Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task> next,
         CancellationToken cancellationToken)
@@ -104,7 +107,7 @@ public sealed class DataAnnotationsNotificationBehavior<TMessage>
         if (!Validator.TryValidateObject(message, context, results, validateAllProperties: true))
             throw new MessageValidationException(results[0]);
 
-        return next(message, cancellationToken);
+        return next(key, message, cancellationToken);
     }
 }
 ```

@@ -4,8 +4,16 @@ on:
   push:
     branches: [ main, develop, 'feature/*', 'hotfix/*', 'release/*' ]
     tags: [ 'v*' ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/ci-cd.yml'
   pull_request:
     branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '.github/workflows/ci-cd.yml'
   workflow_dispatch:
 
 env:
@@ -40,12 +48,22 @@ jobs:
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
         restore-keys: |
           ${{ runner.os }}-nuget-
-          
+
+    - name: Pre-build NetMediate (generates nupkg for source generation integration tests)
+      run: |
+        dotnet restore src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj
+        dotnet build   src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --no-restore
+        dotnet restore src/NetMediate/NetMediate.csproj
+        dotnet build   src/NetMediate/NetMediate.csproj --configuration Release --no-restore
+      # GeneratePackageOnBuild=true in pack.props places the nupkg in
+      # src/NetMediate/bin/Release/, which is the RestoreAdditionalProjectSources
+      # path used by tests/NetMediate.SourceGeneration.Tests (hardcoded to Release).
+
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx
-      
+
     - name: Build NetMediate
-      run: dotnet build src/NetMediate/NetMediate.csproj --configuration Release
+      run: dotnet build src/NetMediate/NetMediate.csproj --configuration Release --no-restore
 
     - name: Build NetMediate.Diagnostics
       run: dotnet build src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release
@@ -79,29 +97,30 @@ jobs:
 
     - name: Test Diagnostics
       run: dotnet test tests/NetMediate.Diagnostics.Tests/NetMediate.Diagnostics.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+    - name: Test SourceGeneration (package-reference integration)
+      run: dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
       
     - name: Run Benchmarks (PR only)
       if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
+      env:
+        BRANCH: ${{ github.head_ref }}
+        BASE_REF: ${{ github.base_ref }}
+        COMMIT_SHA: ${{ github.sha }}
+        BENCH_REPORT: ${{ runner.temp }}/bench-report.md
+        BENCH_BASE: ${{ runner.temp }}/benchmarks-base.md
       run: |
         cd tests/NetMediate.Benchmarks
-        dotnet run --configuration Release -- --job Short --exporters GitHub --filter '*' 2>&1 | tee /tmp/bench-console.txt || true
+        dotnet run --configuration Release -- --job Short --exporters GitHub --filter '*' 2>&1 | tee "$RUNNER_TEMP/bench-console.txt" || true
         REPORT=$(find BenchmarkDotNet.Artifacts -name '*-report-github.md' 2>/dev/null | head -1)
         if [ -n "$REPORT" ]; then
-          # Remove any previous CI section from the static BENCHMARKS.md and append new results
-          sed -i '/^## Latest CI Benchmark Run/,$d' ../../docs/BENCHMARKS.md
-          {
-            echo "## Latest CI Benchmark Run"
-            echo ""
-            echo "Run: $(date -u '+%Y-%m-%d %H:%M UTC') | Branch: $GITHUB_HEAD_REF | Commit: ${GITHUB_SHA:0:7}"
-            echo ""
-            cat "$REPORT"
-            echo ""
-            echo "### Full Console Output"
-            echo ""
-            echo '```'
-            cat /tmp/bench-console.txt
-            echo '```'
-          } >> ../../docs/BENCHMARKS.md
+          cp "$REPORT" "$BENCH_REPORT"
+          cd ../..
+          # Fetch base branch BENCHMARKS.md for baseline comparison
+          git fetch origin "$BASE_REF" 2>/dev/null || true
+          git show "origin/$BASE_REF:docs/BENCHMARKS.md" > "$BENCH_BASE" 2>/dev/null \
+            || echo '<!-- netmediate-bench-baseline: {} -->' > "$BENCH_BASE"
+          python3 .github/scripts/update_benchmarks.py
         fi
 
     - name: Commit benchmark results
@@ -215,6 +234,14 @@ jobs:
       with:
         dotnet-version: '10.x'
         
+    - name: Pre-build NetMediate (generates nupkg for source generation integration tests)
+      run: |
+        dotnet restore src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj
+        dotnet build   src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --no-restore
+        dotnet restore src/NetMediate/NetMediate.csproj
+        dotnet build   src/NetMediate/NetMediate.csproj --configuration Release --no-restore
+      # GeneratePackageOnBuild=true places the nupkg in src/NetMediate/bin/Release/.
+
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx
       

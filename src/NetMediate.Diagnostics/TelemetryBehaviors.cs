@@ -9,6 +9,7 @@ public sealed class TelemetryNotificationBehavior<TMessage> : IPipelineBehavior<
 {
     /// <inheritdoc />
     public async Task Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task> next,
         CancellationToken cancellationToken)
@@ -16,7 +17,7 @@ public sealed class TelemetryNotificationBehavior<TMessage> : IPipelineBehavior<
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Notify");
         try
         {
-            await next(message, cancellationToken).ConfigureAwait(false);
+            await next(key, message, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -39,6 +40,7 @@ public sealed class TelemetryRequestBehavior<TMessage, TResponse> : IPipelineReq
 {
     /// <inheritdoc />
     public async Task<TResponse> Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
         CancellationToken cancellationToken)
@@ -46,7 +48,7 @@ public sealed class TelemetryRequestBehavior<TMessage, TResponse> : IPipelineReq
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Request");
         try
         {
-            return await next(message, cancellationToken).ConfigureAwait(false);
+            return await next(key, message, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -76,6 +78,7 @@ public sealed class TelemetryStreamBehavior<TMessage, TResponse> : IPipelineStre
 {
     /// <inheritdoc />
     public IAsyncEnumerable<TResponse> Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> next,
         CancellationToken cancellationToken)
@@ -84,7 +87,7 @@ public sealed class TelemetryStreamBehavior<TMessage, TResponse> : IPipelineStre
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Stream");
         try
         {
-            var result = next(message, cancellationToken);
+            var result = next(key, message, cancellationToken);
             NetMediateDiagnostics.RecordStream<TMessage>();
             return result;
         }

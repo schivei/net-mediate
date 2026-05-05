@@ -35,7 +35,8 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Optional resilience package**: Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience`
 - **OpenTelemetry-ready diagnostics**: Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream
 - **Optional DataDog integrations**: OpenTelemetry, Serilog, and ILogger support packages
-- **Dependency Injection**: Seamless integration with Microsoft.Extensions.DependencyInjection
+- **Keyed handler routing**: Register handlers under named keys and dispatch to specific subsets at runtime
+- **Streaming fan-out**: Multiple `IStreamHandler` registrations supported — their items are merged sequentially
 - **Cancellation Support**: Full cancellation token support across all operations
 - **Broad runtime compatibility**: Multi-targeted for `net10.0`, `netstandard2.0`, and `netstandard2.1`
 
@@ -87,6 +88,7 @@ dotnet add package NetMediate
 - [AOT / NativeAOT and trimming guide](docs/AOT.md)
 - [DataDog integrations guide](docs/DATADOG.md)
 - [Wiki index](docs/WIKI.md)
+- [Validation behavior sample](docs/VALIDATION_BEHAVIOR_SAMPLE.md)
 
 ## Quick Start
 
@@ -345,7 +347,7 @@ NetMediate messages are plain records or classes — **no marker interfaces are 
 | Command | `ICommandHandler<TMessage>` | All registered handlers, sequential in registration order |
 | Request | `IRequestHandler<TMessage, TResponse>` | First registered handler only; returns `TResponse` |
 | Notification | `INotificationHandler<TMessage>` | All registered handlers, individual fire-and-forget per handler |
-| Stream | `IStreamHandler<TMessage, TResponse>` | Single registered handler; yields items asynchronously |
+| Stream | `IStreamHandler<TMessage, TResponse>` | All registered handlers, items merged sequentially (handler A items first, then handler B) |
 
 ```csharp
 // Command — no return value, dispatched to all registered handlers sequentially
@@ -357,10 +359,32 @@ public record GetUserQuery(string UserId);
 // Notification — dispatched to all registered handlers (fire-and-forget; errors logged)
 public record UserDeleted(string UserId);
 
-// Stream — single handler; yields results asynchronously
+// Stream — all registered handlers, items merged sequentially
 public record GetRecentEventsQuery(int MaxItems);
 ```
 
+### Keyed Dispatch
+
+Register handlers under routing keys and dispatch to a specific subset at runtime. This is useful for scenarios such as queue/topic routing, tenant isolation, or environment-specific handling:
+
+```csharp
+// Registration — same message type, different keys
+builder.Services.AddNetMediate(configure =>
+{
+    configure.RegisterCommandHandler<DefaultHandler, MyCommand>();        // null key
+    configure.RegisterCommandHandler<AuditHandler, MyCommand>("audit");  // keyed
+});
+
+// Dispatch to null-key (default) handlers
+await mediator.Send(new MyCommand(), cancellationToken);
+
+// Dispatch only to "audit" handlers
+await mediator.Send("audit", new MyCommand(), cancellationToken);
+```
+
+The `key` is propagated through the entire pipeline — behaviors receive it in their `Handle(object? key, ...)` signature and can use it for routing, logging, or conditional logic.
+
+> **NativeAOT:** Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed registration uses `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**; use it only when NativeAOT is not required.
 
 ### Pipeline Behaviors / Interceptors
 
@@ -382,14 +406,16 @@ public sealed class AuditRequestBehavior<TMessage, TResponse>
     : IPipelineRequestBehavior<TMessage, TResponse>
     where TMessage : notnull
 {
-    // Handle returns Task<TResponse>; next delegate accepts (message, cancellationToken)
+    // Handle receives object? key — the same key passed to the dispatch call.
+    // Use it for routing (e.g. queue/topic selection) or contextual filtering.
     public async Task<TResponse> Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
         CancellationToken cancellationToken)
     {
         var startedAt = DateTimeOffset.UtcNow;
-        var response = await next(message, cancellationToken);
+        var response = await next(key, message, cancellationToken);
         Console.WriteLine($"{typeof(TMessage).Name} handled in {DateTimeOffset.UtcNow - startedAt}");
         return response;
     }
@@ -404,12 +430,13 @@ public sealed class LogNotificationBehavior<TMessage>
     where TMessage : notnull
 {
     public async Task Handle(
+        object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task> next,
         CancellationToken cancellationToken)
     {
-        Console.WriteLine($"Dispatching {typeof(TMessage).Name}");
-        await next(message, cancellationToken);
+        Console.WriteLine($"Dispatching {typeof(TMessage).Name} (key={key})");
+        await next(key, message, cancellationToken);
         Console.WriteLine($"Dispatched {typeof(TMessage).Name}");
     }
 }

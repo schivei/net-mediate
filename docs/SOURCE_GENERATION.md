@@ -34,6 +34,8 @@ The generated method is decorated with `[ExcludeFromCodeCoverage]` — you do no
 
 If a class also implements `INotifiable` (e.g. a custom notifier), the generator uses `UseNetMediate<TNotifier>` instead of `UseNetMediate`.
 
+> **Keyed handlers**: When a handler class is decorated with `[KeyedService(Key = "mykey")]`, the source generator auto-discovers it and emits `RegisterCommandHandler<THandler, TMessage>("mykey")` (or the appropriate `Register*Handler` variant). Handlers without the attribute are registered without a key (unkeyed). The routing key is then passed at dispatch time: `mediator.Send("mykey", new MyCommand())`.
+
 ## AOT / NativeAOT
 
 The source-generator path is fully AOT-safe — no reflection, no `MakeGenericType`, no assembly scanning. See [AOT.md](AOT.md) for the complete compatibility guide.

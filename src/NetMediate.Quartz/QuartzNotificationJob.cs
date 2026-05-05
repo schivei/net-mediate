@@ -45,8 +45,14 @@ public sealed class QuartzNotificationJob(
     /// <summary>Key used to store the message CLR assembly-qualified type name in the <see cref="JobDataMap"/>.</summary>
     public const string TypeDataKey = "netmediate_type";
 
+    /// <summary>Key used to store the JSON-serialized routing key in the <see cref="JobDataMap"/>.</summary>
+    public const string KeyDataKey = "netmediate_key";
+
+    /// <summary>Key used to store the routing key CLR assembly-qualified type name in the <see cref="JobDataMap"/>.</summary>
+    public const string KeyTypeDataKey = "netmediate_key_type";
+
     // Cached delegate invoker keyed by message type to avoid per-call MakeGenericMethod on hot paths.
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, Func<INotifiable, object, CancellationToken, Task>>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, Func<INotifiable, object?, object, CancellationToken, Task>>
         s_dispatcherCache = new();
 
     /// <inheritdoc />
@@ -83,19 +89,33 @@ public sealed class QuartzNotificationJob(
             return;
         }
 
+        // Restore the routing key from job data if it was stored.
+        object? routingKey = null;
+        var keyJson = data.GetString(KeyDataKey);
+        var keyTypeName = data.GetString(KeyTypeDataKey);
+        if (!string.IsNullOrEmpty(keyJson) && !string.IsNullOrEmpty(keyTypeName))
+        {
+            var keyType = Type.GetType(keyTypeName);
+            if (keyType is not null)
+                routingKey = System.Text.Json.JsonSerializer.Deserialize(keyJson, keyType);
+        }
+
         var notifiable = serviceProvider.GetRequiredService<INotifiable>();
         var dispatcher = s_dispatcherCache.GetOrAdd(messageType, BuildDispatcher);
 
-        await dispatcher(notifiable, message, context.CancellationToken).ConfigureAwait(false);
+        await dispatcher(notifiable, routingKey, message, context.CancellationToken).ConfigureAwait(false);
     }
 
-    private static Func<INotifiable, object, CancellationToken, Task> BuildDispatcher(Type messageType)
+    private static Func<INotifiable, object?, object, CancellationToken, Task> BuildDispatcher(Type messageType)
     {
+        // Use Notify(key, message, ct) rather than DispatchNotifications so that the full
+        // behavior pipeline runs and the routing key is properly forwarded.
         var method = typeof(INotifiable)
-            .GetMethod(nameof(INotifiable.DispatchNotifications))!
+            .GetMethods()
+            .First(m => m.Name == nameof(INotifiable.Notify) && m.GetParameters().Length == 3)
             .MakeGenericMethod(messageType);
 
-        return (notifiable, message, cancellationToken) =>
-            (Task)method.Invoke(notifiable, [message, cancellationToken])!;
+        return (notifiable, key, message, cancellationToken) =>
+            (Task)method.Invoke(notifiable, [key, message, cancellationToken])!;
     }
 }

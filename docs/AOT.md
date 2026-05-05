@@ -10,6 +10,11 @@ Handler registration is generated at compile time by `NetMediate.SourceGeneratio
 |---|---|---|
 | Source generation (`AddNetMediate()`) | ✅ Yes | Generated at compile time — no reflection |
 | `RegisterBehavior<TBehavior, TMessage, TResult>()` | ✅ Yes | Closed-type — no reflection, fully AOT-safe |
+| `RegisterCommandHandler<THandler, TMsg>()` (no key) | ✅ Yes | Resolved via `GetServices<T>()` |
+| `RegisterCommandHandler<THandler, TMsg>("key")` | ⚠️ No | Uses `IKeyedServiceProvider` — not NativeAOT-compatible |
+| `RegisterNotificationHandler<THandler, TMsg>("key")` | ⚠️ No | Uses `IKeyedServiceProvider` — not NativeAOT-compatible |
+| `RegisterRequestHandler<THandler, TMsg, TResp>("key")` | ⚠️ No | Uses `IKeyedServiceProvider` — not NativeAOT-compatible |
+| `RegisterStreamHandler<THandler, TMsg, TResp>("key")` | ⚠️ No | Uses `IKeyedServiceProvider` — not NativeAOT-compatible |
 
 ## AOT-compatible setup
 
@@ -47,3 +52,4 @@ builder.Services.UseNetMediate(configure =>
 - Calling `MakeGenericType` at runtime — not supported by NativeAOT
 - Using `Type.GetGenericArguments()` to construct service types at runtime
 - Registering behaviors via open-generic `services.AddSingleton(typeof(IPipeline...<,>), typeof(...<,>))` — not supported
+- Using keyed handler registration (`Register*Handler<T,M>("routingKey")`) — uses `IKeyedServiceProvider` which is not supported in NativeAOT. Use keyed handlers only when NativeAOT is not required.

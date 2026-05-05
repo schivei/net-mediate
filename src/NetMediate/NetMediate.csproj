@@ -31,12 +31,15 @@
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Bundle the source generator inside the NetMediate package so users get AOT-safe
-         handler registration code generation without installing a separate package. -->
-    <ProjectReference Include="..\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj"
+	<ProjectReference Include="..\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj"
       ReferenceOutputAssembly="false"
       OutputItemType="Analyzer"
       PrivateAssets="all" />
+    <None Include="$(MSBuildThisFileDirectory)..\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll"
+          Pack="true"
+          PackagePath="analyzers/dotnet/cs"
+          Visible="false"
+          Condition="Exists('$(MSBuildThisFileDirectory)..\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll')" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />

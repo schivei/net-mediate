@@ -16,7 +16,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 Send one-way messages to all registered handlers sequentially. Perfect for triggering side-effects across multiple consumers.
 
 ### 📨 **Notifications**
-Publish messages to multiple handlers (fire-and-forget; handler exceptions are unobserved). Ideal for event-driven architectures.
+Publish messages to multiple handlers — all handlers started in parallel (`Task.WhenAll`); handler results and exceptions are discarded (fire-and-forget). Batch notifications are also dispatched in parallel. Behaviors run fully and their exceptions propagate. Ideal for event-driven architectures.
 
 ### 🔄 **Requests**
 Send a message to a single handler and receive a typed response. Great for queries and request-response patterns.
@@ -88,7 +88,7 @@ NetMediate supports four types of messages, each with a specific purpose:
 |--------------|-------------------|-------------------|
 | **Command** | `ICommandHandler<TMessage>` | All registered handlers, sequential in registration order |
 | **Request** | `IRequestHandler<TMessage, TResponse>` | First registered handler only; returns `TResponse` |
-| **Notification** | `INotificationHandler<TMessage>` | All registered handlers, individual fire-and-forget per handler (exceptions unobserved) |
+| **Notification** | `INotificationHandler<TMessage>` | All handlers started in parallel (fire-and-forget via `Task.WhenAll`); handler exceptions unobserved |
 | **Stream** | `IStreamHandler<TMessage, TResponse>` | All registered handlers, items merged sequentially |
 
 ## No Marker Interfaces Required
@@ -109,8 +109,7 @@ Ready to dive in? Head over to the [Installation Guide](./getting-started/instal
 
 NetMediate consists of several packages:
 
-- **NetMediate** - Core mediator implementation
-- **NetMediate.SourceGeneration** - Compile-time handler registration (AOT-safe)
+- **NetMediate** - Core mediator implementation; includes the `NetMediate.SourceGeneration` analyzer (activated by `PrivateAssets="all"`)
 - **NetMediate.Resilience** - Retry, timeout, and circuit breaker behaviors
 - **NetMediate.Diagnostics** - OpenTelemetry integration
 - **NetMediate.Quartz** - Persistent notifications with Quartz.NET

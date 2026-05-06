@@ -2,14 +2,19 @@
 
 `NetMediate.SourceGeneration` is a Roslyn incremental source generator that emits handler registrations automatically at compile time. It is the standard and only supported registration path for NetMediate handlers.
 
+The source generator is **bundled inside the `NetMediate` package** — you do not need to install `NetMediate.SourceGeneration` separately. It is loaded automatically for any project that directly references `NetMediate`.
+
 ## Installation
 
-Add the package as an **analyzer-only** reference (it must not be referenced as a normal library):
+```xml
+<PackageReference Include="NetMediate" Version="x.x.x" />
+```
+
+> **Library projects:** Add `PrivateAssets="all"` to prevent `NetMediate` and its bundled analyzer from flowing as a transitive dependency to downstream consumers of your library. This does **not** affect whether the analyzer runs for your project — it always does for direct references.
 
 ```xml
-<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x"
-                  OutputItemType="Analyzer"
-                  ReferenceOutputAssembly="false" />
+<!-- Library project recommendation -->
+<PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
 ```
 
 ## Usage

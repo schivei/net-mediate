@@ -12,7 +12,7 @@ NetMediate supports four different message types, each designed for specific com
 |--------------|----------|---------------|--------------|
 | **Command** | Side-effects, multi-handler actions | Multiple (sequential) | `Task` |
 | **Request** | Query/response pattern | Single | `Task<TResponse>` |
-| **Notification** | Fire-and-forget events | Multiple (parallel) | `Task` |
+| **Notification** | Fire-and-forget events | Multiple (parallel, fire-and-forget) | `Task` |
 | **Stream** | Async data streams | Multiple (merged) | `IAsyncEnumerable<T>` |
 
 ## Commands
@@ -88,12 +88,12 @@ var user = await mediator.Request<GetUserQuery, UserDto>(
 
 ## Notifications
 
-Notifications are fire-and-forget events sent to multiple handlers. Handlers are dispatched without being awaited.
+Notifications are events dispatched to multiple handlers simultaneously. All handlers are started in parallel (`Task.WhenAll`) and are fire-and-forget — handler results and exceptions have no effect on the caller or the pipeline.
 
 ### Characteristics
 - ✅ Multiple handlers allowed
-- ✅ Handlers dispatched fire-and-forget (not awaited)
-- ✅ Handler exceptions are unobserved (do not propagate to caller)
+- ✅ All handlers started in parallel (`Task.WhenAll`), fire-and-forget
+- ✅ Handler exceptions are discarded by the executor (do not propagate to caller)
 - ✅ No return value
 - ✅ Best for event-driven architectures
 
@@ -122,13 +122,13 @@ public class InventoryUpdater : INotificationHandler<OrderShipped>
     }
 }
 
-// Usage - both handlers dispatch fire-and-forget
+// Usage - all handlers started in parallel (fire-and-forget)
 await mediator.Notify(new OrderShipped("ORD-456", "TRACK-789", DateTime.UtcNow));
 ```
 
 ### Batch Notifications
 
-Send multiple notifications at once. Each notification is dispatched sequentially — the pipeline for the next message starts only after the previous one completes:
+Send multiple notifications at once. Each message's pipeline is dispatched in parallel (`Task.WhenAll` across messages). Within each message, all handlers are also started in parallel (fire-and-forget):
 
 ```csharp
 var notifications = new[]

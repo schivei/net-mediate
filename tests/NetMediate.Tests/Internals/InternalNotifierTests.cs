@@ -53,7 +53,7 @@ public class InternalNotifierTests
     }
 
     [Fact]
-    public async Task DispatchNotifications_WhenHandlerThrows_LogsAndDoesNotThrow()
+    public async Task DispatchNotifications_WhenHandlerThrows_ReturnsFaultedTask()
     {
         var handler = new ThrowingNotificationHandler<TestNotification>();
         var (notifier, provider) = BuildNotifier();
@@ -66,8 +66,8 @@ public class InternalNotifierTests
             [handler],
             TestContext.Current.CancellationToken
         );
-        Assert.True(task.IsCompleted);
-        await task;
+        Assert.True(task.IsFaulted);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => task);
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public class InternalNotifierTests
     }
 
     [Fact]
-    public async Task Notify_Enumerable_WhenNotifyThrowsSynchronously_CatchesAndLogs()
+    public async Task Notify_Enumerable_WhenServiceProviderThrows_PropagatesException()
     {
         var services = new ServiceCollection();
         services.AddLogging();

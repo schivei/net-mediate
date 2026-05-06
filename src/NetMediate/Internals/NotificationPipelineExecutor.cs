@@ -71,19 +71,24 @@ internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider se
             )
             .ToArray();
 
-        if (behaviorArray.Length == 0)
-            return App;
-
-        var pipeline = behaviorArray
-            .Reverse()
-            .Aggregate(
-                (PipelineBehaviorDelegate<TMessage, Task>)App,
-                (current, behavior) => (routingKey, msg, ct) => behavior.Handle(routingKey, msg, current, ct)
-            );
+        var pipeline = behaviorArray.Length == 0
+            ? (PipelineBehaviorDelegate<TMessage, Task>)App
+            : behaviorArray
+                .Reverse()
+                .Aggregate(
+                    (PipelineBehaviorDelegate<TMessage, Task>)App,
+                    (current, behavior) => (routingKey, msg, ct) => behavior.Handle(routingKey, msg, current, ct)
+                );
 
         return ErrorReporting;
 
-        Task App(object? routingKey, TMessage msg, CancellationToken ct) => exec(routingKey, msg, handlers, ct);
+        Task App(object? routingKey, TMessage msg, CancellationToken ct)
+        {
+            // Handlers are fire-and-forget: discard their tasks so the pipeline
+            // and behaviors are never affected by handler failures or completion timing.
+            _ = exec(routingKey, msg, handlers, ct);
+            return Task.CompletedTask;
+        }
 
         Task ErrorReporting(object? routingKey, TMessage msg, CancellationToken ct)
         {

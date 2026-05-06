@@ -29,7 +29,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 ### Key Features
 
 - **Commands**: Send one-way messages to all registered handlers sequentially
-- **Notifications**: Publish messages to multiple handlers (fire-and-forget; handler exceptions are unobserved)
+- **Notifications**: Publish messages to multiple handlers — all handlers started in parallel (`Task.WhenAll`); handler results and exceptions are discarded (fire-and-forget). Batch notifications (`IEnumerable`) are also dispatched in parallel.
 - **Requests**: Send a message to a single handler and receive a typed response
 - **Streaming**: Handle requests that return multiple responses over time via `IAsyncEnumerable`
 - **Pipeline Behaviors**: Interceptors with pre/post flow for every message kind
@@ -48,22 +48,27 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 Install-Package NetMediate
 ```
 
+> **Important:** After installing via Package Manager Console or .NET CLI, open your `.csproj` file and add `PrivateAssets="all"` to the `PackageReference` element. Without this attribute the bundled source generator cannot run and `AddNetMediate()` will not be generated.
+
 ### .NET CLI
 ```bash
 dotnet add package NetMediate
 ```
+
+> **Important:** After running the CLI command, open your `.csproj` file and add `PrivateAssets="all"` to the `PackageReference` element. Without this attribute the bundled source generator cannot run and `AddNetMediate()` will not be generated.
 
 ### PackageReference
 ```xml
 <PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
 ```
 
+> **Note:** `PrivateAssets="all"` is **required**. The `NetMediate.SourceGeneration` analyzer is bundled inside the `NetMediate` package and is activated only when `PrivateAssets="all"` is set. Without it, `AddNetMediate()` will not be generated and handler registration will not work.
+
 ### Optional companion packages
 ```xml
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
 <PackageReference Include="NetMediate.Resilience" Version="x.x.x" />
 <PackageReference Include="NetMediate.Quartz" Version="x.x.x" />
-<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 <PackageReference Include="NetMediate.DataDog.OpenTelemetry" Version="x.x.x" />
 <PackageReference Include="NetMediate.DataDog.Serilog" Version="x.x.x" />
 <PackageReference Include="NetMediate.DataDog.ILogger" Version="x.x.x" />
@@ -72,7 +77,6 @@ dotnet add package NetMediate
 - **NetMediate.Moq**: lightweight Moq helpers for unit and integration tests (`Mocking.Create`, `AddMockSingleton`, async setup extensions).
 - **NetMediate.Resilience**: optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
 - **NetMediate.Quartz**: persists notifications as Quartz.NET jobs, enabling crash recovery and cluster-distributed notification execution.
-- **NetMediate.SourceGeneration**: generates `AddNetMediate()` to register handlers at compile-time — no reflection, fully AOT-safe.
 - **NetMediate.DataDog.OpenTelemetry**: wires NetMediate traces/metrics to DataDog through OpenTelemetry OTLP exporters.
 - **NetMediate.DataDog.Serilog**: attaches the DataDog Serilog sink and enriches logs with NetMediate activity fields.
 - **NetMediate.DataDog.ILogger**: `ILogger` scope helpers with DataDog-compatible fields and NetMediate correlation values.
@@ -97,9 +101,9 @@ dotnet add package NetMediate
 Here's a minimal example to get you started with NetMediate:
 
 ```csharp
-// 1. Install the packages
+// 1. Install the package (with PrivateAssets="all" — required for the bundled source generator)
 // dotnet add package NetMediate
-// dotnet add package NetMediate.SourceGeneration  (as analyzer — see Installation)
+// Then set PrivateAssets="all" in the PackageReference in your .csproj.
 
 // 2. Register services — source generator discovers all handlers automatically
 using Microsoft.Extensions.DependencyInjection;
@@ -144,8 +148,8 @@ using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
 
-// Source generation automatically discovers and registers all handlers at compile time.
-// Install NetMediate.SourceGeneration as an analyzer and call:
+// The bundled source generator (activated by PrivateAssets="all" in your PackageReference)
+// automatically discovers and registers all handlers at compile time.
 builder.Services.AddNetMediate();
 
 var host = builder.Build();
@@ -154,7 +158,7 @@ var mediator = host.Services.GetRequiredService<IMediator>();
 
 ### Notifications
 
-`Notify` runs the notification pipeline and dispatches each registered handler as an individual fire-and-forget task. The handler `Task` objects are started without being awaited — the calling code regains control once all handlers are started. Handler exceptions are unobserved and do not affect other handlers. When sending a batch of notifications, each notification is dispatched sequentially (the pipeline for the next message starts only after the pipeline for the previous one completes).
+`Notify` runs the notification pipeline (behaviors are fully awaited and their exceptions propagate to the caller). When the pipeline reaches the handler dispatch step, all registered handlers are started simultaneously via `Task.WhenAll` and the result is discarded — handlers are fire-and-forget. Handler exceptions and completion timing have no effect on the pipeline or the caller. When sending a batch of notifications (`IEnumerable`), each message's pipeline is dispatched in parallel (`Task.WhenAll` across messages).
 
 #### Define a Notification Message
 ```csharp
@@ -348,7 +352,7 @@ NetMediate messages are plain records or classes — **no marker interfaces are 
 |---|---|---|
 | Command | `ICommandHandler<TMessage>` | All registered handlers, sequential in registration order |
 | Request | `IRequestHandler<TMessage, TResponse>` | First registered handler only; returns `TResponse` |
-| Notification | `INotificationHandler<TMessage>` | All registered handlers, individual fire-and-forget per handler (exceptions unobserved) |
+| Notification | `INotificationHandler<TMessage>` | All handlers started in parallel (fire-and-forget via `Task.WhenAll`); handler exceptions unobserved |
 | Stream | `IStreamHandler<TMessage, TResponse>` | All registered handlers, items merged sequentially (handler A items first, then handler B) |
 
 ```csharp
@@ -358,7 +362,7 @@ public record DeleteUserCommand(string UserId);
 // Request — single handler, returns a response
 public record GetUserQuery(string UserId);
 
-// Notification — dispatched to all registered handlers (fire-and-forget; exceptions unobserved)
+// Notification — all handlers started in parallel (fire-and-forget); handler exceptions unobserved
 public record UserDeleted(string UserId);
 
 // Stream — all registered handlers, items merged sequentially
@@ -458,7 +462,7 @@ All runtime packages are published with:
 - `netstandard2.0`
 - `netstandard2.1`
 
-`NetMediate.SourceGeneration` is an analyzer-only package (`netstandard2.0`) and works from all supported host TFMs.
+`NetMediate.SourceGeneration` is bundled inside the `NetMediate` package as an analyzer (`netstandard2.0`) and is activated by setting `PrivateAssets="all"` on the `PackageReference`.
 
 ### Application types covered
 

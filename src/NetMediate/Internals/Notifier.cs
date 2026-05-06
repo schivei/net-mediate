@@ -12,12 +12,10 @@ internal class Notifier(IServiceProvider serviceProvider) : INotifiable
     )
         where TMessage : notnull
     {
-        foreach (var handler in handlers)
-        {
-            handler.Handle(message, cancellationToken);
-        }
+        if (handlers.Length == 0)
+            return Task.CompletedTask;
 
-        return Task.CompletedTask;
+        return Task.WhenAll(handlers.Select(h => h.Handle(message, cancellationToken)));
     }
 
     public Task Notify<TMessage>(
@@ -40,16 +38,15 @@ internal class Notifier(IServiceProvider serviceProvider) : INotifiable
         );
     }
 
-    public async Task Notify<TMessage>(
+    public Task Notify<TMessage>(
         object? key,
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
     )
         where TMessage : notnull
     {
-        foreach (var message in messages)
-        {
-            await Notify(key ?? Extensions.DEFAULT_ROUTING_KEY, message, cancellationToken);
-        }
+        return Task.WhenAll(
+            messages.Select(m => Notify(key ?? Extensions.DEFAULT_ROUTING_KEY, m, cancellationToken))
+        );
     }
 }

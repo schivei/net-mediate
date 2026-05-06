@@ -6,7 +6,7 @@ public class Notifier(IServiceProvider serviceProvider) : INotifiable
 {
     private readonly Internals.Notifier _notifier = new(serviceProvider);
 
-    public async Task DispatchNotifications<TMessage>(
+    public Task DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
         INotificationHandler<TMessage>[] handlers,
@@ -14,10 +14,10 @@ public class Notifier(IServiceProvider serviceProvider) : INotifiable
     )
         where TMessage : notnull
     {
-        foreach (var handler in handlers)
-        {
-            await handler.Handle(message, cancellationToken).ConfigureAwait(false);
-        }
+        if (handlers.Length == 0)
+            return Task.CompletedTask;
+
+        return Task.WhenAll(handlers.Select(h => h.Handle(message, cancellationToken)));
     }
 
     /// <inheritdoc />

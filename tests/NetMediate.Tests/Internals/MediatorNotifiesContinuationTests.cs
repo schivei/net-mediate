@@ -93,7 +93,7 @@ public sealed class MediatorNotifiesContinuationTests
     }
 
     [Fact]
-    public async Task Notifies_HandlerFaulted_InvokesErrorCallback_WithoutNotificationBehavior()
+    public async Task Notifies_HandlerFaulted_DoesNotThrow_WithoutNotificationBehavior()
     {
         var message = new Msg();
         await using var provider = BuildProvider(b =>
@@ -109,7 +109,7 @@ public sealed class MediatorNotifiesContinuationTests
     }
 
     [Fact]
-    public async Task Notifies_HandlerFaulted_WithNotificationBehavior_BehaviorRunsBeforeHandler()
+    public async Task Notifies_HandlerFaulted_DoesNotThrow_WithNotificationBehavior()
     {
         var message = new Msg();
         await using var provider = BuildProvider(b =>

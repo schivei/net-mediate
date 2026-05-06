@@ -14,9 +14,19 @@ This page centralizes installation, configuration, and usage details for each Ne
 dotnet add package NetMediate
 ```
 
+Then open your `.csproj` and add `PrivateAssets="all"` to the `PackageReference`:
+
+```xml
+<PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
+```
+
+:::caution Required: PrivateAssets="all"
+`PrivateAssets="all"` is **required**. The `NetMediate.SourceGeneration` analyzer is bundled inside `NetMediate` and is activated only when this attribute is present. Without it, `AddNetMediate()` will not be generated and handler registration will not work.
+:::
+
 ### Configuration
 
-Handler registration is done automatically at compile time via the source generator. Install `NetMediate.SourceGeneration` as an analyzer and call the generated method:
+Handler registration is done automatically at compile time via the bundled source generator. Call the generated method:
 
 ```csharp
 using NetMediate;
@@ -194,10 +204,7 @@ See the [Resilience guide](../advanced/resilience) for full details.
 
 ### Installation
 
-```xml
-<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x"
-                  OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-```
+`NetMediate.SourceGeneration` is **bundled inside the `NetMediate` package** — no separate installation is required. The analyzer is activated by setting `PrivateAssets="all"` on the `NetMediate` `PackageReference` (see the Core package section above).
 
 ### Usage
 

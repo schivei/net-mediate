@@ -109,8 +109,7 @@ Ready to dive in? Head over to the [Installation Guide](./getting-started/instal
 
 NetMediate consists of several packages:
 
-- **NetMediate** - Core mediator implementation
-- **NetMediate.SourceGeneration** - Compile-time handler registration (AOT-safe)
+- **NetMediate** - Core mediator implementation; includes the `NetMediate.SourceGeneration` analyzer (activated by `PrivateAssets="all"`)
 - **NetMediate.Resilience** - Retry, timeout, and circuit breaker behaviors
 - **NetMediate.Diagnostics** - OpenTelemetry integration
 - **NetMediate.Quartz** - Persistent notifications with Quartz.NET

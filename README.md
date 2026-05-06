@@ -48,22 +48,27 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 Install-Package NetMediate
 ```
 
+> **Important:** After installing via Package Manager Console or .NET CLI, open your `.csproj` file and add `PrivateAssets="all"` to the `PackageReference` element. Without this attribute the bundled source generator cannot run and `AddNetMediate()` will not be generated.
+
 ### .NET CLI
 ```bash
 dotnet add package NetMediate
 ```
+
+> **Important:** After running the CLI command, open your `.csproj` file and add `PrivateAssets="all"` to the `PackageReference` element. Without this attribute the bundled source generator cannot run and `AddNetMediate()` will not be generated.
 
 ### PackageReference
 ```xml
 <PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
 ```
 
+> **Note:** `PrivateAssets="all"` is **required**. The `NetMediate.SourceGeneration` analyzer is bundled inside the `NetMediate` package and is activated only when `PrivateAssets="all"` is set. Without it, `AddNetMediate()` will not be generated and handler registration will not work.
+
 ### Optional companion packages
 ```xml
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
 <PackageReference Include="NetMediate.Resilience" Version="x.x.x" />
 <PackageReference Include="NetMediate.Quartz" Version="x.x.x" />
-<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 <PackageReference Include="NetMediate.DataDog.OpenTelemetry" Version="x.x.x" />
 <PackageReference Include="NetMediate.DataDog.Serilog" Version="x.x.x" />
 <PackageReference Include="NetMediate.DataDog.ILogger" Version="x.x.x" />
@@ -72,7 +77,6 @@ dotnet add package NetMediate
 - **NetMediate.Moq**: lightweight Moq helpers for unit and integration tests (`Mocking.Create`, `AddMockSingleton`, async setup extensions).
 - **NetMediate.Resilience**: optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
 - **NetMediate.Quartz**: persists notifications as Quartz.NET jobs, enabling crash recovery and cluster-distributed notification execution.
-- **NetMediate.SourceGeneration**: generates `AddNetMediate()` to register handlers at compile-time — no reflection, fully AOT-safe.
 - **NetMediate.DataDog.OpenTelemetry**: wires NetMediate traces/metrics to DataDog through OpenTelemetry OTLP exporters.
 - **NetMediate.DataDog.Serilog**: attaches the DataDog Serilog sink and enriches logs with NetMediate activity fields.
 - **NetMediate.DataDog.ILogger**: `ILogger` scope helpers with DataDog-compatible fields and NetMediate correlation values.
@@ -97,9 +101,9 @@ dotnet add package NetMediate
 Here's a minimal example to get you started with NetMediate:
 
 ```csharp
-// 1. Install the packages
+// 1. Install the package (with PrivateAssets="all" — required for the bundled source generator)
 // dotnet add package NetMediate
-// dotnet add package NetMediate.SourceGeneration  (as analyzer — see Installation)
+// Then set PrivateAssets="all" in the PackageReference in your .csproj.
 
 // 2. Register services — source generator discovers all handlers automatically
 using Microsoft.Extensions.DependencyInjection;
@@ -144,8 +148,8 @@ using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
 
-// Source generation automatically discovers and registers all handlers at compile time.
-// Install NetMediate.SourceGeneration as an analyzer and call:
+// The bundled source generator (activated by PrivateAssets="all" in your PackageReference)
+// automatically discovers and registers all handlers at compile time.
 builder.Services.AddNetMediate();
 
 var host = builder.Build();
@@ -458,7 +462,7 @@ All runtime packages are published with:
 - `netstandard2.0`
 - `netstandard2.1`
 
-`NetMediate.SourceGeneration` is an analyzer-only package (`netstandard2.0`) and works from all supported host TFMs.
+`NetMediate.SourceGeneration` is bundled inside the `NetMediate` package as an analyzer (`netstandard2.0`) and is activated by setting `PrivateAssets="all"` on the `PackageReference`.
 
 ### Application types covered
 

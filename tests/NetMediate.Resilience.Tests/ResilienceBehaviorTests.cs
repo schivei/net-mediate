@@ -166,7 +166,6 @@ public sealed class ResilienceBehaviorTests
                 SlowTimeoutNotificationHandler,
                 SlowTimeoutNotificationMessage
             >();
-            // Timeout registered first → becomes outermost after Reverse(); SlowBehavior becomes inner
             configure.RegisterBehavior<
                 TimeoutNotificationBehavior<SlowTimeoutNotificationMessage>,
                 SlowTimeoutNotificationMessage,
@@ -206,7 +205,6 @@ public sealed class ResilienceBehaviorTests
                 ThrowingCbNotificationHandler2,
                 ThrowingCbMessage
             >();
-            // CircuitBreaker registered first → becomes outermost after Reverse(); Throwing becomes inner
             configure.RegisterBehavior<
                 CircuitBreakerNotificationBehavior<ThrowingCbMessage>,
                 ThrowingCbMessage,
@@ -254,7 +252,6 @@ public sealed class ResilienceBehaviorTests
                 CountingThrowNotificationHandler,
                 CountingThrowMessage
             >();
-            // Retry registered first → becomes outermost after Reverse(); CountingThrow becomes inner
             configure.RegisterBehavior<
                 RetryNotificationBehavior<CountingThrowMessage>,
                 CountingThrowMessage,
@@ -283,8 +280,6 @@ public sealed class ResilienceBehaviorTests
 
         Assert.Equal(3, CountingThrowBehavior<CountingThrowMessage>.Invocations);
     }
-
-    // ── Load / throughput test ──────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task RequestLoad_WithResilienceBehaviors_ShouldSustainMinimumThroughput()
@@ -320,8 +315,6 @@ public sealed class ResilienceBehaviorTests
             $"tfm={tfm} resilience throughput {throughput:F0} ops/s < minimum {minimum:F0} ops/s"
         );
     }
-
-    // ── Host builders ───────────────────────────────────────────────────────────────────────
 
     private static async Task<IHost> CreateRequestHostAsync(
         Action<IServiceCollection> configureServices
@@ -536,8 +529,6 @@ public sealed class ResilienceBehaviorTests
         return host;
     }
 
-    // ── Helpers ─────────────────────────────────────────────────────────────────────────────
-
     private static async Task WaitForAsync(
         Func<bool> predicate,
         CancellationToken cancellationToken
@@ -561,8 +552,6 @@ public sealed class ResilienceBehaviorTests
             StringComparison.OrdinalIgnoreCase
         );
 
-    // ── Message types ────────────────────────────────────────────────────────────────────────
-
     public sealed record RetryRequestMessage(string Value);
 
     public sealed record RetryNotificationViaMediatorMessage(string Value);
@@ -579,14 +568,11 @@ public sealed class ResilienceBehaviorTests
 
     public sealed record LoadRequest(int Value);
 
-    // Unique message types for handler-based resilience tests (avoids static handler cache contamination)
     public sealed record SlowTimeoutNotificationMessage(string Value = "");
 
     public sealed record ThrowingCbMessage;
 
     public sealed record CountingThrowMessage;
-
-    // ── Handlers ─────────────────────────────────────────────────────────────────────────────
 
     private sealed class RetryRequestHandler : IRequestHandler<RetryRequestMessage, string>
     {
@@ -678,8 +664,6 @@ public sealed class ResilienceBehaviorTests
             Task.FromResult(query.Value + 1);
     }
 
-    // ── Pipeline behaviors for notification resilience tests ─────────────────────────────────
-
     /// <summary>Delays 200 ms before calling next — used to trigger timeout behavior.</summary>
     private sealed class SlowPipelineBehavior<TMessage> : IPipelineBehavior<TMessage>
         where TMessage : notnull
@@ -728,8 +712,6 @@ public sealed class ResilienceBehaviorTests
             throw new InvalidOperationException("retry trigger");
         }
     }
-
-    // ── Notification handlers for the new message types ──────────────────────────────────────
 
     private sealed class SlowTimeoutNotificationHandler
         : INotificationHandler<SlowTimeoutNotificationMessage>

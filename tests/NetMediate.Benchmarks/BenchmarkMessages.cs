@@ -1,8 +1,5 @@
-// Dedicated message types — one per benchmark class — so DI handler and behavior caches
-// never share entries between benchmark methods.
 namespace NetMediate.Benchmarks;
 
-// ── Command ──────────────────────────────────────────────────────────────────
 /// <summary>Benchmark command message.</summary>
 public sealed record BenchCommand : ICommand;
 
@@ -14,7 +11,6 @@ public sealed class BenchCommandHandler : ICommandHandler<BenchCommand>
         Task.CompletedTask;
 }
 
-// ── Notification ─────────────────────────────────────────────────────────────
 /// <summary>Benchmark notification message.</summary>
 public sealed record BenchNotification : INotification;
 
@@ -26,7 +22,6 @@ public sealed class BenchNotificationHandler : INotificationHandler<BenchNotific
         Task.CompletedTask;
 }
 
-// ── Request ───────────────────────────────────────────────────────────────────
 /// <summary>Benchmark request message.</summary>
 public sealed record BenchRequest : IRequest<BenchResponse>;
 
@@ -45,7 +40,6 @@ public sealed class BenchRequestHandler : IRequestHandler<BenchRequest, BenchRes
     ) => s_response;
 }
 
-// ── Stream ────────────────────────────────────────────────────────────────────
 /// <summary>Benchmark stream message.</summary>
 public sealed record BenchStreamRequest : IStream<BenchStreamItem>;
 

@@ -8,7 +8,6 @@ public sealed class MediatorNotifiesContinuationTests
 {
     public MediatorNotifiesContinuationTests()
     {
-        // Clear the static handler cache before each test to prevent cross-test contamination.
         Extensions.ClearCache();
     }
 
@@ -89,7 +88,7 @@ public sealed class MediatorNotifiesContinuationTests
         await sut.Notify(message, TestContext.Current.CancellationToken);
         await WaitForAsync(() => message.Checked, TestContext.Current.CancellationToken);
 
-        Assert.False(message.Maked); // No behavior registered
+        Assert.False(message.Maked);
         Assert.True(message.Checked);
     }
 
@@ -102,12 +101,11 @@ public sealed class MediatorNotifiesContinuationTests
         );
         var sut = BuildMediator(provider);
 
-        // Fire-and-forget: no exception propagated
         await sut.Notify(message, TestContext.Current.CancellationToken);
         await Task.Delay(100, TestContext.Current.CancellationToken);
 
         Assert.False(message.Maked);
-        Assert.False(message.Checked); // FaultHandler threw, Check() never called
+        Assert.False(message.Checked);
     }
 
     [Fact]
@@ -124,8 +122,8 @@ public sealed class MediatorNotifiesContinuationTests
         await sut.Notify(message, TestContext.Current.CancellationToken);
         await Task.Delay(100, TestContext.Current.CancellationToken);
 
-        Assert.True(message.Maked); // Behavior ran and called Mark() before dispatching
-        Assert.False(message.Checked); // Handler faulted, Check() never called
+        Assert.True(message.Maked);
+        Assert.False(message.Checked);
     }
 
     [Fact]

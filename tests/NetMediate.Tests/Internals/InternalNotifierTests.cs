@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using NetMediate.Internals;
 
 namespace NetMediate.Tests.Internals;
@@ -9,7 +8,7 @@ namespace NetMediate.Tests.Internals;
 /// </summary>
 public class InternalNotifierTests
 {
-    public record TestNotification;
+    private record TestNotification;
 
     private static (Notifier notifier, ServiceProvider provider) BuildNotifier(
         Action<IMediatorServiceBuilder>? configure = null
@@ -19,8 +18,7 @@ public class InternalNotifierTests
         services.AddLogging();
         services.UseNetMediate(configure ?? (_ => { }));
         var provider = services.BuildServiceProvider();
-        var logger = provider.GetRequiredService<ILogger<Notifier>>();
-        return (new Notifier(provider, logger), provider);
+        return (new Notifier(provider), provider);
     }
 
     private static async Task WaitForAsync(Func<bool> predicate, CancellationToken ct)
@@ -62,7 +60,6 @@ public class InternalNotifierTests
         await using var _ = provider;
         var message = new TestNotification();
 
-        // Fire-and-forget: returns Task.CompletedTask immediately, exception is swallowed/logged
         var task = notifier.DispatchNotifications(
             null,
             message,
@@ -70,7 +67,7 @@ public class InternalNotifierTests
             TestContext.Current.CancellationToken
         );
         Assert.True(task.IsCompleted);
-        await task; // must not throw
+        await task;
     }
 
     [Fact]
@@ -106,31 +103,27 @@ public class InternalNotifierTests
     }
 
     [Fact]
-    public void Notify_Enumerable_WhenNotifyThrowsSynchronously_CatchesAndLogs()
+    public async Task Notify_Enumerable_WhenNotifyThrowsSynchronously_CatchesAndLogs()
     {
-        // A service provider that always throws forces Notify(TMessage) to throw
-        // synchronously inside the foreach loop, exercising the catch branch.
         var services = new ServiceCollection();
         services.AddLogging();
-        using var logProvider = services.BuildServiceProvider();
-        var logger = logProvider.GetRequiredService<ILogger<Notifier>>();
-
-        var notifier = new Notifier(new ThrowingServiceProvider(), logger);
+        services.AddSingleton<NotificationPipelineExecutor<TestNotification>>();
+        
+        await using var logProvider = services.BuildServiceProvider();
+        
+        var notifier = new Notifier(new ThrowingServiceProvider());
         var messages = new[] { new TestNotification(), new TestNotification() };
 
-        var task = notifier.Notify(
-            null,
-            (IEnumerable<TestNotification>)messages,
-            CancellationToken.None
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => notifier.Notify(null, messages, TestContext.Current.CancellationToken)
         );
 
-        // Must complete synchronously and not throw — exceptions are caught and logged.
-        Assert.True(task.IsCompletedSuccessfully);
+        Assert.Equal("test-throw", ex.Message);
     }
 
     private sealed class ThrowingServiceProvider : IServiceProvider
     {
-        public object? GetService(Type serviceType) =>
+        public object GetService(Type serviceType) =>
             throw new InvalidOperationException("test-throw");
     }
 

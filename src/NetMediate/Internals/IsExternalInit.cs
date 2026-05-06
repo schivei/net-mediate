@@ -1,8 +1,5 @@
-// ReSharper disable UnusedType.Global
-// ReSharper disable CheckNamespace
-// ReSharper disable UnusedMember.Global
 #if NETSTANDARD2_0 || NETSTANDARD2_1
-#pragma warning disable IDE0130 // Namespace does not match folder structure
+#pragma warning disable IDE0130
 namespace System.Runtime.CompilerServices;
 
 internal sealed class IsExternalInit { }
@@ -12,5 +9,5 @@ internal sealed class CallerArgumentExpressionAttribute(string parameterName) : 
 {
     public string ParameterName { get; } = parameterName;
 }
-#pragma warning restore IDE0130 // Namespace does not match folder structure
+#pragma warning restore IDE0130
 #endif

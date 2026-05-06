@@ -43,8 +43,6 @@ public interface IMediatorServiceBuilder
         where TMessage : notnull
         where TResult : notnull;
 
-    // ── Type-based specialized registration (AOT-safe, used by source generator) ──
-
     /// <summary>
     /// Registers a command handler and its closed-type pipeline executor.
     /// Prefer this over <see cref="RegisterHandler{TInterface,THandler,TMessage,TResult}"/> for commands.

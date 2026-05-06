@@ -1,18 +1,10 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using NetMediate.Internals;
+﻿using NetMediate.Internals;
 
 namespace NetMediate.Moq;
 
-public class Notifier : INotifiable
+public class Notifier(IServiceProvider serviceProvider) : INotifiable
 {
-    private readonly Internals.Notifier _notifier;
-
-    public Notifier(IServiceProvider serviceProvider)
-    {
-        var logger = serviceProvider.GetService<ILogger<Internals.Notifier>>();
-        _notifier = new(serviceProvider, logger);
-    }
+    private readonly Internals.Notifier _notifier = new(serviceProvider);
 
     public async Task DispatchNotifications<TMessage>(
         object? key,

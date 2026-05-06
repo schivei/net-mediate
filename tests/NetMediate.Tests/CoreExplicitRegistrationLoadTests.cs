@@ -195,8 +195,6 @@ public sealed class CoreExplicitRegistrationLoadTests(ITestOutputHelper output)
     {
         var builder = Host.CreateApplicationBuilder();
 
-        // Explicit (AOT-safe) registration — no assembly scanning.
-        // This is the same code path emitted by NetMediate.SourceGeneration.
         builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterCommandHandler<ExplicitLoadCommandHandler, ExplicitLoadCommand>();

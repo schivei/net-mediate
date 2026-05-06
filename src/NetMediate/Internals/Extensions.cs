@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -9,32 +9,17 @@ internal static class Extensions
 {
     public const string DEFAULT_ROUTING_KEY = "__default";
 
-    // Handlers are registered as Singletons, but resolving them via a global static cache would
-    // contaminate distinct IServiceProvider instances (e.g., separate test containers) that
-    // register different handlers for the same message/key combination.  Using a
-    // ConditionalWeakTable keys the per-type handler cache to the concrete IServiceProvider
-    // instance so each container gets its own isolated cache.  When the provider is GC'd its
-    // cache entry is automatically released — no memory leak.
     private static readonly ConditionalWeakTable<
         IServiceProvider,
         ConcurrentDictionary<ServiceKey, Lazy<object>>
     > s_handlerCacheByProvider = new();
 
-    // Behaviors may differ between service-provider instances (e.g., different test containers
-    // register different behaviors for the same message type).  Using a ConditionalWeakTable
-    // keys the per-type behavior cache to the concrete IServiceProvider instance, so each
-    // container gets its own isolated cache.  When the provider is GC'd its cache entry is
-    // automatically released — no memory leak.
     private static readonly ConditionalWeakTable<
         IServiceProvider,
         ConcurrentDictionary<ServiceKey, Lazy<object>>
     > s_behaviorCacheByProvider = new();
 
-    // Pre-compiled pipeline delegates are cached per provider per executor type.
-    // Each concrete executor class (closed generic) registers an Action<IServiceProvider> here
-    // via RegisterPipelineCacheClearing(); ClearCache(provider) invokes all of them so the
-    // pre-compiled chains are rebuilt on the next call (used by test isolation helpers).
-    private static readonly List<Action<IServiceProvider>> s_pipelineCacheClearers = [];
+    private static readonly List<Action<IServiceProvider>> s_pipelineCacheClears = [];
 
     /// <summary>
     /// Called once per closed-generic executor type (from a static constructor) to register
@@ -42,10 +27,10 @@ internal static class Extensions
     /// </summary>
     internal static void RegisterPipelineCacheClearing(Action<IServiceProvider> clearer)
     {
-        lock (s_pipelineCacheClearers)
-            s_pipelineCacheClearers.Add(clearer);
+        lock (s_pipelineCacheClears)
+            s_pipelineCacheClears.Add(clearer);
     }
-
+    
     /// <summary>
     /// Clears the handler cache, behavior cache, and pre-compiled pipeline caches for a
     /// specific provider instance.  Intended for test isolation only — in production, prefer
@@ -53,16 +38,16 @@ internal static class Extensions
     /// </summary>
     internal static void ClearCache(IServiceProvider? serviceProvider = null)
     {
-        if (serviceProvider is not null)
-        {
-            s_handlerCacheByProvider.Remove(serviceProvider);
-            s_behaviorCacheByProvider.Remove(serviceProvider);
+        if (serviceProvider is null)
+            return;
+        
+        s_handlerCacheByProvider.Remove(serviceProvider);
+        s_behaviorCacheByProvider.Remove(serviceProvider);
 
-            lock (s_pipelineCacheClearers)
-            {
-                foreach (var clear in s_pipelineCacheClearers)
-                    clear(serviceProvider);
-            }
+        lock (s_pipelineCacheClears)
+        {
+            foreach (var clear in s_pipelineCacheClears)
+                clear(serviceProvider);
         }
     }
 
@@ -147,11 +132,6 @@ internal static class Extensions
                 _ => new Lazy<object>(
                     () =>
                     {
-                        // Combine behaviors registered under the default routing key (via
-                        // RegisterBehavior) with any behaviors registered without a key (plain
-                        // AddScoped/AddSingleton/AddTransient). The keyed set comes first so
-                        // the registration order declared through IMediatorServiceBuilder is
-                        // preserved; unkeyed registrations are appended for backward compat.
                         var keyed = serviceProvider
                             .GetKeyedServices<T>(DEFAULT_ROUTING_KEY)
                             .ToArray();

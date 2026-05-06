@@ -10,25 +10,17 @@
     <RestoreAdditionalProjectSources>..\..\src\NetMediate\bin\Release</RestoreAdditionalProjectSources>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference
-      Include="..\..\src\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj"
-      ReferenceOutputAssembly="false"
-    />
-    <ProjectReference
-      Include="..\..\src\NetMediate\NetMediate.csproj"
-      ReferenceOutputAssembly="false"
-    />
     <PackageReference Include="coverlet.collector" Version="10.*">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.*" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.7" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />
     <PackageReference Include="NetMediate" Version="*" PrivateAssets="all" />
-    <PackageReference Include="xunit.v3" Version="3.*" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.*">
+    <PackageReference Include="xunit.v3" Version="3.2.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
@@ -36,4 +28,7 @@
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
+  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
+      <MSBuild Projects="..\..\src\NetMediate\NetMediate.csproj" Targets="Pack" Properties="Configuration=Release" />
+  </Target>
 </Project>

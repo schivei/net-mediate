@@ -12,8 +12,6 @@ namespace NetMediate.Resilience.Tests;
 /// </summary>
 public sealed class ResilienceCoverageTests
 {
-    // ── Command Send ─────────────────────────────────────────────────────────────────────────
-
     [Fact]
     public async Task Send_WithCommandHandlerAndBehavior_ShouldInvokeHandlerAndBehavior()
     {
@@ -56,8 +54,6 @@ public sealed class ResilienceCoverageTests
         Assert.Equal(3, MultiCmdTrace.Count);
     }
 
-    // ── Stream RequestStream ──────────────────────────────────────────────────────────────────
-
     [Fact]
     public async Task RequestStream_WithStreamHandlerAndBehavior_ShouldYieldItems()
     {
@@ -78,8 +74,6 @@ public sealed class ResilienceCoverageTests
         Assert.Equal([1, 2, 3], results);
     }
 
-    // ── Notify(IEnumerable) ───────────────────────────────────────────────────────────────────
-
     [Fact]
     public async Task Notify_Enumerable_ShouldDispatchEachMessage()
     {
@@ -91,13 +85,10 @@ public sealed class ResilienceCoverageTests
         IEnumerable<EnumNotifyMsg> messages = [new("x"), new("y")];
         await mediator.Notify(messages, TestContext.Current.CancellationToken);
 
-        // Allow fire-and-forget dispatch to complete
         await WaitForAsync(() => EnumNotifyTrace.Count >= 2, TestContext.Current.CancellationToken);
 
         Assert.Equal(2, EnumNotifyTrace.Count);
     }
-
-    // ── RegisterNotificationBehavior ──────────────────────────────────────────────────────────
 
     [Fact]
     public async Task RegisterNotificationBehavior_ShouldWrapDispatch()
@@ -126,8 +117,6 @@ public sealed class ResilienceCoverageTests
         Assert.Contains("handler", NotifBehaviorTrace.Entries);
     }
 
-    // ── MediatorException null handler-type branch ────────────────────────────────────────────
-
     [Fact]
     public void MediatorException_WithNullHandlerType_BuildsMessageWithoutHandlerName()
     {
@@ -137,8 +126,6 @@ public sealed class ResilienceCoverageTests
         Assert.Null(ex.HandlerType);
         Assert.Contains("CmdMessage", ex.Message);
     }
-
-    // ── Multi-command-handler fan-out ─────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Send_WithTwoCommandHandlers_InvokesAll()
@@ -159,8 +146,6 @@ public sealed class ResilienceCoverageTests
 
         Assert.Equal(2, ResMultiCmdTrace.Count);
     }
-
-    // ── Multi-stream-handler fan-out ──────────────────────────────────────────────────────────
 
     [Fact]
     public async Task RequestStream_WithTwoStreamHandlers_MergesItems()
@@ -186,8 +171,6 @@ public sealed class ResilienceCoverageTests
 
         Assert.Equal([10, 20, 30, 40], results);
     }
-
-    // ── Keyed handler registration and dispatch ───────────────────────────────────────────────
 
     [Fact]
     public async Task RegisterCommandHandler_WithKey_DispatchesToKeyedHandler()
@@ -286,8 +269,6 @@ public sealed class ResilienceCoverageTests
         Assert.Equal([1, 2], results);
     }
 
-    // ── RetryBehavior with non-zero delay ─────────────────────────────────────────────────────
-
     [Fact]
     public async Task RetryRequestBehavior_WithDelay_ShouldRetryAfterDelay()
     {
@@ -333,8 +314,6 @@ public sealed class ResilienceCoverageTests
         );
         Assert.True(RetryWithDelayNotifHandler.Handled);
     }
-
-    // ── Helpers ──────────────────────────────────────────────────────────────────────────────
 
     private static async Task WaitForAsync(Func<bool> predicate, CancellationToken ct)
     {
@@ -410,8 +389,6 @@ public sealed class ResilienceCoverageTests
         return host;
     }
 
-    // ── Message types ────────────────────────────────────────────────────────────────────────
-
     public sealed record CmdMessage(string Value);
 
     public sealed record ThrowingCmdMessage(string Value);
@@ -423,8 +400,6 @@ public sealed class ResilienceCoverageTests
     public sealed record EnumNotifyMsg(string Value);
 
     public sealed record NotifBehaviorMsg(string Value);
-
-    // ── Trace helpers ─────────────────────────────────────────────────────────────────────────
 
     private static class CmdTrace
     {
@@ -477,8 +452,6 @@ public sealed class ResilienceCoverageTests
             while (_entries.TryTake(out _)) { }
         }
     }
-
-    // ── Handlers ────────────────────────────────────────────────────────────────────────────
 
     private sealed class CmdHandler : ICommandHandler<CmdMessage>
     {
@@ -575,8 +548,6 @@ public sealed class ResilienceCoverageTests
             await next(key, message, ct);
         }
     }
-
-    // ── New types, trace helpers, and handlers for new coverage tests ─────────────────────────
 
     public sealed record ResMultiCmdMessage(string Value);
 

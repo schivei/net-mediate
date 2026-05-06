@@ -51,7 +51,6 @@ public sealed class QuartzNotificationJob(
     /// <summary>Key used to store the routing key CLR assembly-qualified type name in the <see cref="JobDataMap"/>.</summary>
     public const string KeyTypeDataKey = "netmediate_key_type";
 
-    // Cached delegate invoker keyed by message type to avoid per-call MakeGenericMethod on hot paths.
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<
         Type,
         Func<INotifiable, object?, object, CancellationToken, Task>
@@ -94,7 +93,6 @@ public sealed class QuartzNotificationJob(
             return;
         }
 
-        // Restore the routing key from job data if it was stored.
         object? routingKey = null;
         var keyJson = data.GetString(KeyDataKey);
         var keyTypeName = data.GetString(KeyTypeDataKey);
@@ -116,8 +114,6 @@ public sealed class QuartzNotificationJob(
         Type messageType
     )
     {
-        // Use Notify(key, message, ct) rather than DispatchNotifications so that the full
-        // behavior pipeline runs and the routing key is properly forwarded.
         var method = typeof(INotifiable)
             .GetMethods()
             .First(m => m.Name == nameof(INotifiable.Notify) && m.GetParameters().Length == 3)

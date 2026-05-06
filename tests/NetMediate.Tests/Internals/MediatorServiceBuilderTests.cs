@@ -57,14 +57,11 @@ public class MediatorServiceBuilderTests
     [Fact]
     public void Constructor_WhenINotifiableAlreadyRegistered_ReplacesExistingRegistration()
     {
-        // Arrange — pre-register a different INotifiable implementation
         var services = new ServiceCollection();
-        services.AddSingleton<INotifiable, Notifier>(sp => null!); // placeholder
+        services.AddSingleton<INotifiable, Notifier>(sp => null!);
 
-        // Act — constructor should Replace rather than Add
         var builder = new MediatorServiceBuilder<Notifier>(services);
 
-        // Assert — only one INotifiable is registered and it is Notifier
         var registrations = services.Where(s => s.ServiceType == typeof(INotifiable)).ToList();
         Assert.Single(registrations);
         Assert.Equal(typeof(Notifier), registrations[0].ImplementationType);
@@ -73,7 +70,6 @@ public class MediatorServiceBuilderTests
     [Fact]
     public void Guard_ThrowIfNull_WithNull_ThrowsArgumentNullException()
     {
-        // Guard.ThrowIfNull must throw when the argument is null
         object? value = null;
         Assert.Throws<ArgumentNullException>(() => Guard.ThrowIfNull(value));
     }
@@ -81,7 +77,6 @@ public class MediatorServiceBuilderTests
     [Fact]
     public void Guard_ThrowIfNull_WithNonNull_DoesNotThrow()
     {
-        // Guard.ThrowIfNull must not throw for a non-null argument
         object value = new();
         var ex = Record.Exception(() => Guard.ThrowIfNull(value));
         Assert.Null(ex);
@@ -144,8 +139,6 @@ public class MediatorServiceBuilderTests
                 && s.KeyedImplementationType == typeof(NoOpNotificationBehavior<DummyNotification>)
         );
     }
-
-    // ── Specialized type-based registration (AOT-safe) ──────────────────────────
 
     [Fact]
     public void RegisterCommandHandler_RegistersHandlerAndExecutor()
@@ -232,8 +225,6 @@ public class MediatorServiceBuilderTests
             s => s.ServiceType == typeof(StreamPipelineExecutor<DummyStream, object>)
         );
     }
-
-    // ── Instance-based registration ──────────────────────────────────────────────
 
     [Fact]
     public void RegisterCommandHandler_Instance_RegistersHandlerAndExecutor()

@@ -1,5 +1,5 @@
 #if !NET5_0_OR_GREATER
-#pragma warning disable IDE0130 // Namespace does not match folder structure
+#pragma warning disable IDE0130 
 namespace System.Diagnostics.CodeAnalysis;
 
 /// <summary>
@@ -35,5 +35,5 @@ internal sealed class RequiresUnreferencedCodeAttribute(string message) : Attrib
     /// <summary>Gets or sets an optional URL that contains more information about the member.</summary>
     public string? Url { get; set; }
 }
-#pragma warning restore IDE0130 // Namespace does not match folder structure
+#pragma warning restore IDE0130
 #endif

@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
@@ -56,9 +55,6 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     )
         where TMessage : notnull
     {
-        // GetService (nullable) so that a message with no registered handler is a no-op
-        // rather than throwing. Executors are only registered when a handler is registered
-        // via RegisterCommandHandler<>.
         var pipeline = serviceProvider.GetService<
             PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>
         >();
@@ -152,7 +148,6 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
                 .Handle(
                     key ?? Extensions.DEFAULT_ROUTING_KEY,
                     message,
-                    RequestHandlers,
                     cancellationToken
                 )
                 .ConfigureAwait(false);
@@ -170,17 +165,6 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
                 ex
             );
         }
-    }
-
-    private static Task<TResponse> RequestHandlers<TMessage, TResponse>(
-        object? _,
-        TMessage message,
-        IRequestHandler<TMessage, TResponse>[] handlers,
-        CancellationToken cancellationToken
-    )
-        where TMessage : notnull
-    {
-        return handlers.Single().Handle(message, cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -215,18 +199,15 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
         );
     }
 
-    private static async IAsyncEnumerable<TResponse> StreamHandlers<TMessage, TResponse>(
+    private static IAsyncEnumerable<TResponse> StreamHandlers<TMessage, TResponse>(
         object? _,
         TMessage message,
         IStreamHandler<TMessage, TResponse>[] handlers,
-        [EnumeratorCancellation] CancellationToken cancellationToken
+        CancellationToken cancellationToken
     )
         where TMessage : notnull
     {
-        foreach (var handler in handlers)
-        {
-            await foreach (var item in handler.Handle(message, cancellationToken).ConfigureAwait(false))
-                yield return item;
-        }
+        return handlers.Select(x => x.Handle(message, cancellationToken))
+            .Aggregate((prev, next) => prev.Concat(next));
     }
 }

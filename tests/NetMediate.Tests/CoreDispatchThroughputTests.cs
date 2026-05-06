@@ -20,21 +20,8 @@ namespace NetMediate.Tests;
 /// </summary>
 public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
 {
-    // ─────────────────────────────────────────────────────────────────────────
-    // Execution mode detection
-    //
-    // RuntimeFeature.IsDynamicCodeSupported returns false when the process was
-    // compiled with NativeAOT (no JIT, no dynamic IL emission).  All other
-    // runtimes (including Mono, CoreCLR with trimming, and regular JIT) return true.
-    // ─────────────────────────────────────────────────────────────────────────
-
     private static string ExecutionMode =>
         RuntimeFeature.IsDynamicCodeSupported ? "jit" : "nativeaot";
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Command: IMediator.Send<TMsg>
-    // All registered ICommandHandler<TMsg> instances are invoked sequentially.
-    // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task CoreCommand_DispatchThroughput()
@@ -47,7 +34,6 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
 
         const int ops = 50_000;
 
-        // warm-up: prime DI resolution, JIT compilation, and handler/behavior caches
         for (var i = 0; i < 500; i++)
             await mediator.Send(new CoreCmd(i), ct);
 
@@ -71,12 +57,6 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Notification: IMediator.Notify<TMsg>
-    // All registered INotificationHandler<TMsg> instances are started individually
-    // (fire-and-forget); exceptions are logged, not thrown.
-    // ─────────────────────────────────────────────────────────────────────────
-
     [Fact]
     public async Task CoreNotification_DispatchThroughput()
     {
@@ -88,7 +68,6 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
 
         const int ops = 50_000;
 
-        // warm-up
         for (var i = 0; i < 500; i++)
             await mediator.Notify(new CoreNotif(i), ct);
 
@@ -112,11 +91,6 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Request: IMediator.Request<TMsg, TResp>
-    // Single IRequestHandler<TMsg, TResp> (first registered) returns a response.
-    // ─────────────────────────────────────────────────────────────────────────
-
     [Fact]
     public async Task CoreRequest_DispatchThroughput()
     {
@@ -128,7 +102,6 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
 
         const int ops = 50_000;
 
-        // warm-up
         for (var i = 0; i < 500; i++)
             await mediator.Request<CoreReq, int>(new(i), ct);
 
@@ -152,12 +125,6 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Stream: IMediator.RequestStream<TMsg, TResp>
-    // Single IStreamHandler<TMsg, TResp>; items are yielded lazily and fully drained.
-    // Throughput is measured as full stream invocations (not individual items) per second.
-    // ─────────────────────────────────────────────────────────────────────────
-
     [Fact]
     public async Task CoreStream_DispatchThroughput()
     {
@@ -169,7 +136,6 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
 
         const int ops = 10_000;
 
-        // warm-up
         for (var i = 0; i < 200; i++)
             await foreach (var _ in mediator.RequestStream<CoreStream, int>(new(i), ct)) { }
 
@@ -193,15 +159,10 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Setup
-    // ─────────────────────────────────────────────────────────────────────────
-
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
 
-        // Core only — no behaviors, no resilience, no adapters.
         builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterCommandHandler<CoreCmdHandler, CoreCmd>();
@@ -215,10 +176,6 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
         return host;
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Message types (unique to this class — no cross-test cache pollution)
-    // ─────────────────────────────────────────────────────────────────────────
-
     public sealed record CoreCmd(int Value);
 
     public sealed record CoreNotif(int Value);
@@ -226,10 +183,6 @@ public sealed class CoreDispatchThroughputTests(ITestOutputHelper output)
     public sealed record CoreReq(int Value);
 
     public sealed record CoreStream(int Value);
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // Handlers — minimal no-op implementations
-    // ─────────────────────────────────────────────────────────────────────────
 
     private sealed class CoreCmdHandler : ICommandHandler<CoreCmd>
     {

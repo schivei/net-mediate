@@ -10,9 +10,6 @@ public class MediatorTests
 {
     public MediatorTests()
     {
-        // Clear the static handler cache before each test to prevent cross-test contamination.
-        // Since each test builds a fresh ServiceProvider with different handler registrations,
-        // the static cache must be reset so earlier registrations don't leak into later tests.
         Extensions.ClearCache();
     }
 
@@ -142,7 +139,6 @@ public class MediatorTests
         await using var provider = BuildProvider(_ => { });
         var mediator = BuildMediator(provider);
 
-        // No throw — Send is a no-op when no executor is registered for the message type
         var task = mediator.Send(
             new TestMessageCommand { Content = "Test" },
             TestContext.Current.CancellationToken
@@ -286,13 +282,10 @@ public class MediatorTests
         var mediator = BuildMediator(provider);
         var message = new TestMessageCommand { Content = "first" };
 
-        // First call — populates the per-provider pipeline cache
         await mediator.Send(message, TestContext.Current.CancellationToken);
 
-        // ClearCache with provider — invalidates the behavior and pipeline caches for this provider
         Extensions.ClearCache(provider);
 
-        // Second call — should rebuild the pipeline and succeed
         var message2 = new TestMessageCommand { Content = "second" };
         await mediator.Send(message2, TestContext.Current.CancellationToken);
 
@@ -400,7 +393,6 @@ public class MediatorTests
         )
             where TMessage : notnull => Task.CompletedTask;
 
-        // Throws synchronously so the catch block in Mediator.Notify is exercised.
         public Task Notify<TMessage>(
             object? key,
             TMessage message,

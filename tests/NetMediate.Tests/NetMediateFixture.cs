@@ -53,9 +53,7 @@ public sealed class NetMediateFixture : IDisposable
                     CancellationTokenSource.Cancel(false);
                 }
                 catch
-                {
-                    // ignore exceptions during shutdown
-                }
+                { }
             })
         );
 

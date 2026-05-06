@@ -10,9 +10,17 @@ This page centralizes installation, configuration, and usage details for each Ne
 dotnet add package NetMediate
 ```
 
+> **Important:** After running the CLI command (or using Package Manager Console), open your `.csproj` and add `PrivateAssets="all"` to the `PackageReference`. Alternatively, add the reference directly in your project file:
+>
+> ```xml
+> <PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
+> ```
+>
+> `PrivateAssets="all"` is **required** — the `NetMediate.SourceGeneration` analyzer is bundled inside the `NetMediate` package and is activated only when this attribute is present. Without it, `AddNetMediate()` will not be generated.
+
 ### Configuration
 
-Handler registration is done automatically at compile time via the source generator. Install `NetMediate.SourceGeneration` as an analyzer and call the generated method:
+Handler registration is done automatically at compile time via the bundled source generator. Call the generated method:
 
 ```csharp
 using NetMediate;
@@ -32,10 +40,10 @@ await mediator.Send(new CreateUserCommand("user-1"), cancellationToken);
 // Request: single handler, returns a response
 var dto = await mediator.Request<GetUserRequest, UserDto>(new GetUserRequest("user-1"), cancellationToken);
 
-// Notification: fire-and-forget dispatch to all registered handlers (exceptions unobserved)
+// Notification: all handlers started in parallel (fire-and-forget); handler exceptions discarded by executor
 await mediator.Notify(new UserCreatedNotification("user-1"), cancellationToken);
 
-// Notification (batch): each message dispatched sequentially (one after another)
+// Notification (batch): each message's pipeline dispatched in parallel (Task.WhenAll across messages)
 await mediator.Notify(new[] { n1, n2, n3 }, cancellationToken);
 
 // Stream: single handler; yields items asynchronously
@@ -64,7 +72,7 @@ All handler `Handle` methods return `Task` or `Task<TResponse>`:
 |---|---|---|
 | `ICommandHandler<TMessage>` | `Task` | All registered handlers, **sequential** in registration order |
 | `IRequestHandler<TMessage, TResponse>` | `Task<TResponse>` | Single handler (first registered) |
-| `INotificationHandler<TMessage>` | `Task` | All registered handlers, fire-and-forget; exceptions unobserved |
+| `INotificationHandler<TMessage>` | `Task` | All handlers started in parallel (`Task.WhenAll`), fire-and-forget; handler exceptions discarded |
 | `IStreamHandler<TMessage, TResponse>` | `IAsyncEnumerable<TResponse>` | All registered handlers, items merged **sequentially** (handler A items first, then handler B) |
 
 > **Unhandled messages**: `Send` and `Notify` are silent no-ops when no handler is registered. `Request` and `RequestStream` throw `InvalidOperationException`.
@@ -182,9 +190,10 @@ See [RESILIENCE.md](RESILIENCE.md) for full details.
 
 ### Installation
 
+`NetMediate.SourceGeneration` is bundled inside the `NetMediate` package — no separate installation is required. The analyzer is activated by setting `PrivateAssets="all"` on the `NetMediate` `PackageReference`:
+
 ```xml
-<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x"
-                  OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+<PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
 ```
 
 ### Usage

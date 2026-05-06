@@ -8,12 +8,25 @@ Get up and running with NetMediate in just a few minutes! This guide will walk y
 
 ## Step 1: Install Packages
 
-First, install the required NuGet packages:
+First, install the required NuGet package:
 
 ```bash
 dotnet add package NetMediate
-dotnet add package NetMediate.SourceGeneration
 ```
+
+Then open your `.csproj` and add the `PackageReference`:
+
+```xml
+<PackageReference Include="NetMediate" Version="*" />
+```
+
+:::tip Library projects
+If you are building a **library** (not an application), add `PrivateAssets="all"` to prevent `NetMediate` and its bundled analyzer from flowing as a transitive dependency to consumers of your library. The analyzer always runs for your project regardless:
+
+```xml
+<PackageReference Include="NetMediate" Version="*" PrivateAssets="all" />
+```
+:::
 
 ## Step 2: Define a Message
 
@@ -216,7 +229,7 @@ Now that you have a working example, explore more features:
 
 If the `AddNetMediate()` method is not available:
 
-1. Ensure `NetMediate.SourceGeneration` is installed with correct attributes
+1. Ensure your `NetMediate` `PackageReference` has `PrivateAssets="all"` set
 2. Rebuild your project
 3. Restart your IDE or refresh IntelliSense
 4. Check that your handler classes are not abstract or generic

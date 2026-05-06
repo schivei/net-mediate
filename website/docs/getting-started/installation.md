@@ -32,7 +32,7 @@ Add the following to your `.csproj` file:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="NetMediate" Version="*" />
+  <PackageReference Include="NetMediate" Version="*" PrivateAssets="all" />
 </ItemGroup>
 ```
 

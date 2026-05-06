@@ -16,7 +16,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 Send one-way messages to all registered handlers sequentially. Perfect for triggering side-effects across multiple consumers.
 
 ### 📨 **Notifications**
-Publish messages to multiple handlers (fire-and-forget; per-handler errors are logged). Ideal for event-driven architectures.
+Publish messages to multiple handlers (fire-and-forget; handler exceptions are unobserved). Ideal for event-driven architectures.
 
 ### 🔄 **Requests**
 Send a message to a single handler and receive a typed response. Great for queries and request-response patterns.
@@ -88,7 +88,7 @@ NetMediate supports four types of messages, each with a specific purpose:
 |--------------|-------------------|-------------------|
 | **Command** | `ICommandHandler<TMessage>` | All registered handlers, sequential in registration order |
 | **Request** | `IRequestHandler<TMessage, TResponse>` | First registered handler only; returns `TResponse` |
-| **Notification** | `INotificationHandler<TMessage>` | All registered handlers, individual fire-and-forget per handler |
+| **Notification** | `INotificationHandler<TMessage>` | All registered handlers, individual fire-and-forget per handler (exceptions unobserved) |
 | **Stream** | `IStreamHandler<TMessage, TResponse>` | All registered handlers, items merged sequentially |
 
 ## No Marker Interfaces Required

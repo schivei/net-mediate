@@ -88,12 +88,12 @@ var user = await mediator.Request<GetUserQuery, UserDto>(
 
 ## Notifications
 
-Notifications are fire-and-forget events sent to multiple handlers simultaneously.
+Notifications are fire-and-forget events sent to multiple handlers. Handlers are dispatched without being awaited.
 
 ### Characteristics
 - ✅ Multiple handlers allowed
-- ✅ Handlers execute in parallel (fire-and-forget)
-- ✅ Individual handler exceptions are logged but don't propagate
+- ✅ Handlers dispatched fire-and-forget (not awaited)
+- ✅ Handler exceptions are unobserved (do not propagate to caller)
 - ✅ No return value
 - ✅ Best for event-driven architectures
 
@@ -122,13 +122,13 @@ public class InventoryUpdater : INotificationHandler<OrderShipped>
     }
 }
 
-// Usage - both handlers execute concurrently
+// Usage - both handlers dispatch fire-and-forget
 await mediator.Notify(new OrderShipped("ORD-456", "TRACK-789", DateTime.UtcNow));
 ```
 
 ### Batch Notifications
 
-Send multiple notifications at once:
+Send multiple notifications at once. Each notification is dispatched sequentially — the pipeline for the next message starts only after the previous one completes:
 
 ```csharp
 var notifications = new[]

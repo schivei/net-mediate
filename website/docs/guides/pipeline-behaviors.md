@@ -24,7 +24,7 @@ public sealed class LoggingBehavior<TMessage, TResponse>
         CancellationToken cancellationToken)
     {
         Console.WriteLine($"Before: {typeof(TMessage).Name} (key={key})");
-        var response = await next(message, cancellationToken);
+        var response = await next(key, message, cancellationToken);
         Console.WriteLine($"After: {typeof(TMessage).Name}");
         return response;
     }

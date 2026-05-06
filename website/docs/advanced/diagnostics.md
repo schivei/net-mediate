@@ -55,7 +55,7 @@ builder.Services.AddNetMediateDataDogOpenTelemetry(options =>
 });
 ```
 
-See [DATADOG.md](DATADOG.md) for full details.
+See [DataDog Integration](./datadog) for full details.
 
 ## Performance comparison (main vs current branch)
 

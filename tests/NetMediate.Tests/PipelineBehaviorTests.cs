@@ -19,14 +19,18 @@ public sealed class PipelineBehaviorTests
     [Fact]
     public async Task RequestBehavior_ShouldRunInOrderAndWrapResponse()
     {
-        using var host = await CreateHostAsync(
-            services =>
-            {
-                services.AddScoped<IPipelineBehavior<PipelineRequest, Task<string>>, FirstRequestBehavior>();
-                services.AddScoped<IPipelineBehavior<PipelineRequest, Task<string>>, SecondRequestBehavior>();
-                services.AddSingleton<CallTrace>();
-            }
-        );
+        using var host = await CreateHostAsync(services =>
+        {
+            services.AddScoped<
+                IPipelineBehavior<PipelineRequest, Task<string>>,
+                FirstRequestBehavior
+            >();
+            services.AddScoped<
+                IPipelineBehavior<PipelineRequest, Task<string>>,
+                SecondRequestBehavior
+            >();
+            services.AddSingleton<CallTrace>();
+        });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
         var trace = host.Services.GetRequiredService<CallTrace>();
@@ -53,13 +57,11 @@ public sealed class PipelineBehaviorTests
     [Fact]
     public async Task CommandBehavior_ShouldRunBeforeAndAfterHandler()
     {
-        using var host = await CreateHostAsync(
-            services =>
-            {
-                services.AddScoped<IPipelineBehavior<PipelineCommand, Task>, CommandBehavior>();
-                services.AddSingleton<CallTrace>();
-            }
-        );
+        using var host = await CreateHostAsync(services =>
+        {
+            services.AddScoped<IPipelineBehavior<PipelineCommand, Task>, CommandBehavior>();
+            services.AddSingleton<CallTrace>();
+        });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
         var trace = host.Services.GetRequiredService<CallTrace>();
@@ -67,22 +69,20 @@ public sealed class PipelineBehaviorTests
 
         await mediator.Send(new PipelineCommand("ok"), cancellationToken);
 
-        Assert.Equal(
-            ["command:pre", "command:handler", "command:post"],
-            trace.ToArray()
-        );
+        Assert.Equal(["command:pre", "command:handler", "command:post"], trace.ToArray());
     }
 
     [Fact]
     public async Task StreamBehavior_ShouldWrapFullStreamExecution()
     {
-        using var host = await CreateHostAsync(
-            services =>
-            {
-                services.AddScoped<IPipelineBehavior<PipelineStream, IAsyncEnumerable<int>>, StreamBehavior>();
-                services.AddSingleton<CallTrace>();
-            }
-        );
+        using var host = await CreateHostAsync(services =>
+        {
+            services.AddScoped<
+                IPipelineBehavior<PipelineStream, IAsyncEnumerable<int>>,
+                StreamBehavior
+            >();
+            services.AddSingleton<CallTrace>();
+        });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
         var trace = host.Services.GetRequiredService<CallTrace>();
@@ -102,13 +102,14 @@ public sealed class PipelineBehaviorTests
     [Fact]
     public async Task NotificationBehavior_ShouldWrapNotificationDispatch()
     {
-        using var host = await CreateHostAsync(
-            services =>
-            {
-                services.AddScoped<IPipelineBehavior<PipelineNotification, Task>, NotificationBehavior>();
-                services.AddSingleton<CallTrace>();
-            }
-        );
+        using var host = await CreateHostAsync(services =>
+        {
+            services.AddScoped<
+                IPipelineBehavior<PipelineNotification, Task>,
+                NotificationBehavior
+            >();
+            services.AddSingleton<CallTrace>();
+        });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
         var trace = host.Services.GetRequiredService<CallTrace>();
@@ -129,13 +130,14 @@ public sealed class PipelineBehaviorTests
     [Fact]
     public async Task NotificationBehaviorShorthand_ShouldWrapNotificationDispatch()
     {
-        using var host = await CreateHostAsync(
-            services =>
-            {
-                services.AddScoped<IPipelineNotificationBehavior<PipelineNotification>, ShorthandNotificationBehavior>();
-                services.AddSingleton<CallTrace>();
-            }
-        );
+        using var host = await CreateHostAsync(services =>
+        {
+            services.AddScoped<
+                IPipelineNotificationBehavior<PipelineNotification>,
+                ShorthandNotificationBehavior
+            >();
+            services.AddSingleton<CallTrace>();
+        });
 
         var mediator = host.Services.GetRequiredService<IMediator>();
         var trace = host.Services.GetRequiredService<CallTrace>();
@@ -172,9 +174,7 @@ public sealed class PipelineBehaviorTests
             await Task.Delay(delayMilliseconds, cancellationToken);
         }
 
-        Assert.Fail(
-            $"Timed out waiting for trace size {expected}. Current size: {trace.Count}."
-        );
+        Assert.Fail($"Timed out waiting for trace size {expected}. Current size: {trace.Count}.");
     }
 
     private static async Task<IHost> CreateHostAsync(Action<IServiceCollection> setup)
@@ -196,15 +196,20 @@ public sealed class PipelineBehaviorTests
     }
 
     public sealed record PipelineRequest(string Value);
+
     public sealed record PipelineCommand(string Value);
+
     public sealed record PipelineNotification(string Value);
+
     public sealed record PipelineStream(int Count);
 
     private sealed class CallTrace
     {
         private readonly ConcurrentQueue<string> _calls = new();
         public int Count => _calls.Count;
+
         public void Add(string value) => _calls.Enqueue(value);
+
         public string[] ToArray() => [.. _calls];
     }
 
@@ -255,8 +260,7 @@ public sealed class PipelineBehaviorTests
         }
     }
 
-    private sealed class PipelineCommandHandler(CallTrace trace)
-        : ICommandHandler<PipelineCommand>
+    private sealed class PipelineCommandHandler(CallTrace trace) : ICommandHandler<PipelineCommand>
     {
         public Task Handle(PipelineCommand command, CancellationToken cancellationToken = default)
         {
@@ -265,8 +269,7 @@ public sealed class PipelineBehaviorTests
         }
     }
 
-    private sealed class CommandBehavior(CallTrace trace)
-        : IPipelineBehavior<PipelineCommand, Task>
+    private sealed class CommandBehavior(CallTrace trace) : IPipelineBehavior<PipelineCommand, Task>
     {
         public async Task Handle(
             object? key,
@@ -318,7 +321,10 @@ public sealed class PipelineBehaviorTests
         )
         {
             trace.Add("stream:pre");
-            await foreach (var item in next(key, message, cancellationToken).WithCancellation(cancellationToken))
+            await foreach (
+                var item in next(key, message, cancellationToken)
+                    .WithCancellation(cancellationToken)
+            )
                 yield return item;
             trace.Add("stream:post");
         }

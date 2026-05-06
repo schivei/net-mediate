@@ -37,7 +37,10 @@ public sealed class CoreCoverageTests
 
     private sealed class StringEchoHandler : ABaseHandler<string, string>
     {
-        public override string Handle(string message, CancellationToken cancellationToken = default) => message;
+        public override string Handle(
+            string message,
+            CancellationToken cancellationToken = default
+        ) => message;
     }
 
     // ── MessageValidationException ────────────────────────────────────────────────
@@ -71,7 +74,12 @@ public sealed class CoreCoverageTests
     {
         var inner = new InvalidOperationException("handler error");
 
-        var ex = new MediatorException(typeof(string), typeof(ICommandHandler<string>), "trace-42", inner);
+        var ex = new MediatorException(
+            typeof(string),
+            typeof(ICommandHandler<string>),
+            "trace-42",
+            inner
+        );
 
         Assert.Equal(typeof(string), ex.MessageType);
         Assert.Equal(typeof(ICommandHandler<string>), ex.HandlerType);
@@ -113,8 +121,10 @@ public sealed class CoreCoverageTests
         using var meterListener = new MeterListener();
         meterListener.InstrumentPublished = (instrument, listener) =>
         {
-            if (instrument.Meter.Name == NetMediateDiagnostics.MeterName
-                && instrument.Name == NetMediateDiagnostics.DispatchCountMetricName)
+            if (
+                instrument.Meter.Name == NetMediateDiagnostics.MeterName
+                && instrument.Name == NetMediateDiagnostics.DispatchCountMetricName
+            )
                 listener.EnableMeasurementEvents(instrument);
         };
         meterListener.SetMeasurementEventCallback<long>((_, _, _, _) => dispatched = true);
@@ -134,8 +144,10 @@ public sealed class CoreCoverageTests
         using var meterListener = new MeterListener();
         meterListener.InstrumentPublished = (instrument, listener) =>
         {
-            if (instrument.Meter.Name == NetMediateDiagnostics.MeterName
-                && instrument.Name == NetMediateDiagnostics.SendCountMetricName)
+            if (
+                instrument.Meter.Name == NetMediateDiagnostics.MeterName
+                && instrument.Name == NetMediateDiagnostics.SendCountMetricName
+            )
                 listener.EnableMeasurementEvents(instrument);
         };
         meterListener.SetMeasurementEventCallback<long>((_, _, _, _) => emitted = true);
@@ -158,8 +170,10 @@ public sealed class CoreCoverageTests
         using var meterListener = new MeterListener();
         meterListener.InstrumentPublished = (instrument, listener) =>
         {
-            if (instrument.Meter.Name == NetMediateDiagnostics.MeterName
-                && instrument.Name == NetMediateDiagnostics.RequestCountMetricName)
+            if (
+                instrument.Meter.Name == NetMediateDiagnostics.MeterName
+                && instrument.Name == NetMediateDiagnostics.RequestCountMetricName
+            )
                 listener.EnableMeasurementEvents(instrument);
         };
         meterListener.SetMeasurementEventCallback<long>((_, _, _, _) => emitted = true);
@@ -182,8 +196,10 @@ public sealed class CoreCoverageTests
         using var meterListener = new MeterListener();
         meterListener.InstrumentPublished = (instrument, listener) =>
         {
-            if (instrument.Meter.Name == NetMediateDiagnostics.MeterName
-                && instrument.Name == NetMediateDiagnostics.StreamCountMetricName)
+            if (
+                instrument.Meter.Name == NetMediateDiagnostics.MeterName
+                && instrument.Name == NetMediateDiagnostics.StreamCountMetricName
+            )
                 listener.EnableMeasurementEvents(instrument);
         };
         meterListener.SetMeasurementEventCallback<long>((_, _, _, _) => emitted = true);
@@ -211,8 +227,10 @@ public sealed class CoreCoverageTests
     {
         // No ActivityListener is subscribed to the NetMediate ActivitySource in this test class,
         // so HasListeners() is false and StartActivity must return null (early-return branch).
-        Assert.False(NetMediateDiagnostics.ActivitySource.HasListeners(),
-            "Expected no ActivityListeners to be active during this test.");
+        Assert.False(
+            NetMediateDiagnostics.ActivitySource.HasListeners(),
+            "Expected no ActivityListeners to be active during this test."
+        );
 
         var activity = NetMediateDiagnostics.StartActivity<string>("NoListenerOp");
         Assert.Null(activity);
@@ -260,7 +278,11 @@ public sealed class CoreCoverageTests
         await host.StartAsync(TestContext.Current.CancellationToken);
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        await mediator.Send("mykey", new KeyedCmdMessage("k"), TestContext.Current.CancellationToken);
+        await mediator.Send(
+            "mykey",
+            new KeyedCmdMessage("k"),
+            TestContext.Current.CancellationToken
+        );
 
         Assert.True(KeyedCmdTrace.Called);
     }
@@ -280,7 +302,11 @@ public sealed class CoreCoverageTests
         await host.StartAsync(TestContext.Current.CancellationToken);
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        await mediator.Notify("nkey", new KeyedNotifMessage("n"), TestContext.Current.CancellationToken);
+        await mediator.Notify(
+            "nkey",
+            new KeyedNotifMessage("n"),
+            TestContext.Current.CancellationToken
+        );
 
         await WaitForAsync(() => KeyedNotifTrace.Called, TestContext.Current.CancellationToken);
         Assert.True(KeyedNotifTrace.Called);
@@ -299,7 +325,11 @@ public sealed class CoreCoverageTests
         await host.StartAsync(TestContext.Current.CancellationToken);
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        var result = await mediator.Request<KeyedReqMessage, string>("rkey", new KeyedReqMessage("val"), TestContext.Current.CancellationToken);
+        var result = await mediator.Request<KeyedReqMessage, string>(
+            "rkey",
+            new KeyedReqMessage("val"),
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal("val", result);
     }
@@ -318,7 +348,13 @@ public sealed class CoreCoverageTests
 
         var mediator = host.Services.GetRequiredService<IMediator>();
         var results = new List<int>();
-        await foreach (var item in mediator.RequestStream<KeyedStreamMessage, int>("skey", new KeyedStreamMessage(3), TestContext.Current.CancellationToken))
+        await foreach (
+            var item in mediator.RequestStream<KeyedStreamMessage, int>(
+                "skey",
+                new KeyedStreamMessage(3),
+                TestContext.Current.CancellationToken
+            )
+        )
             results.Add(item);
 
         Assert.Equal([1, 2, 3], results);
@@ -331,7 +367,8 @@ public sealed class CoreCoverageTests
         for (var i = 0; i < 200; i++)
         {
             ct.ThrowIfCancellationRequested();
-            if (predicate()) return;
+            if (predicate())
+                return;
             await Task.Delay(10, ct);
         }
         Assert.Fail("Timed out waiting for condition.");
@@ -340,9 +377,13 @@ public sealed class CoreCoverageTests
     // ── Message types ────────────────────────────────────────────────────────────
 
     public sealed record MultiCmdMessage(string Value);
+
     public sealed record KeyedCmdMessage(string Value);
+
     public sealed record KeyedNotifMessage(string Value);
+
     public sealed record KeyedReqMessage(string Value);
+
     public sealed record KeyedStreamMessage(int Count);
 
     // ── Trace helpers ─────────────────────────────────────────────────────────────
@@ -351,7 +392,9 @@ public sealed class CoreCoverageTests
     {
         private static int _count;
         public static int Count => Volatile.Read(ref _count);
+
         public static void Increment() => Interlocked.Increment(ref _count);
+
         public static void Reset() => Interlocked.Exchange(ref _count, 0);
     }
 
@@ -359,7 +402,9 @@ public sealed class CoreCoverageTests
     {
         private static volatile bool _called;
         public static bool Called => _called;
+
         public static void Set() => _called = true;
+
         public static void Reset() => _called = false;
     }
 
@@ -367,7 +412,9 @@ public sealed class CoreCoverageTests
     {
         private static volatile bool _called;
         public static bool Called => _called;
+
         public static void Set() => _called = true;
+
         public static void Reset() => _called = false;
     }
 
@@ -402,7 +449,8 @@ public sealed class CoreCoverageTests
 
     private sealed class NoopKeyCmdHandler : ICommandHandler<KeyedCmdMessage>
     {
-        public Task Handle(KeyedCmdMessage command, CancellationToken ct = default) => Task.CompletedTask;
+        public Task Handle(KeyedCmdMessage command, CancellationToken ct = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class KeyedNotifHandler : INotificationHandler<KeyedNotifMessage>
@@ -416,7 +464,8 @@ public sealed class CoreCoverageTests
 
     private sealed class NoopKeyNotifHandler : INotificationHandler<KeyedNotifMessage>
     {
-        public Task Handle(KeyedNotifMessage notification, CancellationToken ct = default) => Task.CompletedTask;
+        public Task Handle(KeyedNotifMessage notification, CancellationToken ct = default) =>
+            Task.CompletedTask;
     }
 
     private sealed class KeyedReqHandler : IRequestHandler<KeyedReqMessage, string>
@@ -435,7 +484,8 @@ public sealed class CoreCoverageTests
     {
         public async IAsyncEnumerable<int> Handle(
             KeyedStreamMessage query,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            [EnumeratorCancellation] CancellationToken ct = default
+        )
         {
             for (var i = 1; i <= query.Count; i++)
             {
@@ -449,7 +499,8 @@ public sealed class CoreCoverageTests
     {
         public async IAsyncEnumerable<int> Handle(
             KeyedStreamMessage query,
-            [EnumeratorCancellation] CancellationToken ct = default)
+            [EnumeratorCancellation] CancellationToken ct = default
+        )
         {
             await Task.CompletedTask;
             yield break;

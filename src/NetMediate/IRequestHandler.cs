@@ -8,5 +8,5 @@
 /// requests.</remarks>
 /// <typeparam name="TMessage">The type of the request message to handle. Must not be null.</typeparam>
 /// <typeparam name="TResponse">The type of the response returned by the handler.</typeparam>
-public interface IRequestHandler<in TMessage, TResponse> :
-    IHandler<TMessage, Task<TResponse>> where TMessage : notnull;
+public interface IRequestHandler<in TMessage, TResponse> : IHandler<TMessage, Task<TResponse>>
+    where TMessage : notnull;

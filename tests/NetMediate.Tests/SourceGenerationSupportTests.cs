@@ -13,14 +13,20 @@ public sealed class SourceGenerationSupportTests
         var builder = Host.CreateApplicationBuilder();
         builder.Services.UseNetMediate(configure =>
         {
-            configure.RegisterCommandHandler<ExplicitRegistrationCommandHandler, ExplicitRegistrationCommand>();
+            configure.RegisterCommandHandler<
+                ExplicitRegistrationCommandHandler,
+                ExplicitRegistrationCommand
+            >();
         });
 
         using var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new ExplicitRegistrationCommand(), TestContext.Current.CancellationToken);
+        await mediator.Send(
+            new ExplicitRegistrationCommand(),
+            TestContext.Current.CancellationToken
+        );
 
         Assert.Equal(1, Volatile.Read(ref ExplicitRegistrationCommandHandler.Executed));
     }

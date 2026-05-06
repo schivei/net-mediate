@@ -13,13 +13,13 @@
     <WarningsNotAsErrors>CS1591</WarningsNotAsErrors>
     <GenerateDocumentationFileInReleaseBuild>true</GenerateDocumentationFileInReleaseBuild>
 
-	<IsAotCompatible>false</IsAotCompatible>
-	<IsTrimmable>false</IsTrimmable>
-	<EnableTrimAnalyzer>false</EnableTrimAnalyzer>
-	<EnableSingleFileAnalyzer>false</EnableSingleFileAnalyzer>
-	<EnableAotAnalyzer>false</EnableAotAnalyzer>
-	<VerifyReferenceAotCompatibility>false</VerifyReferenceAotCompatibility>
-	<PublishTrimmed>false</PublishTrimmed>
+    <IsAotCompatible>false</IsAotCompatible>
+    <IsTrimmable>false</IsTrimmable>
+    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+    <EnableSingleFileAnalyzer>false</EnableSingleFileAnalyzer>
+    <EnableAotAnalyzer>false</EnableAotAnalyzer>
+    <VerifyReferenceAotCompatibility>false</VerifyReferenceAotCompatibility>
+    <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <WarningsNotAsErrors />
@@ -32,7 +32,10 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
+    <PackageReference
+      Include="Microsoft.Extensions.DependencyInjection.Abstractions"
+      Version="10.*"
+    />
     <PackageReference Include="Quartz" Version="3.*" />
     <PackageReference Include="Quartz.Extensions.DependencyInjection" Version="3.*" />
   </ItemGroup>

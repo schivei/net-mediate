@@ -10,7 +10,7 @@
     <WarningsNotAsErrors>CS1591</WarningsNotAsErrors>
     <!-- Make missing XML documentation a warning that gets promoted to error in CI -->
     <GenerateDocumentationFileInReleaseBuild>true</GenerateDocumentationFileInReleaseBuild>
-	<NoWarn>$(NoWarn);CA1873</NoWarn>
+    <NoWarn>$(NoWarn);CA1873</NoWarn>
   </PropertyGroup>
   <!-- Enable XML documentation warnings as errors only in Release mode for stricter CI enforcement -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -22,8 +22,8 @@
     <InternalsVisibleTo Include="NetMediate.Compat" />
     <InternalsVisibleTo Include="NetMediate.Moq" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
-	<InternalsVisibleTo Include="SharedParity.NetMediate.Tests"/>
-	<InternalsVisibleTo Include="SharedParity.MediatRCompat.Tests"/>
+    <InternalsVisibleTo Include="SharedParity.NetMediate.Tests" />
+    <InternalsVisibleTo Include="SharedParity.MediatRCompat.Tests" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\assets\logo.png" Pack="true" PackagePath="\" />
@@ -31,19 +31,26 @@
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
-	<ProjectReference Include="..\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj"
+    <ProjectReference
+      Include="..\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj"
       ReferenceOutputAssembly="false"
       OutputItemType="Analyzer"
-      PrivateAssets="all" />
-    <None Include="$(MSBuildThisFileDirectory)..\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll"
-          Pack="true"
-          PackagePath="analyzers/dotnet/cs"
-          Visible="false"
-          Condition="Exists('$(MSBuildThisFileDirectory)..\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll')" />
+      PrivateAssets="all"
+    />
+    <None
+      Include="$(MSBuildThisFileDirectory)..\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll"
+      Pack="true"
+      PackagePath="analyzers/dotnet/cs"
+      Visible="false"
+      Condition="Exists('$(MSBuildThisFileDirectory)..\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll')"
+    />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
+    <PackageReference
+      Include="Microsoft.Extensions.DependencyInjection.Abstractions"
+      Version="10.*"
+    />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.*" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*" />
   </ItemGroup>

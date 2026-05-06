@@ -34,7 +34,10 @@ public sealed class CoreExplicitRegistrationLoadTests(ITestOutputHelper output)
             $"LOAD_RESULT explicit_command tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected low explicit command throughput: {throughput:F2} ops/s");
+        Assert.True(
+            throughput > 500,
+            $"Unexpected low explicit command throughput: {throughput:F2} ops/s"
+        );
     }
 
     [Fact]
@@ -71,7 +74,10 @@ public sealed class CoreExplicitRegistrationLoadTests(ITestOutputHelper output)
             $"LOAD_RESULT explicit_command_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected low parallel explicit command throughput: {throughput:F2} ops/s");
+        Assert.True(
+            throughput > 500,
+            $"Unexpected low parallel explicit command throughput: {throughput:F2} ops/s"
+        );
     }
 
     [Fact]
@@ -109,7 +115,10 @@ public sealed class CoreExplicitRegistrationLoadTests(ITestOutputHelper output)
             $"LOAD_RESULT explicit_request_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected low parallel explicit request throughput: {throughput:F2} ops/s");
+        Assert.True(
+            throughput > 500,
+            $"Unexpected low parallel explicit request throughput: {throughput:F2} ops/s"
+        );
     }
 
     [Fact]
@@ -136,7 +145,10 @@ public sealed class CoreExplicitRegistrationLoadTests(ITestOutputHelper output)
             $"LOAD_RESULT explicit_notification tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected low explicit notification throughput: {throughput:F2} ops/s");
+        Assert.True(
+            throughput > 500,
+            $"Unexpected low explicit notification throughput: {throughput:F2} ops/s"
+        );
     }
 
     [Fact]
@@ -173,7 +185,10 @@ public sealed class CoreExplicitRegistrationLoadTests(ITestOutputHelper output)
             $"LOAD_RESULT explicit_notification_parallel tfm={targetFramework} ops={operations} elapsed_ms={elapsed.TotalMilliseconds:F2} throughput_ops_s={throughput:F2}"
         );
 
-        Assert.True(throughput > 500, $"Unexpected low parallel explicit notification throughput: {throughput:F2} ops/s");
+        Assert.True(
+            throughput > 500,
+            $"Unexpected low parallel explicit notification throughput: {throughput:F2} ops/s"
+        );
     }
 
     private static async Task<IHost> CreateHostAsync()
@@ -185,8 +200,15 @@ public sealed class CoreExplicitRegistrationLoadTests(ITestOutputHelper output)
         builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterCommandHandler<ExplicitLoadCommandHandler, ExplicitLoadCommand>();
-            configure.RegisterRequestHandler<ExplicitLoadRequestHandler, ExplicitLoadRequest, int>();
-            configure.RegisterNotificationHandler<ExplicitLoadNotificationHandler, ExplicitLoadNotification>();
+            configure.RegisterRequestHandler<
+                ExplicitLoadRequestHandler,
+                ExplicitLoadRequest,
+                int
+            >();
+            configure.RegisterNotificationHandler<
+                ExplicitLoadNotificationHandler,
+                ExplicitLoadNotification
+            >();
         });
 
         var host = builder.Build();
@@ -202,24 +224,33 @@ public sealed class CoreExplicitRegistrationLoadTests(ITestOutputHelper output)
         );
 
     public sealed record ExplicitLoadCommand(int Value);
+
     public sealed record ExplicitLoadRequest(int Value);
+
     public sealed record ExplicitLoadNotification(int Value);
 
     private sealed class ExplicitLoadCommandHandler : ICommandHandler<ExplicitLoadCommand>
     {
-        public Task Handle(ExplicitLoadCommand command, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task Handle(
+            ExplicitLoadCommand command,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
     }
 
     private sealed class ExplicitLoadRequestHandler : IRequestHandler<ExplicitLoadRequest, int>
     {
-        public Task<int> Handle(ExplicitLoadRequest query, CancellationToken cancellationToken = default) =>
-            Task.FromResult(query.Value + 1);
+        public Task<int> Handle(
+            ExplicitLoadRequest query,
+            CancellationToken cancellationToken = default
+        ) => Task.FromResult(query.Value + 1);
     }
 
-    private sealed class ExplicitLoadNotificationHandler : INotificationHandler<ExplicitLoadNotification>
+    private sealed class ExplicitLoadNotificationHandler
+        : INotificationHandler<ExplicitLoadNotification>
     {
-        public Task Handle(ExplicitLoadNotification notification, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task Handle(
+            ExplicitLoadNotification notification,
+            CancellationToken cancellationToken = default
+        ) => Task.CompletedTask;
     }
 }

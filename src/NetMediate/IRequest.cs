@@ -7,4 +7,6 @@
 /// and expects a response. The response type can be any type appropriate for the operation, including void (using Unit)
 /// if no response is needed.</remarks>
 /// <typeparam name="TResponse">The type of the response that will be returned when the request is handled.</typeparam>
-public interface IRequest<TResponse> : IMessage; // NOSONAR S2326
+#pragma warning disable S2326
+public interface IRequest<TResponse> : IMessage;
+#pragma warning restore S2326

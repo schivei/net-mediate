@@ -1,14 +1,16 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate.Internals;
-
 using Notifier = NetMediate.Moq.Notifier;
 
 namespace NetMediate.Tests.Internals;
 
 public class MediatorServiceBuilderTests
 {
-    public class DummyNotification { public bool Valid { get; set; } }
+    public class DummyNotification
+    {
+        public bool Valid { get; set; }
+    }
 
     public class DummyCommand { }
 
@@ -28,7 +30,8 @@ public class MediatorServiceBuilderTests
 
     public class DummyCommandHandler : ICommandHandler<DummyCommand>
     {
-        public Task Handle(DummyCommand command, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task Handle(DummyCommand command, CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
     }
 
     public class DummyRequestHandler : IRequestHandler<DummyRequest, object>
@@ -90,13 +93,19 @@ public class MediatorServiceBuilderTests
         var services = new ServiceCollection();
         var builder = new MediatorServiceBuilder<Notifier>(services);
 
-        builder.RegisterHandler<INotificationHandler<DummyNotification>, DummyNotificationHandler, DummyNotification, Task>();
+        builder.RegisterHandler<
+            INotificationHandler<DummyNotification>,
+            DummyNotificationHandler,
+            DummyNotification,
+            Task
+        >();
 
         Assert.Contains(
             services,
-            s => s.ServiceType == typeof(INotificationHandler<DummyNotification>)
-                 && s.IsKeyedService
-                 && s.KeyedImplementationType == typeof(DummyNotificationHandler)
+            s =>
+                s.ServiceType == typeof(INotificationHandler<DummyNotification>)
+                && s.IsKeyedService
+                && s.KeyedImplementationType == typeof(DummyNotificationHandler)
         );
     }
 
@@ -109,9 +118,10 @@ public class MediatorServiceBuilderTests
 
         Assert.Contains(
             services,
-            s => s.ServiceType == typeof(IPipelineBehavior<DummyNotification, Task>)
-                 && s.IsKeyedService
-                 && s.KeyedImplementationType == typeof(NoOpBehavior<DummyNotification>)
+            s =>
+                s.ServiceType == typeof(IPipelineBehavior<DummyNotification, Task>)
+                && s.IsKeyedService
+                && s.KeyedImplementationType == typeof(NoOpBehavior<DummyNotification>)
         );
     }
 
@@ -121,13 +131,17 @@ public class MediatorServiceBuilderTests
         var services = new ServiceCollection();
         var builder = new MediatorServiceBuilder<Notifier>(services);
 
-        builder.RegisterNotificationBehavior<NoOpNotificationBehavior<DummyNotification>, DummyNotification>();
+        builder.RegisterNotificationBehavior<
+            NoOpNotificationBehavior<DummyNotification>,
+            DummyNotification
+        >();
 
         Assert.Contains(
             services,
-            s => s.ServiceType == typeof(IPipelineNotificationBehavior<DummyNotification>)
-                 && s.IsKeyedService
-                 && s.KeyedImplementationType == typeof(NoOpNotificationBehavior<DummyNotification>)
+            s =>
+                s.ServiceType == typeof(IPipelineNotificationBehavior<DummyNotification>)
+                && s.IsKeyedService
+                && s.KeyedImplementationType == typeof(NoOpNotificationBehavior<DummyNotification>)
         );
     }
 
@@ -141,11 +155,19 @@ public class MediatorServiceBuilderTests
 
         builder.RegisterCommandHandler<DummyCommandHandler, DummyCommand>();
 
-        Assert.Contains(services, s => s.ServiceType == typeof(ICommandHandler<DummyCommand>)
-            && s.IsKeyedService
-            && s.KeyedImplementationType == typeof(DummyCommandHandler));
-        Assert.Contains(services, s =>
-            s.ServiceType == typeof(PipelineExecutor<DummyCommand, Task, ICommandHandler<DummyCommand>>));
+        Assert.Contains(
+            services,
+            s =>
+                s.ServiceType == typeof(ICommandHandler<DummyCommand>)
+                && s.IsKeyedService
+                && s.KeyedImplementationType == typeof(DummyCommandHandler)
+        );
+        Assert.Contains(
+            services,
+            s =>
+                s.ServiceType
+                == typeof(PipelineExecutor<DummyCommand, Task, ICommandHandler<DummyCommand>>)
+        );
     }
 
     [Fact]
@@ -156,11 +178,17 @@ public class MediatorServiceBuilderTests
 
         builder.RegisterNotificationHandler<DummyNotificationHandler, DummyNotification>();
 
-        Assert.Contains(services, s => s.ServiceType == typeof(INotificationHandler<DummyNotification>)
-            && s.IsKeyedService
-            && s.KeyedImplementationType == typeof(DummyNotificationHandler));
-        Assert.Contains(services, s =>
-            s.ServiceType == typeof(NotificationPipelineExecutor<DummyNotification>));
+        Assert.Contains(
+            services,
+            s =>
+                s.ServiceType == typeof(INotificationHandler<DummyNotification>)
+                && s.IsKeyedService
+                && s.KeyedImplementationType == typeof(DummyNotificationHandler)
+        );
+        Assert.Contains(
+            services,
+            s => s.ServiceType == typeof(NotificationPipelineExecutor<DummyNotification>)
+        );
     }
 
     [Fact]
@@ -171,11 +199,17 @@ public class MediatorServiceBuilderTests
 
         builder.RegisterRequestHandler<DummyRequestHandler, DummyRequest, object>();
 
-        Assert.Contains(services, s => s.ServiceType == typeof(IRequestHandler<DummyRequest, object>)
-            && s.IsKeyedService
-            && s.KeyedImplementationType == typeof(DummyRequestHandler));
-        Assert.Contains(services, s =>
-            s.ServiceType == typeof(RequestPipelineExecutor<DummyRequest, object>));
+        Assert.Contains(
+            services,
+            s =>
+                s.ServiceType == typeof(IRequestHandler<DummyRequest, object>)
+                && s.IsKeyedService
+                && s.KeyedImplementationType == typeof(DummyRequestHandler)
+        );
+        Assert.Contains(
+            services,
+            s => s.ServiceType == typeof(RequestPipelineExecutor<DummyRequest, object>)
+        );
     }
 
     [Fact]
@@ -186,11 +220,17 @@ public class MediatorServiceBuilderTests
 
         builder.RegisterStreamHandler<DummyStreamHandler, DummyStream, object>();
 
-        Assert.Contains(services, s => s.ServiceType == typeof(IStreamHandler<DummyStream, object>)
-            && s.IsKeyedService
-            && s.KeyedImplementationType == typeof(DummyStreamHandler));
-        Assert.Contains(services, s =>
-            s.ServiceType == typeof(StreamPipelineExecutor<DummyStream, object>));
+        Assert.Contains(
+            services,
+            s =>
+                s.ServiceType == typeof(IStreamHandler<DummyStream, object>)
+                && s.IsKeyedService
+                && s.KeyedImplementationType == typeof(DummyStreamHandler)
+        );
+        Assert.Contains(
+            services,
+            s => s.ServiceType == typeof(StreamPipelineExecutor<DummyStream, object>)
+        );
     }
 
     // ── Instance-based registration ──────────────────────────────────────────────
@@ -204,11 +244,19 @@ public class MediatorServiceBuilderTests
 
         builder.RegisterCommandHandler(handler);
 
-        Assert.Contains(services, s => s.ServiceType == typeof(ICommandHandler<DummyCommand>)
-            && s.IsKeyedService
-            && s.KeyedImplementationInstance == handler);
-        Assert.Contains(services, s =>
-            s.ServiceType == typeof(PipelineExecutor<DummyCommand, Task, ICommandHandler<DummyCommand>>));
+        Assert.Contains(
+            services,
+            s =>
+                s.ServiceType == typeof(ICommandHandler<DummyCommand>)
+                && s.IsKeyedService
+                && s.KeyedImplementationInstance == handler
+        );
+        Assert.Contains(
+            services,
+            s =>
+                s.ServiceType
+                == typeof(PipelineExecutor<DummyCommand, Task, ICommandHandler<DummyCommand>>)
+        );
     }
 
     [Fact]
@@ -220,11 +268,17 @@ public class MediatorServiceBuilderTests
 
         builder.RegisterNotificationHandler(handler);
 
-        Assert.Contains(services, s => s.ServiceType == typeof(INotificationHandler<DummyNotification>)
-            && s.IsKeyedService
-            && s.KeyedImplementationInstance == handler);
-        Assert.Contains(services, s =>
-            s.ServiceType == typeof(NotificationPipelineExecutor<DummyNotification>));
+        Assert.Contains(
+            services,
+            s =>
+                s.ServiceType == typeof(INotificationHandler<DummyNotification>)
+                && s.IsKeyedService
+                && s.KeyedImplementationInstance == handler
+        );
+        Assert.Contains(
+            services,
+            s => s.ServiceType == typeof(NotificationPipelineExecutor<DummyNotification>)
+        );
     }
 
     [Fact]
@@ -236,11 +290,17 @@ public class MediatorServiceBuilderTests
 
         builder.RegisterRequestHandler(handler);
 
-        Assert.Contains(services, s => s.ServiceType == typeof(IRequestHandler<DummyRequest, object>)
-            && s.IsKeyedService
-            && s.KeyedImplementationInstance == handler);
-        Assert.Contains(services, s =>
-            s.ServiceType == typeof(RequestPipelineExecutor<DummyRequest, object>));
+        Assert.Contains(
+            services,
+            s =>
+                s.ServiceType == typeof(IRequestHandler<DummyRequest, object>)
+                && s.IsKeyedService
+                && s.KeyedImplementationInstance == handler
+        );
+        Assert.Contains(
+            services,
+            s => s.ServiceType == typeof(RequestPipelineExecutor<DummyRequest, object>)
+        );
     }
 
     [Fact]
@@ -252,25 +312,39 @@ public class MediatorServiceBuilderTests
 
         builder.RegisterStreamHandler(handler);
 
-        Assert.Contains(services, s => s.ServiceType == typeof(IStreamHandler<DummyStream, object>)
-            && s.IsKeyedService
-            && s.KeyedImplementationInstance == handler);
-        Assert.Contains(services, s =>
-            s.ServiceType == typeof(StreamPipelineExecutor<DummyStream, object>));
+        Assert.Contains(
+            services,
+            s =>
+                s.ServiceType == typeof(IStreamHandler<DummyStream, object>)
+                && s.IsKeyedService
+                && s.KeyedImplementationInstance == handler
+        );
+        Assert.Contains(
+            services,
+            s => s.ServiceType == typeof(StreamPipelineExecutor<DummyStream, object>)
+        );
     }
 
     private sealed class NoOpBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
         where TMessage : notnull
     {
-        public Task Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
-            next(key, message, ct);
+        public Task Handle(
+            object? key,
+            TMessage message,
+            PipelineBehaviorDelegate<TMessage, Task> next,
+            CancellationToken ct = default
+        ) => next(key, message, ct);
     }
 
-    private sealed class NoOpNotificationBehavior<TMessage> : IPipelineNotificationBehavior<TMessage>
+    private sealed class NoOpNotificationBehavior<TMessage>
+        : IPipelineNotificationBehavior<TMessage>
         where TMessage : notnull
     {
-        public Task Handle(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, CancellationToken ct = default) =>
-            next(key, message, ct);
+        public Task Handle(
+            object? key,
+            TMessage message,
+            PipelineBehaviorDelegate<TMessage, Task> next,
+            CancellationToken ct = default
+        ) => next(key, message, ct);
     }
 }
-

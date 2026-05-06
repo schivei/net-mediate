@@ -13,7 +13,6 @@ public sealed class RequestTests
         var message = new MessageRequest(id);
 
         using var fixture = new NetMediateFixture();
-        // Act
         var response = await fixture.RunAsync(
             async (sp) =>
             {
@@ -24,7 +23,6 @@ public sealed class RequestTests
                 );
             }
         );
-        // Assert
         if (expected)
         {
             Assert.Null(fixture.RunError);

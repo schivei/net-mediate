@@ -10,9 +10,6 @@ public sealed class PipelineBehaviorTests
 {
     public PipelineBehaviorTests()
     {
-        // Clear the global handler cache to prevent cross-test contamination.
-        // Each test creates its own DI container with different handler instances;
-        // the static cache would otherwise return stale instances from a prior test.
         Extensions.ClearCache();
     }
 
@@ -21,11 +18,11 @@ public sealed class PipelineBehaviorTests
     {
         using var host = await CreateHostAsync(services =>
         {
-            services.AddScoped<
+            services.AddTransient<
                 IPipelineBehavior<PipelineRequest, Task<string>>,
                 FirstRequestBehavior
             >();
-            services.AddScoped<
+            services.AddTransient<
                 IPipelineBehavior<PipelineRequest, Task<string>>,
                 SecondRequestBehavior
             >();
@@ -59,7 +56,7 @@ public sealed class PipelineBehaviorTests
     {
         using var host = await CreateHostAsync(services =>
         {
-            services.AddScoped<IPipelineBehavior<PipelineCommand, Task>, CommandBehavior>();
+            services.AddTransient<IPipelineBehavior<PipelineCommand, Task>, CommandBehavior>();
             services.AddSingleton<CallTrace>();
         });
 
@@ -77,7 +74,7 @@ public sealed class PipelineBehaviorTests
     {
         using var host = await CreateHostAsync(services =>
         {
-            services.AddScoped<
+            services.AddTransient<
                 IPipelineBehavior<PipelineStream, IAsyncEnumerable<int>>,
                 StreamBehavior
             >();
@@ -104,7 +101,7 @@ public sealed class PipelineBehaviorTests
     {
         using var host = await CreateHostAsync(services =>
         {
-            services.AddScoped<
+            services.AddTransient<
                 IPipelineBehavior<PipelineNotification, Task>,
                 NotificationBehavior
             >();
@@ -132,7 +129,7 @@ public sealed class PipelineBehaviorTests
     {
         using var host = await CreateHostAsync(services =>
         {
-            services.AddScoped<
+            services.AddTransient<
                 IPipelineNotificationBehavior<PipelineNotification>,
                 ShorthandNotificationBehavior
             >();

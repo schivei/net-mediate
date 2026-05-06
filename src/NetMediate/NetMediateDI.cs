@@ -32,7 +32,7 @@ public static class NetMediateDI
     /// Handlers and behaviors registered without a key, or dispatched without a key, all use this value.
     /// <c>mediator.Send(command, ct)</c> and <c>mediator.Send(null, command, ct)</c> are exactly equivalent.
     /// </summary>
-    public const string DEFAULT_ROUTING_KEY = Internals.Extensions.DEFAULT_ROUTING_KEY;
+    public const string DEFAULT_ROUTING_KEY = Extensions.DEFAULT_ROUTING_KEY;
 
     /// <summary>
     /// Configures NetMediate core services and applies the provided explicit handler registration
@@ -58,8 +58,6 @@ public static class NetMediateDI
     {
         Guard.ThrowIfNull(configure);
 
-        // IMediator is the first service registered by MediatorServiceBuilder, so its presence
-        // in the collection is a reliable, allocation-free idempotency indicator per container.
         if (services.Any(static s => s.ServiceType == typeof(IMediator)))
         {
             Debug.WriteLine(

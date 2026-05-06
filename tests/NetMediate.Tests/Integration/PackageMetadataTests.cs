@@ -8,7 +8,6 @@ public class PackageMetadataTests
     [Fact]
     public void PackageContainsRequiredFiles()
     {
-        // This test assumes the package was built in Release configuration
         var packagePath = GetPackagePath();
 
         if (!File.Exists(packagePath))
@@ -20,7 +19,6 @@ public class PackageMetadataTests
 
         using var archive = ZipFile.OpenRead(packagePath);
 
-        // Verify required files are included
         Assert.Contains(archive.Entries, e => e.FullName == "LICENSE");
         Assert.Contains(archive.Entries, e => e.FullName == "README.md");
         Assert.Contains(archive.Entries, e => e.FullName == "logo.png");
@@ -50,7 +48,6 @@ public class PackageMetadataTests
 
         Assert.NotNull(metadata);
 
-        // Check required metadata elements
         Assert.Equal("NetMediate", metadata.Element(ns + "id")?.Value);
         Assert.Equal("NetMediate", metadata.Element(ns + "title")?.Value);
         Assert.Equal("Elton Schivei Costa", metadata.Element(ns + "authors")?.Value);
@@ -67,7 +64,6 @@ public class PackageMetadataTests
             metadata.Element(ns + "projectUrl")?.Value
         );
 
-        // Check repository information
         var repository = metadata.Element(ns + "repository");
         Assert.NotNull(repository);
         Assert.Equal("git", repository.Attribute("type")?.Value);
@@ -76,7 +72,6 @@ public class PackageMetadataTests
 
     private static string GetPackagePath()
     {
-        // Look for the package in the typical build output location
         var projectDir = Path.GetDirectoryName(typeof(PackageMetadataTests).Assembly.Location);
         var solutionDir = Path.GetFullPath(Path.Combine(projectDir!, "..", "..", "..", "..", ".."));
         var packagesDir = Path.Combine(solutionDir, "src", "NetMediate", "bin", "Release");

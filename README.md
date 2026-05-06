@@ -29,7 +29,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 ### Key Features
 
 - **Commands**: Send one-way messages to all registered handlers sequentially
-- **Notifications**: Publish messages to multiple handlers (fire-and-forget; per-handler errors are logged)
+- **Notifications**: Publish messages to multiple handlers (fire-and-forget; handler exceptions are unobserved)
 - **Requests**: Send a message to a single handler and receive a typed response
 - **Streaming**: Handle requests that return multiple responses over time via `IAsyncEnumerable`
 - **Pipeline Behaviors**: Interceptors with pre/post flow for every message kind
@@ -55,7 +55,7 @@ dotnet add package NetMediate
 
 ### PackageReference
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" />
+<PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
 ```
 
 ### Optional companion packages
@@ -154,7 +154,7 @@ var mediator = host.Services.GetRequiredService<IMediator>();
 
 ### Notifications
 
-`Notify` runs the notification pipeline synchronously and dispatches each registered handler as an individual fire-and-forget task. The handler `Task` objects are started immediately and not awaited by `Notify` itself — the calling code regains control once all handlers are started. If a handler throws, the exception is caught and logged as an error; other handlers continue normally.
+`Notify` runs the notification pipeline and dispatches each registered handler as an individual fire-and-forget task. The handler `Task` objects are started without being awaited — the calling code regains control once all handlers are started. Handler exceptions are unobserved and do not affect other handlers. When sending a batch of notifications, each notification is dispatched sequentially (the pipeline for the next message starts only after the pipeline for the previous one completes).
 
 #### Define a Notification Message
 ```csharp
@@ -348,7 +348,7 @@ NetMediate messages are plain records or classes — **no marker interfaces are 
 |---|---|---|
 | Command | `ICommandHandler<TMessage>` | All registered handlers, sequential in registration order |
 | Request | `IRequestHandler<TMessage, TResponse>` | First registered handler only; returns `TResponse` |
-| Notification | `INotificationHandler<TMessage>` | All registered handlers, individual fire-and-forget per handler |
+| Notification | `INotificationHandler<TMessage>` | All registered handlers, individual fire-and-forget per handler (exceptions unobserved) |
 | Stream | `IStreamHandler<TMessage, TResponse>` | All registered handlers, items merged sequentially (handler A items first, then handler B) |
 
 ```csharp
@@ -358,7 +358,7 @@ public record DeleteUserCommand(string UserId);
 // Request — single handler, returns a response
 public record GetUserQuery(string UserId);
 
-// Notification — dispatched to all registered handlers (fire-and-forget; errors logged)
+// Notification — dispatched to all registered handlers (fire-and-forget; exceptions unobserved)
 public record UserDeleted(string UserId);
 
 // Stream — all registered handlers, items merged sequentially

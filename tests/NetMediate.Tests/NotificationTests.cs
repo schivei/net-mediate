@@ -17,7 +17,6 @@ public sealed class NotificationTests
                 await Task.Delay(500);
             }
         );
-        // Act
         await fixture.WaitAsync();
 
         Assert.Null(fixture.RunError);

@@ -52,8 +52,6 @@ public class CoreDispatchBenchmarks
         _provider = services.BuildServiceProvider();
         _mediator = _provider.GetRequiredService<IMediator>();
 
-        // Warm up — primes the handler and behavior caches so the first measured call
-        // does not include one-time DI resolution overhead.
         _mediator.Send(s_command).GetAwaiter().GetResult();
         _mediator.Notify(s_notification).GetAwaiter().GetResult();
         _mediator.Request<BenchRequest, BenchResponse>(s_request).GetAwaiter().GetResult();

@@ -12,8 +12,6 @@ namespace NetMediate.Diagnostics.Tests;
 /// </summary>
 public sealed class DiagnosticsExtraCoverageTests
 {
-    // ── TelemetryNotificationBehavior — error path ────────────────────────────────────────────
-
     [Fact]
     public async Task TelemetryNotificationBehavior_WhenInnerBehaviorThrows_ShouldSetActivityErrorAndRethrow()
     {
@@ -36,13 +34,11 @@ public sealed class DiagnosticsExtraCoverageTests
             services.UseNetMediate(reg =>
             {
                 reg.RegisterNotificationHandler<NoopNotificationHandler, ErrorNotificationMsg>();
-                // TelemetryNotificationBehavior registered first → becomes outermost
                 reg.RegisterBehavior<
                     TelemetryNotificationBehavior<ErrorNotificationMsg>,
                     ErrorNotificationMsg,
                     Task
                 >();
-                // ThrowingBehavior registered second → becomes innermost; throws before handler is reached
                 reg.RegisterBehavior<
                     ThrowingNotificationBehavior<ErrorNotificationMsg>,
                     ErrorNotificationMsg,
@@ -59,8 +55,6 @@ public sealed class DiagnosticsExtraCoverageTests
 
         Assert.Contains("NetMediate.Notify", activityErrors);
     }
-
-    // ── TelemetryRequestBehavior — error path ─────────────────────────────────────────────────
 
     [Fact]
     public async Task TelemetryRequestBehavior_WhenHandlerThrows_ShouldSetActivityErrorAndRethrow()
@@ -84,7 +78,6 @@ public sealed class DiagnosticsExtraCoverageTests
             services.UseNetMediate(reg =>
             {
                 reg.RegisterRequestHandler<ThrowingRequestHandler, ErrorRequestMsg, string>();
-                // TelemetryRequestBehavior registered first → becomes outermost
                 reg.RegisterBehavior<
                     TelemetryRequestBehavior<ErrorRequestMsg, string>,
                     ErrorRequestMsg,
@@ -105,8 +98,6 @@ public sealed class DiagnosticsExtraCoverageTests
         Assert.IsType<InvalidOperationException>(ex.InnerException);
         Assert.Contains("NetMediate.Request", activityErrors);
     }
-
-    // ── TelemetryStreamBehavior — error path ──────────────────────────────────────────────────
 
     [Fact]
     public async Task TelemetryStreamBehavior_WhenInnerBehaviorThrows_ShouldSetActivityErrorAndRethrow()
@@ -130,13 +121,11 @@ public sealed class DiagnosticsExtraCoverageTests
             services.UseNetMediate(reg =>
             {
                 reg.RegisterStreamHandler<NoopStreamHandler, ErrorStreamMsg, string>();
-                // TelemetryStreamBehavior registered first → becomes outermost
                 reg.RegisterBehavior<
                     TelemetryStreamBehavior<ErrorStreamMsg, string>,
                     ErrorStreamMsg,
                     IAsyncEnumerable<string>
                 >();
-                // ThrowingStreamBehavior registered second → becomes innermost; throws synchronously
                 reg.RegisterBehavior<
                     ThrowingStreamBehavior<ErrorStreamMsg, string>,
                     ErrorStreamMsg,
@@ -156,8 +145,6 @@ public sealed class DiagnosticsExtraCoverageTests
 
         Assert.Contains("NetMediate.Stream", activityErrors);
     }
-
-    // ── MediatorException — construction via Send ─────────────────────────────────────────────
 
     [Fact]
     public async Task Send_WhenCommandHandlerThrows_ShouldWrapInMediatorException()
@@ -180,8 +167,6 @@ public sealed class DiagnosticsExtraCoverageTests
         Assert.Equal(typeof(ErrorCommandMsg), ex.MessageType);
         Assert.Equal(typeof(ICommandHandler<ErrorCommandMsg>), ex.HandlerType);
     }
-
-    // ── Notify(IEnumerable) ────────────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task Notify_Enumerable_ShouldDispatchAllMessages()
@@ -206,8 +191,6 @@ public sealed class DiagnosticsExtraCoverageTests
         Assert.Equal(3, EnumNotifyTrace.Count);
     }
 
-    // ── Send(IEnumerable) ─────────────────────────────────────────────────────────────────────
-
     [Fact]
     public async Task Send_Enumerable_ShouldInvokeHandlerForEachCommand()
     {
@@ -228,8 +211,6 @@ public sealed class DiagnosticsExtraCoverageTests
 
         Assert.Equal(2, EnumSendTrace.Count);
     }
-
-    // ── NetMediateDiagnostics.RecordSend (coverage of RecordSend) ─────────────────────────────
 
     [Fact]
     public void RecordSend_WhenMeterDisabled_DoesNotThrow()
@@ -259,8 +240,6 @@ public sealed class DiagnosticsExtraCoverageTests
 
         Assert.True(dispatched);
     }
-
-    // ── Additional Record* enabled/disabled and StartActivity branches ─────────────────────────
 
     [Fact]
     public void RecordSend_WhenMeterEnabled_EmitsCounter()
@@ -366,8 +345,6 @@ public sealed class DiagnosticsExtraCoverageTests
         Assert.Null(ex);
     }
 
-    // ── Multi-command-handler fan-out ──────────────────────────────────────────────────────────
-
     [Fact]
     public async Task Send_WithTwoCommandHandlers_InvokesAll()
     {
@@ -387,8 +364,6 @@ public sealed class DiagnosticsExtraCoverageTests
 
         Assert.Equal(2, DiagMultiCmdTrace.Count);
     }
-
-    // ── Multi-stream-handler fan-out ───────────────────────────────────────────────────────────
 
     [Fact]
     public async Task RequestStream_WithTwoStreamHandlers_MergesItems()
@@ -412,8 +387,6 @@ public sealed class DiagnosticsExtraCoverageTests
 
         Assert.Equal([1, 2, 3, 4], [.. results]);
     }
-
-    // ── Keyed handler registration/dispatch ────────────────────────────────────────────────────
 
     [Fact]
     public async Task RegisterCommandHandler_WithKey_DispatchesToKeyedHandler()
@@ -463,8 +436,6 @@ public sealed class DiagnosticsExtraCoverageTests
         Assert.Equal("v", result);
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────────────────────
-
     private static async Task WaitForAsync(Func<bool> predicate, CancellationToken ct)
     {
         for (var i = 0; i < 200; i++)
@@ -486,8 +457,6 @@ public sealed class DiagnosticsExtraCoverageTests
         return host;
     }
 
-    // ── Message types ────────────────────────────────────────────────────────────────────────
-
     public sealed record ErrorNotificationMsg;
 
     public sealed record ErrorRequestMsg;
@@ -507,8 +476,6 @@ public sealed class DiagnosticsExtraCoverageTests
     public sealed record DiagKeyedCmdMessage(string Value);
 
     public sealed record DiagKeyedReqMessage(string Value);
-
-    // ── Trace helpers ─────────────────────────────────────────────────────────────────────────
 
     private static class EnumNotifyTrace
     {
@@ -549,8 +516,6 @@ public sealed class DiagnosticsExtraCoverageTests
 
         public static void Reset() => _called = false;
     }
-
-    // ── Handlers ────────────────────────────────────────────────────────────────────────────
 
     private sealed class NoopNotificationHandler : INotificationHandler<ErrorNotificationMsg>
     {
@@ -599,8 +564,6 @@ public sealed class DiagnosticsExtraCoverageTests
             return Task.CompletedTask;
         }
     }
-
-    // ── Pipeline behaviors ────────────────────────────────────────────────────────────────────
 
     private sealed class ThrowingNotificationBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
         where TMessage : notnull

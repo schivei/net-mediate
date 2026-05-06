@@ -14,7 +14,6 @@ public sealed class StreamTests
         var message = new MessageStream(id);
 
         using var fixture = new NetMediateFixture();
-        // Act
         var response = await fixture.RunAsync(
             async (sp) =>
             {
@@ -27,7 +26,6 @@ public sealed class StreamTests
                     .AsyncToSync();
             }
         );
-        // Assert
         if (expected)
         {
             Assert.Null(fixture.RunError);
@@ -61,7 +59,6 @@ public sealed class StreamTests
             )
             .AsyncToSync();
 
-        // HandlerA yields 1, 2, 3 then HandlerB yields 4, 5, 6 — sequential fan-out.
         Assert.Equal([1, 2, 3, 4, 5, 6], [.. results]);
     }
 

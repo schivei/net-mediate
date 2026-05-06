@@ -196,7 +196,7 @@ public class Handler2 : ICommandHandler<MyCommand>
 ```
 
 **Commands**: Handlers execute sequentially in registration order.
-**Notifications**: Handlers execute concurrently (fire-and-forget).
+**Notifications**: Handlers dispatch fire-and-forget (not awaited; exceptions are unobserved).
 
 ### Requests and Streams
 

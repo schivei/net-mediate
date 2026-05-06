@@ -1,16 +1,14 @@
-// Copyright (c) All contributors. All rights reserved.
-// Licensed under the MIT license. See LICENSE file in the project root for full license information.
-
-#pragma warning disable SA1625 // ElementDocumentationMustNotBeCopiedAndPasted
-#pragma warning disable SA1649 // SA1649FileNameMustMatchTypeName
+#pragma warning disable SA1625
+#pragma warning disable SA1649
 #if NETSTANDARD2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 using System.Runtime.CompilerServices;
+// ReSharper disable CheckNamespace
+// ReSharper disable UnusedMember.Global
+// ReSharper disable MemberCanBePrivate.Global
 
-#pragma warning disable IDE0130 // Namespace does not match folder structure
-// ReSharper disable once CheckNamespace
+#pragma warning disable IDE0130
 namespace System.Threading;
-
-#pragma warning restore IDE0130 // Namespace does not match folder structure
+#pragma warning restore IDE0130 
 
 /// <summary>
 /// A backport of .NET 9.0+'s System.Threading.Lock. Provides a way to get mutual exclusion in regions of code between different threads.
@@ -28,22 +26,21 @@ public
 #endif
 sealed class Lock
 {
-#pragma warning disable CS9216 // A value of type 'System.Threading.Lock' converted to a different type will use likely unintended monitor-based locking in 'lock' statement.
+#pragma warning disable CS9216 
     /// <summary>
     /// Determines whether the current thread holds this lock.
     /// </summary>
     /// <returns>
     /// true if the current thread holds this lock; otherwise, false.
     /// </returns>
-#pragma warning disable SA1623 // Property summary documentation should match accessors
+#pragma warning disable SA1623 
     public bool IsHeldByCurrentThread => Monitor.IsEntered(this);
-#pragma warning restore SA1623 // Property summary documentation should match accessors
+#pragma warning restore SA1623 
 
     /// <summary>
     /// <inheritdoc cref="Monitor.Enter(object)"/>
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // ReSharper disable once MemberCanBePrivate.Global
     public void Enter() => Monitor.Enter(this);
 
     /// <summary>
@@ -84,9 +81,8 @@ sealed class Lock
     /// </summary>
     /// <exception cref="SynchronizationLockException">The current thread does not own the lock for the specified object.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    // ReSharper disable once MemberCanBePrivate.Global
     public void Exit() => Monitor.Exit(this);
-#pragma warning restore CS9216 // A value of type 'System.Threading.Lock' converted to a different type will use likely unintended monitor-based locking in 'lock' statement.
+#pragma warning restore CS9216 
 
     /// <summary>
     /// Enters the lock and returns a <see cref="Scope"/> that may be disposed to exit the lock. Once the method returns,
@@ -105,7 +101,8 @@ sealed class Lock
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Scope EnterScope()
     {
-        this.Enter();
+        Enter();
+        // ReSharper disable once ArrangeObjectCreationWhenTypeNotEvident
         return new(this);
     }
 
@@ -129,5 +126,5 @@ sealed class Lock
     }
 }
 #endif
-#pragma warning restore SA1649 // SA1649FileNameMustMatchTypeName
-#pragma warning restore SA1625 // ElementDocumentationMustNotBeCopiedAndPasted
+#pragma warning restore SA1649
+#pragma warning restore SA1625

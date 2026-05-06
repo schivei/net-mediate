@@ -43,9 +43,6 @@ public sealed class QuartzNotifier(
             .UsingJobData(QuartzNotificationJob.TypeDataKey, typeName)
             .StoreDurably(false);
 
-        // Persist the routing key so that the job can replay the notification under the
-        // same key when it fires. Only serialisable keys (primitives, strings, enums) are
-        // supported; complex object keys are stored via their JSON representation.
         if (key is not null)
         {
             jobBuilder = jobBuilder

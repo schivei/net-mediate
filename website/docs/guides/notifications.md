@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Notifications
 
-Notifications are fire-and-forget events sent to multiple handlers concurrently.
+Notifications are fire-and-forget events sent to multiple handlers. Handlers are dispatched without being awaited; exceptions from handlers are unobserved.
 
 For detailed notification documentation, see the main [README](https://github.com/schivei/net-mediate#notifications).
 

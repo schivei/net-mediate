@@ -4,9 +4,7 @@ sidebar_position: 3
 
 # Notifications
 
-Notifications are fire-and-forget events sent to multiple handlers. Handlers are dispatched without being awaited; exceptions from handlers are unobserved.
-
-For detailed notification documentation, see the main [README](https://github.com/schivei/net-mediate#notifications).
+Notifications are events dispatched to multiple handlers. All handlers are started simultaneously in parallel (`Task.WhenAll`) and are fire-and-forget — their results and exceptions do not affect the caller. Batch notifications (`IEnumerable`) are also dispatched in parallel across messages. Pipeline behaviors run fully and their exceptions propagate normally.
 
 ## Usage
 

@@ -40,10 +40,10 @@ await mediator.Send(new CreateUserCommand("user-1"), cancellationToken);
 // Request: single handler, returns a response
 var dto = await mediator.Request<GetUserRequest, UserDto>(new GetUserRequest("user-1"), cancellationToken);
 
-// Notification: fire-and-forget dispatch to all registered handlers (exceptions unobserved)
+// Notification: all handlers started in parallel (fire-and-forget); handler exceptions discarded by executor
 await mediator.Notify(new UserCreatedNotification("user-1"), cancellationToken);
 
-// Notification (batch): each message dispatched sequentially (one after another)
+// Notification (batch): each message's pipeline dispatched in parallel (Task.WhenAll across messages)
 await mediator.Notify(new[] { n1, n2, n3 }, cancellationToken);
 
 // Stream: single handler; yields items asynchronously
@@ -72,7 +72,7 @@ All handler `Handle` methods return `Task` or `Task<TResponse>`:
 |---|---|---|
 | `ICommandHandler<TMessage>` | `Task` | All registered handlers, **sequential** in registration order |
 | `IRequestHandler<TMessage, TResponse>` | `Task<TResponse>` | Single handler (first registered) |
-| `INotificationHandler<TMessage>` | `Task` | All registered handlers, fire-and-forget; exceptions unobserved |
+| `INotificationHandler<TMessage>` | `Task` | All handlers started in parallel (`Task.WhenAll`), fire-and-forget; handler exceptions discarded |
 | `IStreamHandler<TMessage, TResponse>` | `IAsyncEnumerable<TResponse>` | All registered handlers, items merged **sequentially** (handler A items first, then handler B) |
 
 > **Unhandled messages**: `Send` and `Notify` are silent no-ops when no handler is registered. `Request` and `RequestStream` throw `InvalidOperationException`.

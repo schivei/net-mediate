@@ -1,5 +1,5 @@
 #if !NET5_0_OR_GREATER
-#pragma warning disable IDE0130 // Namespace does not match folder structure
+#pragma warning disable IDE0130
 namespace System.Diagnostics.CodeAnalysis;
 
 /// <summary>
@@ -114,5 +114,5 @@ internal sealed class DynamicallyAccessedMembersAttribute(
     /// <summary>Gets the <see cref="DynamicallyAccessedMemberTypes"/> that specifies the types of members dynamically accessed.</summary>
     public DynamicallyAccessedMemberTypes MemberTypes { get; } = memberTypes;
 }
-#pragma warning restore IDE0130 // Namespace does not match folder structure
+#pragma warning restore IDE0130
 #endif

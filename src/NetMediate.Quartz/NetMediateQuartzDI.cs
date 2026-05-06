@@ -49,13 +49,10 @@ public static class NetMediateQuartzDI
         configureOptions?.Invoke(opts);
         services.AddSingleton(opts);
 
-        // Default JSON serializer — can be overridden by replacing INotificationSerializer.
         services.AddSingleton<INotificationSerializer, JsonNotificationSerializer>();
 
-        // Register the job with Quartz DI-aware job factory.
         services.AddTransient<QuartzNotificationJob>();
 
-        // Register NetMediate using QuartzNotifier as the INotifiable transport.
         services.UseNetMediate<QuartzNotifier>(_ => { });
 
         return services;

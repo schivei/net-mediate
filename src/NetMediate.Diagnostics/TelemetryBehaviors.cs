@@ -91,7 +91,6 @@ public sealed class TelemetryStreamBehavior<TMessage, TResponse>
         CancellationToken cancellationToken
     )
     {
-        // Activity covers stream dispatch only; disposed when this method returns.
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Stream");
         try
         {

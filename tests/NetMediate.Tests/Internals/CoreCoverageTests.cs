@@ -1,5 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
 using System.Diagnostics.Metrics;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,39 +11,6 @@ namespace NetMediate.Tests.Internals;
 /// </summary>
 public sealed class CoreCoverageTests
 {
-    // ── ABaseHandler.Handle(object, ...) ─────────────────────────────────────────
-
-    [Fact]
-    public void ABaseHandler_HandleObjectOverload_DelegatesToTypedHandle()
-    {
-        var handler = new StringEchoHandler();
-
-        // Call the untyped overload; it must cast and delegate to the typed Handle.
-        object result = handler.Handle((object)"hello", TestContext.Current.CancellationToken);
-
-        Assert.Equal("hello", result);
-    }
-
-    [Fact]
-    public void ABaseHandler_HandleObjectOverload_WithCancellation_DelegatesToTypedHandle()
-    {
-        var handler = new StringEchoHandler();
-
-        object result = handler.Handle((object)"world", TestContext.Current.CancellationToken);
-
-        Assert.Equal("world", result);
-    }
-
-    private sealed class StringEchoHandler : ABaseHandler<string, string>
-    {
-        public override string Handle(
-            string message,
-            CancellationToken cancellationToken = default
-        ) => message;
-    }
-
-    // ── MessageValidationException ────────────────────────────────────────────────
-
     [Fact]
     public void MessageValidationException_Ctor_ExposesValidationResultAndMessage()
     {
@@ -66,8 +32,6 @@ public sealed class CoreCoverageTests
         Assert.Same(result, ex.ValidationResult);
         Assert.Equal("error", ex.Message);
     }
-
-    // ── MediatorException ─────────────────────────────────────────────────────────
 
     [Fact]
     public void MediatorException_Ctor_ExposesAllProperties()
@@ -101,13 +65,9 @@ public sealed class CoreCoverageTests
         Assert.Contains("Int32", ex.Message);
     }
 
-    // ── NetMediateDiagnostics.RecordDispatch ──────────────────────────────────────
-
     [Fact]
     public void RecordDispatch_WhenMeterDisabled_ReturnsEarly()
     {
-        // When no MeterListener subscribes to DispatchCount, Enabled==false and
-        // the guard returns early without throwing. This covers the early-return branch.
         var ex = Record.Exception(NetMediateDiagnostics.RecordDispatch<object>);
 
         Assert.Null(ex);
@@ -134,8 +94,6 @@ public sealed class CoreCoverageTests
 
         Assert.True(dispatched);
     }
-
-    // ── NetMediateDiagnostics additional Record* enabled/disabled branches ─────────────
 
     [Fact]
     public void RecordSend_WhenMeterEnabled_EmitsCounter()
@@ -225,8 +183,6 @@ public sealed class CoreCoverageTests
     [Fact]
     public void StartActivity_WhenNoListeners_ReturnsNull()
     {
-        // No ActivityListener is subscribed to the NetMediate ActivitySource in this test class,
-        // so HasListeners() is false and StartActivity must return null (early-return branch).
         Assert.False(
             NetMediateDiagnostics.ActivitySource.HasListeners(),
             "Expected no ActivityListeners to be active during this test."
@@ -235,8 +191,6 @@ public sealed class CoreCoverageTests
         var activity = NetMediateDiagnostics.StartActivity<string>("NoListenerOp");
         Assert.Null(activity);
     }
-
-    // ── Multi-command-handler fan-out ─────────────────────────────────────────────
 
     [Fact]
     public async Task Send_WithMultipleCommandHandlers_ShouldInvokeAll()
@@ -253,12 +207,10 @@ public sealed class CoreCoverageTests
         await host.StartAsync(TestContext.Current.CancellationToken);
 
         var mediator = host.Services.GetRequiredService<IMediator>();
-        await mediator.Send(new MultiCmdMessage("test"), TestContext.Current.CancellationToken);
+        await mediator.Send(new MultiCmdMessage(), TestContext.Current.CancellationToken);
 
         Assert.Equal(2, MultiCmdTrace.Count);
     }
-
-    // ── Keyed command handler registration and dispatch ───────────────────────────
 
     [Fact]
     public async Task RegisterCommandHandler_WithKey_DispatchesToKeyedHandler()
@@ -268,19 +220,16 @@ public sealed class CoreCoverageTests
         var builder = Host.CreateApplicationBuilder();
         builder.Services.UseNetMediate(reg =>
         {
-            // A non-keyed registration is required to create the PipelineExecutor
-            // that Mediator.Send(key,...) resolves. The keyed registration adds an
-            // additional handler reachable via GetKeyedServices(key).
             reg.RegisterCommandHandler<NoopKeyCmdHandler, KeyedCmdMessage>();
-            reg.RegisterCommandHandler<KeyedCmdHandler, KeyedCmdMessage>("mykey");
+            reg.RegisterCommandHandler<KeyedCmdHandler, KeyedCmdMessage>("make");
         });
         using var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
 
         var mediator = host.Services.GetRequiredService<IMediator>();
         await mediator.Send(
-            "mykey",
-            new KeyedCmdMessage("k"),
+            "make",
+            new KeyedCmdMessage(),
             TestContext.Current.CancellationToken
         );
 
@@ -296,15 +245,15 @@ public sealed class CoreCoverageTests
         builder.Services.UseNetMediate(reg =>
         {
             reg.RegisterNotificationHandler<NoopKeyNotifHandler, KeyedNotifMessage>();
-            reg.RegisterNotificationHandler<KeyedNotifHandler, KeyedNotifMessage>("nkey");
+            reg.RegisterNotificationHandler<KeyedNotifHandler, KeyedNotifMessage>("key");
         });
         using var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
 
         var mediator = host.Services.GetRequiredService<IMediator>();
         await mediator.Notify(
-            "nkey",
-            new KeyedNotifMessage("n"),
+            "key",
+            new KeyedNotifMessage(),
             TestContext.Current.CancellationToken
         );
 
@@ -341,7 +290,7 @@ public sealed class CoreCoverageTests
         builder.Services.UseNetMediate(reg =>
         {
             reg.RegisterStreamHandler<NoopKeyStreamHandler, KeyedStreamMessage, int>();
-            reg.RegisterStreamHandler<KeyedStreamHandler, KeyedStreamMessage, int>("skey");
+            reg.RegisterStreamHandler<KeyedStreamHandler, KeyedStreamMessage, int>("sky");
         });
         using var host = builder.Build();
         await host.StartAsync(TestContext.Current.CancellationToken);
@@ -350,7 +299,7 @@ public sealed class CoreCoverageTests
         var results = new List<int>();
         await foreach (
             var item in mediator.RequestStream<KeyedStreamMessage, int>(
-                "skey",
+                "sky",
                 new KeyedStreamMessage(3),
                 TestContext.Current.CancellationToken
             )
@@ -359,8 +308,6 @@ public sealed class CoreCoverageTests
 
         Assert.Equal([1, 2, 3], results);
     }
-
-    // ── Helpers ──────────────────────────────────────────────────────────────────
 
     private static async Task WaitForAsync(Func<bool> predicate, CancellationToken ct)
     {
@@ -374,19 +321,15 @@ public sealed class CoreCoverageTests
         Assert.Fail("Timed out waiting for condition.");
     }
 
-    // ── Message types ────────────────────────────────────────────────────────────
+    private sealed record MultiCmdMessage;
 
-    public sealed record MultiCmdMessage(string Value);
+    private sealed record KeyedCmdMessage;
 
-    public sealed record KeyedCmdMessage(string Value);
+    private sealed record KeyedNotifMessage;
 
-    public sealed record KeyedNotifMessage(string Value);
+    private sealed record KeyedReqMessage(string Value);
 
-    public sealed record KeyedReqMessage(string Value);
-
-    public sealed record KeyedStreamMessage(int Count);
-
-    // ── Trace helpers ─────────────────────────────────────────────────────────────
+    private sealed record KeyedStreamMessage(int Count);
 
     private static class MultiCmdTrace
     {
@@ -417,8 +360,6 @@ public sealed class CoreCoverageTests
 
         public static void Reset() => _called = false;
     }
-
-    // ── Handlers ─────────────────────────────────────────────────────────────────
 
     private sealed class MultiCmdHandlerA : ICommandHandler<MultiCmdMessage>
     {

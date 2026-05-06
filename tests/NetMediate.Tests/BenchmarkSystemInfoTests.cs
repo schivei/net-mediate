@@ -39,14 +39,11 @@ public sealed class BenchmarkSystemInfoTests(ITestOutputHelper output)
         output.WriteLine($"SYSTEM_INFO is_64bit_process={Environment.Is64BitProcess}");
         output.WriteLine($"SYSTEM_INFO dotnet_version={GetDotNetVersion()}");
 
-        // Always pass — this is a diagnostics-only test.
         Assert.True(true);
     }
 
     private static string GetDotNetVersion()
     {
-        // The SDK version is not directly available at runtime; use the framework description
-        // as the next best signal. The dotnet --version output is captured in CI logs.
-        return System.Environment.Version.ToString();
+        return Environment.Version.ToString();
     }
 }

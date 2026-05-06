@@ -1,5 +1,4 @@
 using System.Data;
-using NetMediate;
 using Serilog;
 
 namespace NetMediate.DataDog.Serilog;

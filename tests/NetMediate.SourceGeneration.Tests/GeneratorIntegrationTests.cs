@@ -19,8 +19,6 @@ namespace NetMediate.SourceGeneration.Tests;
 /// </summary>
 public sealed class GeneratorIntegrationTests
 {
-    // ── helpers ──────────────────────────────────────────────────────────────────────────────
-
     /// <summary>
     /// Loads <c>NetMediateRegistrationGenerator</c> from the local source-generator build output
     /// when available, falling back to the analyzer DLL bundled inside the <c>NetMediate</c>
@@ -60,8 +58,6 @@ public sealed class GeneratorIntegrationTests
                 generatorDll
             );
 
-        // Assembly.LoadFrom resolves Microsoft.CodeAnalysis from the already-loaded instance in
-        // the default load context, so IIncrementalGenerator identity is preserved.
         var asm = Assembly.LoadFrom(generatorDll);
         var type =
             asm.GetType("NetMediate.SourceGeneration.NetMediateRegistrationGenerator")
@@ -230,7 +226,6 @@ public sealed class GeneratorIntegrationTests
             MetadataReference.CreateFromFile(typeof(IServiceCollection).Assembly.Location),
         };
 
-        // Add all loaded assemblies to avoid type resolution failures
         foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
         {
             if (!asm.IsDynamic && !string.IsNullOrEmpty(asm.Location))
@@ -240,8 +235,7 @@ public sealed class GeneratorIntegrationTests
                     refs.Add(MetadataReference.CreateFromFile(asm.Location));
                 }
                 catch
-                { /* ignore unloadable assemblies */
-                }
+                { }
             }
         }
 
@@ -250,8 +244,6 @@ public sealed class GeneratorIntegrationTests
 
         return refs;
     }
-
-    // ── tests ─────────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
     /// Proves that the source generator ran on THIS test project at build time by verifying that
@@ -263,8 +255,6 @@ public sealed class GeneratorIntegrationTests
     [Fact]
     public void TestProject_ReferencesNetMediatePackage_GeneratorRanOnBuildAndClassExists()
     {
-        // The generated class namespace is dynamically computed from the project's root namespace.
-        // Search by class name only so this test is resilient to namespace changes.
         var generatedType = Assembly
             .GetExecutingAssembly()
             .GetTypes()
@@ -570,7 +560,6 @@ public sealed class GeneratorIntegrationTests
         Assert.Empty(errors);
     }
 
-    // local generation
     public record MyCommand(int Key) : IRequest<int>;
 
     public sealed class MyCommandHandler : IRequestHandler<MyCommand, int>
@@ -598,8 +587,6 @@ public sealed class GeneratorIntegrationTests
 
         var service = serviceCollection.BuildServiceProvider();
 
-        // Handlers without [KeyedService] are registered under DEFAULT_ROUTING_KEY ("__default"),
-        // not as unkeyed services, so GetKeyedService must be used here.
         var hasHandler = service.GetKeyedService<IRequestHandler<MyCommand, int>>(
             NetMediateDI.DEFAULT_ROUTING_KEY
         );
@@ -633,8 +620,6 @@ public sealed class GeneratorIntegrationTests
         );
         Assert.Equal(2, result);
     }
-
-    // ── ServiceOrderAttribute ordering tests ─────────────────────────────────────────────────
 
     /// <summary>
     /// Verifies that when two command handlers carry <c>[ServiceOrder]</c> attributes with
@@ -678,7 +663,6 @@ public sealed class GeneratorIntegrationTests
         Assert.Empty(errors);
         Assert.Contains("class NetMediateGeneratedDI", generatedSource);
 
-        // FirstHandler (order 1) must be registered before SecondHandler (order 2).
         var firstIdx = generatedSource.IndexOf("FirstHandler", StringComparison.Ordinal);
         var secondIdx = generatedSource.IndexOf("SecondHandler", StringComparison.Ordinal);
         Assert.True(firstIdx >= 0, "FirstHandler registration not found in generated source");
@@ -740,8 +724,6 @@ public sealed class GeneratorIntegrationTests
         );
     }
 
-    // ── Namespace algorithm tests ─────────────────────────────────────────────────────────────
-
     /// <summary>
     /// Verifies that the generated class is placed in a namespace derived from the consuming
     /// project's assembly name (e.g. "MyCompany.App" produces namespace "MyCompany.App.NetMediate").
@@ -771,13 +753,10 @@ public sealed class GeneratorIntegrationTests
         );
 
         Assert.Empty(diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
-        // The namespace in the generated file should include the project's root namespace.
         Assert.Contains("Acme", generatedSource);
         Assert.Contains("namespace", generatedSource);
-        Assert.DoesNotContain("namespace NetMediate;", generatedSource); // not the old fixed namespace
+        Assert.DoesNotContain("namespace NetMediate;", generatedSource);
     }
-
-    // ── Global using emission tests ───────────────────────────────────────────────────────────
 
     /// <summary>
     /// For C# 10+ compilations the generator must emit a <c>NetMediateGlobalUsings.g.cs</c> file

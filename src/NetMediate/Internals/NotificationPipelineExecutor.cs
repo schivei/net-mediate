@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
 
 namespace NetMediate.Internals;
 
@@ -12,10 +13,9 @@ namespace NetMediate.Internals;
 /// Registered as a closed type by <c>RegisterNotificationHandler&lt;THandler, TMessage&gt;(...)</c>
 /// so that no open-generic <c>typeof()</c> resolver is needed.
 /// </summary>
-internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serviceProvider)
+internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serviceProvider, ILogger<NotificationPipelineExecutor<TMessage>> logger)
     where TMessage : notnull
 {
-    // See PipelineExecutor<,,> for the full rationale on this two-level cache design.
     private static readonly ConditionalWeakTable<
         IServiceProvider,
         ConcurrentDictionary<object, Lazy<PipelineBehaviorDelegate<TMessage, Task>>>
@@ -44,7 +44,7 @@ internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider se
         var lazy = perProvider.GetOrAdd(
             key ?? Extensions.DEFAULT_ROUTING_KEY,
             _ => new Lazy<PipelineBehaviorDelegate<TMessage, Task>>(
-                () => BuildPipeline(key, serviceProvider, exec),
+                () => BuildPipeline(key, serviceProvider, exec, logger),
                 LazyThreadSafetyMode.ExecutionAndPublication
             )
         );
@@ -55,42 +55,52 @@ internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider se
     private static PipelineBehaviorDelegate<TMessage, Task> BuildPipeline(
         object? key,
         IServiceProvider sp,
-        HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> exec
+        HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> exec,
+        ILogger<NotificationPipelineExecutor<TMessage>> logger
     )
     {
-        // Resolve handlers directly from the provider — the pipeline is already cached per-provider,
-        // so this runs only once per provider. Using direct resolution avoids cross-provider
-        // contamination that would occur with a global static handler cache.
         var handlers = sp.GetHandlers<INotificationHandler<TMessage>, TMessage, Task>(key)
             .ToArray();
 
-        Task app(object? key, TMessage msg, CancellationToken ct) => exec(key, msg, handlers, ct);
-
-        // Combine three behavior types — all AOT-safe closed-type lookups, no MakeGenericType:
-        //   1. IPipelineBehavior<TMessage, Task>          — general two-param behaviors
-        //   2. IPipelineBehavior<TMessage>                — one-param notification/adapter behaviors
-        //   3. IPipelineNotificationBehavior<TMessage>    — notification-specific shorthand
-        // Results are cached per provider to avoid repeated DI enumeration.
         var behaviorArray = sp.GetCachedBehaviors<IPipelineBehavior<TMessage, Task>>()
             .Concat(
                 sp.GetCachedBehaviors<IPipelineBehavior<TMessage>>()
-                    .Cast<IPipelineBehavior<TMessage, Task>>()
             )
             .Concat(
                 sp.GetCachedBehaviors<IPipelineNotificationBehavior<TMessage>>()
-                    .Cast<IPipelineBehavior<TMessage, Task>>()
             )
             .ToArray();
 
         if (behaviorArray.Length == 0)
-            return app;
+            return App;
 
-        // Explicit Enumerable.Reverse avoids ambiguity with MemoryExtensions.Reverse(Span<T>).
-        return Enumerable
-            .Reverse(behaviorArray)
+        var pipeline = behaviorArray
+            .Reverse()
             .Aggregate(
-                (PipelineBehaviorDelegate<TMessage, Task>)app,
-                (current, behavior) => (key, msg, ct) => behavior.Handle(key, msg, current, ct)
+                (PipelineBehaviorDelegate<TMessage, Task>)App,
+                (current, behavior) => (routingKey, msg, ct) => behavior.Handle(routingKey, msg, current, ct)
             );
+
+        return ErrorReporting;
+
+        Task App(object? routingKey, TMessage msg, CancellationToken ct) => exec(routingKey, msg, handlers, ct);
+
+        Task ErrorReporting(object? routingKey, TMessage msg, CancellationToken ct)
+        {
+            var t = pipeline(routingKey, msg, ct);
+            t.ContinueWith(
+                tt =>
+                {
+                    logger.LogError(
+                        tt.Exception,
+                        "Error executing notification pipeline for message of type {MessageType}: {Message}",
+                        typeof(TMessage).FullName, tt.Exception!.Message);
+                },
+                ct,
+                TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default
+            );
+            return t;
+        }
     }
 }

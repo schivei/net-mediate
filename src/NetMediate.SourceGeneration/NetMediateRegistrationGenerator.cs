@@ -17,7 +17,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     private const string KeyedServiceAttributeMetadataName = "NetMediate.KeyedServiceAttribute";
     private const string ServiceOrderAttributeMetadataName = "NetMediate.ServiceOrderAttribute";
 
-    // Resolved once; format: <RootNamespace>.<FileName>
     private static readonly string TemplateResourceName =
         $"{typeof(NetMediateRegistrationGenerator).Namespace}.NetMediateGeneratedDI.template";
 
@@ -198,9 +197,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         var source = BuildSource(registrations, notifier, frameworkBehaviors, assemblyName);
         sourceProductionContext.AddSource("NetMediateGeneratedDI.g.cs", source);
 
-        // Emit a global using so that AddNetMediate() is discoverable without requiring
-        // consumers to add "using {{AssemblyNamespace}}.NetMediate;" explicitly.
-        // This requires C# 10+ (LangVersion >= 10); older projects must add the using manually.
         if (supportsGlobalUsing)
         {
             sourceProductionContext.AddSource(
@@ -224,7 +220,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         bool hasDiagnostics = names.Contains("NetMediate.Diagnostics");
         bool hasResilience = names.Contains("NetMediate.Resilience");
         bool isNetMediateAssembly = compilation.AssemblyName == "NetMediate";
-        // global using requires C# 10 (LangVersion 10+). Emit the auto-import only when supported.
         bool supportsGlobalUsing =
             compilation is CSharpCompilation { LanguageVersion: >= LanguageVersion.CSharp10 };
 
@@ -266,11 +261,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     /// </summary>
     private static string BuildFrameworkInfrastructure(bool hasResilience)
     {
-        const string indent = "        "; // 8 spaces
+        const string indent = "        ";
         var sb = new StringBuilder();
 
-        // Resilience: register default options; user-supplied registrations that were added
-        // earlier will be kept (TryAddSingleton is a no-op when the type is already present).
         if (hasResilience)
         {
             sb.AppendLine(
@@ -299,7 +292,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         bool hasResilience
     )
     {
-        // Ordered insertion + deduplication: Dictionary<key, bool> preserves insertion order in C#.
         var diagnosticsBehaviors = new Dictionary<int, Dictionary<string, bool>>();
         var resilienceBehaviors = new Dictionary<int, Dictionary<string, bool>>();
         var handlers = new Dictionary<int, Dictionary<string, bool>>();
@@ -330,7 +322,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             );
         }
 
-        // Final output order: Diagnostics behaviors → Resilience behaviors → handler registrations.
         var allRegistrations = diagnosticsBehaviors
             .OrderBy(d => d.Key)
             .SelectMany(d => d.Value.Keys)
@@ -681,8 +672,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 ?? "null",
         };
 
-    // ── Behavior registration helpers ────────────────────────────────────────────────────────
-
     private static void AddCommandNotificationBehaviors(
         string msg,
         bool hasDiagnostics,
@@ -758,8 +747,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         );
     }
 
-    // ── Source building ───────────────────────────────────────────────────────────────────────
-
     private static string BuildSource(
         IEnumerable<string> registrations,
         StringBuilder notifier,
@@ -792,8 +779,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         using (var reader = new StreamReader(stream))
             return reader.ReadToEnd();
     }
-
-    // ── Accessibility helpers ─────────────────────────────────────────────────────────────────
 
     private static bool IsAccessible(ITypeSymbol typeSymbol)
     {

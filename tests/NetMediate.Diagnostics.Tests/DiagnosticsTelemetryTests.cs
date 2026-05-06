@@ -83,7 +83,6 @@ public sealed class DiagnosticsTelemetryTests
         };
         ActivitySource.AddActivityListener(listener);
 
-        // Start a parent activity to act as the ambient Activity.Current.
         using var parentSource = new ActivitySource("Test.Parent");
         using var parentListener = new ActivityListener
         {
@@ -97,7 +96,6 @@ public sealed class DiagnosticsTelemetryTests
 
         var parentContext = parentActivity.Context;
 
-        // StartActivity should link to the ambient parent.
         using var mediatorActivity = NetMediateDiagnostics.StartActivity<string>("Request");
         Assert.NotNull(mediatorActivity);
 
@@ -107,7 +105,6 @@ public sealed class DiagnosticsTelemetryTests
     [Fact]
     public void StartActivity_WhenNoParentActivity_ShouldNotAddLinks()
     {
-        // Ensure no ambient activity.
         Assert.Null(Activity.Current);
 
         var linksObserved = false;
@@ -132,7 +129,6 @@ public sealed class DiagnosticsTelemetryTests
     private static async Task<IHost> CreateHostAsync()
     {
         var builder = Host.CreateApplicationBuilder();
-        // Telemetry behaviors are registered per-handler (no DI extension method needed).
         builder.Services.UseNetMediate(configure =>
         {
             configure.RegisterCommandHandler<TestCommandHandler, TestMessage>();
@@ -150,7 +146,6 @@ public sealed class DiagnosticsTelemetryTests
             >();
 
             configure.RegisterNotificationHandler<TestNotificationHandler, TestMessage>();
-            // TelemetryNotificationBehavior<TestMessage> already registered above for the command.
 
             configure.RegisterStreamHandler<TestStreamHandler, TestMessage, string>();
             configure.RegisterBehavior<

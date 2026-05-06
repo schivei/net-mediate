@@ -4,36 +4,8 @@ using Microsoft.Extensions.Hosting;
 
 namespace NetMediate.Tests;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Pipeline Variants Load Tests
-//
-// Isolates the per-call overhead of individual pipeline features so that the
-// cost of each can be measured independently:
-//
-//  Section A  Validation variants
-//             Plain message (no IValidatable, no IValidationHandler)
-//             vs. message that implements IValidatable (self-validation)
-//             vs. message with an IValidationHandler registered externally
-//
-//  Section B  Behavior/middleware variants
-//             No behaviors registered
-//             vs. 1 no-op behavior
-//             vs. 2 no-op behaviors stacked
-//
-//  Section C  Handler fan-out variants
-//             1 handler per message
-//             vs. 2 handlers per message
-//             vs. 3 handlers per message
-//
-// Every test uses explicit (AOT-safe) DI registration and its own unique message
-// type so that handlers and behaviors never bleed across test cases.
-// ─────────────────────────────────────────────────────────────────────────────
 public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
 {
-    // =========================================================================
-    // Section A — Validation variants
-    // =========================================================================
-
     #region A1  Command – no validation (baseline)
 
     [Fact]
@@ -172,10 +144,6 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
 
     #endregion
 
-    // =========================================================================
-    // Section B — Behavior / pipeline-middleware variants
-    // =========================================================================
-
     #region B1  Command – no behaviors (parallel baseline)
 
     [Fact]
@@ -313,10 +281,6 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     }
 
     #endregion
-
-    // =========================================================================
-    // Section C — Handler fan-out variants
-    // =========================================================================
 
     #region C1  Command – 1 handler (sequential baseline)
 
@@ -462,10 +426,6 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
 
     #endregion
 
-    // =========================================================================
-    // Infrastructure helpers
-    // =========================================================================
-
     private static string Tfm => AppContext.TargetFrameworkName ?? "unknown";
 
     private void Emit(string scenario, string tfm, int ops, long startTimestamp)
@@ -510,11 +470,6 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
             StringComparison.OrdinalIgnoreCase
         );
 
-    // =========================================================================
-    // Message types — each one unique so handlers never bleed across tests
-    // =========================================================================
-
-    // Section A – validation variants
     public sealed record CmdNoValid(int V);
 
     public sealed record CmdSelfValid(int V);
@@ -527,7 +482,6 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
 
     public sealed record NotifHandlerValid(int V);
 
-    // Section B – behavior variants
     public sealed record CmdNoBeh(int V);
 
     public sealed record CmdOneBeh(int V);
@@ -540,7 +494,6 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
 
     public sealed record NotifTwoBeh(int V);
 
-    // Section C – fan-out variants
     public sealed record CmdFanout1(int V);
 
     public sealed record CmdFanout2(int V);
@@ -553,11 +506,6 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
 
     public sealed record NotifFanout3(int V);
 
-    // =========================================================================
-    // Handlers
-    // =========================================================================
-
-    // Section A
     private sealed class CmdNoValidHandler : ICommandHandler<CmdNoValid>
     {
         public Task Handle(CmdNoValid m, CancellationToken ct = default) => Task.CompletedTask;
@@ -593,7 +541,6 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
 
     private sealed class NotifHandlerValidValidator { }
 
-    // Section B
     private sealed class CmdNoBehHandler : ICommandHandler<CmdNoBeh>
     {
         public Task Handle(CmdNoBeh m, CancellationToken ct = default) => Task.CompletedTask;
@@ -624,7 +571,6 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
         public Task Handle(NotifTwoBeh m, CancellationToken ct = default) => Task.CompletedTask;
     }
 
-    // Section C
     private sealed class CmdFanout1HandlerA : ICommandHandler<CmdFanout1>
     {
         public Task Handle(CmdFanout1 m, CancellationToken ct = default) => Task.CompletedTask;
@@ -684,10 +630,6 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
     {
         public Task Handle(NotifFanout3 m, CancellationToken ct = default) => Task.CompletedTask;
     }
-
-    // =========================================================================
-    // No-op behaviors — pass-through wrappers for overhead measurement
-    // =========================================================================
 
     private sealed class NoOpCommandBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
         where TMessage : notnull

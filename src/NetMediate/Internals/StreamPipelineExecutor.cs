@@ -68,42 +68,33 @@ internal sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvid
         > exec
     )
     {
-        // Resolve handlers directly from the provider — the pipeline is already cached per-provider,
-        // so this runs only once per provider. Using direct resolution avoids cross-provider
-        // contamination that would occur with a global static handler cache.
         var handlers = sp.GetHandlers<
             IStreamHandler<TMessage, TResponse>,
             TMessage,
             IAsyncEnumerable<TResponse>
-        >(key)
-            .ToArray();
+        >(key).ToArray();
 
-        // Single-handler fast path: invoke the sole registered handler directly.
         PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> app =
             handlers.Length == 1
                 ? (_, msg, ct) => handlers[0].Handle(msg, ct)
-                : (_, msg, ct) => exec(_, msg, handlers, ct);
+                : (routingKey, msg, ct) => exec(routingKey, msg, handlers, ct);
 
-        // Combine IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>> and IPipelineStreamBehavior<TMessage, TResponse>
-        // both AOT-safe (no MakeGenericType). Results are cached per type to avoid repeated DI enumeration.
         var behaviorArray = sp.GetCachedBehaviors<
             IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>>
         >()
             .Concat(
                 sp.GetCachedBehaviors<IPipelineStreamBehavior<TMessage, TResponse>>()
-                    .Cast<IPipelineBehavior<TMessage, IAsyncEnumerable<TResponse>>>()
             )
             .ToArray();
 
         if (behaviorArray.Length == 0)
             return app;
 
-        // Explicit Enumerable.Reverse avoids ambiguity with MemoryExtensions.Reverse(Span<T>).
-        return Enumerable
-            .Reverse(behaviorArray)
+        return behaviorArray
+            .Reverse()
             .Aggregate(
                 app,
-                (current, behavior) => (key, msg, ct) => behavior.Handle(key, msg, current, ct)
+                (current, behavior) => (routingKey, msg, ct) => behavior.Handle(routingKey, msg, current, ct)
             );
     }
 }

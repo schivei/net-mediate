@@ -55,7 +55,7 @@ dotnet add package NetMediate
 
 ### PackageReference
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" />
+<PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
 ```
 
 ### Optional companion packages

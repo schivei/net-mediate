@@ -1,11 +1,10 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace NetMediate.Internals;
 
-internal class Notifier(IServiceProvider serviceProvider, ILogger<Notifier> logger) : INotifiable
+internal class Notifier(IServiceProvider serviceProvider) : INotifiable
 {
-    public virtual Task DispatchNotifications<TMessage>(
+    public Task DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
         INotificationHandler<TMessage>[] handlers,
@@ -15,14 +14,7 @@ internal class Notifier(IServiceProvider serviceProvider, ILogger<Notifier> logg
     {
         foreach (var handler in handlers)
         {
-            handler
-                .Handle(message, cancellationToken)
-                .ContinueWith(
-                    t => logger.LogError(t.Exception, "{Message}", t.Exception!.Message),
-                    CancellationToken.None,
-                    TaskContinuationOptions.OnlyOnFaulted,
-                    TaskScheduler.Default
-                );
+            handler.Handle(message, cancellationToken);
         }
 
         return Task.CompletedTask;
@@ -48,7 +40,7 @@ internal class Notifier(IServiceProvider serviceProvider, ILogger<Notifier> logg
         );
     }
 
-    public Task Notify<TMessage>(
+    public async Task Notify<TMessage>(
         object? key,
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
@@ -57,18 +49,7 @@ internal class Notifier(IServiceProvider serviceProvider, ILogger<Notifier> logg
     {
         foreach (var message in messages)
         {
-            try
-            {
-#pragma warning disable CS4014
-                Notify(key ?? Extensions.DEFAULT_ROUTING_KEY, message, cancellationToken);
-#pragma warning restore CS4014
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "{Message}", ex.Message);
-            }
+            await Notify(key ?? Extensions.DEFAULT_ROUTING_KEY, message, cancellationToken);
         }
-
-        return Task.CompletedTask;
     }
 }

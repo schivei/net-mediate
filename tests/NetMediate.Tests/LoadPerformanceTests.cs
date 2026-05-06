@@ -200,9 +200,7 @@ public sealed class LoadPerformanceTests(ITestOutputHelper output)
             await foreach (
                 var _ in mediator.RequestStream<LoadStreamRequest, int>(new(i), cancellationToken)
             )
-            {
-                // drain items
-            }
+            { }
         }
 
         var elapsed = Stopwatch.GetElapsedTime(start);

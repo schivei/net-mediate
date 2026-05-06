@@ -50,9 +50,6 @@ internal sealed class MediatorServiceBuilder<
         return this;
     }
 
-    // ── Specialized registration (AOT-safe, used by source generator) ──
-    // Each method name groups its type-based and instance-based overloads together.
-
     public IMediatorServiceBuilder RegisterCommandHandler<
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] THandler,
         TMessage
@@ -60,9 +57,6 @@ internal sealed class MediatorServiceBuilder<
         where THandler : class, ICommandHandler<TMessage>
         where TMessage : notnull
     {
-        // Always register the executor as unkeyed — the executor is stateless and the routing key
-        // is passed as a runtime parameter to Handle(). Registering it keyed would make it
-        // unreachable from Mediator.Send(key, ...) which resolves the unkeyed executor.
         _services.TryAddSingleton<PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>>();
 
         _services.AddKeyedSingleton<ICommandHandler<TMessage>, THandler>(
@@ -78,7 +72,6 @@ internal sealed class MediatorServiceBuilder<
         where THandler : class, INotificationHandler<TMessage>
         where TMessage : notnull
     {
-        // Always register the executor as unkeyed — see RegisterCommandHandler for rationale.
         _services.TryAddSingleton<NotificationPipelineExecutor<TMessage>>();
 
         _services.AddKeyedSingleton<INotificationHandler<TMessage>, THandler>(
@@ -95,7 +88,6 @@ internal sealed class MediatorServiceBuilder<
         where THandler : class, IRequestHandler<TMessage, TResponse>
         where TMessage : notnull
     {
-        // Always register the executor as unkeyed — see RegisterCommandHandler for rationale.
         _services.TryAddSingleton<RequestPipelineExecutor<TMessage, TResponse>>();
 
         _services.AddKeyedSingleton<IRequestHandler<TMessage, TResponse>, THandler>(
@@ -112,7 +104,6 @@ internal sealed class MediatorServiceBuilder<
         where THandler : class, IStreamHandler<TMessage, TResponse>
         where TMessage : notnull
     {
-        // Always register the executor as unkeyed — see RegisterCommandHandler for rationale.
         _services.TryAddSingleton<StreamPipelineExecutor<TMessage, TResponse>>();
 
         _services.AddKeyedSingleton<IStreamHandler<TMessage, TResponse>, THandler>(

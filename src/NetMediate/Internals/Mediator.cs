@@ -108,11 +108,10 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     )
         where TMessage : notnull
     {
-        await Task.WhenAll(
-            messages.Select(message =>
-                Send(key ?? Extensions.DEFAULT_ROUTING_KEY, message, cancellationToken)
-            )
-        );
+        foreach (var sender in messages)
+        {
+            await Send(key ?? Extensions.DEFAULT_ROUTING_KEY, sender, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     private static async Task CommandHandlers<TMessage>(

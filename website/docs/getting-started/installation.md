@@ -20,11 +20,15 @@ This guide will help you install NetMediate and its companion packages in your .
 dotnet add package NetMediate
 ```
 
-After running the command, open your `.csproj` file and add `PrivateAssets="all"` to the generated `PackageReference`:
+After running the command, your `.csproj` will have a `PackageReference` for `NetMediate`. For **library projects**, optionally add `PrivateAssets="all"` to prevent `NetMediate` from flowing as a transitive dependency to consumers of your library:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="NetMediate" Version="*" PrivateAssets="all" />
+  <!-- Application projects: no PrivateAssets needed -->
+  <PackageReference Include="NetMediate" Version="*" />
+
+  <!-- Library projects: add PrivateAssets to prevent transitive flow -->
+  <!-- <PackageReference Include="NetMediate" Version="*" PrivateAssets="all" /> -->
 </ItemGroup>
 ```
 
@@ -34,7 +38,7 @@ After running the command, open your `.csproj` file and add `PrivateAssets="all"
 Install-Package NetMediate
 ```
 
-After running the command, open your `.csproj` file and add `PrivateAssets="all"` to the generated `PackageReference` (see the PackageReference section below).
+After running the command, your `.csproj` will have a `PackageReference` for `NetMediate`. See the note on `PrivateAssets` in the .NET CLI section above if you are building a library.
 
 ### Using PackageReference
 
@@ -42,17 +46,21 @@ Add the following to your `.csproj` file:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="NetMediate" Version="*" PrivateAssets="all" />
+  <PackageReference Include="NetMediate" Version="*" />
 </ItemGroup>
 ```
 
-:::caution Required: PrivateAssets="all"
-`PrivateAssets="all"` is **required** for NetMediate to work correctly. The `NetMediate.SourceGeneration` analyzer is bundled inside the `NetMediate` package and is only activated when this attribute is present. Without it, `AddNetMediate()` will not be generated and handler registration will fail.
+:::tip Library projects: PrivateAssets
+If you are building a **library** (not an application), consider adding `PrivateAssets="all"` to prevent `NetMediate` and its bundled source generator from flowing as a transitive dependency to consumers of your package. The analyzer runs for your project regardless — `PrivateAssets` only controls transitive flow.
+
+```xml
+<PackageReference Include="NetMediate" Version="*" PrivateAssets="all" />
+```
 :::
 
 ## Source Generation
 
-The `NetMediate.SourceGeneration` analyzer is **bundled inside the `NetMediate` package** — you do not need to install it separately. It is activated automatically when `PrivateAssets="all"` is set on the `NetMediate` `PackageReference` (see above).
+The `NetMediate.SourceGeneration` analyzer is **bundled inside the `NetMediate` package** — you do not need to install it separately. It runs automatically for any project that directly references `NetMediate`.
 
 ## Optional Packages
 

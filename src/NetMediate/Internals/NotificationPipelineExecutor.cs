@@ -86,7 +86,19 @@ internal sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider se
         {
             // Handlers are fire-and-forget: discard their tasks so the pipeline
             // and behaviors are never affected by handler failures or completion timing.
-            _ = exec(routingKey, msg, handlers, ct);
+            // The try/catch guards against synchronous throws from user-overridden
+            // DispatchNotifications implementations, preserving the fire-and-forget boundary.
+            try
+            {
+                _ = exec(routingKey, msg, handlers, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(
+                    ex,
+                    "Error dispatching notification handlers for message of type {MessageType}: {Message}",
+                    typeof(TMessage).FullName, ex.Message);
+            }
             return Task.CompletedTask;
         }
 

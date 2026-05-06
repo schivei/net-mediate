@@ -14,14 +14,18 @@ First, install the required NuGet package:
 dotnet add package NetMediate
 ```
 
-Then open your `.csproj` and add `PrivateAssets="all"` to the `PackageReference`:
+Then open your `.csproj` and add the `PackageReference`:
+
+```xml
+<PackageReference Include="NetMediate" Version="*" />
+```
+
+:::tip Library projects
+If you are building a **library** (not an application), add `PrivateAssets="all"` to prevent `NetMediate` and its bundled analyzer from flowing as a transitive dependency to consumers of your library. The analyzer always runs for your project regardless:
 
 ```xml
 <PackageReference Include="NetMediate" Version="*" PrivateAssets="all" />
 ```
-
-:::caution Required: PrivateAssets="all"
-`PrivateAssets="all"` is **required**. The `NetMediate.SourceGeneration` analyzer is bundled inside `NetMediate` and is activated only when this attribute is present. Without it, `AddNetMediate()` will not be generated.
 :::
 
 ## Step 2: Define a Message

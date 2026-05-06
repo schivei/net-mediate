@@ -48,21 +48,21 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 Install-Package NetMediate
 ```
 
-> **Important:** After installing via Package Manager Console or .NET CLI, open your `.csproj` file and add `PrivateAssets="all"` to the `PackageReference` element. Without this attribute the bundled source generator cannot run and `AddNetMediate()` will not be generated.
+> **Note:** After installing via Package Manager Console or .NET CLI, you may add `PrivateAssets="all"` to the `PackageReference` element if you are building a **library** and want to prevent `NetMediate` and its bundled source generator from flowing as a transitive dependency to consumers of your package. For application projects this is optional — the analyzer runs for direct references automatically.
 
 ### .NET CLI
 ```bash
 dotnet add package NetMediate
 ```
 
-> **Important:** After running the CLI command, open your `.csproj` file and add `PrivateAssets="all"` to the `PackageReference` element. Without this attribute the bundled source generator cannot run and `AddNetMediate()` will not be generated.
+> **Note:** After running the CLI command, you may add `PrivateAssets="all"` to the `PackageReference` element if you are building a **library** and want to prevent `NetMediate` from flowing transitively to downstream consumers. For application projects this is optional.
 
 ### PackageReference
 ```xml
 <PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
 ```
 
-> **Note:** `PrivateAssets="all"` is **required**. The `NetMediate.SourceGeneration` analyzer is bundled inside the `NetMediate` package and is activated only when `PrivateAssets="all"` is set. Without it, `AddNetMediate()` will not be generated and handler registration will not work.
+> **Note:** `PrivateAssets="all"` is **recommended for library/NuGet projects** to prevent `NetMediate` and its bundled source generator from flowing as a transitive dependency to consumers of your library. For application projects (e.g., ASP.NET Core apps, console apps) it is optional — the analyzer runs for direct references regardless. Without `PrivateAssets`, downstream consumers of your library will also receive the `NetMediate` package and its analyzer, which may or may not be desired.
 
 ### Optional companion packages
 ```xml

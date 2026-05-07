@@ -9,6 +9,9 @@ namespace NetMediate.SourceGeneration;
 [Generator]
 public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 {
+    // Non-printable delimiter chosen to avoid collisions with C# identifier/type syntax.
+    private const char TypedExtKeySeparator = '\u001F';
+
     private const string NotifierToken = "{{Notifier}}";
     private const string RegistrationsToken = "{{Registrations}}";
     private const string FrameworkBehaviorsToken = "{{FrameworkBehaviors}}";
@@ -676,9 +679,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         ImmutableArray<INamedTypeSymbol> types
     )
     {
-        // Key = (verb, message FQN) — deduplicates duplicate handlers while keeping
-        // distinct dispatch verbs for the same message type.
-        var entries = new Dictionary<(string Verb, string MessageFqn), TypedExtEntry>();
+        // Key = "{verb}<unit-separator>{message FQN}" — deduplicates duplicate handlers
+        // while keeping distinct dispatch verbs for the same message type.
+        var entries = new Dictionary<string, TypedExtEntry>(StringComparer.Ordinal);
 
         foreach (var handlerType in types)
         {
@@ -687,7 +690,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 if (!TryCreateTypedExtEntry(iface, out var entry))
                     continue;
 
-                var key = (entry.Verb, entry.MessageFqn);
+                var key = $"{entry.Verb}{TypedExtKeySeparator}{entry.MessageFqn}";
                 if (!entries.ContainsKey(key))
                     entries[key] = entry;
             }

@@ -690,14 +690,19 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
     private static bool TryCreateTypedExtEntry(INamedTypeSymbol iface, out TypedExtEntry entry)
     {
-        entry = default;
         var def = iface.OriginalDefinition;
         if (def.ContainingNamespace.ToDisplayString() != "NetMediate")
+        {
+            entry = default;
             return false;
+        }
 
         var args = iface.TypeArguments;
         if (args.Length == 0 || !IsAccessible(args[0]))
+        {
+            entry = default;
             return false;
+        }
 
         var msgFqn = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         var msgName = args[0].Name;
@@ -727,6 +732,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 );
                 return true;
             default:
+                entry = default;
                 return false;
         }
     }

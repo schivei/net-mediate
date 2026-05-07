@@ -93,14 +93,14 @@ the pipeline *outermost*, so they run before later-registered behaviors.
 ## Generated namespace and `AddNetMediate()` discoverability
 
 The generator places `NetMediateGeneratedDI` (and its `AddNetMediate()` extension method) in a
-namespace derived from your project's root namespace:
+namespace derived from your project's assembly namespace:
 
 ```
-<YourRootNamespace>.NetMediate
+<YourAssemblyNamespace>.NetMediate
 ```
 
 For C# 10 and later the generator also emits a companion `NetMediateGlobalUsings.g.cs` file that
-adds `global using <YourRootNamespace>.NetMediate;` to the project automatically. This means
+adds `global using <YourAssemblyNamespace>.NetMediate;` to the project automatically. This means
 `AddNetMediate()` is available everywhere in your project without any manual `using` directive.
 
 If your project targets C# 9 or earlier, add the using directive explicitly in your entry-point
@@ -115,9 +115,9 @@ builder.Services.AddNetMediate();
 
 ### Namespace selection algorithm
 
-The generator uses the **current project's assembly name** directly — one namespace per project, resolved independently, matching the same per-project strategy used by GenDI. For example:
+The generator uses the **current project's assembly namespace** directly — one namespace per project, resolved independently, matching the same per-project strategy used by GenDI. For example:
 
-| Assembly name | Generated namespace |
+| Assembly namespace | Generated namespace |
 |---|---|
 | `Acme.Web` | `Acme.Web.NetMediate` |
 | `Acme.Api` | `Acme.Api.NetMediate` |
@@ -208,4 +208,3 @@ Task SendEventsPingCommandAsync(...);
 Multiple handlers for the **same** message type (e.g., one default and one keyed handler) produce
 only **one** set of extension methods — the keyed handler is reached via the `object? key`
 overload.
-

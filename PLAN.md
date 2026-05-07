@@ -16,6 +16,7 @@ This checklist tracks the work implemented sequentially in this same PR.
 ## Current
 
 - [x] Add this plan file in English at project root so progress/accomplishment can be followed.
+- [ ] MUST solve `AddNetMediate` compile resolution failure seen in source-generation tests before final merge.
 
 ## Notes
 
@@ -23,4 +24,4 @@ This checklist tracks the work implemented sequentially in this same PR.
 - Latest baseline run in this branch:
   - `dotnet restore src/NetMediate/NetMediate.csproj` ✅
   - `dotnet build src/NetMediate/NetMediate.csproj --no-restore --configuration Release` ✅
-  - `dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj --configuration Release` ⚠️ currently fails with existing `AddNetMediate` compile resolution issue in `GeneratorIntegrationTests.cs`.
+  - `dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj --configuration Release` ⚠️ blocked by `AddNetMediate` compile resolution issue in `GeneratorIntegrationTests.cs` (tracked above as MUST-solve).

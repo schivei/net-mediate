@@ -60,15 +60,15 @@
     />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.*" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*" />
-    <!--
-      GenDI.SourceGenerator is bundled directly in our analyzers/dotnet/cs/ folder above.
-      We still need the PackageReference here (with PrivateAssets="all") so the generator
-      runs during NetMediate's own build and the $(PkgGenDI_SourceGenerator) path property
-      is generated for inner-build use. The generator emits [Injectable], [ServiceInjection]
-      and related attribute types at compile time — no GenDI runtime library is required.
-    -->
-    <PackageReference Include="GenDI.SourceGenerator" Version="26.*" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="GenDI.SourceGenerator" Version="26.*" PrivateAssets="all" />
   </ItemGroup>
+  <PropertyGroup Condition="Exists('$(ProjectAssetsFile)')">
+    <_GenDIProjectAssetsFile>$(ProjectAssetsFile)</_GenDIProjectAssetsFile>
+    <_GenDIResolvedVersionPattern>gendi\.sourcegenerator/([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)</_GenDIResolvedVersionPattern>
+    <_GenDIProjectAssetsContent>$([System.IO.File]::ReadAllText('$(_GenDIProjectAssetsFile)'))</_GenDIProjectAssetsContent>
+    <_GenDISourceGeneratorResolvedVersion>$([System.Text.RegularExpressions.Regex]::Match('$(_GenDIProjectAssetsContent)', '$(_GenDIResolvedVersionPattern)').Groups[1].Value)</_GenDISourceGeneratorResolvedVersion>
+    <_GenDIAnalyzerResolvedPath>$(NuGetPackageRoot)gendi.sourcegenerator/$(_GenDISourceGeneratorResolvedVersion)/analyzers/dotnet/cs/GenDI.SourceGenerator.dll</_GenDIAnalyzerResolvedPath>
+  </PropertyGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'netstandard2.1'">
     <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.*" />
   </ItemGroup>
@@ -81,7 +81,10 @@
       compile-time DI generation ([Injectable], [ServiceInjection], etc.) for free when
       they install NetMediate, without a separate `dotnet add package GenDI.SourceGenerator`.
     -->
-    <_GenDIAnalyzerDll Include="$(NuGetPackageRoot)gendi.sourcegenerator/*/analyzers/dotnet/cs/GenDI.SourceGenerator.dll" />
+    <_GenDIAnalyzerDll Include="$(_GenDIAnalyzerResolvedPath)" Condition="'$(_GenDISourceGeneratorResolvedVersion)' != '' and Exists('$(_GenDIAnalyzerResolvedPath)')" />
     <None Include="@(_GenDIAnalyzerDll)" Pack="true" PackagePath="analyzers/dotnet/cs/%(Filename)%(Extension)" Visible="false" />
   </ItemGroup>
+  <Target Name="ValidateGenDIAnalyzerVersionResolution" BeforeTargets="GenerateNuspec" Condition="'$(_GenDISourceGeneratorResolvedVersion)' == ''">
+    <Warning Text="Could not resolve GenDI.SourceGenerator version from $(ProjectAssetsFile). The bundled GenDI analyzer will not be packed. Run restore and verify GenDI.SourceGenerator restore succeeded." />
+  </Target>
 </Project>

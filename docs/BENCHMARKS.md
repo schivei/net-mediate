@@ -14,12 +14,12 @@ The table below is updated automatically by CI on every PR benchmark run. System
 | Key | Value |
 |---|---|
 | OS | Linux Ubuntu 24.04.4 LTS (Noble Numbat) |
-| CPU | AMD EPYC 9V74 2.60GHz, 1 CPU, 4 logical and 2 physical cores |
+| CPU | Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores |
 | .NET SDK | 10.0.203 |
-| Runtime | .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3 |
-| Last CI run | 2026-05-07 17:39 UTC |
+| Runtime | .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v4 |
+| Last CI run | 2026-05-07 18:37 UTC |
 | Branch | `copilot/add-gen-di-library-usage` |
-| Commit | `94c7164` |
+| Commit | `46f20b9` |
 <!-- ci-environment-end -->
 
 ---
@@ -39,10 +39,10 @@ available, or against stored target-branch values otherwise (±10% = no change o
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|
-| Command `Send` | 81.15 ns | ±0.445 ns | 0.0028 | 48 B | ✅ same | ~12.3M msg/s | ✅ improved (-10.4%) |
-| Notification `Notify` | 182.48 ns | ±2.906 ns | 0.0256 | 432 B | ⚠️ +144 B | ~5.5M msg/s | ⚠️ degraded (+41.6%) |
-| Request `Request` | 97.23 ns | ±0.300 ns | 0.0066 | 112 B | ✅ same | ~10.3M msg/s | ≈ (+8.1%) |
-| Stream `RequestStream` | 179.46 ns | ±1.215 ns | 0.0127 | 216 B | ✅ same | ~5.6M msg/s | ≈ (-8.5%) |
+| Command `Send` | 87.40 ns | ±0.081 ns | 0.0018 | 48 B | ✅ same | ~11.4M msg/s | ≈ (-3.5%) |
+| Notification `Notify` | 211.58 ns | ±0.759 ns | 0.0171 | 432 B | ⚠️ +144 B | ~4.7M msg/s | ⚠️ degraded (+64.2%) |
+| Request `Request` | 99.10 ns | ±0.178 ns | 0.0044 | 112 B | ✅ same | ~10.1M msg/s | ⚠️ degraded (+10.2%) |
+| Stream `RequestStream` | 192.89 ns | ±0.339 ns | 0.0085 | 216 B | ✅ same | ~5.2M msg/s | ≈ (-1.6%) |
 <!-- ci-throughput-end -->
 
 > ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.
@@ -275,7 +275,7 @@ Thresholds are deliberately lenient to remain green on any CI hardware. Local de
 
 ## Latest CI Benchmark Run
 
-Run: 2026-05-07 17:39 UTC | Branch: `copilot/add-gen-di-library-usage` | Commit: `94c7164`
+Run: 2026-05-07 18:37 UTC | Branch: `copilot/add-gen-di-library-usage` | Commit: `46f20b9`
 
 > ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).
 
@@ -283,19 +283,19 @@ Run: 2026-05-07 17:39 UTC | Branch: `copilot/add-gen-di-library-usage` | Commit:
 
 ```
 Linux Ubuntu 24.04.4 LTS (Noble Numbat)
-AMD EPYC 9V74 2.60GHz, 1 CPU, 4 logical and 2 physical cores
+Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.203
-Runtime: .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3
+Runtime: .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v4
 ```
 
 ### Performance summary (BenchmarkDotNet — Throughput job)
 
 | Benchmark | Mean | Error | Gen0 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|
-| Command `Send` | 81.15 ns | ±0.445 ns | 0.0028 | 48 B | ✅ same | ~12.3M msg/s | ✅ improved (-10.4%) |
-| Notification `Notify` | 182.48 ns | ±2.906 ns | 0.0256 | 432 B | ⚠️ +144 B | ~5.5M msg/s | ⚠️ degraded (+41.6%) |
-| Request `Request` | 97.23 ns | ±0.300 ns | 0.0066 | 112 B | ✅ same | ~10.3M msg/s | ≈ (+8.1%) |
-| Stream `RequestStream` | 179.46 ns | ±1.215 ns | 0.0127 | 216 B | ✅ same | ~5.6M msg/s | ≈ (-8.5%) |
+| Command `Send` | 87.40 ns | ±0.081 ns | 0.0018 | 48 B | ✅ same | ~11.4M msg/s | ≈ (-3.5%) |
+| Notification `Notify` | 211.58 ns | ±0.759 ns | 0.0171 | 432 B | ⚠️ +144 B | ~4.7M msg/s | ⚠️ degraded (+64.2%) |
+| Request `Request` | 99.10 ns | ±0.178 ns | 0.0044 | 112 B | ✅ same | ~10.1M msg/s | ⚠️ degraded (+10.2%) |
+| Stream `RequestStream` | 192.89 ns | ±0.339 ns | 0.0085 | 216 B | ✅ same | ~5.2M msg/s | ≈ (-1.6%) |
 
 ### Comparison vs baseline (`main`, median of ≤3 runs)
 
@@ -304,7 +304,7 @@ Runtime: .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3
 
 | Benchmark | Baseline (`main`, median of ≤3 runs) | Current | Δ timing | Alloc Δ |
 |---|---|---|---|---|
-| Command `Send` | 90.55 ns | 81.15 ns | ✅ -10.4% | ✅ same |
-| Notification `Notify` | 128.85 ns | 182.48 ns | ⚠️ +41.6% | ⚠️ +144 B |
-| Request `Request` | 89.91 ns | 97.23 ns | ≈ +8.1% | ✅ same |
-| Stream `RequestStream` | 196.07 ns | 179.46 ns | ≈ -8.5% | ✅ same |
+| Command `Send` | 90.55 ns | 87.40 ns | ≈ -3.5% | ✅ same |
+| Notification `Notify` | 128.85 ns | 211.58 ns | ⚠️ +64.2% | ⚠️ +144 B |
+| Request `Request` | 89.91 ns | 99.10 ns | ⚠️ +10.2% | ✅ same |
+| Stream `RequestStream` | 196.07 ns | 192.89 ns | ≈ -1.6% | ✅ same |

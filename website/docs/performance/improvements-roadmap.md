@@ -10,8 +10,8 @@ This document lists concrete improvements we want to implement in sequence (sing
 
 ## Current focus
 
-- [ ] Resolve `Notify` throughput regression (`+62.0%` timing and `+144 B` allocation vs baseline).
-- [ ] Resolve `Request` throughput regression (`+17.8%` timing vs baseline).
+- [ ] Resolve `Notify` throughput regression (`+41.6%` timing and `+144 B` allocation vs baseline).
+- [ ] Keep `Request` timing at or better than baseline (`+8.1%` currently, inside noise band but still tracked).
 - [ ] Keep `Command` and `Stream` performance stable while applying fixes.
 
 ---

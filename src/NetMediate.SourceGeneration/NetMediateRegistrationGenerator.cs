@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -39,8 +38,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             static (compilation, _) => Selects(compilation)
         );
 
-        packageInfo = Compute(packageInfo);
-
         var combined = handlerTypes.Combine(packageInfo);
 
         context.RegisterSourceOutput(
@@ -49,123 +46,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         );
     }
 
-    private static readonly HashSet<string> _names = [];
-
-    private static IncrementalValueProvider<(
-        bool hasDiagnostics,
-        bool hasResilience,
-        bool isNetMediateAssembly,
-        string assemblyName,
-        bool supportsGlobalUsing
-    )> Compute(
-        IncrementalValueProvider<(
-            bool hasDiagnostics,
-            bool hasResilience,
-            bool isNetMediateAssembly,
-            string assemblyName,
-            bool supportsGlobalUsing
-        )> packageInfo
-    )
-    {
-        return packageInfo.Select(
-            static (input, _) =>
-            {
-                ExtractNames(input);
-                return CalculateName(input);
-            }
-        );
-    }
-
-    private static void ExtractNames(
-        (
-            bool hasDiagnostics,
-            bool hasResilience,
-            bool isNetMediateAssembly,
-            string assemblyName,
-            bool supportsGlobalUsing
-        ) input
-    )
-    {
-        lock (_names)
-        {
-            if (input.assemblyName.StartsWith("Microsoft.", StringComparison.Ordinal))
-                return;
-
-            if (input.assemblyName.StartsWith("System.", StringComparison.Ordinal))
-                return;
-
-            if (
-                input.assemblyName.StartsWith("NetMediate.", StringComparison.Ordinal)
-                && !input.assemblyName.Contains(".Tests", StringComparison.Ordinal)
-                && !input.assemblyName.Contains(".Benchmarks", StringComparison.Ordinal)
-            )
-                return;
-
-            _names.Add(input.assemblyName);
-        }
-    }
-
-    private static string FindMostCommonBaseNamespace()
-    {
-        lock (_names)
-        {
-            if (_names.Count == 0)
-                return "NetMediate";
-
-            var prefixCount = new ConcurrentDictionary<string, int>(StringComparer.Ordinal);
-
-            foreach (var ns in _names)
-            {
-                if (string.IsNullOrWhiteSpace(ns))
-                    continue;
-
-                var parts = ns.Split('.');
-
-                for (int i = 1; i <= parts.Length; i++)
-                {
-                    var prefix = string.Join(".", parts.Take(i));
-                    if (!prefixCount.TryAdd(prefix, 1))
-                        prefixCount[prefix]++;
-                }
-            }
-
-            var best = prefixCount
-                .OrderByDescending(kv => kv.Value)
-                .ThenBy(kv => kv.Key.Count(c => c == '.'))
-                .First();
-
-            return best.Key;
-        }
-    }
-
-    private static (
-        bool hasDiagnostics,
-        bool hasResilience,
-        bool isNetMediateAssembly,
-        string assemblyName,
-        bool supportsGlobalUsing
-    ) CalculateName(
-        (
-            bool hasDiagnostics,
-            bool hasResilience,
-            bool isNetMediateAssembly,
-            string,
-            bool supportsGlobalUsing
-        ) input
-    )
-    {
-        var (hasDiagnostics, hasResilience, isNetMediateAssembly, _, supportsGlobalUsing) = input;
-
-        var assemblyName = FindMostCommonBaseNamespace();
-
-        return (
-            hasDiagnostics,
-            hasResilience,
-            isNetMediateAssembly,
-            assemblyName,
-            supportsGlobalUsing
-        );
-    }
+    // Removed: _names static field, ExtractNames, FindMostCommonBaseNamespace, Compute,
+    // CalculateName. The namespace is now derived per-compilation from the assembly name
+    // directly, matching GenDI's per-project resolution strategy.
 
     private static void Accumulate(
         SourceProductionContext sourceProductionContext,

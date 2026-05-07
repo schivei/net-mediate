@@ -6,21 +6,35 @@ sidebar_position: 1
 
 `NetMediate.SourceGeneration` is a Roslyn incremental source generator that emits handler registrations automatically at compile time. It is the standard and only supported registration path for NetMediate handlers.
 
-The source generator is **bundled inside the `NetMediate` package** — you do not need to install `NetMediate.SourceGeneration` separately.
+The source generator is **bundled inside the `NetMediate` package** — you do not need to install `NetMediate.SourceGeneration` separately. The `GenDI.SourceGenerator` is also bundled so you can annotate your own classes with `[Injectable]` etc. without installing GenDI separately.
 
 ## Installation
 
-The source generator is activated by setting `PrivateAssets="all"` on your `NetMediate` `PackageReference`:
-
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
+<PackageReference Include="NetMediate" Version="x.x.x" />
 ```
 
-:::caution Required: PrivateAssets="all"
-`PrivateAssets="all"` is **required**. Without it, the bundled analyzer is not loaded by the build toolchain and `AddNetMediate()` will not be generated.
-:::
+That is all. `dotnet add package NetMediate` also works without any extra configuration — the bundled analyzers are loaded automatically by MSBuild for any project that directly references the package.
 
-If you installed via `dotnet add package NetMediate` or the Package Manager Console, open your `.csproj` and add `PrivateAssets="all"` manually to the generated `PackageReference`.
+> **Library projects:** Add `PrivateAssets="all"` to prevent `NetMediate` and its bundled analyzers from flowing as a transitive dependency to downstream consumers of your library. This does **not** affect whether the analyzers run for your own project — they always run for direct references.
+>
+> ```xml
+> <!-- Library project recommendation -->
+> <PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
+> ```
+
+### Bundled analyzers
+
+The `NetMediate` package ships two source generators under `analyzers/dotnet/cs/`:
+
+| Generator DLL | What it generates |
+|---|---|
+| `NetMediate.SourceGeneration.dll` | `AddNetMediate()`, `NetMediateGeneratedDI`, `NetMediateTypedExtensions`, global usings |
+| `GenDI.SourceGenerator.dll` | `AddGenDIServices()` for your own `[Injectable]`-annotated classes |
+
+Because `GenDI.SourceGenerator.dll` is bundled, you can use `[Injectable]`, `[ServiceInjection]`, and related attributes **without installing a separate package**.
+
+Both generators also propagate transitively via a `buildTransitive/NetMediate.props` file. This means that if a library in your solution references NetMediate (without `PrivateAssets="all"`), the generators will also run in projects that consume that library — no extra package reference required.
 
 ## Usage
 
@@ -101,19 +115,17 @@ builder.Services.AddNetMediate();
 
 ### Namespace selection algorithm
 
-When a solution contains multiple projects, the generator determines the **most common
-base namespace prefix** across all project assemblies that ran through the generator in the
-current build session. For example:
+The generator uses the **current project's assembly name** directly — one namespace per project, resolved independently, matching the same per-project strategy used by GenDI. For example:
 
-| Assemblies in session | Resolved namespace |
+| Assembly name | Generated namespace |
 |---|---|
-| `Acme.Web` only | `Acme.Web.NetMediate` |
-| `Acme.Web`, `Acme.Api` | `Acme.NetMediate` (common prefix `Acme`) |
-| `Acme.Web`, `Acme.Api`, `Acme.Core` | `Acme.NetMediate` |
+| `Acme.Web` | `Acme.Web.NetMediate` |
+| `Acme.Api` | `Acme.Api.NetMediate` |
+| `MyApp` | `MyApp.NetMediate` |
 
-Projects whose names start with `Microsoft.` or `System.` are always excluded. Built-in
-NetMediate packages (e.g. `NetMediate.Diagnostics`) are also excluded so they do not
-influence the namespace selection of your project.
+Each project always gets its own isolated namespace. No cross-project or cross-build state is involved.
+
+Projects in the `NetMediate.*` name space are skipped automatically (unless they are test or benchmark assemblies).
 
 ## Typed dispatch extension methods
 

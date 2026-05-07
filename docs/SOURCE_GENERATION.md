@@ -2,7 +2,7 @@
 
 `NetMediate.SourceGeneration` is a Roslyn incremental source generator that emits handler registrations automatically at compile time. It is the standard and only supported registration path for NetMediate handlers.
 
-The source generator is **bundled inside the `NetMediate` package** — you do not need to install `NetMediate.SourceGeneration` separately. It is loaded automatically for any project that directly references `NetMediate`.
+The source generator is **bundled inside the `NetMediate` package** — you do not need to install `NetMediate.SourceGeneration` separately. It is loaded automatically for any project that directly references `NetMediate`. The `GenDI.SourceGenerator` is also bundled so you can annotate your own classes with `[Injectable]` etc. without installing GenDI separately.
 
 ## Installation
 
@@ -10,12 +10,27 @@ The source generator is **bundled inside the `NetMediate` package** — you do n
 <PackageReference Include="NetMediate" Version="x.x.x" />
 ```
 
-> **Library projects:** Add `PrivateAssets="all"` to prevent `NetMediate` and its bundled analyzer from flowing as a transitive dependency to downstream consumers of your library. This does **not** affect whether the analyzer runs for your project — it always does for direct references.
+That is all. `dotnet add package NetMediate` also works without any extra configuration — the bundled analyzers are loaded automatically by MSBuild for any project that directly references the package.
+
+> **Library projects:** Add `PrivateAssets="all"` to prevent `NetMediate` and its bundled analyzers from flowing as a transitive dependency to downstream consumers of your library. This does **not** affect whether the analyzers run for your own project — they always run for direct references.
 
 ```xml
 <!-- Library project recommendation -->
 <PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
 ```
+
+### Bundled analyzers
+
+The `NetMediate` package ships two source generators under `analyzers/dotnet/cs/`:
+
+| Generator DLL | What it generates |
+|---|---|
+| `NetMediate.SourceGeneration.dll` | `AddNetMediate()`, `NetMediateGeneratedDI`, `NetMediateTypedExtensions`, global usings |
+| `GenDI.SourceGenerator.dll` | `AddGenDIServices()` for your own `[Injectable]`-annotated classes |
+
+Because `GenDI.SourceGenerator.dll` is bundled, you can use `[Injectable]`, `[ServiceInjection]`, and related attributes **without installing a separate package**.
+
+Both generators also propagate transitively via a `buildTransitive/NetMediate.props` file. This means that if a library in your solution references NetMediate (without `PrivateAssets="all"`), the generators will also run in projects that consume that library — no extra package reference required.
 
 ## Usage
 
@@ -96,16 +111,97 @@ builder.Services.AddNetMediate();
 
 ### Namespace selection algorithm
 
-When a solution contains multiple projects, the generator determines the **most common
-base namespace prefix** across all project assemblies that ran through the generator in the
-current build session. For example:
+The generator uses the **current project's assembly name** directly — one namespace per project, resolved independently, matching the same per-project strategy used by GenDI. For example:
 
-| Assemblies in session | Resolved namespace |
+| Assembly name | Generated namespace |
 |---|---|
-| `Acme.Web` only | `Acme.Web.NetMediate` |
-| `Acme.Web`, `Acme.Api` | `Acme.NetMediate` (common prefix `Acme`) |
-| `Acme.Web`, `Acme.Api`, `Acme.Core` | `Acme.NetMediate` |
+| `Acme.Web` | `Acme.Web.NetMediate` |
+| `Acme.Api` | `Acme.Api.NetMediate` |
+| `MyApp` | `MyApp.NetMediate` |
 
-Projects whose names start with `Microsoft.` or `System.` are always excluded. Built-in
-NetMediate packages (e.g. `NetMediate.Diagnostics`) are also excluded so they do not
-influence the namespace selection of your project.
+Each project always gets its own isolated namespace. No cross-project or cross-build state is involved.
+
+Projects in the `NetMediate.*` name space are skipped automatically (unless they are test or benchmark assemblies).
+
+## Typed dispatch extension methods
+
+Starting with this release, the source generator also emits a second file —
+`NetMediateTypedExtensions.g.cs` — that contains **named, fully-typed extension methods** for
+every message type it discovers in your project. These methods are AOT-safe and reflection-free:
+they call the concrete `IMediator` overloads directly with both type arguments resolved at
+compile time.
+
+### Generated method names
+
+| Handler interface | Verb | Example generated method |
+|---|---|---|
+| `ICommandHandler<MyCmd>` | `Send` | `SendMyCmdAsync(...)` |
+| `INotificationHandler<MyEvt>` | `Notify` | `NotifyMyEvtAsync(...)` |
+| `IRequestHandler<MyQuery, MyResponse>` | `Request` | `RequestMyQueryAsync(...)` |
+| `IStreamHandler<MyFeed, MyItem>` | `Stream` | `StreamMyFeedAsync(...)` |
+
+### Overloads generated per message type
+
+**Commands and notifications** receive four overloads:
+
+```csharp
+// 1. Key-less dispatch (uses the default routing key)
+Task SendMyCmdAsync(this IMediator mediator, MyCmd message, CancellationToken ct = default);
+
+// 2. Explicit routing key
+Task SendMyCmdAsync(this IMediator mediator, object? key, MyCmd message, CancellationToken ct = default);
+
+// 3. Batch dispatch (key-less)
+Task SendMyCmdAsync(this IMediator mediator, IEnumerable<MyCmd> messages, CancellationToken ct = default);
+
+// 4. Batch dispatch with explicit key
+Task SendMyCmdAsync(this IMediator mediator, object? key, IEnumerable<MyCmd> messages, CancellationToken ct = default);
+```
+
+**Requests** receive two overloads:
+
+```csharp
+Task<MyResponse> RequestMyQueryAsync(this IMediator mediator, MyQuery message, CancellationToken ct = default);
+Task<MyResponse> RequestMyQueryAsync(this IMediator mediator, object? key, MyQuery message, CancellationToken ct = default);
+```
+
+**Streams** receive two overloads:
+
+```csharp
+IAsyncEnumerable<MyItem> StreamMyFeedAsync(this IMediator mediator, MyFeed message, CancellationToken ct = default);
+IAsyncEnumerable<MyItem> StreamMyFeedAsync(this IMediator mediator, object? key, MyFeed message, CancellationToken ct = default);
+```
+
+### Usage example
+
+With the global using emitted by the generator (C# 10+) you can write:
+
+```csharp
+// Instead of: mediator.Request<MyQuery, MyResponse>(new MyQuery(id), ct)
+var result = await mediator.RequestMyQueryAsync(new MyQuery(id), ct);
+
+// Batch send:
+await mediator.SendMyCmdAsync(commands, ct);
+
+// Keyed dispatch:
+var value = await mediator.RequestMyQueryAsync("tenant-a", new MyQuery(id), ct);
+```
+
+### Conflict resolution
+
+If two different message types share the same simple name (e.g., `Commands.PingCommand` and
+`Events.PingCommand`), the generator **disambiguates** by deriving the method name from the
+fully-qualified type name with dots removed:
+
+```csharp
+// Instead of the conflicting SendPingCommandAsync:
+Task SendCommandsPingCommandAsync(...);
+Task SendEventsPingCommandAsync(...);
+```
+
+### Deduplication
+
+Multiple handlers for the **same** message type (e.g., one default and one keyed handler) produce
+only **one** set of extension methods — the keyed handler is reached via the `object? key`
+overload.
+

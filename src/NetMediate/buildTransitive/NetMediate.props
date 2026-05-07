@@ -1,0 +1,22 @@
+<Project>
+  <!--
+    This file is placed in buildTransitive/ so that both NetMediate.SourceGeneration and the
+    bundled GenDI.SourceGenerator run as Roslyn analyzers for EVERY project in the dependency
+    chain — including projects that reference NetMediate only transitively (e.g., an application
+    that depends on a library which depends on NetMediate).
+
+    For direct references the analyzers are also loaded automatically from analyzers/dotnet/cs/
+    by the NuGet SDK. MSBuild deduplicates Analyzer items by path, so there is no risk of a
+    generator running twice.
+  -->
+  <ItemGroup>
+    <Analyzer
+      Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/NetMediate.SourceGeneration.dll"
+      Condition="Exists('$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/NetMediate.SourceGeneration.dll')"
+    />
+    <Analyzer
+      Include="$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GenDI.SourceGenerator.dll"
+      Condition="Exists('$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GenDI.SourceGenerator.dll')"
+    />
+  </ItemGroup>
+</Project>

@@ -30,6 +30,12 @@
     <None Include="..\..\assets\logo.png" Pack="true" PackagePath="\" />
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+    <!--
+      buildTransitive: ensures both source generators propagate to transitive consumers
+      (projects that depend on a library that depends on NetMediate). Without this, the
+      generators would only run for projects that directly reference the NetMediate package.
+    -->
+    <None Include="buildTransitive\NetMediate.props" Pack="true" PackagePath="buildTransitive" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference
@@ -45,6 +51,23 @@
       Visible="false"
       Condition="Exists('$(MSBuildThisFileDirectory)..\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll')"
     />
+    <!--
+      Bundle the GenDI source generator inside our package so consumers get GenDI's
+      compile-time DI generation ([Injectable], [ServiceInjection], etc.) for free when
+      they install NetMediate, without a separate `dotnet add package GenDI.SourceGenerator`.
+
+      We glob over all installed 26.x versions in the NuGet package root because
+      $(PkgGenDI_SourceGenerator) — set by GeneratePathProperty — is only available in
+      inner (per-TF) builds, not in the outer multi-target build that drives pack.
+      The glob resolves at MSBuild evaluation time using the always-available
+      $(NuGetPackageRoot) property, picking up whichever 26.x version was restored.
+
+      Version constraint: this glob pins to the 26.x major series (matching the GenDI
+      PackageReference below). When upgrading GenDI to the next major, update both the
+      PackageReference Version and this glob prefix together.
+    -->
+    <_GenDIAnalyzerDll Include="$(NuGetPackageRoot)gendi.sourcegenerator/26.*/analyzers/dotnet/cs/GenDI.SourceGenerator.dll" />
+    <None Include="@(_GenDIAnalyzerDll)" Pack="true" PackagePath="analyzers/dotnet/cs/%(Filename)%(Extension)" Visible="false" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />
@@ -54,6 +77,14 @@
     />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.*" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*" />
+    <!--
+      GenDI.SourceGenerator is bundled directly in our analyzers/dotnet/cs/ folder above.
+      We still need the PackageReference here (with PrivateAssets="all") so the generator
+      runs during NetMediate's own build and the $(PkgGenDI_SourceGenerator) path property
+      is generated for inner-build use. The generator emits [Injectable], [ServiceInjection]
+      and related attribute types at compile time — no GenDI runtime library is required.
+    -->
+    <PackageReference Include="GenDI.SourceGenerator" Version="26.*" PrivateAssets="all" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'netstandard2.1'">
     <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.*" />

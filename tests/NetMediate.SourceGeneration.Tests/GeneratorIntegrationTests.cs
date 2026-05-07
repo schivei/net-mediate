@@ -1218,13 +1218,6 @@ public sealed class GeneratorIntegrationTests
 
     private static int CountOccurrences(string source, string pattern)
     {
-        int count = 0;
-        int index = 0;
-        while ((index = source.IndexOf(pattern, index, StringComparison.Ordinal)) >= 0)
-        {
-            count++;
-            index += pattern.Length;
-        }
-        return count;
+        return source.AsSpan().Count(pattern.AsSpan());
     }
 }

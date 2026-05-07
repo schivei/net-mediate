@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Text;
 using Microsoft.CodeAnalysis;
@@ -10,15 +9,22 @@ namespace NetMediate.SourceGeneration;
 [Generator]
 public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 {
+    // Non-printable delimiter chosen to avoid collisions with C# identifier/type syntax.
+    private const char TypedExtKeySeparator = '\u001F';
+
     private const string NotifierToken = "{{Notifier}}";
     private const string RegistrationsToken = "{{Registrations}}";
     private const string FrameworkBehaviorsToken = "{{FrameworkBehaviors}}";
     private const string AssemblyNamespaceToken = "{{AssemblyNamespace}}";
+    private const string TypedExtensionsToken = "{{TypedExtensions}}";
     private const string KeyedServiceAttributeMetadataName = "NetMediate.KeyedServiceAttribute";
     private const string ServiceOrderAttributeMetadataName = "NetMediate.ServiceOrderAttribute";
 
     private static readonly string TemplateResourceName =
         $"{typeof(NetMediateRegistrationGenerator).Namespace}.NetMediateGeneratedDI.template";
+
+    private static readonly string TypedExtensionsTemplateResourceName =
+        $"{typeof(NetMediateRegistrationGenerator).Namespace}.NetMediateTypedExtensions.template";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -35,8 +41,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             static (compilation, _) => Selects(compilation)
         );
 
-        packageInfo = Compute(packageInfo);
-
         var combined = handlerTypes.Combine(packageInfo);
 
         context.RegisterSourceOutput(
@@ -45,123 +49,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         );
     }
 
-    private static readonly HashSet<string> _names = [];
-
-    private static IncrementalValueProvider<(
-        bool hasDiagnostics,
-        bool hasResilience,
-        bool isNetMediateAssembly,
-        string assemblyName,
-        bool supportsGlobalUsing
-    )> Compute(
-        IncrementalValueProvider<(
-            bool hasDiagnostics,
-            bool hasResilience,
-            bool isNetMediateAssembly,
-            string assemblyName,
-            bool supportsGlobalUsing
-        )> packageInfo
-    )
-    {
-        return packageInfo.Select(
-            static (input, _) =>
-            {
-                ExtractNames(input);
-                return CalculateName(input);
-            }
-        );
-    }
-
-    private static void ExtractNames(
-        (
-            bool hasDiagnostics,
-            bool hasResilience,
-            bool isNetMediateAssembly,
-            string assemblyName,
-            bool supportsGlobalUsing
-        ) input
-    )
-    {
-        lock (_names)
-        {
-            if (input.assemblyName.StartsWith("Microsoft.", StringComparison.Ordinal))
-                return;
-
-            if (input.assemblyName.StartsWith("System.", StringComparison.Ordinal))
-                return;
-
-            if (
-                input.assemblyName.StartsWith("NetMediate.", StringComparison.Ordinal)
-                && !input.assemblyName.Contains(".Tests", StringComparison.Ordinal)
-                && !input.assemblyName.Contains(".Benchmarks", StringComparison.Ordinal)
-            )
-                return;
-
-            _names.Add(input.assemblyName);
-        }
-    }
-
-    private static string FindMostCommonBaseNamespace()
-    {
-        lock (_names)
-        {
-            if (_names.Count == 0)
-                return "NetMediate";
-
-            var prefixCount = new ConcurrentDictionary<string, int>(StringComparer.Ordinal);
-
-            foreach (var ns in _names)
-            {
-                if (string.IsNullOrWhiteSpace(ns))
-                    continue;
-
-                var parts = ns.Split('.');
-
-                for (int i = 1; i <= parts.Length; i++)
-                {
-                    var prefix = string.Join(".", parts.Take(i));
-                    if (!prefixCount.TryAdd(prefix, 1))
-                        prefixCount[prefix]++;
-                }
-            }
-
-            var best = prefixCount
-                .OrderByDescending(kv => kv.Value)
-                .ThenBy(kv => kv.Key.Count(c => c == '.'))
-                .First();
-
-            return best.Key;
-        }
-    }
-
-    private static (
-        bool hasDiagnostics,
-        bool hasResilience,
-        bool isNetMediateAssembly,
-        string assemblyName,
-        bool supportsGlobalUsing
-    ) CalculateName(
-        (
-            bool hasDiagnostics,
-            bool hasResilience,
-            bool isNetMediateAssembly,
-            string,
-            bool supportsGlobalUsing
-        ) input
-    )
-    {
-        var (hasDiagnostics, hasResilience, isNetMediateAssembly, _, supportsGlobalUsing) = input;
-
-        var assemblyName = FindMostCommonBaseNamespace();
-
-        return (
-            hasDiagnostics,
-            hasResilience,
-            isNetMediateAssembly,
-            assemblyName,
-            supportsGlobalUsing
-        );
-    }
+    // Removed: _names static field, ExtractNames, FindMostCommonBaseNamespace, Compute,
+    // CalculateName. The namespace is now derived per-compilation from the assembly name
+    // directly, matching GenDI's per-project resolution strategy.
 
     private static void Accumulate(
         SourceProductionContext sourceProductionContext,
@@ -196,6 +86,10 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         var frameworkBehaviors = BuildFrameworkInfrastructure(hasResilience);
         var source = BuildSource(registrations, notifier, frameworkBehaviors, assemblyName);
         sourceProductionContext.AddSource("NetMediateGeneratedDI.g.cs", source);
+
+        var typedExtensionMethods = BuildTypedExtensionMethods(types);
+        var typedExtensionsSource = BuildTypedExtensionsSource(typedExtensionMethods, assemblyName);
+        sourceProductionContext.AddSource("NetMediateTypedExtensions.g.cs", typedExtensionsSource);
 
         if (supportsGlobalUsing)
         {
@@ -747,6 +641,312 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         );
     }
 
+    // -------------------------------------------------------------------------
+    // Typed extension method generation
+    // -------------------------------------------------------------------------
+
+    private readonly record struct TypedExtEntry(
+        string Verb,
+        string MessageFqn,
+        string MessageName,
+        string? ResponseFqn
+    );
+
+    /// <summary>
+    /// Returns the flattened, PascalCase-style identifier for a fully-qualified type name.
+    /// <c>global::MyApp.Commands.PingCommand</c> → <c>MyAppCommandsPingCommand</c>.
+    /// </summary>
+    private static string FlattenFqn(string fqn)
+    {
+        var s = fqn.StartsWith("global::", StringComparison.Ordinal)
+            ? fqn.Substring("global::".Length)
+            : fqn;
+        var sb = new StringBuilder(s.Length);
+        foreach (var c in s)
+        {
+            if (char.IsLetterOrDigit(c) || c == '_')
+                sb.Append(c);
+        }
+
+        return sb.Length == 0 ? "Message" : sb.ToString();
+    }
+
+    /// <summary>
+    /// Collects one unique <see cref="TypedExtEntry"/> per <em>verb + message type</em> across all
+    /// discovered handler types. Multiple handlers for the same verb/message pair produce one entry.
+    /// </summary>
+    private static IReadOnlyList<TypedExtEntry> CollectTypedExtEntries(
+        ImmutableArray<INamedTypeSymbol> types
+    )
+    {
+        // Key = "{verb}<unit-separator>{message FQN}" — deduplicates duplicate handlers
+        // while keeping distinct dispatch verbs for the same message type.
+        var entries = new Dictionary<string, TypedExtEntry>(StringComparer.Ordinal);
+
+        foreach (var handlerType in types)
+        {
+            foreach (var iface in handlerType.AllInterfaces)
+            {
+                if (!TryCreateTypedExtEntry(iface, out var entry))
+                    continue;
+
+                var key = $"{entry.Verb}{TypedExtKeySeparator}{entry.MessageFqn}";
+                if (!entries.ContainsKey(key))
+                    entries[key] = entry;
+            }
+        }
+
+        return entries
+            .Values.OrderBy(e => e.Verb, StringComparer.Ordinal)
+            .ThenBy(e => e.MessageFqn, StringComparer.Ordinal)
+            .ThenBy(e => e.ResponseFqn, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static bool TryCreateTypedExtEntry(INamedTypeSymbol iface, out TypedExtEntry entry)
+    {
+        var def = iface.OriginalDefinition;
+        if (def.ContainingNamespace.ToDisplayString() != "NetMediate")
+        {
+            entry = default;
+            return false;
+        }
+
+        var args = iface.TypeArguments;
+        if (args.Length == 0 || !IsPubliclyAccessible(args[0]))
+        {
+            entry = default;
+            return false;
+        }
+
+        var msgFqn = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        var msgName = args[0].Name;
+
+        switch (def.Name)
+        {
+            case "ICommandHandler" when args.Length == 1:
+                entry = new TypedExtEntry("Send", msgFqn, msgName, null);
+                return true;
+            case "INotificationHandler" when args.Length == 1:
+                entry = new TypedExtEntry("Notify", msgFqn, msgName, null);
+                return true;
+            case "IRequestHandler" when args.Length == 2 && IsPubliclyAccessible(args[1]):
+                entry = new TypedExtEntry(
+                    "Request",
+                    msgFqn,
+                    msgName,
+                    args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                );
+                return true;
+            case "IStreamHandler" when args.Length == 2 && IsPubliclyAccessible(args[1]):
+                entry = new TypedExtEntry(
+                    "Stream",
+                    msgFqn,
+                    msgName,
+                    args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
+                );
+                return true;
+            default:
+                entry = default;
+                return false;
+        }
+    }
+
+    /// <summary>
+    /// Generates the bodies of all typed extension methods for the given entries.
+    /// Detects method-name conflicts (same verb + simple message name, different FQN) and
+    /// disambiguates using the flattened fully-qualified type name.
+    /// </summary>
+    private static IEnumerable<string> BuildTypedExtensionMethods(
+        ImmutableArray<INamedTypeSymbol> types
+    )
+    {
+        var entries = CollectTypedExtEntries(types);
+
+        if (entries.Count == 0)
+            return Array.Empty<string>();
+
+        // Detect conflicts: same (verb + simpleName), different FQN.
+        var nameToFqn = new Dictionary<string, string>(StringComparer.Ordinal);
+        var conflicted = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var e in entries)
+        {
+            var baseName = $"{e.Verb}{e.MessageName}Async";
+            if (nameToFqn.TryGetValue(baseName, out var existing))
+            {
+                if (!string.Equals(existing, e.MessageFqn, StringComparison.Ordinal))
+                    conflicted.Add(baseName);
+            }
+            else
+            {
+                nameToFqn[baseName] = e.MessageFqn;
+            }
+        }
+
+        var result = new List<string>();
+        foreach (var e in entries)
+        {
+            var baseName = $"{e.Verb}{e.MessageName}Async";
+            var methodName = conflicted.Contains(baseName)
+                ? $"{e.Verb}{FlattenFqn(e.MessageFqn)}Async"
+                : baseName;
+
+            result.Add(GenerateTypedExtensionBlock(e, methodName));
+        }
+
+        return result;
+    }
+
+    private static string GenerateTypedExtensionBlock(TypedExtEntry e, string methodName)
+    {
+        const string ind = "    ";
+        const string task = "global::System.Threading.Tasks.Task";
+        const string ct = "global::System.Threading.CancellationToken";
+
+        var sb = new StringBuilder();
+
+        switch (e.Verb)
+        {
+            case "Send":
+            case "Notify":
+                var mediatorMethod = e.Verb == "Send" ? "Send" : "Notify";
+                var batchType =
+                    $"global::System.Collections.Generic.IEnumerable<{e.MessageFqn}>";
+
+                // key-less overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Dispatches a <see cref=\"{e.MessageFqn}\"/> message via the mediator.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static {task} {methodName}(this global::NetMediate.IMediator mediator, {e.MessageFqn} message, {ct} cancellationToken = default)"
+                );
+                sb.AppendLine($"{ind}{ind}=> mediator.{mediatorMethod}(message, cancellationToken);");
+                sb.AppendLine();
+
+                // keyed overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Dispatches a <see cref=\"{e.MessageFqn}\"/> message via the mediator with an explicit routing key.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static {task} {methodName}(this global::NetMediate.IMediator mediator, object? key, {e.MessageFqn} message, {ct} cancellationToken = default)"
+                );
+                sb.AppendLine(
+                    $"{ind}{ind}=> mediator.{mediatorMethod}(key, message, cancellationToken);"
+                );
+                sb.AppendLine();
+
+                // batch overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Dispatches a batch of <see cref=\"{e.MessageFqn}\"/> messages via the mediator.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static {task} {methodName}(this global::NetMediate.IMediator mediator, {batchType} messages, {ct} cancellationToken = default)"
+                );
+                sb.AppendLine(
+                    $"{ind}{ind}=> mediator.{mediatorMethod}(messages, cancellationToken);"
+                );
+                sb.AppendLine();
+
+                // keyed batch overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Dispatches a batch of <see cref=\"{e.MessageFqn}\"/> messages via the mediator with an explicit routing key.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static {task} {methodName}(this global::NetMediate.IMediator mediator, object? key, {batchType} messages, {ct} cancellationToken = default)"
+                );
+                sb.AppendLine(
+                    $"{ind}{ind}=> mediator.{mediatorMethod}(key, messages, cancellationToken);"
+                );
+                break;
+
+            case "Request":
+                var taskResp = $"{task}<{e.ResponseFqn}>";
+
+                // key-less overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Sends a <see cref=\"{e.MessageFqn}\"/> request via the mediator and returns a <see cref=\"{e.ResponseFqn}\"/> response.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static {taskResp} {methodName}(this global::NetMediate.IMediator mediator, {e.MessageFqn} message, {ct} cancellationToken = default)"
+                );
+                sb.AppendLine(
+                    $"{ind}{ind}=> mediator.Request<{e.MessageFqn}, {e.ResponseFqn}>(message, cancellationToken);"
+                );
+                sb.AppendLine();
+
+                // keyed overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Sends a <see cref=\"{e.MessageFqn}\"/> request via the mediator with an explicit routing key and returns a <see cref=\"{e.ResponseFqn}\"/> response.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static {taskResp} {methodName}(this global::NetMediate.IMediator mediator, object? key, {e.MessageFqn} message, {ct} cancellationToken = default)"
+                );
+                sb.AppendLine(
+                    $"{ind}{ind}=> mediator.Request<{e.MessageFqn}, {e.ResponseFqn}>(key, message, cancellationToken);"
+                );
+                break;
+
+            case "Stream":
+                var asyncEnum =
+                    $"global::System.Collections.Generic.IAsyncEnumerable<{e.ResponseFqn}>";
+
+                // key-less overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Initiates a streaming request for <see cref=\"{e.MessageFqn}\"/> via the mediator.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static {asyncEnum} {methodName}(this global::NetMediate.IMediator mediator, {e.MessageFqn} message, {ct} cancellationToken = default)"
+                );
+                sb.AppendLine(
+                    $"{ind}{ind}=> mediator.RequestStream<{e.MessageFqn}, {e.ResponseFqn}>(message, cancellationToken);"
+                );
+                sb.AppendLine();
+
+                // keyed overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Initiates a streaming request for <see cref=\"{e.MessageFqn}\"/> via the mediator with an explicit routing key.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static {asyncEnum} {methodName}(this global::NetMediate.IMediator mediator, object? key, {e.MessageFqn} message, {ct} cancellationToken = default)"
+                );
+                sb.AppendLine(
+                    $"{ind}{ind}=> mediator.RequestStream<{e.MessageFqn}, {e.ResponseFqn}>(key, message, cancellationToken);"
+                );
+                break;
+        }
+
+        return sb.ToString();
+    }
+
+    private static string BuildTypedExtensionsSource(
+        IEnumerable<string> extensionBlocks,
+        string assemblyName
+    )
+    {
+        var body = string.Join("\n", extensionBlocks);
+
+        return LoadTypedExtensionsTemplate()
+            .Replace(TypedExtensionsToken, body)
+            .Replace(AssemblyNamespaceToken, assemblyName);
+    }
+
+    private static string LoadTypedExtensionsTemplate()
+    {
+        var stream =
+            typeof(NetMediateRegistrationGenerator).Assembly.GetManifestResourceStream(
+                TypedExtensionsTemplateResourceName
+            )
+            ?? throw new InvalidOperationException(
+                $"Embedded template resource '{TypedExtensionsTemplateResourceName}' was not found. "
+                    + "Ensure 'NetMediateTypedExtensions.template' is included as an EmbeddedResource "
+                    + "in the NetMediate.SourceGeneration project."
+            );
+        using (stream)
+        using (var reader = new StreamReader(stream))
+            return reader.ReadToEnd();
+    }
+
     private static string BuildSource(
         IEnumerable<string> registrations,
         StringBuilder notifier,
@@ -811,6 +1011,39 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             {
                 return false;
             }
+        }
+
+        return true;
+    }
+
+    private static bool IsPubliclyAccessible(ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol is ITypeParameterSymbol or IErrorTypeSymbol)
+            return false;
+
+        if (typeSymbol is IArrayTypeSymbol arrayType)
+            return IsPubliclyAccessible(arrayType.ElementType);
+
+        if (typeSymbol is IPointerTypeSymbol pointerType)
+            return IsPubliclyAccessible(pointerType.PointedAtType);
+
+        if (typeSymbol is INamedTypeSymbol namedType)
+        {
+            if (namedType.TypeArguments.Any(argument => !IsPubliclyAccessible(argument)))
+                return false;
+
+            return IsNamedTypePublic(namedType);
+        }
+
+        return true;
+    }
+
+    private static bool IsNamedTypePublic(INamedTypeSymbol typeSymbol)
+    {
+        for (var current = typeSymbol; current is not null; current = current.ContainingType)
+        {
+            if (current.DeclaredAccessibility is not Accessibility.Public)
+                return false;
         }
 
         return true;

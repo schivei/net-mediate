@@ -833,4 +833,473 @@ public sealed class GeneratorIntegrationTests
             "NetMediateGlobalUsings.g.cs must NOT be emitted for C# < 10 compilations."
         );
     }
+
+    // -------------------------------------------------------------------------
+    // Typed extension method generation tests
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Verifies that the generator emits a <c>NetMediateTypedExtensions.g.cs</c> file
+    /// alongside the DI registration file for user projects.
+    /// </summary>
+    [Fact]
+    public void Generator_WhenUserProjectHasHandlers_EmitsTypedExtensionsFile()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record PingCommand;
+
+            public sealed class PingHandler : ICommandHandler<PingCommand>
+            {
+                public Task Handle(PingCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(assemblyName: "MyApp", userSource: userSource);
+
+        Assert.True(
+            files.ContainsKey("NetMediateTypedExtensions.g.cs"),
+            $"Expected NetMediateTypedExtensions.g.cs to be emitted. Files: {string.Join(", ", files.Keys)}"
+        );
+    }
+
+    /// <summary>
+    /// A command handler for <c>PingCommand</c> must produce a <c>SendPingCommandAsync</c>
+    /// extension method with the key-less, keyed, batch and keyed-batch overloads.
+    /// </summary>
+    [Fact]
+    public void Generator_CommandHandler_EmitsTypedSendExtensions()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record PingCommand;
+
+            public sealed class PingHandler : ICommandHandler<PingCommand>
+            {
+                public Task Handle(PingCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(assemblyName: "MyApp", userSource: userSource);
+        var src = files["NetMediateTypedExtensions.g.cs"];
+
+        Assert.Contains("SendPingCommandAsync", src);
+        // key-less overload
+        Assert.Contains("mediator.Send(message, cancellationToken)", src);
+        // keyed overload
+        Assert.Contains("mediator.Send(key, message, cancellationToken)", src);
+        // batch overload
+        Assert.Contains("mediator.Send(messages, cancellationToken)", src);
+        // keyed batch overload
+        Assert.Contains("mediator.Send(key, messages, cancellationToken)", src);
+    }
+
+    /// <summary>
+    /// A notification handler must produce a <c>NotifyAlertNotificationAsync</c>
+    /// extension method.
+    /// </summary>
+    [Fact]
+    public void Generator_NotificationHandler_EmitsTypedNotifyExtensions()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record AlertNotification(string Message);
+
+            public sealed class AlertHandler : INotificationHandler<AlertNotification>
+            {
+                public Task Handle(AlertNotification notification, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(assemblyName: "MyApp", userSource: userSource);
+        var src = files["NetMediateTypedExtensions.g.cs"];
+
+        Assert.Contains("NotifyAlertNotificationAsync", src);
+        Assert.Contains("mediator.Notify(message, cancellationToken)", src);
+        Assert.Contains("mediator.Notify(key, message, cancellationToken)", src);
+        Assert.Contains("mediator.Notify(messages, cancellationToken)", src);
+        Assert.Contains("mediator.Notify(key, messages, cancellationToken)", src);
+    }
+
+    /// <summary>
+    /// A request handler must produce a <c>RequestGetQueryAsync</c> extension method
+    /// that calls the typed <c>IMediator.Request&lt;TMessage, TResponse&gt;</c> overload.
+    /// </summary>
+    [Fact]
+    public void Generator_RequestHandler_EmitsTypedRequestExtensions()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record GetQuery(int Id);
+
+            public sealed class GetHandler : IRequestHandler<GetQuery, string>
+            {
+                public Task<string> Handle(GetQuery query, CancellationToken cancellationToken = default)
+                    => Task.FromResult(query.Id.ToString());
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(assemblyName: "MyApp", userSource: userSource);
+        var src = files["NetMediateTypedExtensions.g.cs"];
+
+        Assert.Contains("RequestGetQueryAsync", src);
+        // must call the typed overload — no reflection
+        Assert.Contains("mediator.Request<global::MyApp.GetQuery, string>", src);
+        // key-less
+        Assert.Contains("mediator.Request<global::MyApp.GetQuery, string>(message, cancellationToken)", src);
+        // keyed
+        Assert.Contains("mediator.Request<global::MyApp.GetQuery, string>(key, message, cancellationToken)", src);
+    }
+
+    /// <summary>
+    /// A stream handler must produce a <c>StreamStreamQueryAsync</c> extension method
+    /// that calls the typed <c>IMediator.RequestStream&lt;TMessage, TResponse&gt;</c> overload.
+    /// </summary>
+    [Fact]
+    public void Generator_StreamHandler_EmitsTypedStreamExtensions()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Collections.Generic;
+            using System.Threading;
+
+            namespace MyApp;
+
+            public sealed record StreamQuery;
+
+            public sealed class StreamHandler : IStreamHandler<StreamQuery, int>
+            {
+                public async IAsyncEnumerable<int> Handle(StreamQuery query, CancellationToken cancellationToken = default)
+                {
+                    yield return 1;
+                    await System.Threading.Tasks.Task.CompletedTask;
+                }
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(assemblyName: "MyApp", userSource: userSource);
+        var src = files["NetMediateTypedExtensions.g.cs"];
+
+        Assert.Contains("StreamStreamQueryAsync", src);
+        Assert.Contains("mediator.RequestStream<global::MyApp.StreamQuery, int>", src);
+        Assert.Contains("mediator.RequestStream<global::MyApp.StreamQuery, int>(message, cancellationToken)", src);
+        Assert.Contains("mediator.RequestStream<global::MyApp.StreamQuery, int>(key, message, cancellationToken)", src);
+    }
+
+    /// <summary>
+    /// When two different message types (in different namespaces) have the same simple name,
+    /// the generator must disambiguate by using the flattened FQN as the method name suffix.
+    /// </summary>
+    [Fact]
+    public void Generator_WhenTwoMessageTypesShareSimpleName_DisambiguatesMethodNames()
+    {
+        // Use block-scoped namespaces — a file can only contain one file-scoped namespace declaration.
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp.Commands
+            {
+                public sealed record PingCommand;
+
+                public sealed class PingCommandHandler : ICommandHandler<PingCommand>
+                {
+                    public Task Handle(PingCommand command, CancellationToken cancellationToken = default)
+                        => Task.CompletedTask;
+                }
+            }
+
+            namespace MyApp.Events
+            {
+                public sealed record PingCommand;
+
+                public sealed class PingEventHandler : ICommandHandler<MyApp.Events.PingCommand>
+                {
+                    public Task Handle(MyApp.Events.PingCommand command, CancellationToken cancellationToken = default)
+                        => Task.CompletedTask;
+                }
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(assemblyName: "MyApp.Conflict", userSource: userSource);
+        var src = files["NetMediateTypedExtensions.g.cs"];
+
+        // Simple name method must NOT appear (both are conflicted)
+        Assert.DoesNotContain("public static global::System.Threading.Tasks.Task SendPingCommandAsync(", src);
+        // Disambiguated names MUST appear
+        Assert.Contains("SendMyAppCommandsPingCommandAsync", src);
+        Assert.Contains("SendMyAppEventsPingCommandAsync", src);
+    }
+
+    /// <summary>
+    /// For conflicted generic message names, disambiguated method names must be valid C#
+    /// identifiers (no generic punctuation).
+    /// </summary>
+    [Fact]
+    public void Generator_WhenConflictUsesGenericMessages_SanitizesDisambiguatedMethodNames()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp.One
+            {
+                public sealed record PingCommand<T>(T Value);
+
+                public sealed class PingCommandHandler : ICommandHandler<PingCommand<int>>
+                {
+                    public Task Handle(PingCommand<int> command, CancellationToken cancellationToken = default)
+                        => Task.CompletedTask;
+                }
+            }
+
+            namespace MyApp.Two
+            {
+                public sealed record PingCommand<T>(T Value);
+
+                public sealed class PingCommandHandler : ICommandHandler<PingCommand<string>>
+                {
+                    public Task Handle(PingCommand<string> command, CancellationToken cancellationToken = default)
+                        => Task.CompletedTask;
+                }
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(assemblyName: "MyApp.GenericConflict", userSource: userSource);
+        var src = files["NetMediateTypedExtensions.g.cs"];
+
+        Assert.DoesNotContain("SendPingCommandAsync", src);
+        Assert.Contains("SendMyAppOnePingCommand", src);
+        Assert.Contains("SendMyAppTwoPingCommand", src);
+        Assert.DoesNotContain("SendMyAppOnePingCommand<", src);
+        Assert.DoesNotContain("SendMyAppTwoPingCommand<", src);
+    }
+
+    /// <summary>
+    /// Multiple handlers for the same message type must produce only ONE set of typed
+    /// extension methods (deduplication by message FQN).
+    /// </summary>
+    [Fact]
+    public void Generator_WhenSameMessageHasMultipleHandlers_EmitsOneTypedExtension()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record PingCommand;
+
+            public sealed class PingHandler1 : ICommandHandler<PingCommand>
+            {
+                public Task Handle(PingCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+
+            [KeyedService(Key = "secondary")]
+            public sealed class PingHandler2 : ICommandHandler<PingCommand>
+            {
+                public Task Handle(PingCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(assemblyName: "MyApp.Multi", userSource: userSource);
+        var src = files["NetMediateTypedExtensions.g.cs"];
+
+        // Count occurrences of the method signature — should appear exactly once per overload
+        var keyLessCount = CountOccurrences(
+            src,
+            "public static global::System.Threading.Tasks.Task SendPingCommandAsync(this global::NetMediate.IMediator mediator, global::MyApp.PingCommand message,"
+        );
+        Assert.Equal(1, keyLessCount);
+    }
+
+    /// <summary>
+    /// Typed extension methods are emitted as public methods, so non-public message/response
+    /// types must be ignored to avoid inconsistent accessibility compile errors.
+    /// </summary>
+    [Fact]
+    public void Generator_WhenMessageOrResponseIsInternal_DoesNotEmitTypedExtensions()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            internal sealed record InternalCommand;
+            public sealed class InternalCommandHandler : ICommandHandler<InternalCommand>
+            {
+                public Task Handle(InternalCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+
+            public sealed record PublicRequest;
+            internal sealed record InternalResponse(int Value);
+            public sealed class InternalResponseHandler : IRequestHandler<PublicRequest, InternalResponse>
+            {
+                public Task<InternalResponse> Handle(PublicRequest message, CancellationToken cancellationToken = default)
+                    => Task.FromResult(new InternalResponse(1));
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(assemblyName: "MyApp.InternalTypes", userSource: userSource);
+        var src = files["NetMediateTypedExtensions.g.cs"];
+
+        Assert.DoesNotContain("SendInternalCommandAsync", src);
+        Assert.DoesNotContain("RequestPublicRequestAsync", src);
+    }
+
+    /// <summary>
+    /// The typed extensions class must be placed in the same generated namespace as
+    /// <c>NetMediateGeneratedDI</c> and must NOT be in the <c>NetMediate</c> core namespace.
+    /// </summary>
+    [Fact]
+    public void Generator_TypedExtensions_PlacedInProjectNamespace()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace Acme.Core;
+
+            public sealed record AcmeCommand;
+
+            public sealed class AcmeHandler : ICommandHandler<AcmeCommand>
+            {
+                public Task Handle(AcmeCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(assemblyName: "Acme.Core", userSource: userSource);
+        var src = files["NetMediateTypedExtensions.g.cs"];
+
+        // Must be a proper class declaration
+        Assert.Contains("class NetMediateTypedExtensions", src);
+        // Must not use the bare NetMediate core namespace
+        Assert.DoesNotContain("namespace NetMediate;", src);
+        // Both the DI file and the typed extensions file must share the same namespace
+        var diSrc = files["NetMediateGeneratedDI.g.cs"];
+        var diNamespaceLine = diSrc
+            .Split('\n')
+            .FirstOrDefault(l => l.TrimStart().StartsWith("namespace ", StringComparison.Ordinal));
+        var extNamespaceLine = src
+            .Split('\n')
+            .FirstOrDefault(l => l.TrimStart().StartsWith("namespace ", StringComparison.Ordinal));
+        Assert.NotNull(diNamespaceLine);
+        Assert.NotNull(extNamespaceLine);
+        Assert.Equal(diNamespaceLine.Trim(), extNamespaceLine.Trim());
+    }
+
+    /// <summary>
+    /// The generated typed extensions file must compile cleanly against the real
+    /// <c>NetMediate.dll</c>, confirming all generated calls reference valid overloads.
+    /// </summary>
+    [Fact]
+    public void Generator_TypedExtensions_CompilesCleanly()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Collections.Generic;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record MyCmd;
+            public sealed record MyEvt(string Msg);
+            public sealed record MyReq(int Id);
+            public sealed record MyStream;
+
+            public sealed class MyCmdHandler : ICommandHandler<MyCmd>
+            {
+                public Task Handle(MyCmd c, CancellationToken ct = default) => Task.CompletedTask;
+            }
+            public sealed class MyEvtHandler : INotificationHandler<MyEvt>
+            {
+                public Task Handle(MyEvt e, CancellationToken ct = default) => Task.CompletedTask;
+            }
+            public sealed class MyReqHandler : IRequestHandler<MyReq, string>
+            {
+                public Task<string> Handle(MyReq r, CancellationToken ct = default) => Task.FromResult(r.Id.ToString());
+            }
+            public sealed class MyStreamHandler : IStreamHandler<MyStream, int>
+            {
+                public async IAsyncEnumerable<int> Handle(MyStream r, CancellationToken ct = default) { yield return 1; await Task.CompletedTask; }
+            }
+            """;
+
+        var refs = BuildReferences(includeNetMediateDll: true);
+        var compilation = CSharpCompilation.Create(
+            "MyApp",
+            syntaxTrees: [CSharpSyntaxTree.ParseText(userSource)],
+            references: refs,
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+        );
+
+        var generator = CreateGenerator();
+        var driver = CSharpGeneratorDriver.Create(generator);
+        driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out _);
+
+        var errors = outputCompilation
+            .GetDiagnostics()
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .ToList();
+
+        Assert.Empty(errors);
+    }
+
+    /// <summary>
+    /// The generator must NOT emit typed extensions for the <c>NetMediate</c> core assembly.
+    /// </summary>
+    [Fact]
+    public void Generator_WhenBuildingNetMediateAssembly_ShouldNotEmitTypedExtensions()
+    {
+        var files = RunGeneratorAllFiles(
+            assemblyName: "NetMediate",
+            userSource: "// empty project",
+            includeNetMediateDll: false
+        );
+
+        // If emitted at all, must be just the skip comment (not real extension methods)
+        if (files.ContainsKey("NetMediateTypedExtensions.g.cs"))
+        {
+            Assert.DoesNotContain("public static", files["NetMediateTypedExtensions.g.cs"]);
+        }
+    }
+
+    private static int CountOccurrences(string source, string pattern)
+    {
+        return source.AsSpan().Count(pattern.AsSpan());
+    }
 }

@@ -17,13 +17,13 @@ The table below is updated automatically by CI on every PR benchmark run. System
 <!-- ci-environment-start -->
 | Key | Value |
 |---|---|
-| OS | Linux Ubuntu 25.10 (Questing Quokka) |
-| CPU | Intel Core Ultra 7 165U 2.69GHz, 1 CPU, 6 logical and 3 physical cores |
-| .NET SDK | 10.0.107 |
-| Runtime | .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3 |
-| Last CI run | 2026-05-06 12:26 UTC |
-| Branch | `origin/main` |
-| Commit | `e426e39` |
+| OS | Linux Ubuntu 24.04.4 LTS (Noble Numbat) |
+| CPU | Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores |
+| .NET SDK | 10.0.203 |
+| Runtime | .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v4 |
+| Last CI run | 2026-05-07 18:37 UTC |
+| Branch | `copilot/add-gen-di-library-usage` |
+| Commit | `46f20b9` |
 <!-- ci-environment-end -->
 
 ---
@@ -38,13 +38,15 @@ The `vs timing` column compares dispatch time against the same-run base-branch m
 available, or against stored target-branch values otherwise (±10% = no change on shared CI hardware;
 ✅ = improved, ⚠️ = degraded).
 
+> Improvement plan for current regressions is tracked in [PERFORMANCE_IMPROVEMENTS.md](PERFORMANCE_IMPROVEMENTS.md).
+
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|
-| Command `Send` | 68.05 ns | ±1.699 ns | 0.0076 | 48 B | ✅ same | ~14.7M msg/s | ≈ (+0.0%) |
-| Notification `Notify` | 178.47 ns | ±4.195 ns | 0.0688 | 432 B | ✅ same | ~5.6M msg/s | ≈ (+0.0%) |
-| Request `Request` | 75.04 ns | ±1.943 ns | 0.0178 | 112 B | ✅ same | ~13.3M msg/s | ≈ (+0.0%) |
-| Stream `RequestStream` | 164.37 ns | ±4.520 ns | 0.0344 | 216 B | ✅ same | ~6.1M msg/s | ≈ (+0.0%) |
+| Command `Send` | 87.40 ns | ±0.081 ns | 0.0018 | 48 B | ✅ same | ~11.4M msg/s | ≈ (-3.5%) |
+| Notification `Notify` | 211.58 ns | ±0.759 ns | 0.0171 | 432 B | ⚠️ +144 B | ~4.7M msg/s | ⚠️ degraded (+64.2%) |
+| Request `Request` | 99.10 ns | ±0.178 ns | 0.0044 | 112 B | ✅ same | ~10.1M msg/s | ⚠️ degraded (+10.2%) |
+| Stream `RequestStream` | 192.89 ns | ±0.339 ns | 0.0085 | 216 B | ✅ same | ~5.2M msg/s | ≈ (-1.6%) |
 <!-- ci-throughput-end -->
 
 > ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.
@@ -277,36 +279,36 @@ Thresholds are deliberately lenient to remain green on any CI hardware. Local de
 
 ## Latest CI Benchmark Run
 
-Run: 2026-05-06 12:26 UTC | Branch: `origin/main` | Commit: `e426e39`
+Run: 2026-05-07 18:37 UTC | Branch: `copilot/add-gen-di-library-usage` | Commit: `46f20b9`
 
-> ✅ Base branch benchmarked in the same CI job (same machine — direct comparison).
+> ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).
 
 ### System specification
 
 ```
-Linux Ubuntu 25.10 (Questing Quokka)
-Intel Core Ultra 7 165U 2.69GHz, 1 CPU, 6 logical and 3 physical cores
-.NET SDK 10.0.107
-Runtime: .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v3
+Linux Ubuntu 24.04.4 LTS (Noble Numbat)
+Intel Xeon Platinum 8370C CPU 2.80GHz, 1 CPU, 4 logical and 2 physical cores
+.NET SDK 10.0.203
+Runtime: .NET 10.0.7 (10.0.7, 10.0.726.21808), X64 RyuJIT x86-64-v4
 ```
 
 ### Performance summary (BenchmarkDotNet — Throughput job)
 
 | Benchmark | Mean | Error | Gen0 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|
-| Command `Send` | 68.05 ns | ±1.699 ns | 0.0076 | 48 B | ✅ same | ~14.7M msg/s | ≈ (+0.0%) |
-| Notification `Notify` | 178.47 ns | ±4.195 ns | 0.0688 | 432 B | ✅ same | ~5.6M msg/s | ≈ (+0.0%) |
-| Request `Request` | 75.04 ns | ±1.943 ns | 0.0178 | 112 B | ✅ same | ~13.3M msg/s | ≈ (+0.0%) |
-| Stream `RequestStream` | 164.37 ns | ±4.520 ns | 0.0344 | 216 B | ✅ same | ~6.1M msg/s | ≈ (+0.0%) |
+| Command `Send` | 87.40 ns | ±0.081 ns | 0.0018 | 48 B | ✅ same | ~11.4M msg/s | ≈ (-3.5%) |
+| Notification `Notify` | 211.58 ns | ±0.759 ns | 0.0171 | 432 B | ⚠️ +144 B | ~4.7M msg/s | ⚠️ degraded (+64.2%) |
+| Request `Request` | 99.10 ns | ±0.178 ns | 0.0044 | 112 B | ✅ same | ~10.1M msg/s | ⚠️ degraded (+10.2%) |
+| Stream `RequestStream` | 192.89 ns | ±0.339 ns | 0.0085 | 216 B | ✅ same | ~5.2M msg/s | ≈ (-1.6%) |
 
-### Comparison vs baseline (`main`, average of ≤3 runs)
+### Comparison vs baseline (`main`, median of ≤3 runs)
 
 > Timing: ✅ improved (>10% faster) |  ≈ no change (±10%) |  ⚠️ degraded (>10% slower)
 > Alloc Δ: ✅ same / ✅ −N B (less) / ⚠️ +N B (more)
 
-| Benchmark | Baseline (`main`, average of ≤3 runs) | Current | Δ timing | Alloc Δ |
+| Benchmark | Baseline (`main`, median of ≤3 runs) | Current | Δ timing | Alloc Δ |
 |---|---|---|---|---|
-| Command `Send` | 68.05 ns | 68.05 ns | ≈ +0.0% | ✅ same |
-| Notification `Notify` | 178.47 ns | 178.47 ns | ≈ +0.0% | ✅ same |
-| Request `Request` | 75.04 ns | 75.04 ns | ≈ +0.0% | ✅ same |
-| Stream `RequestStream` | 164.37 ns | 164.37 ns | ≈ +0.0% | ✅ same |
+| Command `Send` | 90.55 ns | 87.40 ns | ≈ -3.5% | ✅ same |
+| Notification `Notify` | 128.85 ns | 211.58 ns | ⚠️ +64.2% | ⚠️ +144 B |
+| Request `Request` | 89.91 ns | 99.10 ns | ⚠️ +10.2% | ✅ same |
+| Stream `RequestStream` | 196.07 ns | 192.89 ns | ≈ -1.6% | ✅ same |

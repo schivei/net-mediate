@@ -658,8 +658,14 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         var s = fqn.StartsWith("global::", StringComparison.Ordinal)
             ? fqn.Substring("global::".Length)
             : fqn;
+        var sb = new StringBuilder(s.Length);
+        foreach (var c in s)
+        {
+            if (char.IsLetterOrDigit(c) || c == '_')
+                sb.Append(c);
+        }
 
-        return s.Replace(".", string.Empty);
+        return sb.Length == 0 ? "Message" : sb.ToString();
     }
 
     /// <summary>
@@ -698,7 +704,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         }
 
         var args = iface.TypeArguments;
-        if (args.Length == 0 || !IsAccessible(args[0]))
+        if (args.Length == 0 || !IsPubliclyAccessible(args[0]))
         {
             entry = default;
             return false;
@@ -715,7 +721,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             case "INotificationHandler" when args.Length == 1:
                 entry = new TypedExtEntry("Notify", msgFqn, msgName, null);
                 return true;
-            case "IRequestHandler" when args.Length == 2 && IsAccessible(args[1]):
+            case "IRequestHandler" when args.Length == 2 && IsPubliclyAccessible(args[1]):
                 entry = new TypedExtEntry(
                     "Request",
                     msgFqn,
@@ -723,7 +729,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)
                 );
                 return true;
-            case "IStreamHandler" when args.Length == 2 && IsAccessible(args[1]):
+            case "IStreamHandler" when args.Length == 2 && IsPubliclyAccessible(args[1]):
                 entry = new TypedExtEntry(
                     "Stream",
                     msgFqn,
@@ -996,6 +1002,36 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             {
                 return false;
             }
+        }
+
+        return true;
+    }
+
+    private static bool IsPubliclyAccessible(ITypeSymbol typeSymbol)
+    {
+        if (typeSymbol is IArrayTypeSymbol arrayType)
+            return IsPubliclyAccessible(arrayType.ElementType);
+
+        if (typeSymbol is IPointerTypeSymbol pointerType)
+            return IsPubliclyAccessible(pointerType.PointedAtType);
+
+        if (typeSymbol is INamedTypeSymbol namedType)
+        {
+            if (namedType.TypeArguments.Any(argument => !IsPubliclyAccessible(argument)))
+                return false;
+
+            return IsNamedTypePublic(namedType);
+        }
+
+        return true;
+    }
+
+    private static bool IsNamedTypePublic(INamedTypeSymbol typeSymbol)
+    {
+        for (var current = typeSymbol; current is not null; current = current.ContainingType)
+        {
+            if (current.DeclaredAccessibility is not Accessibility.Public)
+                return false;
         }
 
         return true;

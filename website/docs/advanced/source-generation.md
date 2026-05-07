@@ -125,7 +125,7 @@ The generator uses the **current project's assembly name** directly — one name
 
 Each project always gets its own isolated namespace. No cross-project or cross-build state is involved.
 
-Projects in the `NetMediate.*` name space are skipped automatically (unless they are test or benchmark assemblies).
+Only the core `NetMediate` assembly is skipped automatically (`AssemblyName == "NetMediate"`). Other `NetMediate.*` assemblies are not auto-skipped.
 
 ## Typed dispatch extension methods
 

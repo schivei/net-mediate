@@ -1056,6 +1056,51 @@ public sealed class GeneratorIntegrationTests
     }
 
     /// <summary>
+    /// For conflicted generic message names, disambiguated method names must be valid C#
+    /// identifiers (no generic punctuation).
+    /// </summary>
+    [Fact]
+    public void Generator_WhenConflictUsesGenericMessages_SanitizesDisambiguatedMethodNames()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp.One
+            {
+                public sealed record PingCommand<T>(T Value);
+
+                public sealed class PingCommandHandler : ICommandHandler<PingCommand<int>>
+                {
+                    public Task Handle(PingCommand<int> command, CancellationToken cancellationToken = default)
+                        => Task.CompletedTask;
+                }
+            }
+
+            namespace MyApp.Two
+            {
+                public sealed record PingCommand<T>(T Value);
+
+                public sealed class PingCommandHandler : ICommandHandler<PingCommand<string>>
+                {
+                    public Task Handle(PingCommand<string> command, CancellationToken cancellationToken = default)
+                        => Task.CompletedTask;
+                }
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(assemblyName: "MyApp.GenericConflict", userSource: userSource);
+        var src = files["NetMediateTypedExtensions.g.cs"];
+
+        Assert.DoesNotContain("SendPingCommandAsync", src);
+        Assert.Contains("SendMyAppOnePingCommand", src);
+        Assert.Contains("SendMyAppTwoPingCommand", src);
+        Assert.DoesNotContain("SendMyAppOnePingCommand<", src);
+        Assert.DoesNotContain("SendMyAppTwoPingCommand<", src);
+    }
+
+    /// <summary>
     /// Multiple handlers for the same message type must produce only ONE set of typed
     /// extension methods (deduplication by message FQN).
     /// </summary>
@@ -1094,6 +1139,43 @@ public sealed class GeneratorIntegrationTests
             "public static global::System.Threading.Tasks.Task SendPingCommandAsync(this global::NetMediate.IMediator mediator, global::MyApp.PingCommand message,"
         );
         Assert.Equal(1, keyLessCount);
+    }
+
+    /// <summary>
+    /// Typed extension methods are emitted as public methods, so non-public message/response
+    /// types must be ignored to avoid inconsistent accessibility compile errors.
+    /// </summary>
+    [Fact]
+    public void Generator_WhenMessageOrResponseIsInternal_DoesNotEmitTypedExtensions()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            internal sealed record InternalCommand;
+            public sealed class InternalCommandHandler : ICommandHandler<InternalCommand>
+            {
+                public Task Handle(InternalCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+
+            public sealed record PublicRequest;
+            internal sealed record InternalResponse(int Value);
+            public sealed class InternalResponseHandler : IRequestHandler<PublicRequest, InternalResponse>
+            {
+                public Task<InternalResponse> Handle(PublicRequest message, CancellationToken cancellationToken = default)
+                    => Task.FromResult(new InternalResponse(1));
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(assemblyName: "MyApp.InternalTypes", userSource: userSource);
+        var src = files["NetMediateTypedExtensions.g.cs"];
+
+        Assert.DoesNotContain("SendInternalCommandAsync", src);
+        Assert.DoesNotContain("RequestPublicRequestAsync", src);
     }
 
     /// <summary>

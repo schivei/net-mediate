@@ -30,6 +30,12 @@
     <None Include="..\..\assets\logo.png" Pack="true" PackagePath="\" />
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+    <!--
+      buildTransitive: ensures both source generators propagate to transitive consumers
+      (projects that depend on a library that depends on NetMediate). Without this, the
+      generators would only run for projects that directly reference the NetMediate package.
+    -->
+    <None Include="buildTransitive\NetMediate.props" Pack="true" PackagePath="buildTransitive" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference
@@ -54,11 +60,31 @@
     />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.*" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*" />
+    <PackageReference Include="GenDI.SourceGenerator" Version="26.*" PrivateAssets="all" />
   </ItemGroup>
+  <PropertyGroup Condition="Exists('$(ProjectAssetsFile)')">
+    <_GenDIProjectAssetsFile>$(ProjectAssetsFile)</_GenDIProjectAssetsFile>
+    <_GenDIResolvedVersionPattern>gendi\.sourcegenerator/([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)</_GenDIResolvedVersionPattern>
+    <_GenDIProjectAssetsContent>$([System.IO.File]::ReadAllText('$(_GenDIProjectAssetsFile)'))</_GenDIProjectAssetsContent>
+    <_GenDISourceGeneratorResolvedVersion>$([System.Text.RegularExpressions.Regex]::Match('$(_GenDIProjectAssetsContent)', '$(_GenDIResolvedVersionPattern)').Groups[1].Value)</_GenDISourceGeneratorResolvedVersion>
+    <_GenDIAnalyzerResolvedPath>$(NuGetPackageRoot)gendi.sourcegenerator/$(_GenDISourceGeneratorResolvedVersion)/analyzers/dotnet/cs/GenDI.SourceGenerator.dll</_GenDIAnalyzerResolvedPath>
+  </PropertyGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'netstandard2.1'">
     <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.*" />
   </ItemGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.*" />
   </ItemGroup>
+  <ItemGroup>
+    <!--
+      Bundle the GenDI source generator inside our package so consumers get GenDI's
+      compile-time DI generation ([Injectable], [ServiceInjection], etc.) for free when
+      they install NetMediate, without a separate `dotnet add package GenDI.SourceGenerator`.
+    -->
+    <_GenDIAnalyzerDll Include="$(_GenDIAnalyzerResolvedPath)" Condition="'$(_GenDISourceGeneratorResolvedVersion)' != '' and Exists('$(_GenDIAnalyzerResolvedPath)')" />
+    <None Include="@(_GenDIAnalyzerDll)" Pack="true" PackagePath="analyzers/dotnet/cs/%(Filename)%(Extension)" Visible="false" />
+  </ItemGroup>
+  <Target Name="ValidateGenDIAnalyzerVersionResolution" BeforeTargets="GenerateNuspec" Condition="'$(_GenDISourceGeneratorResolvedVersion)' == ''">
+    <Warning Text="Could not resolve GenDI.SourceGenerator version from $(ProjectAssetsFile). The bundled GenDI analyzer will not be packed. Run restore and verify GenDI.SourceGenerator restore succeeded." />
+  </Target>
 </Project>

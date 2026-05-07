@@ -19,4 +19,25 @@
       Condition="Exists('$(MSBuildThisFileDirectory)../analyzers/dotnet/cs/GenDI.SourceGenerator.dll')"
     />
   </ItemGroup>
+
+  <!--
+    Normalize NetMediate references in consuming projects to PrivateAssets="all".
+    This avoids accidental transitive flow when developers add
+    <PackageReference Include="NetMediate" /> without PrivateAssets metadata.
+  -->
+  <Target Name="NetMediateNormalizePrivateAssets"
+          BeforeTargets="CollectPackageReferences">
+    <ItemGroup>
+      <_NetMediatePackageReferenceToNormalize
+        Include="@(PackageReference)"
+        Condition="('%(PackageReference.Identity)' == 'NetMediate' or '%(PackageReference.Identity)' == 'netmediate') and '%(PackageReference.PrivateAssets)' != 'all'" />
+      <PackageReference
+        Update="@(_NetMediatePackageReferenceToNormalize)"
+        PrivateAssets="all" />
+    </ItemGroup>
+    <Message
+      Condition="'@(_NetMediatePackageReferenceToNormalize)' != ''"
+      Importance="Low"
+      Text="NetMediate: normalized PackageReference PrivateAssets to 'all' for @( _NetMediatePackageReferenceToNormalize )." />
+  </Target>
 </Project>

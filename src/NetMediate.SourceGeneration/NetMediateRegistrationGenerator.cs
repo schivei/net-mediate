@@ -669,15 +669,16 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// Collects one unique <see cref="TypedExtEntry"/> per <em>message type</em> across all
-    /// discovered handler types.  Multiple handlers for the same message type produce one entry.
+    /// Collects one unique <see cref="TypedExtEntry"/> per <em>verb + message type</em> across all
+    /// discovered handler types. Multiple handlers for the same verb/message pair produce one entry.
     /// </summary>
     private static IReadOnlyList<TypedExtEntry> CollectTypedExtEntries(
         ImmutableArray<INamedTypeSymbol> types
     )
     {
-        // Key = message FQN — deduplicates same message handled by multiple handlers.
-        var entries = new Dictionary<string, TypedExtEntry>(StringComparer.Ordinal);
+        // Key = (verb, message FQN) — deduplicates duplicate handlers while keeping
+        // distinct dispatch verbs for the same message type.
+        var entries = new Dictionary<(string Verb, string MessageFqn), TypedExtEntry>();
 
         foreach (var handlerType in types)
         {
@@ -686,12 +687,17 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 if (!TryCreateTypedExtEntry(iface, out var entry))
                     continue;
 
-                if (!entries.ContainsKey(entry.MessageFqn))
-                    entries[entry.MessageFqn] = entry;
+                var key = (entry.Verb, entry.MessageFqn);
+                if (!entries.ContainsKey(key))
+                    entries[key] = entry;
             }
         }
 
-        return new List<TypedExtEntry>(entries.Values);
+        return entries
+            .Values.OrderBy(e => e.Verb, StringComparer.Ordinal)
+            .ThenBy(e => e.MessageFqn, StringComparer.Ordinal)
+            .ThenBy(e => e.ResponseFqn, StringComparer.Ordinal)
+            .ToList();
     }
 
     private static bool TryCreateTypedExtEntry(INamedTypeSymbol iface, out TypedExtEntry entry)
@@ -1009,6 +1015,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
     private static bool IsPubliclyAccessible(ITypeSymbol typeSymbol)
     {
+        if (typeSymbol is ITypeParameterSymbol or IErrorTypeSymbol)
+            return false;
+
         if (typeSymbol is IArrayTypeSymbol arrayType)
             return IsPubliclyAccessible(arrayType.ElementType);
 

@@ -114,3 +114,86 @@ current build session. For example:
 Projects whose names start with `Microsoft.` or `System.` are always excluded. Built-in
 NetMediate packages (e.g. `NetMediate.Diagnostics`) are also excluded so they do not
 influence the namespace selection of your project.
+
+## Typed dispatch extension methods
+
+Starting with this release, the source generator also emits a second file —
+`NetMediateTypedExtensions.g.cs` — that contains **named, fully-typed extension methods** for
+every message type it discovers in your project. These methods are AOT-safe and reflection-free:
+they call the concrete `IMediator` overloads directly with both type arguments resolved at
+compile time.
+
+### Generated method names
+
+| Handler interface | Verb | Example generated method |
+|---|---|---|
+| `ICommandHandler&lt;MyCmd&gt;` | `Send` | `SendMyCmdAsync(...)` |
+| `INotificationHandler&lt;MyEvt&gt;` | `Notify` | `NotifyMyEvtAsync(...)` |
+| `IRequestHandler&lt;MyQuery, MyResponse&gt;` | `Request` | `RequestMyQueryAsync(...)` |
+| `IStreamHandler&lt;MyFeed, MyItem&gt;` | `Stream` | `StreamMyFeedAsync(...)` |
+
+### Overloads generated per message type
+
+**Commands and notifications** receive four overloads:
+
+```csharp
+// 1. Key-less dispatch (uses the default routing key)
+Task SendMyCmdAsync(this IMediator mediator, MyCmd message, CancellationToken ct = default);
+
+// 2. Explicit routing key
+Task SendMyCmdAsync(this IMediator mediator, object? key, MyCmd message, CancellationToken ct = default);
+
+// 3. Batch dispatch (key-less)
+Task SendMyCmdAsync(this IMediator mediator, IEnumerable<MyCmd> messages, CancellationToken ct = default);
+
+// 4. Batch dispatch with explicit key
+Task SendMyCmdAsync(this IMediator mediator, object? key, IEnumerable<MyCmd> messages, CancellationToken ct = default);
+```
+
+**Requests** receive two overloads:
+
+```csharp
+Task<MyResponse> RequestMyQueryAsync(this IMediator mediator, MyQuery message, CancellationToken ct = default);
+Task<MyResponse> RequestMyQueryAsync(this IMediator mediator, object? key, MyQuery message, CancellationToken ct = default);
+```
+
+**Streams** receive two overloads:
+
+```csharp
+IAsyncEnumerable<MyItem> StreamMyFeedAsync(this IMediator mediator, MyFeed message, CancellationToken ct = default);
+IAsyncEnumerable<MyItem> StreamMyFeedAsync(this IMediator mediator, object? key, MyFeed message, CancellationToken ct = default);
+```
+
+### Usage example
+
+With the global using emitted by the generator (C# 10+) you can write:
+
+```csharp
+// Instead of: mediator.Request<MyQuery, MyResponse>(new MyQuery(id), ct)
+var result = await mediator.RequestMyQueryAsync(new MyQuery(id), ct);
+
+// Batch send:
+await mediator.SendMyCmdAsync(commands, ct);
+
+// Keyed dispatch:
+var value = await mediator.RequestMyQueryAsync("tenant-a", new MyQuery(id), ct);
+```
+
+### Conflict resolution
+
+If two different message types share the same simple name (e.g., `Commands.PingCommand` and
+`Events.PingCommand`), the generator **disambiguates** by deriving the method name from the
+fully-qualified type name with dots removed:
+
+```csharp
+// Instead of the conflicting SendPingCommandAsync:
+Task SendCommandsPingCommandAsync(...);
+Task SendEventsPingCommandAsync(...);
+```
+
+### Deduplication
+
+Multiple handlers for the **same** message type (e.g., one default and one keyed handler) produce
+only **one** set of extension methods — the keyed handler is reached via the `object? key`
+overload.
+

@@ -4,7 +4,7 @@ This checklist tracks the work implemented sequentially in this same PR.
 
 ## Completed
 
-- [x] Remove shared static namespace state and keep generated `AddNetMediate` extensions discoverable in `NetMediate` namespace.
+- [x] Align namespace resolution with GenDI strategy (per-compilation assembly name; remove shared static namespace state).
 - [x] Bundle `GenDI.SourceGenerator.dll` into the `NetMediate` package (`analyzers/dotnet/cs`).
 - [x] Add `buildTransitive/NetMediate.props` to propagate analyzers for transitive consumers and reduce required user actions.
 - [x] Update source-generation documentation for friendly `dotnet add package NetMediate` usage (no manual `PrivateAssets` requirement for direct references).

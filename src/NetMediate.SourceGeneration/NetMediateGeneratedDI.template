@@ -2,7 +2,7 @@
 using global::NetMediate;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace NetMediate;
+namespace {{AssemblyNamespace}}.NetMediate;
 
 /// <summary>Generated mediator handler registration extension methods.</summary>
 [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]

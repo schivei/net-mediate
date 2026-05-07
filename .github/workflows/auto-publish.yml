@@ -48,7 +48,7 @@ jobs:
           ${{ runner.os }}-nuget-
 
     - name: Restore dependencies
-      run: dotnet restore net-mediate.slnx
+      run: dotnet restore net-mediate.slnx -p:Configuration=Release
 
     - name: Build all projects
       run: dotnet build net-mediate.slnx --no-restore --configuration Release

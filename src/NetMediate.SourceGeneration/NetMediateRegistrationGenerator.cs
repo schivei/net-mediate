@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using System.Linq;
 
 namespace NetMediate.SourceGeneration;
 
@@ -662,10 +663,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             ? fqn.Substring("global::".Length)
             : fqn;
         var sb = new StringBuilder(s.Length);
-        foreach (var c in s)
+        foreach (var c in s.Where(c => char.IsLetterOrDigit(c) || c == '_'))
         {
-            if (char.IsLetterOrDigit(c) || c == '_')
-                sb.Append(c);
+            sb.Append(c);
         }
 
         return sb.Length == 0 ? "Message" : sb.ToString();
@@ -696,11 +696,10 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             }
         }
 
-        return entries
+        return [.. entries
             .Values.OrderBy(e => e.Verb, StringComparer.Ordinal)
             .ThenBy(e => e.MessageFqn, StringComparer.Ordinal)
-            .ThenBy(e => e.ResponseFqn, StringComparer.Ordinal)
-            .ToList();
+            .ThenBy(e => e.ResponseFqn, StringComparer.Ordinal)];
     }
 
     private static bool TryCreateTypedExtEntry(INamedTypeSymbol iface, out TypedExtEntry entry)
@@ -764,7 +763,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         var entries = CollectTypedExtEntries(types);
 
         if (entries.Count == 0)
-            return Array.Empty<string>();
+            return [];
 
         // Detect conflicts: same (verb + simpleName), different FQN.
         var nameToFqn = new Dictionary<string, string>(StringComparer.Ordinal);

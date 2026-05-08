@@ -2,12 +2,12 @@
 
 This page centralizes installation, configuration, and usage details for each NetMediate resource.
 
-## Version highlights
+## ✨ Version highlights
 
-- `dotnet add package NetMediate` works directly for both compile-time and runtime usage.
-- `NetMediate.SourceGeneration` and `GenDI.SourceGenerator` are bundled in `NetMediate`, reducing setup steps and keeping onboarding fast.
-- Generated typed dispatch extensions improve readability and reduce repetitive mediator boilerplate in large codebases.
-- `buildTransitive` propagation allows consistent generator behavior across multi-project solutions when transitive flow is desired.
+- ✅ `dotnet add package NetMediate` works directly for both compile-time and runtime usage.
+- 📦 `NetMediate.SourceGeneration` and `GenDI.SourceGenerator` are bundled in `NetMediate`, reducing setup steps and keeping onboarding fast.
+- 🧠 Generated typed dispatch extensions improve readability and reduce repetitive mediator boilerplate in large codebases.
+- 🔁 `buildTransitive` propagation allows consistent generator behavior across multi-project solutions when transitive flow is desired.
 
 ## 1) Core package (`NetMediate`)
 

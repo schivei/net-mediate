@@ -28,10 +28,10 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 
 ### What’s new in this version
 
-- `dotnet add package NetMediate` now works out-of-the-box for compile-time + runtime usage (no extra package metadata tweaks required).
-- Bundled source generators are now a stronger default experience: `NetMediate.SourceGeneration` and `GenDI.SourceGenerator` are included and available immediately to direct package consumers.
-- New generated typed dispatch extensions (for commands, notifications, requests, and streams) reduce boilerplate and improve call-site readability.
-- `buildTransitive` propagation keeps generator behavior consistent in larger multi-project solutions when you intentionally allow transitive flow.
+- ✅ `dotnet add package NetMediate` now works out-of-the-box for compile-time + runtime usage (no extra package metadata tweaks required).
+- 📦 Bundled source generators are now a stronger default experience: `NetMediate.SourceGeneration` and `GenDI.SourceGenerator` are included and available immediately to direct package consumers.
+- ✨ New generated typed dispatch extensions (for commands, notifications, requests, and streams) reduce boilerplate and improve call-site readability.
+- 🔁 `buildTransitive` propagation keeps generator behavior consistent in larger multi-project solutions when you intentionally allow transitive flow.
 
 ### Why this improves day-to-day engineering
 

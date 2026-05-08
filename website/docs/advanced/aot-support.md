@@ -17,16 +17,16 @@ Handler registration is generated at compile time by `NetMediate.SourceGeneratio
 
 ## AOT-compatible setup
 
-### Step 1: Install `NetMediate` with `PrivateAssets="all"`
+### Step 1: Install `NetMediate`
 
-The source generator is bundled inside the `NetMediate` package. Activate it by setting `PrivateAssets="all"`:
+The source generator is bundled inside the `NetMediate` package and runs automatically for direct references:
 
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
+<PackageReference Include="NetMediate" Version="x.x.x" />
 ```
 
-:::caution Required: PrivateAssets="all"
-`PrivateAssets="all"` is required. Without it, the bundled source generator is not activated and `AddNetMediate()` will not be generated.
+:::tip Library projects
+If you publish your own library package, you may add `PrivateAssets="all"` to prevent transitive flow of NetMediate and its analyzers. This does not change generator execution for your direct reference.
 :::
 
 ### Step 2: Call the generated extension method

@@ -48,6 +48,12 @@ Full cancellation token support across all operations.
 ### 🌐 **Broad Runtime Compatibility**
 Multi-targeted for `net10.0`, `netstandard2.0`, and `netstandard2.1`.
 
+## Why this version is a productivity upgrade
+
+- **Less setup friction**: direct `NetMediate` references immediately enable runtime APIs plus bundled generators.
+- **Better code organization**: generated typed dispatch methods keep mediator calls explicit and easier to maintain.
+- **Scales with teams**: compile-time registration and transitive generator propagation improve consistency across multi-project solutions.
+
 ## Why Use the Mediator Pattern?
 
 The Mediator pattern helps you:
@@ -109,7 +115,7 @@ Ready to dive in? Head over to the [Installation Guide](./getting-started/instal
 
 NetMediate consists of several packages:
 
-- **NetMediate** - Core mediator implementation; includes the `NetMediate.SourceGeneration` analyzer (activated by `PrivateAssets="all"`)
+- **NetMediate** - Core mediator implementation; includes bundled `NetMediate.SourceGeneration` + `GenDI.SourceGenerator` analyzers for direct references
 - **NetMediate.Resilience** - Retry, timeout, and circuit breaker behaviors
 - **NetMediate.Diagnostics** - OpenTelemetry integration
 - **NetMediate.Quartz** - Persistent notifications with Quartz.NET

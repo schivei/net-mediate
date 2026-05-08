@@ -6,13 +6,17 @@ sidebar_position: 2
 
 Get up and running with NetMediate in just a few minutes! This guide will walk you through creating a simple notification system.
 
-## Step 1: Install Packages
+## 🚀 Step 1: Install Packages
 
 First, install the required NuGet package:
 
 ```bash
 dotnet add package NetMediate
 ```
+
+> 💡 **Release productivity highlight**
+>
+> This version keeps setup intentionally lean: a direct `NetMediate` package reference gives you runtime APIs plus bundled source generators immediately, helping teams standardize architecture with less manual DI wiring.
 
 Then open your `.csproj` and add the `PackageReference`:
 
@@ -28,7 +32,7 @@ If you are building a **library** (not an application), add `PrivateAssets="all"
 ```
 :::
 
-## Step 2: Define a Message
+## 🧩 Step 2: Define a Message
 
 Create a notification message. No marker interfaces are required - any class or record works:
 
@@ -38,7 +42,7 @@ namespace MyApp.Notifications;
 public record UserCreated(string UserId, string Email, DateTime CreatedAt);
 ```
 
-## Step 3: Create a Handler
+## 🛠️ Step 3: Create a Handler
 
 Create one or more handlers for your message:
 
@@ -95,7 +99,7 @@ public class AuditLogHandler : INotificationHandler<UserCreated>
 }
 ```
 
-## Step 4: Register Services
+## ⚙️ Step 4: Register Services
 
 Register NetMediate services in your application's startup/configuration:
 
@@ -121,7 +125,7 @@ await host.StartAsync();
 `AddNetMediate()` is generated at compile-time by the source generator. It automatically discovers and registers all handler implementations in your project - no manual registration needed!
 :::
 
-## Step 5: Use the Mediator
+## 📣 Step 5: Use the Mediator
 
 Inject `IMediator` and publish your notification:
 
@@ -157,7 +161,7 @@ public class UserService
 }
 ```
 
-## Complete Example
+## ✅ Complete Example
 
 Here's a complete minimal API example:
 
@@ -213,7 +217,7 @@ public class UserCreatedHandler : INotificationHandler<UserCreated>
 }
 ```
 
-## What's Next?
+## 🔭 What's Next?
 
 Now that you have a working example, explore more features:
 
@@ -229,7 +233,7 @@ Now that you have a working example, explore more features:
 
 If the `AddNetMediate()` method is not available:
 
-1. Ensure your `NetMediate` `PackageReference` has `PrivateAssets="all"` set
+1. Ensure your project has a direct `NetMediate` package reference
 2. Rebuild your project
 3. Restart your IDE or refresh IntelliSense
 4. Check that your handler classes are not abstract or generic

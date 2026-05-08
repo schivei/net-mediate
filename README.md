@@ -26,6 +26,19 @@ A lightweight and efficient .NET implementation of the Mediator pattern for in-p
 
 NetMediate is a mediator pattern library for .NET that enables decoupled communication between components in your application. It provides a simple and flexible way to send commands, publish notifications, make requests, and handle streaming responses while maintaining clean architecture principles.
 
+### What’s new in this version
+
+- ✅ `dotnet add package NetMediate` now works out-of-the-box for compile-time + runtime usage (no extra package metadata tweaks required).
+- 📦 Bundled source generators are now a stronger default experience: `NetMediate.SourceGeneration` and `GenDI.SourceGenerator` are included and available immediately to direct package consumers.
+- ✨ New generated typed dispatch extensions (for commands, notifications, requests, and streams) reduce boilerplate and improve call-site readability.
+- 🔁 `buildTransitive` propagation keeps generator behavior consistent in larger multi-project solutions when you intentionally allow transitive flow.
+
+### Why this improves day-to-day engineering
+
+- **Faster onboarding**: fewer setup decisions and less “it works on my machine” friction.
+- **Cleaner organization**: generated typed APIs make mediator usage explicit and easier to navigate in large solutions.
+- **More predictable architecture**: compile-time registration and transitive analyzer behavior keep projects aligned as teams scale.
+
 ### Key Features
 
 - **Commands**: Send one-way messages to all registered handlers sequentially
@@ -59,10 +72,10 @@ dotnet add package NetMediate
 
 ### PackageReference
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
+<PackageReference Include="NetMediate" Version="x.x.x" />
 ```
 
-> **Note:** `PrivateAssets="all"` is **recommended for library/NuGet projects** to prevent `NetMediate` and its bundled source generator from flowing as a transitive dependency to consumers of your library. For application projects (e.g., ASP.NET Core apps, console apps) it is optional — the analyzer runs for direct references regardless. Without `PrivateAssets`, downstream consumers of your library will also receive the `NetMediate` package and its analyzer, which may or may not be desired.
+> **Note:** `PrivateAssets="all"` is **recommended for library/NuGet projects** to prevent `NetMediate` and its bundled source generators from flowing as transitive dependencies to consumers of your library. For application projects (e.g., ASP.NET Core apps, console apps) it is optional.
 
 ### Optional companion packages
 ```xml
@@ -101,9 +114,9 @@ dotnet add package NetMediate
 Here's a minimal example to get you started with NetMediate:
 
 ```csharp
-// 1. Install the package (with PrivateAssets="all" — required for the bundled source generator)
+// 1. Install the package
 // dotnet add package NetMediate
-// Then set PrivateAssets="all" in the PackageReference in your .csproj.
+// Library projects may optionally add PrivateAssets="all" to avoid transitive flow.
 
 // 2. Register services — source generator discovers all handlers automatically
 using Microsoft.Extensions.DependencyInjection;
@@ -148,7 +161,7 @@ using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
 
-// The bundled source generator (activated by PrivateAssets="all" in your PackageReference)
+// The bundled source generator discovers handlers automatically at compile time
 // automatically discovers and registers all handlers at compile time.
 builder.Services.AddNetMediate();
 
@@ -462,7 +475,7 @@ All runtime packages are published with:
 - `netstandard2.0`
 - `netstandard2.1`
 
-`NetMediate.SourceGeneration` is bundled inside the `NetMediate` package as an analyzer (`netstandard2.0`) and is activated by setting `PrivateAssets="all"` on the `PackageReference`.
+`NetMediate.SourceGeneration` is bundled inside the `NetMediate` package as an analyzer (`netstandard2.0`) and runs automatically for direct package references.
 
 ### Application types covered
 

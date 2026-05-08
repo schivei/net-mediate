@@ -2,6 +2,13 @@
 
 This page centralizes installation, configuration, and usage details for each NetMediate resource.
 
+## Version highlights
+
+- `dotnet add package NetMediate` works directly for both compile-time and runtime usage.
+- `NetMediate.SourceGeneration` and `GenDI.SourceGenerator` are bundled in `NetMediate`, reducing setup steps and keeping onboarding fast.
+- Generated typed dispatch extensions improve readability and reduce repetitive mediator boilerplate in large codebases.
+- `buildTransitive` propagation allows consistent generator behavior across multi-project solutions when transitive flow is desired.
+
 ## 1) Core package (`NetMediate`)
 
 ### Installation
@@ -10,13 +17,13 @@ This page centralizes installation, configuration, and usage details for each Ne
 dotnet add package NetMediate
 ```
 
-> **Important:** After running the CLI command (or using Package Manager Console), open your `.csproj` and add `PrivateAssets="all"` to the `PackageReference`. Alternatively, add the reference directly in your project file:
+> **Important:** For direct usage, this is enough:
 >
 > ```xml
-> <PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
+> <PackageReference Include="NetMediate" Version="x.x.x" />
 > ```
 >
-> `PrivateAssets="all"` is **required** — the `NetMediate.SourceGeneration` analyzer is bundled inside the `NetMediate` package and is activated only when this attribute is present. Without it, `AddNetMediate()` will not be generated.
+> If you are publishing your own library, you may optionally add `PrivateAssets="all"` to avoid flowing NetMediate and bundled analyzers transitively to downstream consumers.
 
 ### Configuration
 
@@ -190,10 +197,10 @@ See [RESILIENCE.md](RESILIENCE.md) for full details.
 
 ### Installation
 
-`NetMediate.SourceGeneration` is bundled inside the `NetMediate` package — no separate installation is required. The analyzer is activated by setting `PrivateAssets="all"` on the `NetMediate` `PackageReference`:
+`NetMediate.SourceGeneration` is bundled inside the `NetMediate` package — no separate installation is required. It runs automatically for direct `NetMediate` package references:
 
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
+<PackageReference Include="NetMediate" Version="x.x.x" />
 ```
 
 ### Usage

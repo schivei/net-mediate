@@ -14,6 +14,10 @@ First, install the required NuGet package:
 dotnet add package NetMediate
 ```
 
+:::tip Release productivity highlight
+This version keeps setup intentionally lean: a direct `NetMediate` package reference gives you runtime APIs plus bundled source generators immediately, helping teams standardize architecture with less manual DI wiring.
+:::
+
 Then open your `.csproj` and add the `PackageReference`:
 
 ```xml
@@ -229,7 +233,7 @@ Now that you have a working example, explore more features:
 
 If the `AddNetMediate()` method is not available:
 
-1. Ensure your `NetMediate` `PackageReference` has `PrivateAssets="all"` set
+1. Ensure your project has a direct `NetMediate` package reference
 2. Rebuild your project
 3. Restart your IDE or refresh IntelliSense
 4. Check that your handler classes are not abstract or generic

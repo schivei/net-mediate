@@ -14,14 +14,14 @@ This page centralizes installation, configuration, and usage details for each Ne
 dotnet add package NetMediate
 ```
 
-Then open your `.csproj` and add `PrivateAssets="all"` to the `PackageReference`:
+For direct usage, this is enough:
 
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
+<PackageReference Include="NetMediate" Version="x.x.x" />
 ```
 
-:::caution Required: PrivateAssets="all"
-`PrivateAssets="all"` is **required**. The `NetMediate.SourceGeneration` analyzer is bundled inside `NetMediate` and is activated only when this attribute is present. Without it, `AddNetMediate()` will not be generated and handler registration will not work.
+:::tip Library projects
+If you publish your own library, you may optionally add `PrivateAssets="all"` to avoid flowing NetMediate and bundled analyzers transitively to downstream consumers.
 :::
 
 ### Configuration
@@ -49,7 +49,7 @@ var dto = await mediator.Request<GetUserRequest, UserDto>(new GetUserRequest("us
 // Notification: all handlers started in parallel (fire-and-forget); handler exceptions discarded by executor
 await mediator.Notify(new UserCreatedNotification("user-1"), cancellationToken);
 
-// Notification (batch): each message dispatched sequentially (one after another)
+// Notification (batch): each message's pipeline dispatched in parallel (Task.WhenAll across messages)
 await mediator.Notify(new[] { n1, n2, n3 }, cancellationToken);
 
 // Stream: single handler; yields items asynchronously
@@ -204,7 +204,7 @@ See the [Resilience guide](../advanced/resilience) for full details.
 
 ### Installation
 
-`NetMediate.SourceGeneration` is **bundled inside the `NetMediate` package** — no separate installation is required. The analyzer is activated by setting `PrivateAssets="all"` on the `NetMediate` `PackageReference` (see the Core package section above).
+`NetMediate.SourceGeneration` is **bundled inside the `NetMediate` package** — no separate installation is required. It runs automatically for direct `NetMediate` references (see the Core package section above).
 
 ### Usage
 

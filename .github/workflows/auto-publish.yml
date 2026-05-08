@@ -56,7 +56,6 @@ jobs:
     - name: Run tests
       run: |
         dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release --verbosity normal
-        dotnet test tests/SharedParity.NetMediate.Tests/SharedParity.NetMediate.Tests.csproj --configuration Release --verbosity normal
 
     - name: Pack all packages
       run: |
@@ -68,7 +67,6 @@ jobs:
         dotnet pack src/NetMediate.DataDog.OpenTelemetry/NetMediate.DataDog.OpenTelemetry.csproj --no-build --no-restore --configuration Release --output ./packages
         dotnet pack src/NetMediate.DataDog.Serilog/NetMediate.DataDog.Serilog.csproj --no-build --no-restore --configuration Release --output ./packages
         dotnet pack src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj --no-build --no-restore --configuration Release --output ./packages
-        dotnet pack src/NetMediate.Adapters/NetMediate.Adapters.csproj --no-build --no-restore --configuration Release --output ./packages
         dotnet pack src/NetMediate.Quartz/NetMediate.Quartz.csproj --no-build --no-restore --configuration Release --output ./packages
 
     - name: Publish to NuGet

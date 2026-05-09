@@ -11,6 +11,7 @@ NetMediate is compatible with NativeAOT and trimming when you stay on the source
 - Use `NetMediate.SourceGeneration` in the startup project.
 - Call `builder.Services.AddNetMediate();`.
 - Register custom pipeline behaviors as **closed types** directly in DI.
+- For generic-service contracts (for example `IPipelineRequestBehavior<TMessage, TResponse>`), register them manually in `builder.Services` instead of using GenDI attributes.
 - Avoid keyed dispatch when NativeAOT is required.
 
 | Path | AOT / Trim compatible | Notes |
@@ -31,8 +32,6 @@ NetMediate is compatible with NativeAOT and trimming when you stay on the source
 </PackageReference>
 ```
 
-> **Contracts-only projects:** Use `NetMediate.Core` in shared libraries that only need the contracts.
-
 ### Step 2: Call the generated extension method
 
 ```csharp
@@ -42,11 +41,9 @@ builder.Services.AddNetMediate();
 ### Step 3: Register custom behaviors as closed types
 
 ```csharp
-using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate;
 
-[Injectable<IPipelineRequestBehavior<CreateUserRequest, UserDto>>(ServiceLifetime.Singleton, Group = 10, Order = 1)]
 public sealed class AuditCreateUserBehavior : IPipelineRequestBehavior<CreateUserRequest, UserDto>
 {
     public Task<UserDto> Handle(
@@ -58,10 +55,5 @@ public sealed class AuditCreateUserBehavior : IPipelineRequestBehavior<CreateUse
 }
 
 builder.Services.AddNetMediate();
+builder.Services.AddSingleton<IPipelineRequestBehavior<CreateUserRequest, UserDto>, AuditCreateUserBehavior>();
 ```
-
-## AOT-unsafe patterns to avoid
-
-- Runtime reflection-based registration
-- Open-generic pipeline behavior registration guidance
-- Keyed dispatch when the application must stay NativeAOT-compatible

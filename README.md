@@ -116,7 +116,7 @@ public sealed class UserFacade
 }
 ```
 
-With GenDI the consumer chooses the `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific contract and contract discovery does not already find `[ServiceInjection]`. `AddNetMediate()` already calls `AddGenDIServices()` for you.
+With GenDI the consumer chooses the `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. For generic service types, register them manually in `builder.Services`; GenDI does not support attribute-based registration for that AOT-oriented path. `AddNetMediate()` already calls `AddGenDIServices()` for you.
 
 ### Optional companion packages
 ```xml
@@ -449,7 +449,6 @@ The `key` is propagated through the entire pipeline — behaviors receive it in 
 Behaviors wrap the handler pipeline and run in registration order. Register them as **closed types** in DI — this is the supported pattern, and it is fully AOT-safe:
 
 ```csharp
-[Injectable<IPipelineCommandBehavior<CreateUserCommand>>(ServiceLifetime.Singleton, Group = 10, Order = 1)]
 public sealed class AuditCommandBehavior : IPipelineCommandBehavior<CreateUserCommand>
 {
     public Task Handle(
@@ -460,7 +459,6 @@ public sealed class AuditCommandBehavior : IPipelineCommandBehavior<CreateUserCo
         next(key, message, cancellationToken);
 }
 
-[Injectable<IPipelineRequestBehavior<GetUserQuery, UserDto>>(ServiceLifetime.Singleton, Group = 10, Order = 2)]
 public sealed class AuditRequestBehavior : IPipelineRequestBehavior<GetUserQuery, UserDto>
 {
     public Task<UserDto> Handle(
@@ -471,7 +469,6 @@ public sealed class AuditRequestBehavior : IPipelineRequestBehavior<GetUserQuery
         next(key, message, cancellationToken);
 }
 
-[Injectable<IPipelineNotificationBehavior<UserCreatedNotification>>(ServiceLifetime.Singleton, Group = 10, Order = 3)]
 public sealed class LogNotificationBehavior : IPipelineNotificationBehavior<UserCreatedNotification>
 {
     public Task Handle(
@@ -483,12 +480,14 @@ public sealed class LogNotificationBehavior : IPipelineNotificationBehavior<User
 }
 
 builder.Services.AddNetMediate();
+builder.Services.AddSingleton<IPipelineCommandBehavior<CreateUserCommand>, AuditCommandBehavior>();
+builder.Services.AddSingleton<IPipelineRequestBehavior<GetUserQuery, UserDto>, AuditRequestBehavior>();
+builder.Services.AddSingleton<IPipelineNotificationBehavior<UserCreatedNotification>, LogNotificationBehavior>();
 ```
 
 Example behavior — audit timing for requests:
 
 ```csharp
-[Injectable<IPipelineRequestBehavior<GetUserQuery, UserDto>>(ServiceLifetime.Singleton, Group = 10, Order = 1)]
 public sealed class AuditRequestBehavior : IPipelineRequestBehavior<GetUserQuery, UserDto>
 {
     // Handle receives object? key — the same key passed to the dispatch call.
@@ -510,7 +509,6 @@ public sealed class AuditRequestBehavior : IPipelineRequestBehavior<GetUserQuery
 Example notification behavior:
 
 ```csharp
-[Injectable<IPipelineNotificationBehavior<UserCreatedNotification>>(ServiceLifetime.Singleton, Group = 10, Order = 1)]
 public sealed class LogNotificationBehavior : IPipelineNotificationBehavior<UserCreatedNotification>
 {
     public async Task Handle(

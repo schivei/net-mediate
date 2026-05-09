@@ -43,7 +43,7 @@ using NetMediate;
 builder.Services.AddNetMediate();
 ```
 
-> **GenDI-first style**: `AddNetMediate()` also triggers `AddGenDIServices()`. Prefer `[Injectable]` + `[Inject]` so the consumer can choose `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific contract and contract discovery does not already find `[ServiceInjection]`.
+> **GenDI-first style**: `AddNetMediate()` also triggers `AddGenDIServices()`. Prefer `[Injectable]` + `[Inject]` so the consumer can choose `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. For generic service types, register them manually in `builder.Services`; GenDI does not support attribute-based registration for that AOT-oriented path.
 
 ### Usage
 
@@ -132,7 +132,6 @@ Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed reg
 Register behavior implementations as closed types in DI:
 
 ```csharp
-[Injectable<IPipelineRequestBehavior<MyRequest, MyResponse>>(ServiceLifetime.Singleton, Group = 10, Order = 1)]
 public sealed class MyLoggingBehavior : IPipelineRequestBehavior<MyRequest, MyResponse>
 {
     public Task<MyResponse> Handle(
@@ -144,6 +143,7 @@ public sealed class MyLoggingBehavior : IPipelineRequestBehavior<MyRequest, MyRe
 }
 
 builder.Services.AddNetMediate();
+builder.Services.AddSingleton<IPipelineRequestBehavior<MyRequest, MyResponse>, MyLoggingBehavior>();
 ```
 
 ### Behavior interfaces

@@ -87,7 +87,7 @@ public sealed class ReserveInventoryHandler : INotificationHandler<OrderCreated>
 }
 ```
 
-Use GenDI metadata to control `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific contract and contract discovery does not already find `[ServiceInjection]`.
+Use GenDI metadata to control `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. For generic service types, register them manually in `builder.Services`; GenDI does not support attribute-based registration for that AOT-oriented path.
 
 > **Keyed handlers**: The source generator handles two cases automatically:
 > - Handler decorated with `[Injectable(..., Key = "mykey")]` → registered with the explicit key `"mykey"`.

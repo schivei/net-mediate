@@ -159,7 +159,7 @@ public class MyHandler : ICommandHandler<MyCommand>
 
 ## Handler Lifetime
 
-With GenDI you choose the lifetime per implementation: `Transient`, `Scoped`, or `Singleton`. You can also control `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific contract and contract discovery does not already find `[ServiceInjection]`.
+With GenDI you choose the lifetime per implementation: `Transient`, `Scoped`, or `Singleton`. You can also control `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. For generic service types, register them manually in `builder.Services`; GenDI does not support attribute-based registration for that AOT-oriented path.
 
 ## Multiple Handlers
 

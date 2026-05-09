@@ -1,6 +1,6 @@
 # Custom Validation Behavior Sample
 
-> **GenDI pattern:** Register validation behaviors as **closed types** and prefer `[Injectable]` + `[Inject]` so the same GenDI-based activation model is used across the application.
+> **GenDI pattern:** Use `[Injectable]` + `[Inject]` for regular application services. For services whose DI contract is a generic type (for example pipeline behaviors), register them manually in `builder.Services` because GenDI does not support attribute-based registration for that AOT-oriented path.
 
 NetMediate does not include a built-in validation layer. Validation is a cross-cutting concern that you implement as a pipeline behavior.
 
@@ -8,14 +8,12 @@ NetMediate does not include a built-in validation layer. Validation is a cross-c
 
 ```csharp
 using System.ComponentModel.DataAnnotations;
-using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate;
 
 public record CreateUserRequest(string Email);
 public record UserDto(string Id, string Email);
 
-[Injectable<IPipelineRequestBehavior<CreateUserRequest, UserDto>>(ServiceLifetime.Singleton, Group = 10, Order = 1)]
 public sealed class CreateUserDataAnnotationsBehavior : IPipelineRequestBehavior<CreateUserRequest, UserDto>
 {
     public Task<UserDto> Handle(
@@ -35,13 +33,13 @@ public sealed class CreateUserDataAnnotationsBehavior : IPipelineRequestBehavior
 }
 
 builder.Services.AddNetMediate();
+builder.Services.AddSingleton<IPipelineRequestBehavior<CreateUserRequest, UserDto>, CreateUserDataAnnotationsBehavior>();
 ```
 
 ## Example: FluentValidation for requests
 
 ```csharp
 using FluentValidation;
-using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate;
 
@@ -53,19 +51,17 @@ public sealed class CreateUserRequestValidator : AbstractValidator<CreateUserReq
     public CreateUserRequestValidator() => RuleFor(x => x.Email).NotEmpty().EmailAddress();
 }
 
-[Injectable<IPipelineRequestBehavior<CreateUserRequest, UserDto>>(ServiceLifetime.Singleton, Group = 10, Order = 1)]
-public sealed class CreateUserFluentValidationBehavior
-    : IPipelineRequestBehavior<CreateUserRequest, UserDto>
+public sealed class CreateUserFluentValidationBehavior(
+    IValidator<CreateUserRequest> validator
+) : IPipelineRequestBehavior<CreateUserRequest, UserDto>
 {
-    [Inject] public required IValidator<CreateUserRequest> Validator { get; init; }
-
     public async Task<UserDto> Handle(
         object? key,
         CreateUserRequest message,
         PipelineBehaviorDelegate<CreateUserRequest, Task<UserDto>> next,
         CancellationToken cancellationToken)
     {
-        var result = await Validator.ValidateAsync(message, cancellationToken);
+        var result = await validator.ValidateAsync(message, cancellationToken);
         if (!result.IsValid)
             throw new ValidationException(result.Errors);
 
@@ -75,19 +71,18 @@ public sealed class CreateUserFluentValidationBehavior
 
 builder.Services.AddValidatorsFromAssemblyContaining<CreateUserRequestValidator>();
 builder.Services.AddNetMediate();
+builder.Services.AddSingleton<IPipelineRequestBehavior<CreateUserRequest, UserDto>, CreateUserFluentValidationBehavior>();
 ```
 
 ## Example: Notification validation behavior
 
 ```csharp
 using System.ComponentModel.DataAnnotations;
-using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate;
 
 public record UserCreatedNotification(string UserId, string Email);
 
-[Injectable<IPipelineNotificationBehavior<UserCreatedNotification>>(ServiceLifetime.Singleton, Group = 10, Order = 1)]
 public sealed class UserCreatedValidationBehavior : IPipelineNotificationBehavior<UserCreatedNotification>
 {
     public Task Handle(
@@ -107,6 +102,7 @@ public sealed class UserCreatedValidationBehavior : IPipelineNotificationBehavio
 }
 
 builder.Services.AddNetMediate();
+builder.Services.AddSingleton<IPipelineNotificationBehavior<UserCreatedNotification>, UserCreatedValidationBehavior>();
 ```
 
 ## `MessageValidationException`

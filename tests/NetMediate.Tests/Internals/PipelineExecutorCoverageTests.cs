@@ -643,7 +643,7 @@ public sealed class PipelineExecutorCoverageTests
 
     private static async IAsyncEnumerable<int> Merge(
         IEnumerable<IAsyncEnumerable<int>> streams,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
+        CancellationToken ct = default)
     {
         foreach (var s in streams)
             await foreach (var item in s.WithCancellation(ct))

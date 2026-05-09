@@ -41,14 +41,22 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
         return lazy.Value(key, message, cancellationToken);
     }
 
+    private INotificationHandler<TMessage>[] ResolveKeyedHandlers(object key)
+    {
+        var registry = serviceProvider.GetService<KeyedHandlerRegistry<INotificationHandler<TMessage>>>();
+        if (registry is not null && registry.TryGet(key, out var keyed) && keyed is not null)
+            return [keyed];
+        return serviceProvider.GetServices<INotificationHandler<TMessage>>().ToArray();
+    }
+
     private PipelineBehaviorDelegate<TMessage, Task> BuildPipeline(
         object? key,
         HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> exec
     )
     {
-        var handlers = key is null ?
-            serviceProvider.GetServices<INotificationHandler<TMessage>>().ToArray() :
-            [.. serviceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)];
+        var handlers = key is null
+            ? serviceProvider.GetServices<INotificationHandler<TMessage>>().ToArray()
+            : ResolveKeyedHandlers(key);
 
         var behaviors = serviceProvider.GetServices<IPipelineNotificationBehavior<TMessage>>();
 

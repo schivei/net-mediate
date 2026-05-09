@@ -240,6 +240,19 @@ public sealed class GeneratorIntegrationTests
             }
         }
 
+        // GenDI.dll may not be eagerly loaded into the AppDomain (no test code uses it directly)
+        // but it exists in the output directory as a transitive dependency of NetMediate.
+        // Add it explicitly so that in-memory compilations can resolve [Injectable(Key=...)] attributes.
+        var genDiPath = Path.Combine(AppContext.BaseDirectory, "GenDI.dll");
+        if (File.Exists(genDiPath))
+        {
+            try
+            {
+                refs.Add(MetadataReference.CreateFromFile(genDiPath));
+            }
+            catch { }
+        }
+
         if (includeNetMediateDll)
             refs.Add(MetadataReference.CreateFromFile(typeof(IMediator).Assembly.Location));
 
@@ -397,11 +410,13 @@ public sealed class GeneratorIntegrationTests
         Assert.Contains("AlertHandler", generatedSource);
     }
 
-    [Fact(Skip = "Keyed source-generation coverage is being updated for the NetMediate.Core + SourceGeneration split.")]
+    [Fact]
     public void Generator_WhenCommandHandlerHasKeyedServiceAttribute_ShouldRegisterWithKey()
     {
         const string userSource = """
+            using GenDI;
             using NetMediate;
+            using Microsoft.Extensions.DependencyInjection;
             using System.Threading;
             using System.Threading.Tasks;
 
@@ -409,7 +424,7 @@ public sealed class GeneratorIntegrationTests
 
             public sealed record PingCommand;
 
-            [KeyedService(Key = "primary")]
+            [Injectable(ServiceLifetime.Singleton, Key = "primary")]
             public sealed class PingHandler : ICommandHandler<PingCommand>
             {
                 public Task Handle(PingCommand command, CancellationToken cancellationToken = default)
@@ -419,18 +434,18 @@ public sealed class GeneratorIntegrationTests
 
         var (generatedSource, _) = RunGenerator("MyApp", userSource);
 
-        Assert.Contains("primary", generatedSource);
-        Assert.Contains(
-            "RegisterCommandHandler<global::MyApp.PingHandler, global::MyApp.PingCommand>(\"primary\")",
-            generatedSource
-        );
+        Assert.Contains("\"primary\"", generatedSource);
+        Assert.Contains("KeyedHandlerRegistry", generatedSource);
+        Assert.Contains("global::NetMediate.ICommandHandler<global::MyApp.PingCommand>", generatedSource);
     }
 
-    [Fact(Skip = "Keyed source-generation coverage is being updated for the NetMediate.Core + SourceGeneration split.")]
+    [Fact]
     public void Generator_WhenRequestHandlerHasKeyedServiceAttribute_ShouldRegisterWithKey()
     {
         const string userSource = """
+            using GenDI;
             using NetMediate;
+            using Microsoft.Extensions.DependencyInjection;
             using System.Threading;
             using System.Threading.Tasks;
 
@@ -438,7 +453,7 @@ public sealed class GeneratorIntegrationTests
 
             public sealed record GetQuery(int Id);
 
-            [KeyedService(Key = 42)]
+            [Injectable(ServiceLifetime.Singleton, Key = "find")]
             public sealed class GetHandler : IRequestHandler<GetQuery, string>
             {
                 public Task<string> Handle(GetQuery query, CancellationToken cancellationToken = default)
@@ -448,18 +463,18 @@ public sealed class GeneratorIntegrationTests
 
         var (generatedSource, _) = RunGenerator("MyApp", userSource);
 
-        Assert.Contains("42", generatedSource);
-        Assert.Contains(
-            "RegisterRequestHandler<global::MyApp.GetHandler, global::MyApp.GetQuery, string>(42)",
-            generatedSource
-        );
+        Assert.Contains("\"find\"", generatedSource);
+        Assert.Contains("KeyedHandlerRegistry", generatedSource);
+        Assert.Contains("global::NetMediate.IRequestHandler<global::MyApp.GetQuery, string>", generatedSource);
     }
 
-    [Fact(Skip = "Keyed source-generation coverage is being updated for the NetMediate.Core + SourceGeneration split.")]
+    [Fact]
     public void Generator_WhenNotificationHandlerHasKeyedServiceAttribute_ShouldRegisterWithKey()
     {
         const string userSource = """
+            using GenDI;
             using NetMediate;
+            using Microsoft.Extensions.DependencyInjection;
             using System.Threading;
             using System.Threading.Tasks;
 
@@ -467,7 +482,7 @@ public sealed class GeneratorIntegrationTests
 
             public sealed record AlertNotification(string Message);
 
-            [KeyedService(Key = true)]
+            [Injectable(ServiceLifetime.Singleton, Key = "alerts")]
             public sealed class AlertHandler : INotificationHandler<AlertNotification>
             {
                 public Task Handle(AlertNotification notification, CancellationToken cancellationToken = default)
@@ -477,18 +492,18 @@ public sealed class GeneratorIntegrationTests
 
         var (generatedSource, _) = RunGenerator("MyApp", userSource);
 
-        Assert.Contains("true", generatedSource);
-        Assert.Contains(
-            "RegisterNotificationHandler<global::MyApp.AlertHandler, global::MyApp.AlertNotification>(true)",
-            generatedSource
-        );
+        Assert.Contains("\"alerts\"", generatedSource);
+        Assert.Contains("KeyedHandlerRegistry", generatedSource);
+        Assert.Contains("global::NetMediate.INotificationHandler<global::MyApp.AlertNotification>", generatedSource);
     }
 
-    [Fact(Skip = "Keyed source-generation coverage is being updated for the NetMediate.Core + SourceGeneration split.")]
+    [Fact]
     public void Generator_WhenStreamHandlerHasKeyedServiceAttribute_ShouldRegisterWithKey()
     {
         const string userSource = """
+            using GenDI;
             using NetMediate;
+            using Microsoft.Extensions.DependencyInjection;
             using System.Collections.Generic;
             using System.Threading;
 
@@ -496,31 +511,108 @@ public sealed class GeneratorIntegrationTests
 
             public sealed record StreamQuery;
 
-            [KeyedService(Key = 'a')]
+            [Injectable(ServiceLifetime.Singleton, Key = "stream-a")]
             public sealed class StreamHandler : IStreamHandler<StreamQuery, int>
             {
                 public async IAsyncEnumerable<int> Handle(StreamQuery query, CancellationToken cancellationToken = default)
                 {
                     yield return 1;
-                    await Task.CompletedTask;
+                    await System.Threading.Tasks.Task.CompletedTask;
                 }
             }
             """;
 
         var (generatedSource, _) = RunGenerator("MyApp", userSource);
 
-        Assert.Contains("'a'", generatedSource);
-        Assert.Contains(
-            "RegisterStreamHandler<global::MyApp.StreamHandler, global::MyApp.StreamQuery, int>('a')",
-            generatedSource
-        );
+        Assert.Contains("\"stream-a\"", generatedSource);
+        Assert.Contains("KeyedHandlerRegistry", generatedSource);
+        Assert.Contains("global::NetMediate.IStreamHandler<global::MyApp.StreamQuery, int>", generatedSource);
     }
 
     /// <summary>
-    /// Validates that the generated <c>AddNetMediate()</c> compiles successfully when combined
-    /// with the user's handler code.
+    /// Multiple handlers for the same interface with different keys should be consolidated
+    /// into a single <c>KeyedHandlerRegistry&lt;THandler&gt;</c> registration with all keys.
     /// </summary>
-    [Fact(Skip = "Legacy compilation expectations are being updated for the current generator output.")]
+    [Fact]
+    public void Generator_MultipleKeyedHandlersSameInterface_ConsolidatedIntoSingleRegistry()
+    {
+        const string userSource = """
+            using GenDI;
+            using NetMediate;
+            using Microsoft.Extensions.DependencyInjection;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record PingCommand;
+
+            [Injectable(ServiceLifetime.Singleton, Key = "primary")]
+            public sealed class PrimaryHandler : ICommandHandler<PingCommand>
+            {
+                public Task Handle(PingCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+
+            [Injectable(ServiceLifetime.Singleton, Key = "secondary")]
+            public sealed class SecondaryHandler : ICommandHandler<PingCommand>
+            {
+                public Task Handle(PingCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var (generatedSource, _) = RunGenerator("MyApp", userSource);
+
+        // Both keys in one registry for the same handler interface
+        Assert.Contains("\"primary\"", generatedSource);
+        Assert.Contains("\"secondary\"", generatedSource);
+        // Must appear exactly once for this interface (consolidated)
+        var registryCount = generatedSource
+            .AsSpan()
+            .Count(
+                "new global::NetMediate.KeyedHandlerRegistry<global::NetMediate.ICommandHandler<global::MyApp.PingCommand>>"
+                    .AsSpan()
+            );
+        Assert.Equal(1, registryCount);
+    }
+
+    /// <summary>
+    /// A transient keyed handler (<c>ServiceLifetime.Transient</c>) must generate a factory
+    /// that creates a new instance on every invocation (no <c>Lazy&lt;T&gt;</c> wrapper).
+    /// </summary>
+    [Fact]
+    public void Generator_TransientKeyedHandler_GeneratesDirectFactory()
+    {
+        const string userSource = """
+            using GenDI;
+            using NetMediate;
+            using Microsoft.Extensions.DependencyInjection;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record FlyCommand;
+
+            [Injectable(ServiceLifetime.Transient, Key = "fly")]
+            public sealed class FlyHandler : ICommandHandler<FlyCommand>
+            {
+                public Task Handle(FlyCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var (generatedSource, _) = RunGenerator("MyApp", userSource);
+
+        Assert.Contains("\"fly\"", generatedSource);
+        // Transient: direct new expression in the dictionary, no Lazy variable
+        Assert.Contains("new global::MyApp.FlyHandler()", generatedSource);
+        Assert.DoesNotContain("System.Lazy", generatedSource);
+    }
+
+
+    [Fact(Skip = "Generated AddNetMediate() references AddGenDIServices() which is not present in the synthetic test compilation.")]
     public void Generator_WhenUserProjectHasHandlers_GeneratedCodeShouldCompileCleanly()
     {
         const string userSource = """
@@ -1164,7 +1256,7 @@ public sealed class GeneratorIntegrationTests
     /// The generated typed extensions file must compile cleanly against the real
     /// <c>NetMediate.dll</c>, confirming all generated calls reference valid overloads.
     /// </summary>
-    [Fact(Skip = "Legacy typed-extension compilation expectations are being updated for the current generator output.")]
+    [Fact(Skip = "Generated AddNetMediate() references AddGenDIServices() which is not present in the synthetic test compilation.")]
     public void Generator_TypedExtensions_CompilesCleanly()
     {
         const string userSource = """

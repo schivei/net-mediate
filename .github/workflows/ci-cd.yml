@@ -15,21 +15,6 @@ on:
       - 'tests/**'
       - '.github/workflows/ci-cd.yml'
   workflow_dispatch:
-    # Maintainer-triggered manual runs provide a secure path for Sonar analysis when
-    # a pull_request run cannot access the token-backed secret context.
-    inputs:
-      pr_number:
-        description: 'PR number for manual Sonar PR analysis (optional, provide with pr_branch and pr_base)'
-        required: false
-        type: string
-      pr_branch:
-        description: 'PR head branch for manual Sonar PR analysis (optional, provide with pr_number and pr_base)'
-        required: false
-        type: string
-      pr_base:
-        description: 'PR base branch for manual Sonar PR analysis (optional, provide with pr_number and pr_branch)'
-        required: false
-        type: string
 
 env:
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
@@ -46,11 +31,6 @@ jobs:
       pull-requests: write
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-      # Enable Sonar only when the token exists and the run is either:
-      # - a pull_request run,
-      # - a main-branch run, or
-      # - a maintainer-triggered workflow_dispatch with full PR metadata inputs.
-      SONAR_SCAN_ENABLED: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != '' && github.event.inputs.pr_branch != '' && github.event.inputs.pr_base != '')) && secrets.SONAR_TOKEN != '' }}
 
     steps:
     - name: Checkout code
@@ -64,14 +44,14 @@ jobs:
         dotnet-version: '10.x'
 
     - name: Install SonarScanner for .NET
-      if: ${{ env.SONAR_SCAN_ENABLED == 'true' }}
+      if: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && env.SONAR_TOKEN != '' }}
       run: |
         dotnet tool install --global dotnet-sonarscanner --version 11.2.1 || \
           dotnet tool update --global dotnet-sonarscanner --version 11.2.1
         echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
     - name: Begin Sonar analysis
-      if: ${{ env.SONAR_SCAN_ENABLED == 'true' }}
+      if: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && env.SONAR_TOKEN != '' }}
       env:
         SONAR_PROJECT_KEY: schivei_net-mediate
         SONAR_ORGANIZATION: schivei
@@ -79,43 +59,8 @@ jobs:
         PR_NUMBER: ${{ github.event.pull_request.number }}
         PR_BRANCH: ${{ github.head_ref }}
         PR_BASE: ${{ github.base_ref }}
-        MANUAL_PR_NUMBER: ${{ github.event.inputs.pr_number }}
-        MANUAL_PR_BRANCH: ${{ github.event.inputs.pr_branch }}
-        MANUAL_PR_BASE: ${{ github.event.inputs.pr_base }}
         REF_NAME: ${{ github.ref_name }}
       run: |
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          any_manual_input=false
-          if [ -n "${MANUAL_PR_NUMBER}" ] || [ -n "${MANUAL_PR_BRANCH}" ] || [ -n "${MANUAL_PR_BASE}" ]; then
-            any_manual_input=true
-          fi
-
-          if [ "${any_manual_input}" = "true" ] && \
-             { [ -z "${MANUAL_PR_NUMBER}" ] || [ -z "${MANUAL_PR_BRANCH}" ] || [ -z "${MANUAL_PR_BASE}" ]; }; then
-            echo "::error::Provide pr_number, pr_branch, and pr_base together for manual Sonar PR analysis."
-            exit 1
-          fi
-
-          if [ -n "${MANUAL_PR_NUMBER}" ] && ! [[ "${MANUAL_PR_NUMBER}" =~ ^[0-9]+$ ]]; then
-            echo "::error::workflow_dispatch input pr_number must be numeric."
-            exit 1
-          fi
-
-          if [ -n "${MANUAL_PR_BRANCH}" ]; then
-            git check-ref-format --branch "${MANUAL_PR_BRANCH}" >/dev/null 2>&1 || {
-              echo "::error::workflow_dispatch input pr_branch is not a valid branch name."
-              exit 1
-            }
-          fi
-
-          if [ -n "${MANUAL_PR_BASE}" ]; then
-            git check-ref-format --branch "${MANUAL_PR_BASE}" >/dev/null 2>&1 || {
-              echo "::error::workflow_dispatch input pr_base is not a valid branch name."
-              exit 1
-            }
-          fi
-        fi
-
         SONAR_ARGS=(
           "/k:${SONAR_PROJECT_KEY}"
           "/o:${SONAR_ORGANIZATION}"
@@ -129,15 +74,6 @@ jobs:
             "/d:sonar.pullrequest.key=${PR_NUMBER}"
             "/d:sonar.pullrequest.branch=${PR_BRANCH}"
             "/d:sonar.pullrequest.base=${PR_BASE}"
-          )
-        elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && \
-             [ -n "${MANUAL_PR_NUMBER}" ] && \
-             [ -n "${MANUAL_PR_BRANCH}" ] && \
-             [ -n "${MANUAL_PR_BASE}" ]; then
-          SONAR_ARGS+=(
-            "/d:sonar.pullrequest.key=${MANUAL_PR_NUMBER}"
-            "/d:sonar.pullrequest.branch=${MANUAL_PR_BRANCH}"
-            "/d:sonar.pullrequest.base=${MANUAL_PR_BASE}"
           )
         else
           SONAR_ARGS+=("/d:sonar.branch.name=${REF_NAME}")
@@ -208,7 +144,7 @@ jobs:
       run: dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
 
     - name: End Sonar analysis
-      if: ${{ always() && env.SONAR_SCAN_ENABLED == 'true' }}
+      if: ${{ always() && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && env.SONAR_TOKEN != '' }}
       run: |
         dotnet-sonarscanner end "/d:sonar.token=${SONAR_TOKEN}"
       

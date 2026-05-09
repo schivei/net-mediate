@@ -160,7 +160,7 @@ public sealed class TimeoutCommandBehavior<TMessage>(
 ) : TimeoutTaskBehaviorBase<TMessage>(
         optionsAccessor,
         static options => options.NotificationTimeout,
-        "Notification"
+        "Command"
     ),
     IPipelineCommandBehavior<TMessage>
     where TMessage : notnull

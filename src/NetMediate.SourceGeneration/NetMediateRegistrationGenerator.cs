@@ -422,7 +422,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             NotificationHandlerIfce => $"{behaviorPrefix}NotificationBehavior<{messageFqn}>",
             RequestHandlerIfce when responseFqn is not null =>
                 $"{behaviorPrefix}RequestBehavior<{messageFqn}, {responseFqn}>",
-            _ => throw new InvalidOperationException($"Unsupported handler interface '{interfaceName}'.")
+            _ => throw new InvalidOperationException(
+                $"Unsupported handler interface '{interfaceName}'. Expected one of '{CommandHandlerIfce}', '{NotificationHandlerIfce}', or '{RequestHandlerIfce}'. This indicates an internal generator error."
+            )
         };
 
         return $"services.TryAddSingleton<{namespacePrefix}{behaviorName}>();";

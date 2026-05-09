@@ -59,7 +59,7 @@ public sealed class BenchStreamHandler : IStreamHandler<BenchStreamRequest, Benc
 {
     /// <inheritdoc/>
     IAsyncEnumerable<BenchStreamItem> IHandler<BenchStreamRequest, IAsyncEnumerable<BenchStreamItem>>.Handle(
-        BenchStreamRequest _,
+        BenchStreamRequest message,
         CancellationToken cancellationToken
     ) => StreamItems(cancellationToken);
 

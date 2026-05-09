@@ -77,6 +77,9 @@ internal static class RetryBehaviorRunner
             }
         }
 
+        // The loop either returns a result or lets the final exception escape; this guard
+        // only exists to keep the compiler/static analysis aware that control never reaches
+        // the end of the method without a result.
         throw new InvalidOperationException("Retry execution ended without producing a result.");
     }
 

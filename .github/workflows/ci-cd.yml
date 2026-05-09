@@ -17,15 +17,15 @@ on:
   workflow_dispatch:
     inputs:
       pr_number:
-        description: 'PR number for manual Sonar PR analysis (optional)'
+        description: 'PR number for manual Sonar PR analysis (optional, provide with pr_branch and pr_base)'
         required: false
         type: string
       pr_branch:
-        description: 'PR head branch for manual Sonar PR analysis (optional)'
+        description: 'PR head branch for manual Sonar PR analysis (optional, provide with pr_number and pr_base)'
         required: false
         type: string
       pr_base:
-        description: 'PR base branch for manual Sonar PR analysis (optional)'
+        description: 'PR base branch for manual Sonar PR analysis (optional, provide with pr_number and pr_branch)'
         required: false
         type: string
 
@@ -44,6 +44,7 @@ jobs:
       pull-requests: write
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_SCAN_ENABLED: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main') && secrets.SONAR_TOKEN != '' }}
 
     steps:
     - name: Checkout code
@@ -57,14 +58,14 @@ jobs:
         dotnet-version: '10.x'
 
     - name: Install SonarScanner for .NET
-      if: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main') && env.SONAR_TOKEN != '' }}
+      if: ${{ env.SONAR_SCAN_ENABLED == 'true' }}
       run: |
         dotnet tool install --global dotnet-sonarscanner --version 11.2.1 || \
           dotnet tool update --global dotnet-sonarscanner --version 11.2.1
         echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
     - name: Begin Sonar analysis
-      if: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main') && env.SONAR_TOKEN != '' }}
+      if: ${{ env.SONAR_SCAN_ENABLED == 'true' }}
       env:
         SONAR_PROJECT_KEY: schivei_net-mediate
         SONAR_ORGANIZATION: schivei
@@ -169,7 +170,7 @@ jobs:
       run: dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
 
     - name: End Sonar analysis
-      if: ${{ always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main') && env.SONAR_TOKEN != '' }}
+      if: ${{ always() && env.SONAR_SCAN_ENABLED == 'true' }}
       run: |
         dotnet-sonarscanner end "/d:sonar.token=${SONAR_TOKEN}"
       

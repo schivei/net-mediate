@@ -49,15 +49,14 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-nuget-
 
-    - name: Pre-build NetMediate (generates nupkg for source generation integration tests)
+    - name: Pre-pack NetMediate packages for package-metadata and source-generation tests
       run: |
         dotnet restore src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj
-        dotnet build   src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --no-restore
+        dotnet pack    src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --no-restore
         dotnet restore src/NetMediate/NetMediate.csproj
-        dotnet build   src/NetMediate/NetMediate.csproj --configuration Release --no-restore
-      # GeneratePackageOnBuild=true in pack.props places the nupkg in
-      # src/NetMediate/bin/Release/, which is the RestoreAdditionalProjectSources
-      # path used by tests/NetMediate.SourceGeneration.Tests (hardcoded to Release).
+        dotnet pack    src/NetMediate/NetMediate.csproj --configuration Release --no-restore
+      # Package metadata tests and source-generation package-reference tests read the
+      # nupkg directly from src/**/bin/Release/, so the packages must exist before test.
 
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx

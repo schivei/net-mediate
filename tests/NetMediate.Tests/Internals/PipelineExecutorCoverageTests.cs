@@ -19,6 +19,8 @@ namespace NetMediate.Tests.Internals;
 /// </remarks>
 public sealed class PipelineExecutorCoverageTests
 {
+    private static CancellationToken TestCancellationToken => global::Xunit.TestContext.Current.CancellationToken;
+
     // ─── message stubs ────────────────────────────────────────────────────────
     private sealed record Cmd;
     private sealed record Notif;
@@ -181,7 +183,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => s.AddSingleton<ICommandHandler<Cmd>>(h));
         var ex = new CommandPipelineExecutor<Cmd>(sp, NullLogger<NotificationPipelineExecutor<Cmd>>.Instance);
 
-        await ex.Handle("k", new Cmd(), CmdExec(), default);
+        await ex.Handle("k", new Cmd(), CmdExec(), TestCancellationToken);
 
         Assert.True(h.Handled);
     }
@@ -195,7 +197,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => { s.AddSingleton(reg); s.AddSingleton<ICommandHandler<Cmd>>(h); });
         var ex = new CommandPipelineExecutor<Cmd>(sp, NullLogger<NotificationPipelineExecutor<Cmd>>.Instance);
 
-        await ex.Handle("k", new Cmd(), CmdExec(), default);
+        await ex.Handle("k", new Cmd(), CmdExec(), TestCancellationToken);
 
         Assert.True(h.Handled);
     }
@@ -210,7 +212,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => { s.AddSingleton(reg); s.AddSingleton<ICommandHandler<Cmd>>(h); });
         var ex = new CommandPipelineExecutor<Cmd>(sp, NullLogger<NotificationPipelineExecutor<Cmd>>.Instance);
 
-        await ex.Handle("k", new Cmd(), CmdExec(), default);
+        await ex.Handle("k", new Cmd(), CmdExec(), TestCancellationToken);
 
         Assert.True(h.Handled);
     }
@@ -225,7 +227,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => { s.AddSingleton(reg); s.AddSingleton<ICommandHandler<Cmd>>(fallback); });
         var ex = new CommandPipelineExecutor<Cmd>(sp, NullLogger<NotificationPipelineExecutor<Cmd>>.Instance);
 
-        await ex.Handle("k", new Cmd(), CmdExec(), default);
+        await ex.Handle("k", new Cmd(), CmdExec(), TestCancellationToken);
 
         Assert.True(keyed.Handled);
         Assert.False(fallback.Handled);
@@ -239,7 +241,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => s.AddSingleton<ICommandHandler<Cmd>>(h));
         var ex = new CommandPipelineExecutor<Cmd>(sp, NullLogger<NotificationPipelineExecutor<Cmd>>.Instance);
 
-        await ex.Handle(null, new Cmd(), CmdExec(), default);
+        await ex.Handle(null, new Cmd(), CmdExec(), TestCancellationToken);
 
         Assert.True(h.Handled);
     }
@@ -256,7 +258,7 @@ public sealed class PipelineExecutorCoverageTests
         });
         var ex = new CommandPipelineExecutor<Cmd>(sp, NullLogger<NotificationPipelineExecutor<Cmd>>.Instance);
 
-        await ex.Handle(null, new Cmd(), CmdExec(), default);
+        await ex.Handle(null, new Cmd(), CmdExec(), TestCancellationToken);
 
         Assert.True(h.Handled);
     }
@@ -272,7 +274,7 @@ public sealed class PipelineExecutorCoverageTests
             (_, _, _, _) => throw new InvalidOperationException("sync throw");
 
         var exception = await Record.ExceptionAsync(() =>
-            ex.Handle(null, new Cmd(), throwing, default)
+            ex.Handle(null, new Cmd(), throwing, TestCancellationToken)
         );
 
         Assert.Null(exception);
@@ -289,7 +291,7 @@ public sealed class PipelineExecutorCoverageTests
         });
         var ex = new CommandPipelineExecutor<Cmd>(sp, NullLogger<NotificationPipelineExecutor<Cmd>>.Instance);
 
-        var t = ex.Handle(null, new Cmd(), CmdExec(), default);
+        var t = ex.Handle(null, new Cmd(), CmdExec(), TestCancellationToken);
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await t);
     }
 
@@ -304,7 +306,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => s.AddSingleton<INotificationHandler<Notif>>(h));
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await AwaitOk(ex.Handle("k", new Notif(), NotifExec(), default));
+        await AwaitOk(ex.Handle("k", new Notif(), NotifExec(), TestCancellationToken));
 
         Assert.True(h.Handled);
     }
@@ -317,7 +319,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => { s.AddSingleton(reg); s.AddSingleton<INotificationHandler<Notif>>(h); });
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await AwaitOk(ex.Handle("k", new Notif(), NotifExec(), default));
+        await AwaitOk(ex.Handle("k", new Notif(), NotifExec(), TestCancellationToken));
 
         Assert.True(h.Handled);
     }
@@ -331,7 +333,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => { s.AddSingleton(reg); s.AddSingleton<INotificationHandler<Notif>>(h); });
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await AwaitOk(ex.Handle("k", new Notif(), NotifExec(), default));
+        await AwaitOk(ex.Handle("k", new Notif(), NotifExec(), TestCancellationToken));
 
         Assert.True(h.Handled);
     }
@@ -345,7 +347,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => { s.AddSingleton(reg); s.AddSingleton<INotificationHandler<Notif>>(fallback); });
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await AwaitOk(ex.Handle("k", new Notif(), NotifExec(), default));
+        await AwaitOk(ex.Handle("k", new Notif(), NotifExec(), TestCancellationToken));
 
         Assert.True(keyed.Handled);
         Assert.False(fallback.Handled);
@@ -363,7 +365,7 @@ public sealed class PipelineExecutorCoverageTests
         HandlerExecutionDelegate<INotificationHandler<Notif>, Notif, Task> exec =
             (_, _, _, _) => { execCalled = true; return Task.CompletedTask; };
 
-        await AwaitOk(ex.Handle(null, new Notif(), exec, default));
+        await AwaitOk(ex.Handle(null, new Notif(), exec, TestCancellationToken));
 
         Assert.True(h.Handled);
         Assert.False(execCalled);
@@ -382,7 +384,7 @@ public sealed class PipelineExecutorCoverageTests
         });
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await AwaitOk(ex.Handle(null, new Notif(), NotifExec(), default));
+        await AwaitOk(ex.Handle(null, new Notif(), NotifExec(), TestCancellationToken));
 
         Assert.True(h1.Handled);
         Assert.True(h2.Handled);
@@ -396,7 +398,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => s.AddSingleton<INotificationHandler<Notif>>(h));
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await AwaitOk(ex.Handle(null, new Notif(), NotifExec(), default));
+        await AwaitOk(ex.Handle(null, new Notif(), NotifExec(), TestCancellationToken));
 
         Assert.True(h.Handled);
     }
@@ -413,7 +415,7 @@ public sealed class PipelineExecutorCoverageTests
         });
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await AwaitOk(ex.Handle(null, new Notif(), NotifExec(), default));
+        await AwaitOk(ex.Handle(null, new Notif(), NotifExec(), TestCancellationToken));
 
         Assert.True(h.Handled);
     }
@@ -430,7 +432,7 @@ public sealed class PipelineExecutorCoverageTests
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
         var exception = await Record.ExceptionAsync(() =>
-            ex.Handle(null, new Notif(), NotifExec(), default)
+            ex.Handle(null, new Notif(), NotifExec(), TestCancellationToken)
         );
 
         Assert.Null(exception);
@@ -447,7 +449,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => s.AddSingleton<IRequestHandler<Req, Rsp>>(h));
         var ex = new RequestPipelineExecutor<Req, Rsp>(sp, NullLogger<RequestPipelineExecutor<Req, Rsp>>.Instance);
 
-        await AwaitOk(ex.Handle("k", new Req(), default));
+        await AwaitOk(ex.Handle("k", new Req(), TestCancellationToken));
 
         Assert.True(h.Handled);
     }
@@ -460,7 +462,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => { s.AddSingleton(reg); s.AddSingleton<IRequestHandler<Req, Rsp>>(h); });
         var ex = new RequestPipelineExecutor<Req, Rsp>(sp, NullLogger<RequestPipelineExecutor<Req, Rsp>>.Instance);
 
-        await AwaitOk(ex.Handle("k", new Req(), default));
+        await AwaitOk(ex.Handle("k", new Req(), TestCancellationToken));
 
         Assert.True(h.Handled);
     }
@@ -474,7 +476,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => { s.AddSingleton(reg); s.AddSingleton<IRequestHandler<Req, Rsp>>(h); });
         var ex = new RequestPipelineExecutor<Req, Rsp>(sp, NullLogger<RequestPipelineExecutor<Req, Rsp>>.Instance);
 
-        await AwaitOk(ex.Handle("k", new Req(), default));
+        await AwaitOk(ex.Handle("k", new Req(), TestCancellationToken));
 
         Assert.True(h.Handled);
     }
@@ -487,7 +489,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => s.AddSingleton(reg));
         var ex = new RequestPipelineExecutor<Req, Rsp>(sp, NullLogger<RequestPipelineExecutor<Req, Rsp>>.Instance);
 
-        await AwaitOk(ex.Handle("k", new Req(), default));
+        await AwaitOk(ex.Handle("k", new Req(), TestCancellationToken));
 
         Assert.True(h.Handled);
     }
@@ -499,7 +501,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => s.AddSingleton<IRequestHandler<Req, Rsp>>(h));
         var ex = new RequestPipelineExecutor<Req, Rsp>(sp, NullLogger<RequestPipelineExecutor<Req, Rsp>>.Instance);
 
-        await AwaitOk(ex.Handle(null, new Req(), default));
+        await AwaitOk(ex.Handle(null, new Req(), TestCancellationToken));
 
         Assert.True(h.Handled);
     }
@@ -515,7 +517,7 @@ public sealed class PipelineExecutorCoverageTests
         });
         var ex = new RequestPipelineExecutor<Req, Rsp>(sp, NullLogger<RequestPipelineExecutor<Req, Rsp>>.Instance);
 
-        await AwaitOk(ex.Handle(null, new Req(), default));
+        await AwaitOk(ex.Handle(null, new Req(), TestCancellationToken));
 
         Assert.True(h.Handled);
     }
@@ -533,7 +535,7 @@ public sealed class PipelineExecutorCoverageTests
         });
         var ex = new RequestPipelineExecutor<Req, Rsp>(sp, NullLogger<RequestPipelineExecutor<Req, Rsp>>.Instance);
 
-        var result = await ex.Handle(null, new Req(), default);
+        var result = await ex.Handle(null, new Req(), TestCancellationToken);
 
         Assert.Null(result); // continuation returned default(Rsp)
     }
@@ -548,7 +550,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => s.AddSingleton<IStreamHandler<Str, int>, StrHandler>());
         var ex = new StreamPipelineExecutor<Str, int>(sp);
 
-        var items = await ToList(ex.Handle("k", new Str(), StreamExec(), default));
+        var items = await ToList(ex.Handle("k", new Str(), StreamExec(), TestCancellationToken));
 
         Assert.Equal([1, 2], items);
     }
@@ -561,7 +563,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => { s.AddSingleton(reg); s.AddSingleton<IStreamHandler<Str, int>>(h); });
         var ex = new StreamPipelineExecutor<Str, int>(sp);
 
-        var items = await ToList(ex.Handle("k", new Str(), StreamExec(), default));
+        var items = await ToList(ex.Handle("k", new Str(), StreamExec(), TestCancellationToken));
 
         Assert.Equal([1, 2], items);
     }
@@ -575,7 +577,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => { s.AddSingleton(reg); s.AddSingleton<IStreamHandler<Str, int>>(h); });
         var ex = new StreamPipelineExecutor<Str, int>(sp);
 
-        var items = await ToList(ex.Handle("k", new Str(), StreamExec(), default));
+        var items = await ToList(ex.Handle("k", new Str(), StreamExec(), TestCancellationToken));
 
         Assert.Equal([1, 2], items);
     }
@@ -588,7 +590,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => s.AddSingleton(reg));
         var ex = new StreamPipelineExecutor<Str, int>(sp);
 
-        var items = await ToList(ex.Handle("k", new Str(), StreamExec(), default));
+        var items = await ToList(ex.Handle("k", new Str(), StreamExec(), TestCancellationToken));
 
         Assert.Equal([1, 2], items);
     }
@@ -604,7 +606,7 @@ public sealed class PipelineExecutorCoverageTests
         HandlerExecutionDelegate<IStreamHandler<Str, int>, Str, IAsyncEnumerable<int>> exec =
             (_, _, _, _) => { execCalled = true; return AsyncEnumerable.Empty<int>(); };
 
-        var items = await ToList(ex.Handle(null, new Str(), exec, default));
+        var items = await ToList(ex.Handle(null, new Str(), exec, TestCancellationToken));
 
         Assert.Equal([1, 2], items);
         Assert.False(execCalled);
@@ -621,7 +623,7 @@ public sealed class PipelineExecutorCoverageTests
         });
         var ex = new StreamPipelineExecutor<Str, int>(sp);
 
-        var items = await ToList(ex.Handle(null, new Str(), StreamExec(), default));
+        var items = await ToList(ex.Handle(null, new Str(), StreamExec(), TestCancellationToken));
 
         // Two handlers × [1, 2] = four items
         Assert.Equal(4, items.Count);
@@ -638,7 +640,7 @@ public sealed class PipelineExecutorCoverageTests
         });
         var ex = new StreamPipelineExecutor<Str, int>(sp);
 
-        var items = await ToList(ex.Handle(null, new Str(), StreamExec(), default));
+        var items = await ToList(ex.Handle(null, new Str(), StreamExec(), TestCancellationToken));
 
         Assert.Equal([1, 2], items);
     }
@@ -650,6 +652,7 @@ public sealed class PipelineExecutorCoverageTests
 
     private static async IAsyncEnumerable<int> Merge(
         IEnumerable<IAsyncEnumerable<int>> streams,
+        [System.Runtime.CompilerServices.EnumeratorCancellation]
         CancellationToken ct = default)
     {
         foreach (var s in streams)

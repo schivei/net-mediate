@@ -41,14 +41,22 @@ public sealed class CommandPipelineExecutor<TMessage>(IServiceProvider servicePr
         return lazy.Value(key, message, cancellationToken);
     }
 
+    private ICommandHandler<TMessage>[] ResolveKeyedHandlers(object key)
+    {
+        var registry = serviceProvider.GetService<KeyedHandlerRegistry<ICommandHandler<TMessage>>>();
+        if (registry is not null && registry.TryGetAll(key, serviceProvider, out var handlers) && handlers.Length > 0)
+            return handlers;
+        return serviceProvider.GetServices<ICommandHandler<TMessage>>().ToArray();
+    }
+
     private PipelineBehaviorDelegate<TMessage, Task> BuildPipeline(
         object? key,
         HandlerExecutionDelegate<ICommandHandler<TMessage>, TMessage, Task> exec
     )
     {
-        var handlers = key is null ?
-            serviceProvider.GetServices<ICommandHandler<TMessage>>().ToArray() :
-            [.. serviceProvider.GetKeyedServices<ICommandHandler<TMessage>>(key)];
+        var handlers = key is null
+            ? serviceProvider.GetServices<ICommandHandler<TMessage>>().ToArray()
+            : ResolveKeyedHandlers(key);
 
         var behaviorArray = serviceProvider.GetServices<IPipelineCommandBehavior<TMessage>>();
 

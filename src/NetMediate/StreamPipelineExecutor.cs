@@ -43,6 +43,14 @@ public sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvider
         return lazy.Value(key, message, cancellationToken);
     }
 
+    private IStreamHandler<TMessage, TResponse>[] ResolveKeyedHandlers(object key)
+    {
+        var registry = serviceProvider.GetService<KeyedHandlerRegistry<IStreamHandler<TMessage, TResponse>>>();
+        if (registry is not null && registry.TryGetAll(key, serviceProvider, out var handlers) && handlers.Length > 0)
+            return handlers;
+        return serviceProvider.GetServices<IStreamHandler<TMessage, TResponse>>().ToArray();
+    }
+
     private PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> BuildPipeline(
         object? key,
         HandlerExecutionDelegate<
@@ -52,9 +60,9 @@ public sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvider
         > exec
     )
     {
-        var handlers = key is null ?
-            serviceProvider.GetServices<IStreamHandler<TMessage, TResponse>>().ToArray() :
-            [.. serviceProvider.GetKeyedServices<IStreamHandler<TMessage, TResponse>>(key)];
+        var handlers = key is null
+            ? serviceProvider.GetServices<IStreamHandler<TMessage, TResponse>>().ToArray()
+            : ResolveKeyedHandlers(key);
 
         var behaviors = serviceProvider.GetServices<IPipelineStreamBehavior<TMessage, TResponse>>();
 

@@ -40,11 +40,19 @@ public sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvide
         return lazy.Value(key, message, cancellationToken);
     }
 
+    private IRequestHandler<TMessage, TResponse>[] ResolveKeyedHandlers(object key)
+    {
+        var registry = serviceProvider.GetService<KeyedHandlerRegistry<IRequestHandler<TMessage, TResponse>>>();
+        if (registry is not null && registry.TryGetAll(key, serviceProvider, out var handlers) && handlers.Length > 0)
+            return handlers;
+        return serviceProvider.GetServices<IRequestHandler<TMessage, TResponse>>().ToArray();
+    }
+
     private PipelineBehaviorDelegate<TMessage, Task<TResponse>> BuildPipeline(object? key)
     {
-        var handlers = key is null ?
-            serviceProvider.GetServices<IRequestHandler<TMessage, TResponse>>().ToArray() :
-            [.. serviceProvider.GetKeyedServices<IRequestHandler<TMessage, TResponse>>(key)];
+        var handlers = key is null
+            ? serviceProvider.GetServices<IRequestHandler<TMessage, TResponse>>().ToArray()
+            : ResolveKeyedHandlers(key);
 
         var handler = handlers.Single();
 

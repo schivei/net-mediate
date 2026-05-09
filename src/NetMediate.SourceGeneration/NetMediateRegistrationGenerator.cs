@@ -96,8 +96,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         }
 
         var registrations = BuildRegistrations(types, hasDiagnostics, hasResilience, coverage);
+        var keyedRegistryBlock = BuildKeyedHandlerRegistries(types);
         var frameworkBehaviors = BuildFrameworkInfrastructure(types);
-        var source = BuildSource(registrations, frameworkBehaviors, assemblyName, coverage);
+        var source = BuildSource(registrations, keyedRegistryBlock, frameworkBehaviors, assemblyName, coverage);
         sourceProductionContext.AddSource("NetMediateGeneratedDI.g.cs", source);
 
         var typedExtensionMethods = BuildTypedExtensionMethods(types);
@@ -239,6 +240,306 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
         return allRegistrations;
+    }
+
+    /// <summary>
+    /// For each distinct handler interface type that has at least one keyed handler
+    /// (detected via <c>[Injectable(Key=…)]</c>), generates a consolidated
+    /// <c>KeyedHandlerRegistry&lt;THandler&gt;</c> singleton registration.
+    /// <para>
+    /// Singleton and scoped handlers use <c>Lazy&lt;T&gt;</c> to ensure a single
+    /// instance is created. Transient handlers get a fresh instance on every call.
+    /// </para>
+    /// </summary>
+    private static string BuildKeyedHandlerRegistries(ImmutableArray<INamedTypeSymbol> types)
+    {
+        const string baseIndent = "            ";
+
+        // Map: handlerInterfaceFqn → list of (keyLiteral, lifetime, handlerFqn, ctorArgs)
+        var grouped =
+            new Dictionary<string, (string handlerIfceFqn, List<(string keyLiteral, int lifetime, string handlerFqn, string ctorArgs)> entries)>(
+                StringComparer.Ordinal
+            );
+
+        foreach (var handlerType in types)
+        {
+            var injectableKey = TryGetInjectableKey(handlerType);
+            if (injectableKey is null)
+                continue;
+
+            var (keyLiteral, lifetime) = injectableKey.Value;
+
+            var handlerFqn = handlerType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var ctorArgs = BuildCtorArgs(handlerType);
+
+            foreach (var @interface in handlerType.AllInterfaces)
+            {
+                var definition = @interface.OriginalDefinition;
+                if (
+                    definition.ContainingNamespace.ToDisplayString().Replace(GlobalNamespace, "")
+                    != PackName
+                )
+                    continue;
+
+                var name = definition.Name;
+                if (
+                    name != CommandHandlerIfce
+                    && name != NotificationHandlerIfce
+                    && name != RequestHandlerIfce
+                    && name != StreamHandlerIfce
+                )
+                    continue;
+
+                var ifceFqn = @interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                if (!grouped.TryGetValue(ifceFqn, out var group))
+                {
+                    group = (ifceFqn, []);
+                    grouped[ifceFqn] = group;
+                }
+                group.entries.Add((keyLiteral, lifetime, handlerFqn, ctorArgs));
+            }
+        }
+
+        if (grouped.Count == 0)
+            return string.Empty;
+
+        var sb = new StringBuilder();
+        foreach (var kv in grouped)
+        {
+            AppendKeyedRegistry(sb, kv.Key, kv.Value.entries, baseIndent);
+        }
+
+        return sb.ToString();
+    }
+
+    private static void AppendKeyedRegistry(
+        StringBuilder sb,
+        string ifceFqn,
+        List<(string keyLiteral, int lifetime, string handlerFqn, string ctorArgs)> entries,
+        string baseIndent
+    )
+    {
+        var inner = baseIndent + "    ";
+        var inner2 = inner + "    ";
+        var inner3 = inner2 + "    ";
+        var inner4 = inner3 + "    ";
+
+        // Group entries by key literal so multiple handlers for the same key are
+        // combined into a single array entry in the dictionary.
+        var byKey = new Dictionary<string, List<(int lifetime, string handlerFqn, string ctorArgs)>>(
+            StringComparer.Ordinal
+        );
+        foreach (var (keyLiteral, lifetime, handlerFqn, ctorArgs) in entries)
+        {
+            if (!byKey.TryGetValue(keyLiteral, out var list))
+            {
+                list = [];
+                byKey[keyLiteral] = list;
+            }
+            list.Add((lifetime, handlerFqn, ctorArgs));
+        }
+
+        // Collect all singleton handlers that need a Lazy variable (Singleton=0).
+        // Scoped (1) and Transient (2) both use the active scope's IServiceProvider.
+        var singletonEntries = entries
+            .Where(e => e.lifetime == 0 /* Singleton */)
+            .Select(e => (e.handlerFqn, e.ctorArgs))
+            .Distinct()
+            .ToList();
+
+        var hasSingletons = singletonEntries.Count > 0;
+
+        sb.AppendLine(
+            $"{baseIndent}services.AddSingleton<global::NetMediate.KeyedHandlerRegistry<{ifceFqn}>>(static sp =>"
+        );
+        sb.AppendLine($"{baseIndent}{{");
+
+        // Declare Lazy<T> variables for singleton entries. These capture the outer `sp`
+        // (the root/singleton-scope provider) so the singleton instance is created once.
+        foreach (var (handlerFqn, ctorArgs) in singletonEntries)
+        {
+            var lazyVar = BuildLazyVarName(handlerFqn);
+            var args = string.IsNullOrEmpty(ctorArgs)
+                ? string.Empty
+                : BuildCtorArgsWithSp(ctorArgs, "sp");
+            sb.AppendLine(
+                $"{inner}var {lazyVar} = new global::System.Lazy<{ifceFqn}>(() => new {handlerFqn}({args}));"
+            );
+        }
+
+        if (hasSingletons)
+            sb.AppendLine();
+
+        sb.AppendLine(
+            $"{inner}return new global::NetMediate.KeyedHandlerRegistry<{ifceFqn}>("
+        );
+        sb.AppendLine(
+            $"{inner2}new global::System.Collections.Generic.Dictionary<object, global::System.Func<global::System.IServiceProvider, {ifceFqn}>[]>"
+        );
+        sb.AppendLine($"{inner2}{{");
+
+        var keyList = byKey.Keys.ToList();
+        for (var ki = 0; ki < keyList.Count; ki++)
+        {
+            var keyLiteral = keyList[ki];
+            var handlerList = byKey[keyLiteral];
+            var keyComma = ki < keyList.Count - 1 ? "," : string.Empty;
+
+            if (handlerList.Count == 1)
+            {
+                var (lifetime, handlerFqn, ctorArgs) = handlerList[0];
+                var factory = BuildFactory(lifetime, handlerFqn, ctorArgs, ifceFqn);
+                sb.AppendLine($"{inner3}{{ {keyLiteral}, [{factory}] }}{keyComma}");
+            }
+            else
+            {
+                sb.AppendLine($"{inner3}{{ {keyLiteral}, [");
+                for (var hi = 0; hi < handlerList.Count; hi++)
+                {
+                    var (lifetime, handlerFqn, ctorArgs) = handlerList[hi];
+                    var factory = BuildFactory(lifetime, handlerFqn, ctorArgs, ifceFqn);
+                    var handlerComma = hi < handlerList.Count - 1 ? "," : string.Empty;
+                    sb.AppendLine($"{inner4}{factory}{handlerComma}");
+                }
+                sb.AppendLine($"{inner3}] }}{keyComma}");
+            }
+        }
+
+        sb.AppendLine($"{inner2}}});");
+        sb.AppendLine($"{baseIndent}}});");
+    }
+
+    private static string BuildFactory(
+        int lifetime,
+        string handlerFqn,
+        string ctorArgs,
+        string ifceFqn
+    )
+    {
+        if (lifetime == 0 /* Singleton */)
+        {
+            // Singleton: return the value from the Lazy captured in the outer `sp` scope.
+            // The `_sp` parameter is ignored because the instance must come from the root scope.
+            var lazyVar = BuildLazyVarName(handlerFqn);
+            return $"static (_sp) => {lazyVar}.Value";
+        }
+        else
+        {
+            // Scoped (1) or Transient (2): create a new instance from the active scope's _sp.
+            var args = string.IsNullOrEmpty(ctorArgs)
+                ? string.Empty
+                : BuildCtorArgsWithSp(ctorArgs, "_sp");
+            return $"(_sp) => new {handlerFqn}({args})";
+        }
+    }
+
+    /// <summary>
+    /// Replaces the service-provider variable name in a pre-built ctor-args string.
+    /// The generator builds ctor-args with a placeholder "sp" (the outer singleton factory
+    /// parameter); this method swaps it for <paramref name="spVar"/> when the actual
+    /// resolution should come from a different provider variable.
+    /// </summary>
+    private static string BuildCtorArgsWithSp(string ctorArgs, string spVar)
+        => ctorArgs.Replace("sp.GetRequiredService", $"{spVar}.GetRequiredService");
+
+    /// <summary>
+    /// Returns a safe local variable name for the lazy wrapper of a handler.
+    /// </summary>
+    private static string BuildLazyVarName(string handlerFqn)
+    {
+        // Strip "global::" and replace non-identifier chars with underscores
+        var name = handlerFqn.Replace("global::", string.Empty);
+        var sb = new StringBuilder("lazy_");
+        foreach (var c in name)
+            sb.Append(char.IsLetterOrDigit(c) ? c : '_');
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Generates the constructor argument list for a handler type so that all parameters
+    /// are resolved from the service provider (<c>sp</c>). Returns an empty string when
+    /// the handler has a public parameterless constructor.
+    /// </summary>
+    private static string BuildCtorArgs(INamedTypeSymbol handlerType)
+    {
+        // Pick the public constructor with the most parameters (primary constructor pattern)
+        var ctor = handlerType
+            .Constructors.Where(c => c.DeclaredAccessibility == Accessibility.Public)
+            .OrderByDescending(c => c.Parameters.Length)
+            .FirstOrDefault();
+
+        if (ctor is null || ctor.Parameters.Length == 0)
+            return string.Empty;
+
+        return string.Join(
+            ", ",
+            ctor.Parameters.Select(p =>
+            {
+                var typeFqn = p.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                return $"sp.GetRequiredService<{typeFqn}>()";
+            })
+        );
+    }
+
+    /// <summary>
+    /// Returns the key literal (as a C# source expression) and the lifetime integer
+    /// (Singleton=0, Scoped=1, Transient=2) when the type carries an
+    /// <c>[Injectable(Key=…)]</c> attribute with a non-null key; otherwise null.
+    /// </summary>
+    private static (string keyLiteral, int lifetime)? TryGetInjectableKey(INamedTypeSymbol type)
+    {
+        foreach (var attr in type.GetAttributes())
+        {
+            var attrClass = attr.AttributeClass;
+            if (attrClass is null)
+                continue;
+
+            var attrName = attrClass.OriginalDefinition?.Name ?? attrClass.Name;
+            if (attrName != "InjectableAttribute")
+                continue;
+
+            // NamedArguments contains Key when set
+            var keyArg = attr.NamedArguments.FirstOrDefault(a => a.Key == "Key");
+            if (keyArg.Value.IsNull || keyArg.Value.Value is null)
+                continue; // no key set
+
+            var keyLiteral = FormatConstantAsLiteral(keyArg.Value);
+            if (keyLiteral is null)
+                continue;
+
+            // First constructor argument is the ServiceLifetime enum value
+            // ServiceLifetime: Singleton=0, Scoped=1, Transient=2
+            var lifetime = 0; // default Singleton
+            if (
+                attr.ConstructorArguments.Length > 0
+                && attr.ConstructorArguments[0].Value is int l
+            )
+                lifetime = l;
+
+            return (keyLiteral, lifetime);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Converts a <see cref="TypedConstant"/> to its C# source representation.
+    /// Handles <see langword="string"/>, <see langword="int"/>, <see langword="bool"/>,
+    /// <see langword="char"/>, and other primitive types.
+    /// Returns <see langword="null"/> for unsupported constant kinds.
+    /// </summary>
+    private static string? FormatConstantAsLiteral(TypedConstant constant)
+    {
+        if (constant.IsNull)
+            return null;
+
+        return constant.Value switch
+        {
+            string s => $"\"{s.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"",
+            bool b => b ? "true" : "false",
+            char c => $"'{c}'",
+            _ => constant.Value?.ToString(),
+        };
     }
 
     private static void BuildRegistration(BuildRegistrationArguments arguments)
@@ -700,29 +1001,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 sb.AppendLine(
                     $"{ind}{ind}=> mediator.RequestStream<{e.MessageFqn}, {e.ResponseFqn}>(key, message, cancellationToken);"
                 );
-
-                // batch overload
-                sb.AppendLine(
-                    $"{ind}/// <summary>Dispatches a batch of <see cref=\"{e.MessageFqn}\"/> messages via the mediator.</summary>"
-                );
-                sb.AppendLine(
-                    $"{ind}public static {task} {methodName}(this {GlobalNamespace}NetMediate.IMediator mediator, {batchType} messages, {ct} cancellationToken = default)"
-                );
-                sb.AppendLine(
-                    $"{ind}{ind}=> mediator.RequestStream<{e.MessageFqn}, {e.ResponseFqn}>(messages, cancellationToken);"
-                );
-                sb.AppendLine();
-
-                // keyed batch overload
-                sb.AppendLine(
-                    $"{ind}/// <summary>Dispatches a batch of <see cref=\"{e.MessageFqn}\"/> messages via the mediator with an explicit routing key.</summary>"
-                );
-                sb.AppendLine(
-                    $"{ind}public static {task} {methodName}(this {GlobalNamespace}NetMediate.IMediator mediator, object? key, {batchType} messages, {ct} cancellationToken = default)"
-                );
-                sb.AppendLine(
-                    $"{ind}{ind}=> mediator.RequestStream<{e.MessageFqn}, {e.ResponseFqn}>(key, messages, cancellationToken);"
-                );
                 break;
         }
 
@@ -761,6 +1039,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
     private static string BuildSource(
         IEnumerable<string> registrations,
+        string keyedRegistryBlock,
         string frameworkBehaviors,
         string assemblyName,
         string coverage
@@ -768,6 +1047,8 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     {
         const string indent = "            ";
         var registrationsBlock = string.Join("\n", registrations.Select(r => indent + r));
+        if (!string.IsNullOrWhiteSpace(keyedRegistryBlock))
+            registrationsBlock += "\n" + keyedRegistryBlock;
 
         return LoadTemplate()
             .Replace(CoverageToken, coverage)

@@ -250,7 +250,8 @@ public sealed class GeneratorIntegrationTests
             {
                 refs.Add(MetadataReference.CreateFromFile(genDiPath));
             }
-            catch { }
+            catch (IOException) { }
+            catch (BadImageFormatException) { }
         }
 
         if (includeNetMediateDll)

@@ -255,9 +255,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     {
         const string baseIndent = "            ";
 
-        // Map: handlerInterfaceFqn → list of (key, keyLiteral, lifetime, handlerFqn, ctorArgs)
+        // Map: handlerInterfaceFqn → list of (keyLiteral, lifetime, handlerFqn, ctorArgs)
         var grouped =
-            new Dictionary<string, (string handlerIfceFqn, List<(object key, string keyLiteral, int lifetime, string handlerFqn, string ctorArgs)> entries)>(
+            new Dictionary<string, (string handlerIfceFqn, List<(string keyLiteral, int lifetime, string handlerFqn, string ctorArgs)> entries)>(
                 StringComparer.Ordinal
             );
 
@@ -296,7 +296,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     group = (ifceFqn, []);
                     grouped[ifceFqn] = group;
                 }
-                group.entries.Add((keyLiteral, keyLiteral, lifetime, handlerFqn, ctorArgs));
+                group.entries.Add((keyLiteral, lifetime, handlerFqn, ctorArgs));
             }
         }
 
@@ -315,7 +315,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     private static void AppendKeyedRegistry(
         StringBuilder sb,
         string ifceFqn,
-        List<(object key, string keyLiteral, int lifetime, string handlerFqn, string ctorArgs)> entries,
+        List<(string keyLiteral, int lifetime, string handlerFqn, string ctorArgs)> entries,
         string baseIndent
     )
     {
@@ -332,7 +332,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         sb.AppendLine($"{baseIndent}{{");
 
         // Declare Lazy variables for singleton/scoped entries
-        foreach (var (_, keyLiteral, lifetime, handlerFqn, ctorArgs) in entries)
+        foreach (var (keyLiteral, lifetime, handlerFqn, ctorArgs) in entries)
         {
             if (lifetime == 2)
                 continue; // Transient: no lazy needed
@@ -356,7 +356,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
         for (var i = 0; i < entries.Count; i++)
         {
-            var (_, keyLiteral, lifetime, handlerFqn, ctorArgs) = entries[i];
+            var (keyLiteral, lifetime, handlerFqn, ctorArgs) = entries[i];
             var comma = i < entries.Count - 1 ? "," : string.Empty;
 
             if (lifetime == 2)
@@ -419,7 +419,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
     /// <summary>
     /// Returns the key literal (as a C# source expression) and the lifetime integer
-    /// (0=Transient, 1=Scoped, 2=Singleton) when the type carries an
+    /// (Singleton=0, Scoped=1, Transient=2) when the type carries an
     /// <c>[Injectable(Key=…)]</c> attribute with a non-null key; otherwise null.
     /// </summary>
     private static (string keyLiteral, int lifetime)? TryGetInjectableKey(INamedTypeSymbol type)

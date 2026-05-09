@@ -37,22 +37,22 @@ using NetMediate;
 builder.Services.AddNetMediate();
 ```
 
-> **GenDI-first style**: `AddNetMediate()` also triggers `AddGenDIServices()`. Prefer `[Injectable]` + `[Inject]` so the consumer can choose `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. For generic service types, register them manually in `builder.Services`; GenDI does not support attribute-based registration for that AOT-oriented path.
+> **GenDI-first style**: `AddNetMediate()` also triggers `AddGenDIServices()`. Prefer `[Injectable]` + `[Inject]` so the consumer can choose `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path.
 
 ### Usage
 
 ```csharp
 // Command: dispatched sequentially to all registered handlers, no return value
-await mediator.Send(new CreateUserCommand("user-1"), cancellationToken);
+await mediator.SendCreateUserCommandAsync(new CreateUserCommand("user-1"), cancellationToken);
 
 // Request: single handler, returns a response
 var dto = await mediator.RequestGetUserRequestAsync(new GetUserRequest("user-1"), cancellationToken);
 
 // Notification: all handlers started in parallel (fire-and-forget); handler exceptions discarded by executor
-await mediator.Notify(new UserCreatedNotification("user-1"), cancellationToken);
+await mediator.NotifyUserCreatedNotificationAsync(new UserCreatedNotification("user-1"), cancellationToken);
 
 // Notification (batch): each message's pipeline dispatched in parallel (Task.WhenAll across messages)
-await mediator.Notify(new[] { n1, n2, n3 }, cancellationToken);
+await mediator.NotifyUserCreatedNotificationAsync(new[] { n1, n2, n3 }, cancellationToken);
 
 // Stream: single handler; yields items asynchronously
 await foreach (var item in mediator.StreamGetEventsQueryAsync(new GetEventsQuery(), cancellationToken))
@@ -97,15 +97,15 @@ public sealed class DefaultCommandHandler : ICommandHandler<MyCommand> { }
 public sealed class AuditCommandHandler : ICommandHandler<MyCommand> { }
 
 // Dispatch to the default (null-key) handlers
-await mediator.Send(command, ct);
+await mediator.SendMyCommandAsync(command, ct);
 
 // Dispatch only to handlers registered under "audit"
-await mediator.Send("audit", command, ct);
+await mediator.SendMyCommandAsync("audit", command, ct);
 ```
 
 The same `key` parameter is available on all dispatch methods: `Send(key, ...)`, `Notify(key, ...)`, `Request(key, ...)`, and `RequestStream(key, ...)`.
 
-> **Default routing key:** A `null` key is normalized internally to `Extensions.DEFAULT_ROUTING_KEY = "__default"`. This means `mediator.Send(command, ct)` and `mediator.Send(null, command, ct)` are exactly equivalent. Avoid using the literal string `"__default"` as your own routing key to prevent conflicts.
+> **Default routing key:** A `null` key is normalized internally to `Extensions.DEFAULT_ROUTING_KEY = "__default"`. This means `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are exactly equivalent. Avoid using the literal string `"__default"` as your own routing key to prevent conflicts.
 
 > **NativeAOT:** Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed registration uses `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**; use it only when NativeAOT is not required.
 
@@ -117,9 +117,10 @@ The same `key` parameter is available on all dispatch methods: `Send(key, ...)`,
 
 ### Configuration
 
-Register behavior implementations as closed types in DI:
+Register concrete non-generic behavior implementations with `[Injectable]`. Reserve manual DI registration only for generic/open behavior implementations:
 
 ```csharp
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
 public sealed class MyLoggingBehavior : IPipelineRequestBehavior<MyRequest, MyResponse>
 {
     public Task<MyResponse> Handle(
@@ -131,7 +132,6 @@ public sealed class MyLoggingBehavior : IPipelineRequestBehavior<MyRequest, MyRe
 }
 
 builder.Services.AddNetMediate();
-builder.Services.AddSingleton<IPipelineRequestBehavior<MyRequest, MyResponse>, MyLoggingBehavior>();
 ```
 
 ### Behavior interfaces
@@ -148,14 +148,13 @@ builder.Services.AddSingleton<IPipelineRequestBehavior<MyRequest, MyResponse>, M
 The `next` delegate accepts `(message, cancellationToken)`. Behaviors execute in registration order (outer-to-inner for pre, inner-to-outer for post). Every `Handle` method receives an optional `key` parameter — the same key that was passed to the dispatch call, which you can use for routing or contextual filtering:
 
 ```csharp
-public sealed class AuditRequestBehavior<TMessage, TResponse>
-    : IPipelineRequestBehavior<TMessage, TResponse>
-    where TMessage : notnull
+public sealed class AuditMyRequestBehavior
+    : IPipelineRequestBehavior<MyRequest, MyResponse>
 {
-    public async Task<TResponse> Handle(
+    public async Task<MyResponse> Handle(
         object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        MyRequest message,
+        PipelineBehaviorDelegate<MyRequest, Task<MyResponse>> next,
         CancellationToken cancellationToken)
     {
         // pre-processing (key is available for routing/filtering)
@@ -242,6 +241,7 @@ builder.Services.AddNetMediateQuartz(opts =>
     opts.GroupName = "MyApp";
     opts.MisfireRetryCount = 1;
 });
+builder.Services.AddNetMediate();
 ```
 
 See [QUARTZ.md](QUARTZ.md) for full details.

@@ -4,19 +4,21 @@ sidebar_position: 5
 
 # Pipeline Behaviors
 
-> **GenDI pattern:** Use `[Injectable]` + `[Inject]` for regular application services. For pipeline behaviors and other generic-service contracts, register them manually in `builder.Services`.
+> **GenDI pattern:** Use `[Injectable]` + `[Inject]` for regular application services. Concrete non-generic pipeline behaviors can also use `[Injectable]`. Reserve manual `builder.Services` registration for generic/open behavior implementations.
 
 Pipeline behaviors are middleware-style interceptors that wrap handler execution.
 
 ## Example
 
 ```csharp
+using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate;
 
 public record MyRequest(string Id);
 public record MyResponse(string Id);
 
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
 public sealed class LoggingBehavior : IPipelineRequestBehavior<MyRequest, MyResponse>
 {
     public async Task<MyResponse> Handle(
@@ -33,5 +35,4 @@ public sealed class LoggingBehavior : IPipelineRequestBehavior<MyRequest, MyResp
 }
 
 builder.Services.AddNetMediate();
-builder.Services.AddSingleton<IPipelineRequestBehavior<MyRequest, MyResponse>, LoggingBehavior>();
 ```

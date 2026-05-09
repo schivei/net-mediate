@@ -147,7 +147,7 @@ await host.StartAsync();
 `AddNetMediate()` is generated at compile-time by the source generator. It automatically discovers and registers all handler implementations in your project - no manual registration needed!
 :::
 
-> **GenDI style:** prefer `[Injectable]` + `[Inject]`. With GenDI you can choose the service lifetime, `Group`, `Order`, and keyed registrations (`Key`). Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. For generic service types, register them manually in `builder.Services`; GenDI does not support attribute-based registration for that AOT-oriented path.
+> **GenDI style:** prefer `[Injectable]` + `[Inject]`. With GenDI you can choose the service lifetime, `Group`, `Order`, and keyed registrations (`Key`). Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path.
 
 ## 📣 Step 5: Use the Mediator
 
@@ -202,7 +202,7 @@ var app = builder.Build();
 app.MapPost("/users", async (CreateUserRequest request, IMediator mediator) =>
 {
     // Publish a notification
-    await mediator.Notify(new UserCreated(
+    await mediator.NotifyUserCreatedAsync(new(
         Guid.NewGuid().ToString(),
         request.Email,
         DateTime.UtcNow));

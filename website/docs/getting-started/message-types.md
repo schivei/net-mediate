@@ -53,7 +53,7 @@ public class PaymentAuditor : ICommandHandler<ProcessPaymentCommand>
 }
 
 // Usage
-await mediator.Send(new ProcessPaymentCommand("ORD-123", 99.99m));
+await mediator.SendProcessPaymentCommandAsync(new ProcessPaymentCommand("ORD-123", 99.99m));
 ```
 
 ## Requests
@@ -104,7 +104,7 @@ Notifications are events dispatched to multiple handlers simultaneously. All han
 
 ```csharp
 // Usage - all handlers started in parallel (fire-and-forget)
-await mediator.Notify(new OrderShipped("ORD-456", "TRACK-789", DateTime.UtcNow));
+await mediator.NotifyOrderShippedAsync(new OrderShipped("ORD-456", "TRACK-789", DateTime.UtcNow));
 
 // Define a notification
 public record OrderShipped(string OrderId, string TrackingNumber, DateTime ShippedAt);
@@ -143,7 +143,7 @@ var notifications = new[]
     new OrderShipped("ORD-3", "TRACK-3", DateTime.UtcNow)
 };
 
-await mediator.Notify(notifications);
+await mediator.NotifyOrderShippedAsync(notifications);
 ```
 
 ## Streams

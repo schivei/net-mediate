@@ -360,7 +360,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         {
             var lazyVar = BuildLazyVarName(handlerFqn);
             var args = string.IsNullOrEmpty(ctorArgs)
-                ? ctorArgs
+                ? string.Empty
                 : BuildCtorArgsWithSp(ctorArgs, "sp");
             sb.AppendLine(
                 $"{inner}var {lazyVar} = new global::System.Lazy<{ifceFqn}>(() => new {handlerFqn}({args}));"

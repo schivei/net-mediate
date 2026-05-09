@@ -9,7 +9,8 @@
     <NoWarn>CS1591;xUnit1051;$(NoWarn)</NoWarn>
     <_LocalPackageSources></_LocalPackageSources>
     <_LocalPackageSources Condition="Exists('..\..\src\NetMediate\bin\Release')">..\..\src\NetMediate\bin\Release</_LocalPackageSources>
-    <_LocalPackageSources Condition="Exists('..\..\src\NetMediate.SourceGeneration\bin\Release')">$(_LocalPackageSources);..\..\src\NetMediate.SourceGeneration\bin\Release</_LocalPackageSources>
+    <_LocalPackageSources Condition="'$(_LocalPackageSources)' != '' and Exists('..\..\src\NetMediate.SourceGeneration\bin\Release')">$(_LocalPackageSources);..\..\src\NetMediate.SourceGeneration\bin\Release</_LocalPackageSources>
+    <_LocalPackageSources Condition="'$(_LocalPackageSources)' == '' and Exists('..\..\src\NetMediate.SourceGeneration\bin\Release')">..\..\src\NetMediate.SourceGeneration\bin\Release</_LocalPackageSources>
     <RestoreAdditionalProjectSources>$(_LocalPackageSources)</RestoreAdditionalProjectSources>
   </PropertyGroup>
   <ItemGroup>

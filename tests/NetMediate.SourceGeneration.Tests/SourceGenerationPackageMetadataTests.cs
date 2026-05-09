@@ -90,10 +90,7 @@ public class SourceGenerationPackageMetadataTests
 
     private static string GetPackagePath()
     {
-        var projectDir = Path.GetDirectoryName(
-            typeof(SourceGenerationPackageMetadataTests).Assembly.Location
-        );
-        var solutionDir = Path.GetFullPath(Path.Combine(projectDir!, "..", "..", "..", "..", ".."));
+        var solutionDir = FindSolutionRoot();
         var packagesDir = Path.Combine(solutionDir, "src", "NetMediate.SourceGeneration", "bin", "Release");
 
         if (Directory.Exists(packagesDir))
@@ -109,5 +106,22 @@ public class SourceGenerationPackageMetadataTests
         }
 
         return string.Empty;
+    }
+
+    private static string FindSolutionRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "net-mediate.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate the repository root from the test output directory.");
     }
 }

@@ -4,30 +4,28 @@ This page centralizes installation, configuration, and usage details for each Ne
 
 ## ✨ Version highlights
 
-- ✅ `dotnet add package NetMediate` works directly for both compile-time and runtime usage.
-- 📦 `NetMediate.SourceGeneration` and `GenDI.SourceGenerator` are bundled in `NetMediate`, reducing setup steps and keeping onboarding fast.
+- ✅ `dotnet add package NetMediate.SourceGeneration` is now the recommended startup-project entrypoint.
+- 📦 `NetMediate.Core` holds the contracts, while `NetMediate.SourceGeneration` injects `NetMediate` and `GenDI.SourceGenerator` via `buildTransitive`.
 - 🧠 Generated typed dispatch extensions improve readability and reduce repetitive mediator boilerplate in large codebases.
 - 🔁 `buildTransitive` propagation allows consistent generator behavior across multi-project solutions when transitive flow is desired.
 
-## 1) Core package (`NetMediate`)
+## 1) Contracts package (`NetMediate.Core`)
 
 ### Installation
 
 ```bash
-dotnet add package NetMediate
+dotnet add package NetMediate.Core
 ```
 
-> **Important:** For direct usage, this is enough:
+> **Important:** Use this package in shared/contracts-only projects:
 >
 > ```xml
-> <PackageReference Include="NetMediate" Version="x.x.x" />
+> <PackageReference Include="NetMediate.Core" Version="x.x.x" />
 > ```
->
-> If you are publishing your own library, you may optionally add `PrivateAssets="all"` to avoid flowing NetMediate and bundled analyzers transitively to downstream consumers.
 
 ### Configuration
 
-Handler registration is done automatically at compile time via the bundled source generator. Call the generated method:
+Handler registration is done automatically at compile time in the startup/application project via `NetMediate.SourceGeneration`. Call the generated method there:
 
 ```csharp
 using NetMediate;
@@ -197,10 +195,10 @@ See [RESILIENCE.md](RESILIENCE.md) for full details.
 
 ### Installation
 
-`NetMediate.SourceGeneration` is bundled inside the `NetMediate` package — no separate installation is required. It runs automatically for direct `NetMediate` package references:
+Install `NetMediate.SourceGeneration` directly in the startup/application project. Its `buildTransitive` file adds `NetMediate` and `GenDI.SourceGenerator` automatically:
 
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" />
 ```
 
 ### Usage

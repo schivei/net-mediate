@@ -6,35 +6,34 @@ sidebar_position: 1
 
 `NetMediate.SourceGeneration` is a Roslyn incremental source generator that emits handler registrations automatically at compile time. It is the standard and only supported registration path for NetMediate handlers.
 
-The source generator is **bundled inside the `NetMediate` package** — you do not need to install `NetMediate.SourceGeneration` separately. The `GenDI.SourceGenerator` is also bundled so you can annotate your own classes with `[Injectable]` etc. without installing GenDI separately.
+Install `NetMediate.SourceGeneration` directly in the startup/application project. Its `buildTransitive` file adds the required `NetMediate` runtime package and `GenDI.SourceGenerator` automatically. If you keep contracts in a separate project, reference `NetMediate.Core` there.
 
 ## Installation
 
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" />
 ```
 
-That is all. `dotnet add package NetMediate` also works without any extra configuration — the bundled analyzers are loaded automatically by MSBuild for any project that directly references the package.
+That is all for the startup/application project. `dotnet add package NetMediate.SourceGeneration` is enough to activate the generator and pull the required indirect dependencies.
 
-> **Library projects:** Add `PrivateAssets="all"` to prevent `NetMediate` and its bundled analyzers from flowing as a transitive dependency to downstream consumers of your library. This does **not** affect whether the analyzers run for your own project — they always run for direct references.
+> **Contracts-only projects:** Use `NetMediate.Core` if the project only needs NetMediate contracts and should not run the generator itself.
 >
 > ```xml
-> <!-- Library project recommendation -->
-> <PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
+> <PackageReference Include="NetMediate.Core" Version="x.x.x" />
 > ```
 
 ### Bundled analyzers
 
-The `NetMediate` package ships two source generators under `analyzers/dotnet/cs/`:
+The `NetMediate.SourceGeneration` package activates two generators in the consuming project:
 
 | Generator DLL | What it generates |
 |---|---|
 | `NetMediate.SourceGeneration.dll` | `AddNetMediate()`, `NetMediateGeneratedDI`, `NetMediateTypedExtensions`, global usings |
 | `GenDI.SourceGenerator.dll` | `AddGenDIServices()` for your own `[Injectable]`-annotated classes |
 
-Because `GenDI.SourceGenerator.dll` is bundled, you can use `[Injectable]`, `[ServiceInjection]`, and related attributes **without installing a separate package**.
+Because `GenDI.SourceGenerator.dll` is injected indirectly, you can use `[Injectable]`, `[ServiceInjection]`, and related attributes **without installing a separate package** in the startup project.
 
-Both generators also propagate transitively via a `buildTransitive/NetMediate.props` file. This means that if a library in your solution references NetMediate (without `PrivateAssets="all"`), the generators will also run in projects that consume that library — no extra package reference required.
+The package's `buildTransitive/NetMediate.SourceGeneration.props` file adds `NetMediate` and `GenDI.SourceGenerator` automatically. This keeps the startup project minimal while still provisioning the runtime and generator stack.
 
 ## Usage
 

@@ -11,22 +11,24 @@ This page centralizes installation, configuration, and usage details for each Ne
 ### Installation
 
 ```bash
-dotnet add package NetMediate
+dotnet add package NetMediate.Core
+dotnet add package NetMediate.SourceGeneration
 ```
 
 For direct usage, this is enough:
 
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" />
+<PackageReference Include="NetMediate.Core" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" />
 ```
 
 :::tip Library projects
-If you publish your own library, you may optionally add `PrivateAssets="all"` to avoid flowing NetMediate and bundled analyzers transitively to downstream consumers.
+If you publish your own library, you may optionally add `PrivateAssets="all"` to the `NetMediate.SourceGeneration` reference to avoid flowing the generator package transitively to downstream consumers.
 :::
 
 ### Configuration
 
-Handler registration is done automatically at compile time via the bundled source generator. Call the generated method:
+Handler registration is done automatically at compile time via `NetMediate.SourceGeneration`. Call the generated method:
 
 ```csharp
 using NetMediate;
@@ -204,7 +206,7 @@ See the [Resilience guide](../advanced/resilience) for full details.
 
 ### Installation
 
-`NetMediate.SourceGeneration` is **bundled inside the `NetMediate` package** — no separate installation is required. It runs automatically for direct `NetMediate` references (see the Core package section above).
+`NetMediate.SourceGeneration` is installed directly in the startup/application project. Its `buildTransitive` file adds `NetMediate` and `GenDI.SourceGenerator` automatically.
 
 ### Usage
 

@@ -1,4 +1,5 @@
-﻿using NetMediate.Tests.Messages;
+﻿using Microsoft.Extensions.DependencyInjection;
+using NetMediate.Tests.Messages;
 
 namespace NetMediate.Tests.RequestHandlers;
 

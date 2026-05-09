@@ -1,0 +1,28 @@
+# NetMediate.SourceGeneration
+
+Install this package in the application's startup/main project:
+
+```bash
+dotnet add package NetMediate.SourceGeneration
+```
+
+`NetMediate.SourceGeneration` is the package that runs the NetMediate source generator directly.
+
+## Indirect but required dependencies
+
+When you install this package, its `buildTransitive` file adds these required dependencies automatically:
+
+- `NetMediate` — runtime implementation used by the generated registrations
+- `GenDI.SourceGenerator` — generator that emits the DI builder APIs used by NetMediate
+
+You normally do **not** add those packages manually in the same startup project. They are indirect dependencies, but they are still required for the generated experience to work.
+
+## Contracts-only projects
+
+If you have a shared contracts project, reference `NetMediate.Core` there:
+
+```bash
+dotnet add package NetMediate.Core
+```
+
+Then reference `NetMediate.SourceGeneration` only in the executable/startup project that calls `AddNetMediate()`.

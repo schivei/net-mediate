@@ -28,8 +28,8 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 
 ### What’s new in this version
 
-- ✅ `dotnet add package NetMediate` now works out-of-the-box for compile-time + runtime usage (no extra package metadata tweaks required).
-- 📦 Bundled source generators are now a stronger default experience: `NetMediate.SourceGeneration` and `GenDI.SourceGenerator` are included and available immediately to direct package consumers.
+- ✅ `dotnet add package NetMediate.SourceGeneration` is now the recommended entrypoint for application/startup projects.
+- 📦 `NetMediate.Core` now carries the contracts, while `NetMediate.SourceGeneration` injects `NetMediate` and `GenDI.SourceGenerator` through `buildTransitive`.
 - ✨ New generated typed dispatch extensions (for commands, notifications, requests, and streams) reduce boilerplate and improve call-site readability.
 - 🔁 `buildTransitive` propagation keeps generator behavior consistent in larger multi-project solutions when you intentionally allow transitive flow.
 
@@ -56,26 +56,33 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 
 ## Installation
 
-### Package Manager Console
+### Shared contracts project
 ```powershell
-Install-Package NetMediate
+Install-Package NetMediate.Core
 ```
 
-> **Note:** After installing via Package Manager Console or .NET CLI, you may add `PrivateAssets="all"` to the `PackageReference` element if you are building a **library** and want to prevent `NetMediate` and its bundled source generator from flowing as a transitive dependency to consumers of your package. For application projects this is optional — the analyzer runs for direct references automatically.
+### Application / startup project
+```powershell
+Install-Package NetMediate.SourceGeneration
+```
+
+> **Note:** Install `NetMediate.Core` where you only need the contracts (`IMediator`, handlers, behaviors). Install `NetMediate.SourceGeneration` in the executable/startup project that calls `AddNetMediate()`. That package pulls in `NetMediate` and `GenDI.SourceGenerator` automatically via `buildTransitive`.
 
 ### .NET CLI
 ```bash
-dotnet add package NetMediate
+dotnet add package NetMediate.Core
+dotnet add package NetMediate.SourceGeneration
 ```
 
-> **Note:** After running the CLI command, you may add `PrivateAssets="all"` to the `PackageReference` element if you are building a **library** and want to prevent `NetMediate` from flowing transitively to downstream consumers. For application projects this is optional.
+> **Note:** If you are publishing your own library, you may add `PrivateAssets="all"` to the `NetMediate.SourceGeneration` reference to avoid flowing the generator package transitively. The startup project can keep the default behavior.
 
 ### PackageReference
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" />
+<PackageReference Include="NetMediate.Core" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" />
 ```
 
-> **Note:** `PrivateAssets="all"` is **recommended for library/NuGet projects** to prevent `NetMediate` and its bundled source generators from flowing as transitive dependencies to consumers of your library. For application projects (e.g., ASP.NET Core apps, console apps) it is optional.
+> **Note:** `NetMediate.SourceGeneration` adds `NetMediate` and `GenDI.SourceGenerator` indirectly via `buildTransitive`. Those indirect dependencies are required for the generated experience and should not be removed.
 
 ### Optional companion packages
 ```xml
@@ -115,8 +122,8 @@ Here's a minimal example to get you started with NetMediate:
 
 ```csharp
 // 1. Install the package
-// dotnet add package NetMediate
-// Library projects may optionally add PrivateAssets="all" to avoid transitive flow.
+// Shared contracts: dotnet add package NetMediate.Core
+// Startup/app project: dotnet add package NetMediate.SourceGeneration
 
 // 2. Register services — source generator discovers all handlers automatically
 using Microsoft.Extensions.DependencyInjection;
@@ -161,8 +168,8 @@ using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
 
-// The bundled source generator discovers handlers automatically at compile time
-// automatically discovers and registers all handlers at compile time.
+// NetMediate.SourceGeneration discovers handlers automatically at compile time
+// and registers all handlers in your project.
 builder.Services.AddNetMediate();
 
 var host = builder.Build();
@@ -475,7 +482,7 @@ All runtime packages are published with:
 - `netstandard2.0`
 - `netstandard2.1`
 
-`NetMediate.SourceGeneration` is bundled inside the `NetMediate` package as an analyzer (`netstandard2.0`) and runs automatically for direct package references.
+`NetMediate.SourceGeneration` is shipped as its own package (`netstandard2.0` analyzer). When installed directly, its `buildTransitive` file adds the required `NetMediate` runtime and `GenDI.SourceGenerator` dependencies automatically.
 
 ### Application types covered
 

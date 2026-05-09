@@ -10,18 +10,19 @@ namespace NetMediate.SourceGeneration.Tests;
 
 /// <summary>
 /// Integration tests that verify <c>NetMediateRegistrationGenerator</c> behaviour when code is
-/// compiled against the <c>NetMediate</c> NuGet package — the exact scenario a user experiences
-/// when running <c>dotnet add package NetMediate</c>.
+/// compiled against the <c>NetMediate.SourceGeneration</c> NuGet package — the exact scenario a user experiences
+/// when running <c>dotnet add package NetMediate.SourceGeneration</c>.
 ///
-/// The source generator (<c>NetMediate.SourceGeneration.dll</c>) is bundled inside the
-/// <c>NetMediate</c> package as an analyzer.  At build time it runs on this test project itself;
-/// at test-runtime the Roslyn API tests load it dynamically from the NuGet package cache.
+/// The source generator (<c>NetMediate.SourceGeneration.dll</c>) is the package itself. At build time
+/// it runs on this test project itself; at test-runtime the Roslyn API tests load it dynamically from
+/// the NuGet package cache. The package's <c>buildTransitive</c> metadata also adds the required
+/// <c>NetMediate</c> runtime and <c>GenDI.SourceGenerator</c> dependencies automatically.
 /// </summary>
 public sealed class GeneratorIntegrationTests
 {
     /// <summary>
     /// Loads <c>NetMediateRegistrationGenerator</c> from the local source-generator build output
-    /// when available, falling back to the analyzer DLL bundled inside the <c>NetMediate</c>
+    /// when available, falling back to the analyzer DLL bundled inside the <c>NetMediate.SourceGeneration</c>
     /// package. The package layout is:
     /// <code>
     ///   lib/{tfm}/NetMediate.dll                           ← runtime reference
@@ -41,7 +42,7 @@ public sealed class GeneratorIntegrationTests
 
         if (!File.Exists(generatorDll))
         {
-            var packageRoot = GetNetMediatePackageRoot();
+            var packageRoot = GetSourceGenerationPackageRoot();
             generatorDll = Path.Combine(
                 packageRoot,
                 "analyzers",
@@ -54,7 +55,7 @@ public sealed class GeneratorIntegrationTests
         if (!File.Exists(generatorDll))
             throw new FileNotFoundException(
                 $"NetMediate.SourceGeneration.dll not found at '{generatorDll}'. "
-                    + $"Ensure the referenced NetMediate package contains the bundled analyzer.",
+                    + $"Ensure the referenced NetMediate.SourceGeneration package contains the analyzer.",
                 generatorDll
             );
 
@@ -98,7 +99,7 @@ public sealed class GeneratorIntegrationTests
 #endif
     }
 
-    private static string GetNetMediatePackageRoot()
+    private static string GetSourceGenerationPackageRoot()
     {
         var assetsFile = Path.GetFullPath(
             Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "obj", "project.assets.json")
@@ -123,10 +124,10 @@ public sealed class GeneratorIntegrationTests
                 .EnumerateObject()
                 .Select(static library => library.Name)
                 .FirstOrDefault(static name =>
-                    name.StartsWith("NetMediate/", StringComparison.OrdinalIgnoreCase)
+                    name.StartsWith("NetMediate.SourceGeneration/", StringComparison.OrdinalIgnoreCase)
                 )
             ?? throw new InvalidOperationException(
-                "The restore assets file does not contain the NetMediate package entry."
+                "The restore assets file does not contain the NetMediate.SourceGeneration package entry."
             );
 
         var nugetPackages =
@@ -138,7 +139,7 @@ public sealed class GeneratorIntegrationTests
             );
 
         var packageVersion = packagePath[(packagePath.IndexOf('/') + 1)..];
-        return Path.Combine(nugetPackages, "netmediate", packageVersion);
+        return Path.Combine(nugetPackages, "netmediate.sourcegeneration", packageVersion);
     }
 
     /// <summary>
@@ -253,7 +254,7 @@ public sealed class GeneratorIntegrationTests
     /// produced a duplicate-type error, this project would not have compiled.
     /// </summary>
     [Fact]
-    public void TestProject_ReferencesNetMediatePackage_GeneratorRanOnBuildAndClassExists()
+    public void TestProject_ReferencesSourceGenerationPackage_GeneratorRanOnBuildAndClassExists()
     {
         var generatedType = Assembly
             .GetExecutingAssembly()

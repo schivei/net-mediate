@@ -18,15 +18,15 @@ Handler registration is generated at compile time by `NetMediate.SourceGeneratio
 
 ## AOT-compatible setup
 
-### Step 1: Install `NetMediate`
+### Step 1: Install `NetMediate.SourceGeneration`
 
-The source generator is bundled inside the `NetMediate` package and runs automatically for direct references:
+Install the generator package in the startup/application project. It adds the required `NetMediate` runtime and `GenDI.SourceGenerator` automatically:
 
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" />
 ```
 
-> **Library projects:** You may optionally add `PrivateAssets="all"` to avoid transitive package/analyzer flow to downstream consumers. This does not change generator execution for your own direct reference.
+> **Contracts-only projects:** Use `NetMediate.Core` in shared libraries that only need the contracts.
 
 ### Step 2: Call the generated extension method
 

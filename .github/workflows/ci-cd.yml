@@ -243,6 +243,19 @@ jobs:
         default_author: github_actions
         push: 'origin HEAD:refs/heads/main'
 
+    - name: Update coverage badge (main branch only)
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+      run: python3 .github/scripts/update_coverage_badge.py
+
+    - name: Commit coverage badge (main branch only)
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+      uses: EndBug/add-and-commit@a94899bca583c204427a224a7af87c02f9b325d5 # v9.1.4
+      with:
+        add: 'docs/badges/coverage.svg'
+        message: 'chore: update coverage badge [skip ci]'
+        default_author: github_actions
+        push: 'origin HEAD:refs/heads/main'
+
     - name: Post coverage summary to PR
       if: github.event_name == 'pull_request'
       env:

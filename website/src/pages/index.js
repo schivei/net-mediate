@@ -33,8 +33,35 @@ function HomepageHeader() {
           <a href="https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml">
             <img src="https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml/badge.svg" alt="CI/CD Pipeline" />
           </a>
+          <a href="https://github.com/schivei/net-mediate/actions/workflows/deploy-docs.yml">
+            <img src="https://github.com/schivei/net-mediate/actions/workflows/deploy-docs.yml/badge.svg" alt="Deploy Documentation" />
+          </a>
           <a href="https://www.nuget.org/packages/NetMediate/">
-            <img src="https://img.shields.io/nuget/v/NetMediate?style=flat" alt="NuGet" />
+            <img src="https://img.shields.io/nuget/v/NetMediate?style=flat&label=NetMediate&logo=nuget" alt="NuGet NetMediate" />
+          </a>
+          <a href="https://www.nuget.org/packages/NetMediate.Core/">
+            <img src="https://img.shields.io/nuget/v/NetMediate.Core?style=flat&label=NetMediate.Core&logo=nuget" alt="NuGet NetMediate.Core" />
+          </a>
+          <a href="https://www.nuget.org/packages/NetMediate.SourceGeneration/">
+            <img src="https://img.shields.io/nuget/v/NetMediate.SourceGeneration?style=flat&label=NetMediate.SourceGeneration&logo=nuget" alt="NuGet NetMediate.SourceGeneration" />
+          </a>
+          <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
+            <img src="https://img.shields.io/sonar/quality_gate/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Quality%20Gate" alt="Quality Gate" />
+          </a>
+          <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
+            <img src="https://img.shields.io/sonar/bugs/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Bugs" alt="Bugs" />
+          </a>
+          <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
+            <img src="https://img.shields.io/sonar/code_smells/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Code%20Smells" alt="Code Smells" />
+          </a>
+          <a href="https://sonarcloud.io/component_measures?id=schivei_net-mediate&amp;metric=new_coverage&amp;view=list">
+            <img src="https://raw.githubusercontent.com/schivei/net-mediate/main/docs/badges/coverage.svg" alt="Coverage" />
+          </a>
+          <a href="https://github.com/schivei/net-mediate/blob/main/LICENSE">
+            <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT" />
+          </a>
+          <a href="https://elton.schivei.nom.br/net-mediate">
+            <img src="https://img.shields.io/badge/Documentation-Website-blue" alt="Documentation" />
           </a>
         </div>
       </div>

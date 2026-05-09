@@ -70,9 +70,9 @@ jobs:
           "/d:sonar.issue.ignore.multicriteria=e1"
           "/d:sonar.issue.ignore.multicriteria.e1.ruleKey=csharpsquid:S107"
           "/d:sonar.issue.ignore.multicriteria.e1.resourceKey=**/*.cs"
-          "/d:sonar.exclusions=website/**"
-          "/d:sonar.cpd.exclusions=website/**"
-          "/d:sonar.test.exclusions=website/**"
+          "/d:sonar.exclusions=**/website/**,website/**"
+          "/d:sonar.cpd.exclusions=**/website/**,website/**"
+          "/d:sonar.test.exclusions=**/website/**,website/**"
         )
 
         if [ "${{ github.event_name }}" = "pull_request" ]; then

@@ -61,9 +61,9 @@ public sealed class BenchStreamHandler : IStreamHandler<BenchStreamRequest, Benc
     IAsyncEnumerable<BenchStreamItem> IHandler<BenchStreamRequest, IAsyncEnumerable<BenchStreamItem>>.Handle(
         BenchStreamRequest message,
         CancellationToken cancellationToken
-    ) => StreamItems(cancellationToken);
+    ) => EnumerateBenchStreamItemsAsync(cancellationToken);
 
-    private static async IAsyncEnumerable<BenchStreamItem> StreamItems(
+    private static async IAsyncEnumerable<BenchStreamItem> EnumerateBenchStreamItemsAsync(
         [System.Runtime.CompilerServices.EnumeratorCancellation]
             CancellationToken cancellationToken = default
     )

@@ -236,7 +236,7 @@ jobs:
                         coverage = line.get('condition-coverage', '')
                         if '(' in coverage and '/' in coverage:
                             fraction = coverage.split('(', 1)[1].split(')', 1)[0]
-                            covered, valid = [int(part) for part in fraction.split('/', 1)]
+                            covered, valid = (int(part) for part in fraction.split('/', 1))
                         else:
                             covered = 1 if hits > 0 else 0
                             valid = 1

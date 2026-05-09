@@ -332,20 +332,20 @@ public sealed class MediatorAndNotifierCoverageTests
     private sealed class RecordingRequestHandler : IRequestHandler<RequestMessage, Response>
     {
         public Task<Response> Handle(
-            RequestMessage request,
+            RequestMessage message,
             CancellationToken cancellationToken = default
-        ) => Task.FromResult(new Response(request.Value));
+        ) => Task.FromResult(new Response(message.Value));
     }
 
     private sealed class RecordingStreamHandler(int multiplier) : IStreamHandler<StreamMessage, int>
     {
         public async IAsyncEnumerable<int> Handle(
-            StreamMessage request,
+            StreamMessage message,
             [EnumeratorCancellation] CancellationToken cancellationToken = default
         )
         {
-            yield return request.Value * multiplier;
-            yield return (request.Value + 1) * multiplier;
+            yield return message.Value * multiplier;
+            yield return (message.Value + 1) * multiplier;
             await Task.CompletedTask;
         }
     }

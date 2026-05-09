@@ -40,6 +40,46 @@ jobs:
       uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
       with:
         dotnet-version: '10.x'
+
+    - name: Install SonarScanner for .NET
+      if: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && secrets.SONAR_TOKEN != '' }}
+      run: |
+        dotnet tool install --global dotnet-sonarscanner --version 10.* || \
+          dotnet tool update --global dotnet-sonarscanner --version 10.*
+        echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+    - name: Begin Sonar analysis
+      if: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && secrets.SONAR_TOKEN != '' }}
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_PROJECT_KEY: schivei_net-mediate
+        SONAR_ORGANIZATION: schivei
+        SONAR_HOST_URL: https://sonarcloud.io
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        PR_BRANCH: ${{ github.head_ref }}
+        PR_BASE: ${{ github.base_ref }}
+        REF_NAME: ${{ github.ref_name }}
+      run: |
+        export PATH="$PATH:$HOME/.dotnet/tools"
+        SONAR_ARGS=(
+          "/k:${SONAR_PROJECT_KEY}"
+          "/o:${SONAR_ORGANIZATION}"
+          "/d:sonar.host.url=${SONAR_HOST_URL}"
+          "/d:sonar.token=${SONAR_TOKEN}"
+          "/d:sonar.cs.cobertura.reportsPaths=coverage/**/coverage.cobertura.xml"
+        )
+
+        if [ "${{ github.event_name }}" = "pull_request" ]; then
+          SONAR_ARGS+=(
+            "/d:sonar.pullrequest.key=${PR_NUMBER}"
+            "/d:sonar.pullrequest.branch=${PR_BRANCH}"
+            "/d:sonar.pullrequest.base=${PR_BASE}"
+          )
+        else
+          SONAR_ARGS+=("/d:sonar.branch.name=${REF_NAME}")
+        fi
+
+        dotnet sonarscanner begin "${SONAR_ARGS[@]}"
         
     - name: Cache NuGet packages
       uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -102,6 +142,14 @@ jobs:
 
     - name: Test SourceGeneration (package-reference integration)
       run: dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+    - name: End Sonar analysis
+      if: ${{ always() && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && secrets.SONAR_TOKEN != '' }}
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      run: |
+        export PATH="$PATH:$HOME/.dotnet/tools"
+        dotnet sonarscanner end "/d:sonar.token=${SONAR_TOKEN}"
       
     - name: Run Benchmarks (PR only)
       if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'

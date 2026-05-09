@@ -1,19 +1,14 @@
-using System.Text;
 using Microsoft.CodeAnalysis;
 
 namespace NetMediate.SourceGeneration;
 
-#pragma warning disable S107
 internal readonly record struct BuildRegistrationArguments(
     bool HasDiagnostics,
     bool HasResilience,
     Dictionary<string, bool> DiagnosticsBehaviors,
     Dictionary<string, bool> ResilienceBehaviors,
-    Dictionary<string, bool> Handlers,
-    StringBuilder Notifier,
     INamedTypeSymbol HandlerType,
-    string HandlerName,
-    string HandlerKeyArgument
+    string Coverage
 )
 {
     public static implicit operator (
@@ -21,11 +16,8 @@ internal readonly record struct BuildRegistrationArguments(
         bool hasResilience,
         Dictionary<string, bool> diagnosticsBehaviors,
         Dictionary<string, bool> resilienceBehaviors,
-        Dictionary<string, bool> handlers,
-        StringBuilder notifier,
         INamedTypeSymbol handlerType,
-        string handlerName,
-        string handlerKeyArgument
+        string coverage
     )(BuildRegistrationArguments args)
     {
         return (
@@ -33,11 +25,8 @@ internal readonly record struct BuildRegistrationArguments(
             args.HasResilience,
             args.DiagnosticsBehaviors,
             args.ResilienceBehaviors,
-            args.Handlers,
-            args.Notifier,
             args.HandlerType,
-            args.HandlerName,
-            args.HandlerKeyArgument
+            args.Coverage
         );
     }
 
@@ -47,11 +36,8 @@ internal readonly record struct BuildRegistrationArguments(
             bool hasResilience,
             Dictionary<string, bool> diagnosticsBehaviors,
             Dictionary<string, bool> resilienceBehaviors,
-            Dictionary<string, bool> handlers,
-            StringBuilder notifier,
             INamedTypeSymbol handlerType,
-            string handlerName,
-            string handlerKeyArgument
+            string coverage
         ) arguments
     )
     {
@@ -60,12 +46,8 @@ internal readonly record struct BuildRegistrationArguments(
             arguments.hasResilience,
             arguments.diagnosticsBehaviors,
             arguments.resilienceBehaviors,
-            arguments.handlers,
-            arguments.notifier,
             arguments.handlerType,
-            arguments.handlerName,
-            arguments.handlerKeyArgument
+            arguments.coverage
         );
     }
 }
-#pragma warning restore S107

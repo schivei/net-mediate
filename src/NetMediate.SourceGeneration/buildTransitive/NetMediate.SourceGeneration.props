@@ -1,0 +1,10 @@
+<Project>
+	<ItemGroup>
+		<PackageReference
+		  Include="NetMediate"
+		  Version="26.*" />
+		<PackageReference
+		  Include="GenDI.SourceGenerator"
+		  PrivateAssets="all" Version="26.*" />
+	</ItemGroup>
+</Project>

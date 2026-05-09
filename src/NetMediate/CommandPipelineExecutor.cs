@@ -1,0 +1,101 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+
+namespace NetMediate;
+
+/// <summary>
+/// Provides an abstract base for executing command handler pipelines for messages of a specified type.
+/// </summary>
+/// <remarks>This class enables the construction and execution of command handler pipelines, supporting both keyed
+/// and unkeyed scenarios. Derived types can customize pipeline composition and execution strategies. Thread safety and
+/// error logging are handled internally.</remarks>
+/// <typeparam name="TMessage">The type of command message to be processed. Must be non-null.</typeparam>
+/// <param name="serviceProvider">The service provider used to resolve command handlers and pipeline behaviors.</param>
+/// <param name="logger">The logger used to record errors and diagnostic information during pipeline execution.</param>
+public sealed class CommandPipelineExecutor<TMessage>(IServiceProvider serviceProvider, ILogger<NotificationPipelineExecutor<TMessage>> logger)
+    where TMessage : notnull
+{
+    /// <summary>
+    /// Invokes the command handler pipeline for the specified message and key.
+    /// </summary>
+    /// <remarks>The pipeline is constructed lazily and executed for the provided message and key. The key
+    /// parameter can be used to support keyed or contextual pipelines, depending on the implementation.</remarks>
+    /// <param name="key">An optional key used to identify or differentiate the handler pipeline instance. May be null if not required by
+    /// the pipeline.</param>
+    /// <param name="message">The command message to be processed by the handler pipeline. Cannot be null.</param>
+    /// <param name="exec">The delegate representing the next handler or the final command handler to execute in the pipeline.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>A task that represents the asynchronous execution of the handler pipeline.</returns>
+    public Task Handle(
+        object? key,
+        TMessage message,
+        HandlerExecutionDelegate<ICommandHandler<TMessage>, TMessage, Task> exec,
+        CancellationToken cancellationToken
+    )
+    {
+        var lazy = new Lazy<PipelineBehaviorDelegate<TMessage, Task>>(
+            () => BuildPipeline(key, exec),
+            LazyThreadSafetyMode.ExecutionAndPublication
+        );
+
+        return lazy.Value(key, message, cancellationToken);
+    }
+
+    private PipelineBehaviorDelegate<TMessage, Task> BuildPipeline(
+        object? key,
+        HandlerExecutionDelegate<ICommandHandler<TMessage>, TMessage, Task> exec
+    )
+    {
+        var handlers = key is null ?
+            serviceProvider.GetServices<ICommandHandler<TMessage>>().ToArray() :
+            [.. serviceProvider.GetKeyedServices<ICommandHandler<TMessage>>(key)];
+
+        var behaviorArray = serviceProvider.GetServices<IPipelineCommandBehavior<TMessage>>();
+
+        var pipeline = !behaviorArray.Any()
+            ? App
+            : behaviorArray
+                .Reverse()
+                .Aggregate<IPipelineCommandBehavior<TMessage>, PipelineBehaviorDelegate<TMessage, Task>>(
+                    App,
+                    (current, behavior) => (routingKey, msg, ct) => behavior.Handle(routingKey, msg, current, ct)
+                );
+
+        return ErrorReporting;
+
+        Task App(object? routingKey, TMessage msg, CancellationToken ct)
+        {
+            try
+            {
+                _ = exec(routingKey, msg, handlers, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(
+                    ex,
+                    "Error dispatching Command handlers for message of type {MessageType}: {Message}",
+                    typeof(TMessage).FullName, ex.Message);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        Task ErrorReporting(object? routingKey, TMessage msg, CancellationToken ct)
+        {
+            var t = pipeline(routingKey, msg, ct);
+            t.ContinueWith(
+                tt =>
+                {
+                    logger.LogError(
+                        tt.Exception,
+                        "Error executing Command pipeline for message of type {MessageType}: {Message}",
+                        typeof(TMessage).FullName, tt.Exception!.Message);
+                },
+                ct,
+                TaskContinuationOptions.OnlyOnFaulted,
+                TaskScheduler.Default
+            );
+            return t;
+        }
+    }
+}

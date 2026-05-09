@@ -1,8 +1,6 @@
-﻿using NetMediate.Internals;
+﻿namespace NetMediate.Moq;
 
-namespace NetMediate.Moq;
-
-public class Notifier(IServiceProvider serviceProvider) : INotifiable
+public class NotifierMock(IServiceProvider serviceProvider) : INotifiable
 {
     private readonly Internals.Notifier _notifier = new(serviceProvider);
 

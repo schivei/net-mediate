@@ -665,7 +665,7 @@ public sealed class ResilienceBehaviorTests
     }
 
     /// <summary>Delays 200 ms before calling next — used to trigger timeout behavior.</summary>
-    private sealed class SlowPipelineBehavior<TMessage> : IPipelineBehavior<TMessage>
+    private sealed class SlowPipelineBehavior<TMessage> : IPipelineCommandBehavior<TMessage>
         where TMessage : notnull
     {
         public async Task Handle(
@@ -681,7 +681,7 @@ public sealed class ResilienceBehaviorTests
     }
 
     /// <summary>Always throws — used to trigger circuit-breaker behavior.</summary>
-    private sealed class ThrowingPipelineBehavior<TMessage> : IPipelineBehavior<TMessage>
+    private sealed class ThrowingPipelineBehavior<TMessage> : IPipelineCommandBehavior<TMessage>
         where TMessage : notnull
     {
         public Task Handle(
@@ -693,7 +693,7 @@ public sealed class ResilienceBehaviorTests
     }
 
     /// <summary>Always throws and counts invocations — used to test retry behavior.</summary>
-    private sealed class CountingThrowBehavior<TMessage> : IPipelineBehavior<TMessage>
+    private sealed class CountingThrowBehavior<TMessage> : IPipelineCommandBehavior<TMessage>
         where TMessage : notnull
     {
         private static int s_invocations;

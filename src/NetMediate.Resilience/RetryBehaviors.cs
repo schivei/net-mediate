@@ -6,7 +6,6 @@ namespace NetMediate.Resilience;
 /// Request pipeline behavior that applies retry logic.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
-[ServiceOrder(int.MinValue + 2)]
 public sealed class RetryRequestBehavior<TMessage, TResponse>(
     IOptions<RetryBehaviorOptions> optionsAccessor
 ) : IPipelineRequestBehavior<TMessage, TResponse>
@@ -24,46 +23,53 @@ public sealed class RetryRequestBehavior<TMessage, TResponse>(
         var maxRetryCount = Math.Max(0, options.MaxRetryCount);
         var delay = options.Delay < TimeSpan.Zero ? TimeSpan.Zero : options.Delay;
 
-        var attempt = 0;
+        var attempt = options.Disabled ? -1 : 0;
         while (attempt >= 0)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            var result = await Execute(key, message, next, maxRetryCount, delay, attempt, cancellationToken).ConfigureAwait(false);
 
-            try
-            {
-                return await next(key, message, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                if (attempt >= maxRetryCount)
-                    throw;
+            if (result.Item2)
+                return result.Item1;
 
-                if (delay > TimeSpan.Zero)
-                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception) when (attempt < maxRetryCount)
-            {
-                if (delay > TimeSpan.Zero)
-                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                Interlocked.Increment(ref attempt);
-            }
+            Interlocked.Increment(ref attempt);
         }
 
-        return default!;
+        return default;
+    }
+
+    private static async Task<(TResponse, bool)> Execute(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task<TResponse>> next, int maxRetryCount, TimeSpan delay, int attempt, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
+        {
+            return (await next(key, message, cancellationToken).ConfigureAwait(false), true);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            if (attempt >= maxRetryCount)
+                throw;
+
+            if (delay > TimeSpan.Zero)
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception) when (attempt < maxRetryCount)
+        {
+            if (delay > TimeSpan.Zero)
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+        }
+
+        return (default, false);
     }
 }
 
 /// <summary>
-/// Notification and command pipeline behavior that applies retry logic.
+/// Notification pipeline behavior that applies retry logic.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
-[ServiceOrder(int.MinValue + 2)]
 public sealed class RetryNotificationBehavior<TMessage>(
     IOptions<RetryBehaviorOptions> optionsAccessor
-) : IPipelineBehavior<TMessage>
+) : IPipelineNotificationBehavior<TMessage>
     where TMessage : notnull
 {
     /// <inheritdoc />
@@ -78,33 +84,87 @@ public sealed class RetryNotificationBehavior<TMessage>(
         var maxRetryCount = Math.Max(0, options.MaxRetryCount);
         var delay = options.Delay < TimeSpan.Zero ? TimeSpan.Zero : options.Delay;
 
-        var attempt = 0;
+        var attempt = options.Disabled ? -1 : 0;
         while (attempt >= 0)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            await Execute(key, message, next, maxRetryCount, delay, attempt, cancellationToken).ConfigureAwait(false);
+            Interlocked.Increment(ref attempt);
+        }
+    }
 
-            try
-            {
-                await next(key, message, cancellationToken).ConfigureAwait(false);
-                return;
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                if (attempt >= maxRetryCount)
-                    throw;
+    private static async Task Execute(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, int maxRetryCount, TimeSpan delay, int attempt, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
 
-                if (delay > TimeSpan.Zero)
-                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception) when (attempt < maxRetryCount)
-            {
-                if (delay > TimeSpan.Zero)
-                    await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                Interlocked.Increment(ref attempt);
-            }
+        try
+        {
+            await next(key, message, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            if (attempt >= maxRetryCount)
+                throw;
+
+            if (delay > TimeSpan.Zero)
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception) when (attempt < maxRetryCount)
+        {
+            if (delay > TimeSpan.Zero)
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+        }
+    }
+}
+
+/// <summary>
+/// Command pipeline behavior that applies retry logic.
+/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
+/// </summary>
+public sealed class RetryCommandBehavior<TMessage>(
+    IOptions<RetryBehaviorOptions> optionsAccessor
+) : IPipelineCommandBehavior<TMessage>
+    where TMessage : notnull
+{
+    /// <inheritdoc />
+    public async Task Handle(
+        object? key,
+        TMessage message,
+        PipelineBehaviorDelegate<TMessage, Task> next,
+        CancellationToken cancellationToken
+    )
+    {
+        var options = optionsAccessor.Value;
+        var maxRetryCount = Math.Max(0, options.MaxRetryCount);
+        var delay = options.Delay < TimeSpan.Zero ? TimeSpan.Zero : options.Delay;
+
+        var attempt = options.Disabled ? -1 : 0;
+        while (attempt >= 0)
+        {
+            await Execute(key, message, next, maxRetryCount, delay, attempt, cancellationToken).ConfigureAwait(false);
+            Interlocked.Increment(ref attempt);
+        }
+    }
+
+    private static async Task Execute(object? key, TMessage message, PipelineBehaviorDelegate<TMessage, Task> next, int maxRetryCount, TimeSpan delay, int attempt, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
+        {
+            await next(key, message, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            if (attempt >= maxRetryCount)
+                throw;
+
+            if (delay > TimeSpan.Zero)
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception) when (attempt < maxRetryCount)
+        {
+            if (delay > TimeSpan.Zero)
+                await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
         }
     }
 }

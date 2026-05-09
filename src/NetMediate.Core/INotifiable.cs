@@ -1,4 +1,6 @@
-﻿namespace NetMediate.Internals;
+﻿using GenDI;
+
+namespace NetMediate;
 
 /// <summary>
 /// Defines a contract for asynchronously dispatching or publishing notification messages to all registered handlers.
@@ -7,6 +9,7 @@
 /// messages. The order in which handlers are invoked is not guaranteed unless explicitly documented by the
 /// implementation. All notification operations are asynchronous and support cancellation via a cancellation
 /// token.</remarks>
+[ServiceInjection]
 public interface INotifiable
 {
     /// <summary>

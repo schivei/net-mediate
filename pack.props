@@ -1,7 +1,7 @@
 <Project>
   <Import Project="versions.props" />
   <PropertyGroup>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <Authors>Elton Schivei Costa</Authors>
     <Product>Mediator Package</Product>
     <Title>NetMediate</Title>
@@ -15,22 +15,12 @@
     <RepositoryType>git</RepositoryType>
     <DebugType>Full</DebugType>
     <IsPackable>true</IsPackable>
-    <PackOnBuild>true</PackOnBuild>
+    <PackOnBuild>false</PackOnBuild>
     <PackageVersion>$(Version)</PackageVersion>
     <ReleaseVersion>$(Version)</ReleaseVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <NoWarn>$(NoWarn);nullable</NoWarn>
     <TargetFrameworks>net10.0;netstandard2.0;netstandard2.1</TargetFrameworks>
-  </PropertyGroup>
-  <PropertyGroup Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">
-    <IsAotCompatible>true</IsAotCompatible>
-    <IsTrimmable>true</IsTrimmable>
-    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
-    <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
-    <EnableAotAnalyzer>true</EnableAotAnalyzer>
-    <VerifyReferenceAotCompatibility>true</VerifyReferenceAotCompatibility>
-    <OptimizationPreference>Speed</OptimizationPreference>
-    <PublishTrimmed>true</PublishTrimmed>
   </PropertyGroup>
 </Project>

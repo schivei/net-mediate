@@ -6,7 +6,6 @@ namespace NetMediate.Resilience;
 /// Request pipeline behavior that applies circuit-breaker logic.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
-[ServiceOrder(int.MinValue + 1)]
 public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
 ) : ACircuitBreakerBehavior<TMessage, Task<TResponse>>(optionsAccessor), IPipelineRequestBehavior<TMessage, TResponse>
@@ -38,13 +37,12 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 }
 
 /// <summary>
-/// Notification and command pipeline behavior that applies circuit-breaker logic.
+/// Notification pipeline behavior that applies circuit-breaker logic.
 /// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
 /// </summary>
-[ServiceOrder(int.MinValue + 1)]
 public sealed class CircuitBreakerNotificationBehavior<TMessage>(
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
-) : ACircuitBreakerBehavior<TMessage, Task>(optionsAccessor), IPipelineBehavior<TMessage>
+) : ACircuitBreakerBehavior<TMessage, Task>(optionsAccessor), IPipelineNotificationBehavior<TMessage>
     where TMessage : notnull
 {
     /// <inheritdoc />
@@ -57,6 +55,39 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(
     {
         if (IsCircuitOpen())
             throw new InvalidOperationException("Circuit open for notification.");
+
+        try
+        {
+            await next(key, message, cancellationToken).ConfigureAwait(false);
+            RegisterSuccess();
+        }
+        catch
+        {
+            RegisterFailure();
+            throw;
+        }
+    }
+}
+
+/// <summary>
+/// Command pipeline behavior that applies circuit-breaker logic.
+/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
+/// </summary>
+public sealed class CircuitBreakerCommandBehavior<TMessage>(
+    IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
+) : ACircuitBreakerBehavior<TMessage, Task>(optionsAccessor), IPipelineCommandBehavior<TMessage>
+    where TMessage : notnull
+{
+    /// <inheritdoc />
+    public override async Task Handle(
+        object? key,
+        TMessage message,
+        PipelineBehaviorDelegate<TMessage, Task> next,
+        CancellationToken cancellationToken
+    )
+    {
+        if (IsCircuitOpen())
+            throw new InvalidOperationException("Circuit open for command.");
 
         try
         {

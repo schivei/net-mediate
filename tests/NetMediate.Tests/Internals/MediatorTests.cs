@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate.Internals;
-using MoqNotifier = NetMediate.Moq.Notifier;
+using MoqNotifier = NetMediate.Moq.NotifierMock;
 
 namespace NetMediate.Tests.Internals;
 

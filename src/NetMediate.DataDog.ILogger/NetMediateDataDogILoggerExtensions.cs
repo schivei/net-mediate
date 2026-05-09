@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace NetMediate.DataDog.ILogger;
 
@@ -21,9 +22,7 @@ public static class NetMediateDataDogILoggerExtensions
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var options = new DataDogILoggerOptions();
-        configure?.Invoke(options);
-        services.AddSingleton(options);
+        services.ConfigureOptions(configure ?? (static _ => { }));
         return services;
     }
 
@@ -36,16 +35,16 @@ public static class NetMediateDataDogILoggerExtensions
     /// <returns>An IDisposable scope.</returns>
     public static IDisposable BeginNetMediateDataDogScope(
         this Microsoft.Extensions.Logging.ILogger logger,
-        DataDogILoggerOptions options,
+        IOptions<DataDogILoggerOptions> options,
         CancellationToken cancellationToken = default
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
         var scope = new Dictionary<string, object?>
         {
-            ["dd.service"] = options.Service,
-            ["dd.env"] = options.Environment,
-            ["dd.version"] = options.Version,
+            ["dd.service"] = options.Value.Service,
+            ["dd.env"] = options.Value.Environment,
+            ["dd.version"] = options.Value.Version,
             ["netmediate.activity_source"] = NetMediateDiagnostics.ActivitySourceName,
             ["netmediate.meter"] = NetMediateDiagnostics.MeterName,
             ["trace_id"] = System.Diagnostics.Activity.Current?.TraceId.ToString(),

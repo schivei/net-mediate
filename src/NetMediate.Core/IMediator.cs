@@ -1,8 +1,11 @@
-﻿namespace NetMediate;
+﻿using GenDI;
+
+namespace NetMediate;
 
 /// <summary>
 /// Defines a mediator for sending messages, notifications, and requests between components.
 /// </summary>
+[ServiceInjection]
 public interface IMediator
 {
     /// <summary>

@@ -109,8 +109,8 @@ Apply `Group` + `Order` on `[Injectable]` to control registration order. Lower v
 [Injectable<ICommandHandler&lt;AuditCommand&gt;>(ServiceLifetime.Scoped, Group = 10, Order = 1)]
 public sealed class AuditHandler : ICommandHandler&lt;AuditCommand&gt; { ... }
 
-[Injectable<ICommandHandler&lt;AuditCommand&gt;>(ServiceLifetime.Scoped, Group = 10, Order = 2)]
-public sealed class MetricsHandler : ICommandHandler&lt;AuditCommand&gt; { ... }
+[Injectable<ICommandHandler&lt;MetricsCommand&gt;>(ServiceLifetime.Scoped, Group = 10, Order = 2)]
+public sealed class MetricsHandler : ICommandHandler&lt;MetricsCommand&gt; { ... }
 
 // No explicit Group/Order → registered last (implicit order = int.MaxValue).
 [Injectable<ICommandHandler&lt;AuditCommand&gt;>(ServiceLifetime.Scoped)]

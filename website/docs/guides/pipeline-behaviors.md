@@ -4,40 +4,35 @@ sidebar_position: 5
 
 # Pipeline Behaviors
 
-> **GenDI pattern:** Behaviors and the services they depend on can follow the GenDI `[Injectable]` + `[Inject]` style, while NetMediate still uses `AddNetMediate()` / `UseNetMediate()` for pipeline wiring.
+> **GenDI pattern:** Behaviors and the services they depend on can follow the GenDI `[Injectable]` + `[Inject]` style. Register them as **closed types** so they are resolved directly from DI when `AddNetMediate()` runs.
 
-Pipeline behaviors are middleware-style interceptors that wrap handler execution, enabling cross-cutting concerns like logging, validation, caching, and more.
-
-For detailed behavior documentation, see the main [README](https://github.com/schivei/net-mediate#pipeline-behaviors--interceptors).
+Pipeline behaviors are middleware-style interceptors that wrap handler execution.
 
 ## Example
 
 ```csharp
-public sealed class LoggingBehavior<TMessage, TResponse>
-    : IPipelineRequestBehavior<TMessage, TResponse>
-    where TMessage : notnull
+using GenDI;
+using Microsoft.Extensions.DependencyInjection;
+using NetMediate;
+
+public record MyRequest(string Id);
+public record MyResponse(string Id);
+
+[Injectable<IPipelineRequestBehavior<MyRequest, MyResponse>>(ServiceLifetime.Singleton, Group = 10, Order = 1)]
+public sealed class LoggingBehavior : IPipelineRequestBehavior<MyRequest, MyResponse>
 {
-    // Handle receives object? key — the same key passed to the dispatch call.
-    // Use it for routing (e.g. queue/topic selection) or contextual filtering.
-    public async Task<TResponse> Handle(
+    public async Task<MyResponse> Handle(
         object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        MyRequest message,
+        PipelineBehaviorDelegate<MyRequest, Task<MyResponse>> next,
         CancellationToken cancellationToken)
     {
-        Console.WriteLine($"Before: {typeof(TMessage).Name} (key={key})");
+        Console.WriteLine($"Before: {nameof(MyRequest)} (key={key})");
         var response = await next(key, message, cancellationToken);
-        Console.WriteLine($"After: {typeof(TMessage).Name}");
+        Console.WriteLine($"After: {nameof(MyRequest)}");
         return response;
     }
 }
-```
 
-## Registration
-
-```csharp
-builder.Services.UseNetMediate(configure =>
-{
-    configure.RegisterBehavior<LoggingBehavior<MyRequest, MyResponse>, MyRequest, Task<MyResponse>>();
-});
+builder.Services.AddNetMediate();
 ```

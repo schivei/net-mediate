@@ -168,10 +168,16 @@ using NetMediate;
 var builder = Host.CreateApplicationBuilder();
 builder.Services.AddNetMediate(); // all handlers in your project are registered here
 
-// 3. Define a notification (no marker interface required)
+// 3. Use the mediator
+var host = builder.Build();
+await host.StartAsync();
+var mediator = host.Services.GetRequiredService<IMediator>();
+await mediator.Notify(new UserCreated("123", "user@example.com"));
+
+// 4. Define a notification (no marker interface required)
 public record UserCreated(string UserId, string Email);
 
-// 4. Create a handler (Handle returns Task)
+// 5. Create a handler (Handle returns Task)
 [Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class UserCreatedHandler : INotificationHandler<UserCreated>
 {
@@ -183,12 +189,6 @@ public class UserCreatedHandler : INotificationHandler<UserCreated>
         return Task.CompletedTask;
     }
 }
-
-// 5. Use the mediator
-var host = builder.Build();
-await host.StartAsync();
-var mediator = host.Services.GetRequiredService<IMediator>();
-await mediator.Notify(new UserCreated("123", "user@example.com"));
 ```
 
 For more detailed examples, see the [Usage Examples](#usage-examples) section below.
@@ -284,14 +284,10 @@ public record CreateUserCommand(string Email, string FirstName, string LastName)
 Multiple handlers can be registered for the same command type — all run sequentially on each `Send` call.
 
 ```csharp
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
 {
-    private readonly IUserRepository _userRepository;
-
-    public CreateUserCommandHandler(IUserRepository userRepository)
-    {
-        _userRepository = userRepository;
-    }
+    [Inject] public required IUserRepository UserRepository { get; init; }
 
     // Handle must return Task
     public async Task Handle(CreateUserCommand command, CancellationToken cancellationToken = default)
@@ -303,7 +299,7 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
             LastName = command.LastName
         };
 
-        await _userRepository.CreateAsync(user, cancellationToken);
+        await UserRepository.CreateAsync(user, cancellationToken);
     }
 }
 ```
@@ -327,19 +323,15 @@ public record UserDto(string Id, string Email, string FirstName, string LastName
 
 #### Create a Request Handler
 ```csharp
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserDto>
 {
-    private readonly IUserRepository _userRepository;
-
-    public GetUserQueryHandler(IUserRepository userRepository)
-    {
-        _userRepository = userRepository;
-    }
+    [Inject] public required IUserRepository UserRepository { get; init; }
 
     // Handle must return Task<TResponse>
     public async Task<UserDto> Handle(GetUserQuery query, CancellationToken cancellationToken = default)
     {
-        var user = await _userRepository.GetByIdAsync(query.UserId, cancellationToken);
+        var user = await UserRepository.GetByIdAsync(query.UserId, cancellationToken);
 
         return new UserDto(user.Id, user.Email, user.FirstName, user.LastName);
     }
@@ -349,7 +341,7 @@ public class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserDto>
 #### Send Requests
 ```csharp
 var query = new GetUserQuery("user123");
-var userDto = await mediator.Request<GetUserQuery, UserDto>(query);
+var userDto = await mediator.RequestGetUserQueryAsync(query);
 ```
 
 ### Streams
@@ -365,20 +357,16 @@ public record ActivityDto(string Id, string Action, DateTime Timestamp);
 
 #### Create a Stream Handler
 ```csharp
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class GetUserActivityQueryHandler : IStreamHandler<GetUserActivityQuery, ActivityDto>
 {
-    private readonly IActivityRepository _activityRepository;
-    
-    public GetUserActivityQueryHandler(IActivityRepository activityRepository)
-    {
-        _activityRepository = activityRepository;
-    }
+    [Inject] public required IActivityRepository ActivityRepository { get; init; }
     
     public async IAsyncEnumerable<ActivityDto> Handle(
         GetUserActivityQuery query, 
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await foreach (var activity in _activityRepository.GetUserActivityStreamAsync(
+        await foreach (var activity in ActivityRepository.GetUserActivityStreamAsync(
             query.UserId, query.FromDate, cancellationToken))
         {
             yield return new ActivityDto(activity.Id, activity.Action, activity.Timestamp);
@@ -391,7 +379,7 @@ public class GetUserActivityQueryHandler : IStreamHandler<GetUserActivityQuery, 
 ```csharp
 var query = new GetUserActivityQuery("user123", DateTime.UtcNow.AddDays(-30));
 
-await foreach (var activity in mediator.RequestStream<GetUserActivityQuery, ActivityDto>(query))
+await foreach (var activity in mediator.StreamGetUserActivityQueryAsync(query))
 {
     Console.WriteLine($"{activity.Timestamp}: {activity.Action}");
 }
@@ -427,12 +415,21 @@ public record GetRecentEventsQuery(int MaxItems);
 Register handlers under routing keys and dispatch to a specific subset at runtime. This is useful for scenarios such as queue/topic routing, tenant isolation, or environment-specific handling:
 
 ```csharp
-// Registration — same message type, different keys
-builder.Services.AddNetMediate(configure =>
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+public sealed class DefaultHandler : ICommandHandler<MyCommand>
 {
-    configure.RegisterCommandHandler<DefaultHandler, MyCommand>();        // null key → "__default"
-    configure.RegisterCommandHandler<AuditHandler, MyCommand>("audit");  // keyed
-});
+    public Task Handle(MyCommand message, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+}
+
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 2, Key = "audit")]
+public sealed class AuditHandler : ICommandHandler<MyCommand>
+{
+    public Task Handle(MyCommand message, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+}
+
+builder.Services.AddNetMediate();
 
 // Dispatch to null-key (default) handlers
 await mediator.Send(new MyCommand(), cancellationToken);
@@ -449,35 +446,62 @@ The `key` is propagated through the entire pipeline — behaviors receive it in 
 
 ### Pipeline Behaviors / Interceptors
 
-Behaviors wrap the handler pipeline and run in registration order. Register them via the builder using closed types — this is the only supported pattern, and it is fully AOT-safe:
+Behaviors wrap the handler pipeline and run in registration order. Register them as **closed types** in DI — this is the supported pattern, and it is fully AOT-safe:
 
 ```csharp
-builder.Services.UseNetMediate(configure =>
+[Injectable<IPipelineCommandBehavior<CreateUserCommand>>(ServiceLifetime.Singleton, Group = 10, Order = 1)]
+public sealed class AuditCommandBehavior : IPipelineCommandBehavior<CreateUserCommand>
 {
-    configure.RegisterBehavior<AuditCommandBehavior, CreateUserCommand, Task>();
-    configure.RegisterBehavior<AuditRequestBehavior<GetUserQuery, UserDto>, GetUserQuery, Task<UserDto>>();
-    configure.RegisterBehavior<LogNotificationBehavior<UserCreatedNotification>, UserCreatedNotification, Task>();
-});
+    public Task Handle(
+        object? key,
+        CreateUserCommand message,
+        PipelineBehaviorDelegate<CreateUserCommand, Task> next,
+        CancellationToken cancellationToken) =>
+        next(key, message, cancellationToken);
+}
+
+[Injectable<IPipelineRequestBehavior<GetUserQuery, UserDto>>(ServiceLifetime.Singleton, Group = 10, Order = 2)]
+public sealed class AuditRequestBehavior : IPipelineRequestBehavior<GetUserQuery, UserDto>
+{
+    public Task<UserDto> Handle(
+        object? key,
+        GetUserQuery message,
+        PipelineBehaviorDelegate<GetUserQuery, Task<UserDto>> next,
+        CancellationToken cancellationToken) =>
+        next(key, message, cancellationToken);
+}
+
+[Injectable<IPipelineNotificationBehavior<UserCreatedNotification>>(ServiceLifetime.Singleton, Group = 10, Order = 3)]
+public sealed class LogNotificationBehavior : IPipelineNotificationBehavior<UserCreatedNotification>
+{
+    public Task Handle(
+        object? key,
+        UserCreatedNotification message,
+        PipelineBehaviorDelegate<UserCreatedNotification, Task> next,
+        CancellationToken cancellationToken) =>
+        next(key, message, cancellationToken);
+}
+
+builder.Services.AddNetMediate();
 ```
 
 Example behavior — audit timing for requests:
 
 ```csharp
-public sealed class AuditRequestBehavior<TMessage, TResponse>
-    : IPipelineRequestBehavior<TMessage, TResponse>
-    where TMessage : notnull
+[Injectable<IPipelineRequestBehavior<GetUserQuery, UserDto>>(ServiceLifetime.Singleton, Group = 10, Order = 1)]
+public sealed class AuditRequestBehavior : IPipelineRequestBehavior<GetUserQuery, UserDto>
 {
     // Handle receives object? key — the same key passed to the dispatch call.
     // Use it for routing (e.g. queue/topic selection) or contextual filtering.
-    public async Task<TResponse> Handle(
+    public async Task<UserDto> Handle(
         object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        GetUserQuery message,
+        PipelineBehaviorDelegate<GetUserQuery, Task<UserDto>> next,
         CancellationToken cancellationToken)
     {
         var startedAt = DateTimeOffset.UtcNow;
         var response = await next(key, message, cancellationToken);
-        Console.WriteLine($"{typeof(TMessage).Name} handled in {DateTimeOffset.UtcNow - startedAt}");
+        Console.WriteLine($"{nameof(GetUserQuery)} handled in {DateTimeOffset.UtcNow - startedAt}");
         return response;
     }
 }
@@ -486,19 +510,18 @@ public sealed class AuditRequestBehavior<TMessage, TResponse>
 Example notification behavior:
 
 ```csharp
-public sealed class LogNotificationBehavior<TMessage>
-    : IPipelineBehavior<TMessage>
-    where TMessage : notnull
+[Injectable<IPipelineNotificationBehavior<UserCreatedNotification>>(ServiceLifetime.Singleton, Group = 10, Order = 1)]
+public sealed class LogNotificationBehavior : IPipelineNotificationBehavior<UserCreatedNotification>
 {
     public async Task Handle(
         object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task> next,
+        UserCreatedNotification message,
+        PipelineBehaviorDelegate<UserCreatedNotification, Task> next,
         CancellationToken cancellationToken)
     {
-        Console.WriteLine($"Dispatching {typeof(TMessage).Name} (key={key})");
+        Console.WriteLine($"Dispatching {nameof(UserCreatedNotification)} (key={key})");
         await next(key, message, cancellationToken);
-        Console.WriteLine($"Dispatched {typeof(TMessage).Name}");
+        Console.WriteLine($"Dispatched {nameof(UserCreatedNotification)}");
     }
 }
 ```

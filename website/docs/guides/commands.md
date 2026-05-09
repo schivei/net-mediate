@@ -23,18 +23,27 @@ await mediator.Send(new CreateUserCommand("john@example.com", "John Doe"));
 Register handlers under routing keys and dispatch to a specific subset at runtime. This is useful for scenarios such as queue/topic routing, tenant isolation, or environment-specific handling:
 
 ```csharp
-// Registration — same message type, different keys
-builder.Services.AddNetMediate(configure =>
-{
-    configure.RegisterCommandHandler<DefaultHandler, MyCommand>();        // null key → "__default"
-    configure.RegisterCommandHandler<AuditHandler, MyCommand>("audit");  // keyed
-});
+builder.Services.AddNetMediate();
 
 // Dispatch to null-key (default) handlers
 await mediator.Send(new MyCommand(), cancellationToken);
 
 // Dispatch only to "audit" handlers
 await mediator.Send("audit", new MyCommand(), cancellationToken);
+
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+public sealed class DefaultHandler : ICommandHandler<MyCommand>
+{
+    public Task Handle(MyCommand message, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+}
+
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 2, Key = "audit")]
+public sealed class AuditHandler : ICommandHandler<MyCommand>
+{
+    public Task Handle(MyCommand message, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+}
 ```
 
 The `key` is propagated through the entire pipeline — behaviors receive it in their `Handle(object? key, ...)` signature and can use it for routing, logging, or conditional logic.

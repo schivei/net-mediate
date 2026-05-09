@@ -11,7 +11,7 @@ For detailed stream documentation, see the main [README](https://github.com/schi
 ## Usage
 
 ```csharp
-await foreach (var item in mediator.RequestStream<GetEventsQuery, EventDto>(new GetEventsQuery()))
+await foreach (var item in mediator.StreamGetEventsQueryAsync(new GetEventsQuery()))
 {
     Console.WriteLine(item);
 }

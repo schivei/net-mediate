@@ -48,18 +48,16 @@ var builder = Host.CreateApplicationBuilder();
 builder.Services.AddNetMediate();
 ```
 
-That's it. The generator discovers all concrete (non-abstract, non-generic) classes that implement one of the NetMediate handler interfaces in your project and wires them up:
+That's it. The generator discovers all concrete (non-abstract, non-generic) classes that implement one of the NetMediate handler interfaces in your project and wires them up with closed-type DI registrations:
 
-| Discovered interface | Generated call |
+| Discovered interface | Generated result |
 |---|---|
-| `ICommandHandler<TMessage>` | `configure.RegisterCommandHandler<THandler, TMessage>()` |
-| `INotificationHandler<TMessage>` | `configure.RegisterNotificationHandler<THandler, TMessage>()` |
-| `IRequestHandler<TMessage, TResponse>` | `configure.RegisterRequestHandler<THandler, TMessage, TResponse>()` |
-| `IStreamHandler<TMessage, TResponse>` | `configure.RegisterStreamHandler<THandler, TMessage, TResponse>()` |
+| `ICommandHandler<TMessage>` | Closed-type registrations for the handler and command executor |
+| `INotificationHandler<TMessage>` | Closed-type registrations for the handler and notification executor |
+| `IRequestHandler<TMessage, TResponse>` | Closed-type registrations for the handler and request executor |
+| `IStreamHandler<TMessage, TResponse>` | Closed-type registrations for the handler and stream executor |
 
 The generated method is decorated with `[ExcludeFromCodeCoverage]` — you do not need to test it directly.
-
-If a class also implements `INotifiable` (e.g. a custom notifier), the generator uses `UseNetMediate<TNotifier>` instead of `UseNetMediate`.
 
 ## GenDI-first implementation style
 
@@ -94,8 +92,6 @@ Use GenDI metadata to control `ServiceLifetime`, `Group`, `Order`, and `Key`. Us
 > **Keyed handlers**: The source generator handles two cases automatically:
 > - Handler decorated with `[Injectable(..., Key = "mykey")]` → registered with the explicit key `"mykey"`.
 > - Handler with no `Key` → registered under `Extensions.DEFAULT_ROUTING_KEY = "__default"` (the same key used when `null` is passed at dispatch time, so `mediator.Send(command, ct)` and `mediator.Send(null, command, ct)` are equivalent).
->
-> If you want to register a handler under a custom key manually, you can still use `UseNetMediate`. Avoid using the reserved literal `"__default"` as your own routing key.
 
 ## AOT / NativeAOT
 
@@ -120,7 +116,7 @@ public sealed class FallbackHandler : ICommandHandler&lt;AuditCommand&gt; { ... 
 Registration order affects the **pipeline wrapping order**: behaviors registered earlier wrap
 the pipeline *outermost*, so they run before later-registered behaviors.
 
-> **Scope**: `Group` + `Order` come from GenDI metadata. Handlers registered manually via `UseNetMediate(configure => ...)` still follow the order you write them in code.
+> **Scope**: `Group` + `Order` come from GenDI metadata on the discovered implementations.
 
 ## Generated namespace and `AddNetMediate()` discoverability
 

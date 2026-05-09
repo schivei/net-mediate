@@ -52,7 +52,7 @@ builder.Services.AddNetMediate();
 await mediator.Send(new CreateUserCommand("user-1"), cancellationToken);
 
 // Request: single handler, returns a response
-var dto = await mediator.Request<GetUserRequest, UserDto>(new GetUserRequest("user-1"), cancellationToken);
+var dto = await mediator.RequestGetUserRequestAsync(new GetUserRequest("user-1"), cancellationToken);
 
 // Notification: all handlers started in parallel (fire-and-forget); handler exceptions discarded by executor
 await mediator.Notify(new UserCreatedNotification("user-1"), cancellationToken);
@@ -61,7 +61,7 @@ await mediator.Notify(new UserCreatedNotification("user-1"), cancellationToken);
 await mediator.Notify(new[] { n1, n2, n3 }, cancellationToken);
 
 // Stream: single handler; yields items asynchronously
-await foreach (var item in mediator.RequestStream<GetEventsQuery, EventDto>(new GetEventsQuery(), cancellationToken))
+await foreach (var item in mediator.StreamGetEventsQueryAsync(new GetEventsQuery(), cancellationToken))
     Console.WriteLine(item);
 ```
 
@@ -95,7 +95,7 @@ All handler `Handle` methods return `Task` or `Task<TResponse>`:
 
 ### Keyed handler registration
 
-All `Register*Handler` methods accept an optional `key` argument. This lets you register multiple handlers for the same message type under distinct keys and dispatch to a specific one at runtime:
+Use GenDI metadata to register multiple handlers for the same message type under distinct keys and dispatch to a specific one at runtime:
 
 ```csharp
 [Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
@@ -129,14 +129,21 @@ Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed reg
 
 ### Configuration
 
-Register behavior implementations using the builder:
+Register behavior implementations as closed types in DI:
 
 ```csharp
-// Via builder (closed-type, fully AOT-safe — the only supported approach)
-builder.Services.UseNetMediate(configure =>
+[Injectable<IPipelineRequestBehavior<MyRequest, MyResponse>>(ServiceLifetime.Singleton, Group = 10, Order = 1)]
+public sealed class MyLoggingBehavior : IPipelineRequestBehavior<MyRequest, MyResponse>
 {
-    configure.RegisterBehavior<MyLoggingBehavior, MyRequest, Task<MyResponse>>();
-});
+    public Task<MyResponse> Handle(
+        object? key,
+        MyRequest message,
+        PipelineBehaviorDelegate<MyRequest, Task<MyResponse>> next,
+        CancellationToken cancellationToken) =>
+        next(key, message, cancellationToken);
+}
+
+builder.Services.AddNetMediate();
 ```
 
 ### Behavior interfaces

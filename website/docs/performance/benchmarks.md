@@ -139,29 +139,20 @@ Publishing with `--self-contained -p:PublishTrimmed=true` reduces binary size bu
 
 ## Implementation model
 
-All handlers are registered explicitly via `IMediatorServiceBuilder` methods or the source generator:
+All handlers are registered through source generation and standard DI:
 
 ```csharp
-builder.Services.UseNetMediate(configure =>
-{
-    configure.RegisterCommandHandler<MyCommandHandler, MyCommand>();
-    configure.RegisterRequestHandler<MyRequestHandler, MyRequest, MyResponse>();
-    configure.RegisterNotificationHandler<MyNotificationHandler, MyNotification>();
-    configure.RegisterStreamHandler<MyStreamHandler, MyStream, MyItem>();
-});
-
-// Or via source generator (identical registrations, generated at compile time)
 builder.Services.AddNetMediate();
 ```
 
-At startup each `Register*Handler<>` call performs two `TryAddSingleton<>` / `TryAddTransient<>` registrations:
+At startup the generated registrations add the handler implementations plus the corresponding executors:
 
 | Handler kind | Executor registered |
 |---|---|
-| `RegisterCommandHandler<THandler, TMsg>` | `PipelineExecutor<TMsg, Task, ICommandHandler<TMsg>>` |
-| `RegisterNotificationHandler<THandler, TMsg>` | `NotificationPipelineExecutor<TMsg>` |
-| `RegisterRequestHandler<THandler, TMsg, TResp>` | `RequestPipelineExecutor<TMsg, TResp>` |
-| `RegisterStreamHandler<THandler, TMsg, TResp>` | `StreamPipelineExecutor<TMsg, TResp>` |
+| `ICommandHandler<TMsg>` | `PipelineExecutor<TMsg, Task, ICommandHandler<TMsg>>` |
+| `INotificationHandler<TMsg>` | `NotificationPipelineExecutor<TMsg>` |
+| `IRequestHandler<TMsg, TResp>` | `RequestPipelineExecutor<TMsg, TResp>` |
+| `IStreamHandler<TMsg, TResp>` | `StreamPipelineExecutor<TMsg, TResp>` |
 
 No `MakeGenericType`, no `typeof(TResult) switch`, no assembly scanning — fully NativeAOT-compatible.
 
@@ -180,7 +171,7 @@ No `MakeGenericType`, no `typeof(TResult) switch`, no assembly scanning — full
 
 ## Pipeline behavior resolution
 
-Behaviors are registered via `RegisterBehavior<TBehavior, TMessage, TResult>()` — closed types only. The resolved behavior arrays are cached per message-result type in the same `ConcurrentDictionary<Type, Lazy<T[]>>` as handlers, so no DI enumeration occurs on the hot path after the first dispatch of a given message type.
+Behaviors are registered as closed DI services (for example `IPipelineRequestBehavior<TMessage, TResponse>`) and the resolved behavior arrays are cached per message-result type in the same `ConcurrentDictionary<Type, Lazy<T[]>>` as handlers, so no DI enumeration occurs on the hot path after the first dispatch of a given message type.
 
 ### Command pipeline (`PipelineExecutor<TMsg, Task, ICommandHandler<TMsg>>`)
 

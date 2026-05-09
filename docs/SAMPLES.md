@@ -13,7 +13,7 @@ builder.Services.AddNetMediate();
 var app = builder.Build();
 app.MapPost("/orders", async (IMediator mediator, CreateOrder command, CancellationToken ct) =>
 {
-    var created = await mediator.Request<CreateOrder, OrderCreated>(command, ct);
+    var created = await mediator.RequestCreateOrderAsync(command, ct);
     return Results.Ok(created);
 });
 
@@ -30,13 +30,16 @@ builder.Services.AddHostedService<Worker>();
 
 await builder.Build().RunAsync();
 
-public sealed class Worker(IMediator mediator) : BackgroundService
+[Injectable(ServiceLifetime.Singleton)]
+public sealed class Worker : BackgroundService
 {
+    [Inject] public required IMediator Mediator { get; init; }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
-            await mediator.Send(new SyncCommand(), stoppingToken);
+            await Mediator.Send(new SyncCommand(), stoppingToken);
             await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
         }
     }
@@ -53,7 +56,7 @@ builder.Services.AddNetMediate();
 var app = builder.Build();
 app.MapPost("/orders", async (IMediator mediator, CreateOrder command, CancellationToken ct) =>
 {
-    var created = await mediator.Request<CreateOrder, OrderCreated>(command, ct);
+    var created = await mediator.RequestCreateOrderAsync(command, ct);
     return Results.Ok(created);
 });
 
@@ -65,13 +68,8 @@ app.Run();
 Register handlers under routing keys and dispatch selectively at runtime. The `key` flows through the entire pipeline, making it available to every behavior for contextual decisions such as queue selection or tenant routing.
 
 ```csharp
-// Registration — handlers share a message type but differ by key
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddNetMediate(configure =>
-{
-    configure.RegisterCommandHandler<DefaultOrderHandler, ProcessOrder>();        // null key → "__default"
-    configure.RegisterCommandHandler<PriorityOrderHandler, ProcessOrder>("priority"); // keyed
-});
+builder.Services.AddNetMediate();
 
 var app = builder.Build();
 
@@ -90,6 +88,20 @@ app.MapPost("/orders/priority", async (IMediator mediator, ProcessOrder cmd, Can
 });
 
 app.Run();
+
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+public sealed class DefaultOrderHandler : ICommandHandler<ProcessOrder>
+{
+    public Task Handle(ProcessOrder message, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+}
+
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 2, Key = "priority")]
+public sealed class PriorityOrderHandler : ICommandHandler<ProcessOrder>
+{
+    public Task Handle(ProcessOrder message, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+}
 ```
 
 > **Default routing key:** A `null` key (the default when no key is passed) is normalized internally to `"__default"`. Avoid using that literal string as your own routing key.

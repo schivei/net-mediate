@@ -1,29 +1,19 @@
 # NetMediate.Quartz
 
-> **GenDI pattern:** The examples below assume `AddNetMediate()` + GenDI working together. Prefer `[Injectable]` + `[Inject]` for serializers, notifiers, and supporting services.
+> **GenDI pattern:** The examples below assume `NetMediate.SourceGeneration` in the startup project. Prefer `[Injectable]` + `[Inject]` for serializers, notifiers, and supporting services.
 
-`NetMediate.Quartz` is an optional additional package alongside `NetMediate.Resilience` that integrates [Quartz.NET](https://www.quartz-scheduler.net/) into the notification pipeline.
+`NetMediate.Quartz` is an optional package that swaps the default NetMediate notification transport for Quartz-backed persistence.
 
 ## Why Quartz for notifications?
 
-The default NetMediate notification path dispatches handlers immediately in-process. This is fast and appropriate for most scenarios. However, if your process crashes before that work completes, there is no persisted transport to replay it automatically.
+The default NetMediate notification path dispatches handlers immediately in-process. `NetMediate.Quartz` persists notifications as Quartz jobs so they can survive process restarts and run across clustered nodes.
 
-`NetMediate.Quartz` replaces the default in-process notification path with persistent Quartz jobs:
-
-- **Crash recovery** — if the process terminates before a job fires, Quartz (with a persistent `AdoJobStore`) replays the job on the next startup.
-- **Cluster distribution** — with Quartz clustering enabled, notification jobs are load-balanced across nodes.
-
-> This integration affects **only notifications**. Commands, requests, and streams continue to use the core in-process pipeline.
+> This integration affects **only notifications**. Commands, requests, and streams continue to use the normal NetMediate pipeline.
 
 ## Installation
 
 ```bash
 dotnet add package NetMediate.Quartz
-```
-
-You will also need Quartz itself and its hosting package:
-
-```bash
 dotnet add package Quartz
 dotnet add package Quartz.Extensions.DependencyInjection
 dotnet add package Quartz.Extensions.Hosting
@@ -35,9 +25,9 @@ dotnet add package Quartz.Extensions.Hosting
 using NetMediate.Quartz;
 using Quartz;
 
-var builder = Host.CreateApplicationBuilder();
+var builder = Host.CreateApplicationBuilder(args);
 
-// 1. Configure Quartz (use AdoJobStore for persistence)
+// 1. Configure Quartz first
 builder.Services.AddQuartz(q =>
 {
     q.UseMicrosoftDependencyInjectionJobFactory();
@@ -45,7 +35,10 @@ builder.Services.AddQuartz(q =>
 });
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
-// 2. Register NetMediate with Quartz as the notification transport
+// 2. Register the generated NetMediate services
+builder.Services.AddNetMediate();
+
+// 3. Replace the default notifier with the Quartz notifier
 builder.Services.AddNetMediateQuartz(opts =>
 {
     opts.GroupName = "MyApp";
@@ -54,6 +47,8 @@ builder.Services.AddNetMediateQuartz(opts =>
 var host = builder.Build();
 await host.RunAsync();
 ```
+
+`AddNetMediateQuartz()` does **not** call `AddNetMediate()` for you. It only wires the Quartz-based `INotifiable` implementation and related options.
 
 ## Configuration
 
@@ -74,12 +69,12 @@ builder.Services.AddNetMediateQuartz(opts =>
 
 ## Customizing serialization
 
-By default messages are serialized with `System.Text.Json`. You can replace the serializer by registering a custom `INotificationSerializer` *after* `AddNetMediateQuartz`:
+By default messages are serialized with `System.Text.Json`. You can replace the serializer after `AddNetMediateQuartz`:
 
 ```csharp
+builder.Services.AddNetMediate();
 builder.Services.AddNetMediateQuartz();
 
-// Replace with a custom serializer (e.g., MessagePack)
 builder.Services.AddSingleton<INotificationSerializer, MyMessagePackSerializer>();
 ```
 
@@ -119,32 +114,3 @@ builder.Services.AddQuartz(q =>
     });
 });
 ```
-
-## Architecture notes
-
-```
-IMediator.Notify(message)
-    └─► INotifiable.Notify(key, message) (QuartzNotifier)
-            └─► Quartz schedules QuartzNotificationJob
-                    └─► (job fires) QuartzNotificationJob.Execute
-                            └─► INotifiable.DispatchNotifications(key, message, handlers)
-                                    └─► Validation + Behaviors + Handlers
-```
-
-`QuartzNotificationJob` stores three values in the Quartz `JobDataMap`:
-
-| Key | Value |
-|---|---|
-| `netmediate_message` | JSON-serialized notification payload |
-| `netmediate_type` | Assembly-qualified CLR type name |
-| `netmediate_key` | Routing key (null if not keyed) |
-
-The generic dispatch is cached per message type using a `ConcurrentDictionary` to minimise reflection overhead after the first invocation.
-
-## Target frameworks
-
-`NetMediate.Quartz` is published for:
-
-- `net10.0`
-- `netstandard2.0`
-- `netstandard2.1`

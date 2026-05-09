@@ -229,7 +229,7 @@ Exceptions in stream handlers propagate immediately to the consumer:
 ```csharp
 try
 {
-    await foreach (var item in mediator.RequestStream<MyQuery, MyResult>(new MyQuery()))
+    await foreach (var item in mediator.StreamMyQueryAsync(new MyQuery()))
     {
         Console.WriteLine(item);
     }

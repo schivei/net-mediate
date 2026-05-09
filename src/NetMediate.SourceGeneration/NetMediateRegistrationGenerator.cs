@@ -152,7 +152,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// Builds the infrastructure setup lines that go BEFORE the UseNetMediate configure block.
+    /// Builds the infrastructure setup lines that go before the generated handler registrations.
     /// For Resilience: registers default option singletons (user may override by registering the
     /// same type before calling <c>AddNetMediate()</c>; <see cref="ServiceCollectionDescriptorExtensions.TryAddSingleton"/>
     /// skips registration when the type is already present).

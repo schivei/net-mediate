@@ -104,6 +104,6 @@ public sealed class PriorityOrderHandler : ICommandHandler<ProcessOrder>
 }
 ```
 
-> **Default routing key:** A `null` key (the default when no key is passed) is normalized internally to `"__default"`. Avoid using that literal string as your own routing key.
+> **Keyless dispatch:** A `null` key (the default when no key is passed) flows through the pipeline unchanged and targets the non-keyed handlers registered in the container.
 
 > **NativeAOT:** Keyed registration uses `IKeyedServiceProvider` internally and is **not NativeAOT-compatible**.

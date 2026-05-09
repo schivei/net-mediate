@@ -54,7 +54,7 @@ public sealed class MediatorAndNotifierCoverageTests
             services.AddSingleton(sp =>
                 new CommandPipelineExecutor<CommandMessage>(
                     sp,
-                    NullLogger<NotificationPipelineExecutor<CommandMessage>>.Instance
+                    NullLogger<CommandPipelineExecutor<CommandMessage>>.Instance
                 )
             );
         });
@@ -79,7 +79,7 @@ public sealed class MediatorAndNotifierCoverageTests
             services.AddSingleton(sp =>
                 new CommandPipelineExecutor<CommandMessage>(
                     sp,
-                    NullLogger<NotificationPipelineExecutor<CommandMessage>>.Instance
+                    NullLogger<CommandPipelineExecutor<CommandMessage>>.Instance
                 )
             );
         });
@@ -104,7 +104,7 @@ public sealed class MediatorAndNotifierCoverageTests
             services.AddSingleton(sp =>
                 new CommandPipelineExecutor<CommandMessage>(
                     sp,
-                    NullLogger<NotificationPipelineExecutor<CommandMessage>>.Instance
+                    NullLogger<CommandPipelineExecutor<CommandMessage>>.Instance
                 )
             );
         });
@@ -119,7 +119,7 @@ public sealed class MediatorAndNotifierCoverageTests
     }
 
     [Fact]
-    public async Task Mediator_Request_WhenExecutorCompletes_WrapsCanceledContinuation()
+    public async Task Mediator_Request_WhenExecutorCompletes_ReturnsResponse()
     {
         using var provider = BuildProvider(services =>
         {
@@ -133,14 +133,12 @@ public sealed class MediatorAndNotifierCoverageTests
         });
 
         var mediator = new Mediator(provider, new SpyNotifiable());
-        var exception = await Assert.ThrowsAsync<MediatorException>(() =>
-            mediator.Request<RequestMessage, Response>(
-                new RequestMessage(7),
-                TestContext.Current.CancellationToken
-            )
+        var response = await mediator.Request<RequestMessage, Response>(
+            new RequestMessage(7),
+            TestContext.Current.CancellationToken
         );
 
-        Assert.IsType<TaskCanceledException>(exception.InnerException);
+        Assert.Equal(7, response.Value);
     }
 
     [Fact]

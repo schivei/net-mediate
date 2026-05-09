@@ -6,9 +6,9 @@ namespace NetMediate;
 /// Provides an abstract base class for executing a pipeline that processes messages and returns asynchronous streams of
 /// responses.
 /// </summary>
-/// <remarks>The pipeline is constructed using handlers and behaviors resolved from the provided service provider.
-/// Pipelines are cached per service provider and key to improve performance for repeated invocations. This class is
-/// intended to be extended to implement custom pipeline execution logic for streaming scenarios.</remarks>
+/// <remarks>The pipeline is constructed using handlers and behaviors resolved from the provided service provider for
+/// each invocation. This class is intended to be extended to implement custom pipeline execution logic for streaming
+/// scenarios.</remarks>
 /// <typeparam name="TMessage">The type of message to be processed by the pipeline. Must not be null.</typeparam>
 /// <typeparam name="TResponse">The type of response produced by the pipeline.</typeparam>
 /// <param name="serviceProvider">The service provider used to resolve pipeline handlers and behaviors.</param>
@@ -17,9 +17,9 @@ public sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvider
     /// <summary>
     /// Invokes the pipeline for the specified message and returns an asynchronous stream of responses.
     /// </summary>
-    /// <remarks>The pipeline is cached per service provider and key to optimize repeated invocations. The
-    /// returned stream may yield zero or more responses depending on the handler implementation.</remarks>
-    /// <param name="key">An optional key used to identify the pipeline instance. If null, a default routing key is used.</param>
+    /// <remarks>The pipeline is built lazily for each invocation. The returned stream may yield zero or more
+    /// responses depending on the handler implementation.</remarks>
+    /// <param name="key">An optional key used to identify the pipeline instance. If null, keyless handlers are used.</param>
     /// <param name="message">The message to be processed by the pipeline.</param>
     /// <param name="exec">The delegate that executes the handler pipeline for the message.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the asynchronous operation.</param>
@@ -64,20 +64,20 @@ public sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvider
             ? serviceProvider.GetServices<IStreamHandler<TMessage, TResponse>>().ToArray()
             : ResolveKeyedHandlers(key);
 
-        var behaviors = serviceProvider.GetServices<IPipelineStreamBehavior<TMessage, TResponse>>();
+        var behaviors = serviceProvider.GetServices<IPipelineStreamBehavior<TMessage, TResponse>>().ToArray();
 
         PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> app =
             handlers.Length == 1
                 ? (_, msg, ct) => handlers[0].Handle(msg, ct)
                 : (routingKey, msg, ct) => exec(routingKey, msg, handlers, ct);
 
-        var pipeline = behaviors.Any()
-            ? behaviors
-                .Reverse()
+        var pipeline = behaviors.Length == 0
+            ? app
+            : behaviors.AsEnumerable().Reverse()
                 .Aggregate(
                     app,
                     (current, behavior) => (routingKey, msg, ct) => behavior.Handle(routingKey, msg, current, ct)
-                ) : app;
+                );
 
         return pipeline;
     }

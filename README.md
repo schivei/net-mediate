@@ -449,7 +449,7 @@ await mediator.SendMyCommandAsync("audit", new MyCommand(), cancellationToken);
 
 The `key` is propagated through the entire pipeline — behaviors receive it in their `Handle(object? key, ...)` signature and can use it for routing, logging, or conditional logic.
 
-> **Default routing key:** A `null` key (the default when no key is passed) is normalized internally to the constant `Extensions.DEFAULT_ROUTING_KEY = "__default"`. This means `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are exactly equivalent. Avoid using the literal string `"__default"` as your own routing key to prevent conflicts.
+> **Keyless dispatch:** A `null` key (the default when no key is passed) flows through the pipeline unchanged. `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are exactly equivalent and target the non-keyed handlers registered in the container.
 
 > **NativeAOT:** Keyed dispatch is fully NativeAOT + Trimming compatible. The source generator emits a `KeyedHandlerRegistry<T>` at compile time — no reflection, no `IKeyedServiceProvider` is used at runtime. Both keyed and non-keyed dispatch are safe for NativeAOT and trimmed deployments.
 

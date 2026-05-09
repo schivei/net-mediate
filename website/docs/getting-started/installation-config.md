@@ -114,7 +114,7 @@ await mediator.SendMyCommandAsync("audit", command, ct);
 The same `key` parameter is available on all dispatch methods: `Send(key, ...)`, `Notify(key, ...)`, `Request(key, ...)`, and `RequestStream(key, ...)`.
 
 :::note Default routing key
-A `null` key is normalized internally to `Extensions.DEFAULT_ROUTING_KEY = "__default"`. This means `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are exactly equivalent. Avoid using the literal string `"__default"` as your own routing key to prevent conflicts.
+A `null` key flows through the pipeline unchanged. This means `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are exactly equivalent and target the non-keyed handlers registered in the container.
 :::
 
 :::caution NativeAOT

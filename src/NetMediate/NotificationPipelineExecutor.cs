@@ -58,37 +58,37 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
             ? serviceProvider.GetServices<INotificationHandler<TMessage>>().ToArray()
             : ResolveKeyedHandlers(key);
 
-        var behaviors = serviceProvider.GetServices<IPipelineNotificationBehavior<TMessage>>();
+        var behaviors = serviceProvider.GetServices<IPipelineNotificationBehavior<TMessage>>().ToArray();
 
         PipelineBehaviorDelegate<TMessage, Task> app =
             handlers.Length == 1
                 ? (_, msg, ct) => handlers[0].Handle(msg, ct)
                 : (routingKey, msg, ct) => exec(routingKey, msg, handlers, ct);
 
-        var pipeline = behaviors.Any()
-            ? behaviors
-                .Reverse()
+        var pipeline = behaviors.Length == 0
+            ? app
+            : behaviors.AsEnumerable().Reverse()
                 .Aggregate(
                     app,
                     (current, behavior) => (routingKey, msg, ct) => behavior.Handle(routingKey, msg, current, ct)
-                ) : app;
+                );
 
         return ErrorReporting;
 
-        Task ErrorReporting(object? routingKey, TMessage msg, CancellationToken ct)
+        async Task ErrorReporting(object? routingKey, TMessage msg, CancellationToken ct)
         {
-            return pipeline(routingKey, msg, ct).ContinueWith(
-                tt =>
-                {
-                    logger.LogError(
-                        tt.Exception,
-                        "Error executing notification pipeline for message of type {MessageType}: {Message}",
-                        typeof(TMessage).FullName, tt.Exception!.Message);
-                },
-                ct,
-                TaskContinuationOptions.OnlyOnFaulted,
-                TaskScheduler.Default
-            );
+            try
+            {
+                await pipeline(routingKey, msg, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(
+                    ex,
+                    "Error executing notification pipeline for message of type {MessageType}: {Message}",
+                    typeof(TMessage).FullName, ex.Message);
+                throw;
+            }
         }
     }
 }

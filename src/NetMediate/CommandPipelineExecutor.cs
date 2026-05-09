@@ -12,7 +12,7 @@ namespace NetMediate;
 /// <typeparam name="TMessage">The type of command message to be processed. Must be non-null.</typeparam>
 /// <param name="serviceProvider">The service provider used to resolve command handlers and pipeline behaviors.</param>
 /// <param name="logger">The logger used to record errors and diagnostic information during pipeline execution.</param>
-public sealed class CommandPipelineExecutor<TMessage>(IServiceProvider serviceProvider, ILogger<NotificationPipelineExecutor<TMessage>> logger)
+public sealed class CommandPipelineExecutor<TMessage>(IServiceProvider serviceProvider, ILogger<CommandPipelineExecutor<TMessage>> logger)
     where TMessage : notnull
 {
     /// <summary>
@@ -58,12 +58,11 @@ public sealed class CommandPipelineExecutor<TMessage>(IServiceProvider servicePr
             ? serviceProvider.GetServices<ICommandHandler<TMessage>>().ToArray()
             : ResolveKeyedHandlers(key);
 
-        var behaviorArray = serviceProvider.GetServices<IPipelineCommandBehavior<TMessage>>();
+        var behaviorArray = serviceProvider.GetServices<IPipelineCommandBehavior<TMessage>>().ToArray();
 
-        var pipeline = !behaviorArray.Any()
+        var pipeline = behaviorArray.Length == 0
             ? App
-            : behaviorArray
-                .Reverse()
+            : behaviorArray.AsEnumerable().Reverse()
                 .Aggregate<IPipelineCommandBehavior<TMessage>, PipelineBehaviorDelegate<TMessage, Task>>(
                     App,
                     (current, behavior) => (routingKey, msg, ct) => behavior.Handle(routingKey, msg, current, ct)
@@ -71,39 +70,22 @@ public sealed class CommandPipelineExecutor<TMessage>(IServiceProvider servicePr
 
         return ErrorReporting;
 
-        Task App(object? routingKey, TMessage msg, CancellationToken ct)
+        Task App(object? routingKey, TMessage msg, CancellationToken ct) => exec(routingKey, msg, handlers, ct);
+
+        async Task ErrorReporting(object? routingKey, TMessage msg, CancellationToken ct)
         {
             try
             {
-                _ = exec(routingKey, msg, handlers, ct);
+                await pipeline(routingKey, msg, ct).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
                 logger.LogError(
                     ex,
-                    "Error dispatching Command handlers for message of type {MessageType}: {Message}",
+                    "Error executing Command pipeline for message of type {MessageType}: {Message}",
                     typeof(TMessage).FullName, ex.Message);
+                throw;
             }
-
-            return Task.CompletedTask;
-        }
-
-        Task ErrorReporting(object? routingKey, TMessage msg, CancellationToken ct)
-        {
-            var t = pipeline(routingKey, msg, ct);
-            t.ContinueWith(
-                tt =>
-                {
-                    logger.LogError(
-                        tt.Exception,
-                        "Error executing Command pipeline for message of type {MessageType}: {Message}",
-                        typeof(TMessage).FullName, tt.Exception!.Message);
-                },
-                ct,
-                TaskContinuationOptions.OnlyOnFaulted,
-                TaskScheduler.Default
-            );
-            return t;
         }
     }
 }

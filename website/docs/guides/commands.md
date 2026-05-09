@@ -48,7 +48,7 @@ public sealed class AuditHandler : ICommandHandler<MyCommand>
 
 The `key` is propagated through the entire pipeline — behaviors receive it in their `Handle(object? key, ...)` signature and can use it for routing, logging, or conditional logic.
 
-> **Default routing key:** A `null` key is normalized internally to `"__default"`. This means `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are exactly equivalent. Avoid using `"__default"` as your own routing key.
+> **Keyless dispatch:** A `null` key flows through the pipeline unchanged. `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are equivalent and target the non-keyed handlers registered in the container.
 
 > **NativeAOT:** Keyed dispatch is fully NativeAOT + Trimming compatible. The source generator emits a `KeyedHandlerRegistry<T>` at compile time — no reflection, no `IKeyedServiceProvider` is used at runtime. Both keyed and non-keyed dispatch are safe for NativeAOT and trimmed deployments.
 

@@ -242,7 +242,7 @@ jobs:
                             valid = 1
 
                         branch_key = (filename, line_number)
-                        prev_covered, prev_valid = merged_branches.get(branch_key, (0, valid))
+                        prev_covered, prev_valid = merged_branches.get(branch_key, (0, 0))
                         merged_branches[branch_key] = (
                             max(prev_covered, covered),
                             max(prev_valid, valid),

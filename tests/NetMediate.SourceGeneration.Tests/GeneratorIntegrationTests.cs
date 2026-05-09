@@ -412,7 +412,7 @@ public sealed class GeneratorIntegrationTests
     }
 
     [Fact]
-    public void Generator_WhenCommandHandlerHasKeyedServiceAttribute_ShouldRegisterWithKey()
+    public void Generator_WhenCommandHandlerHasInjectableKeyAttribute_EmitsKeyedHandlerRegistry()
     {
         const string userSource = """
             using GenDI;
@@ -438,10 +438,11 @@ public sealed class GeneratorIntegrationTests
         Assert.Contains("\"primary\"", generatedSource);
         Assert.Contains("KeyedHandlerRegistry", generatedSource);
         Assert.Contains("global::NetMediate.ICommandHandler<global::MyApp.PingCommand>", generatedSource);
+        Assert.Contains("Func<global::System.IServiceProvider", generatedSource);
     }
 
     [Fact]
-    public void Generator_WhenRequestHandlerHasKeyedServiceAttribute_ShouldRegisterWithKey()
+    public void Generator_WhenRequestHandlerHasInjectableKeyAttribute_EmitsKeyedHandlerRegistry()
     {
         const string userSource = """
             using GenDI;
@@ -467,10 +468,11 @@ public sealed class GeneratorIntegrationTests
         Assert.Contains("\"find\"", generatedSource);
         Assert.Contains("KeyedHandlerRegistry", generatedSource);
         Assert.Contains("global::NetMediate.IRequestHandler<global::MyApp.GetQuery, string>", generatedSource);
+        Assert.Contains("Func<global::System.IServiceProvider", generatedSource);
     }
 
     [Fact]
-    public void Generator_WhenNotificationHandlerHasKeyedServiceAttribute_ShouldRegisterWithKey()
+    public void Generator_WhenNotificationHandlerHasInjectableKeyAttribute_EmitsKeyedHandlerRegistry()
     {
         const string userSource = """
             using GenDI;
@@ -496,10 +498,11 @@ public sealed class GeneratorIntegrationTests
         Assert.Contains("\"alerts\"", generatedSource);
         Assert.Contains("KeyedHandlerRegistry", generatedSource);
         Assert.Contains("global::NetMediate.INotificationHandler<global::MyApp.AlertNotification>", generatedSource);
+        Assert.Contains("Func<global::System.IServiceProvider", generatedSource);
     }
 
     [Fact]
-    public void Generator_WhenStreamHandlerHasKeyedServiceAttribute_ShouldRegisterWithKey()
+    public void Generator_WhenStreamHandlerHasInjectableKeyAttribute_EmitsKeyedHandlerRegistry()
     {
         const string userSource = """
             using GenDI;
@@ -528,6 +531,7 @@ public sealed class GeneratorIntegrationTests
         Assert.Contains("\"stream-a\"", generatedSource);
         Assert.Contains("KeyedHandlerRegistry", generatedSource);
         Assert.Contains("global::NetMediate.IStreamHandler<global::MyApp.StreamQuery, int>", generatedSource);
+        Assert.Contains("Func<global::System.IServiceProvider", generatedSource);
     }
 
     /// <summary>
@@ -580,10 +584,11 @@ public sealed class GeneratorIntegrationTests
 
     /// <summary>
     /// A transient keyed handler (<c>ServiceLifetime.Transient</c>) must generate a factory
-    /// that creates a new instance on every invocation (no <c>Lazy&lt;T&gt;</c> wrapper).
+    /// that creates a new instance on every invocation using the active scope's
+    /// <see cref="IServiceProvider"/> (no <c>Lazy&lt;T&gt;</c> wrapper).
     /// </summary>
     [Fact]
-    public void Generator_TransientKeyedHandler_GeneratesDirectFactory()
+    public void Generator_TransientKeyedHandler_GeneratesDirectScopedFactory()
     {
         const string userSource = """
             using GenDI;
@@ -607,9 +612,49 @@ public sealed class GeneratorIntegrationTests
         var (generatedSource, _) = RunGenerator("MyApp", userSource);
 
         Assert.Contains("\"fly\"", generatedSource);
-        // Transient: direct new expression in the dictionary, no Lazy variable
+        // Transient: direct new expression using _sp (active scope provider), no Lazy variable
         Assert.Contains("new global::MyApp.FlyHandler()", generatedSource);
         Assert.DoesNotContain("System.Lazy", generatedSource);
+        // Factory signature uses IServiceProvider parameter
+        Assert.Contains("Func<global::System.IServiceProvider", generatedSource);
+    }
+
+    /// <summary>
+    /// A scoped keyed handler must generate a factory that creates a new instance using the
+    /// active scope's <see cref="IServiceProvider"/> (same as transient — no
+    /// <c>Lazy&lt;T&gt;</c> wrapper). This ensures that scoped dependencies injected into the
+    /// handler are resolved from the correct scope.
+    /// </summary>
+    [Fact]
+    public void Generator_ScopedKeyedHandler_GeneratesScopeAwareFactory()
+    {
+        const string userSource = """
+            using GenDI;
+            using NetMediate;
+            using Microsoft.Extensions.DependencyInjection;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record WorkCommand;
+
+            [Injectable(ServiceLifetime.Scoped, Key = "worker")]
+            public sealed class WorkHandler : ICommandHandler<WorkCommand>
+            {
+                public Task Handle(WorkCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var (generatedSource, _) = RunGenerator("MyApp", userSource);
+
+        Assert.Contains("\"worker\"", generatedSource);
+        // Scoped: uses active scope _sp, not Lazy captured from root sp
+        Assert.Contains("new global::MyApp.WorkHandler()", generatedSource);
+        Assert.DoesNotContain("System.Lazy", generatedSource);
+        // Factory signature uses IServiceProvider parameter
+        Assert.Contains("Func<global::System.IServiceProvider", generatedSource);
     }
 
 

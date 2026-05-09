@@ -46,8 +46,8 @@ public sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvider
     private IStreamHandler<TMessage, TResponse>[] ResolveKeyedHandlers(object key)
     {
         var registry = serviceProvider.GetService<KeyedHandlerRegistry<IStreamHandler<TMessage, TResponse>>>();
-        if (registry is not null && registry.TryGet(key, out var keyed) && keyed is not null)
-            return [keyed];
+        if (registry is not null && registry.TryGetAll(key, serviceProvider, out var handlers) && handlers.Length > 0)
+            return handlers;
         return serviceProvider.GetServices<IStreamHandler<TMessage, TResponse>>().ToArray();
     }
 

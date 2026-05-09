@@ -44,8 +44,8 @@ public sealed class CommandPipelineExecutor<TMessage>(IServiceProvider servicePr
     private ICommandHandler<TMessage>[] ResolveKeyedHandlers(object key)
     {
         var registry = serviceProvider.GetService<KeyedHandlerRegistry<ICommandHandler<TMessage>>>();
-        if (registry is not null && registry.TryGet(key, out var keyed) && keyed is not null)
-            return [keyed];
+        if (registry is not null && registry.TryGetAll(key, serviceProvider, out var handlers) && handlers.Length > 0)
+            return handlers;
         return serviceProvider.GetServices<ICommandHandler<TMessage>>().ToArray();
     }
 

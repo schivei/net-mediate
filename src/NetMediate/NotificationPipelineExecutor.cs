@@ -44,8 +44,8 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
     private INotificationHandler<TMessage>[] ResolveKeyedHandlers(object key)
     {
         var registry = serviceProvider.GetService<KeyedHandlerRegistry<INotificationHandler<TMessage>>>();
-        if (registry is not null && registry.TryGet(key, out var keyed) && keyed is not null)
-            return [keyed];
+        if (registry is not null && registry.TryGetAll(key, serviceProvider, out var handlers) && handlers.Length > 0)
+            return handlers;
         return serviceProvider.GetServices<INotificationHandler<TMessage>>().ToArray();
     }
 

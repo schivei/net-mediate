@@ -322,24 +322,48 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         var inner = baseIndent + "    ";
         var inner2 = inner + "    ";
         var inner3 = inner2 + "    ";
+        var inner4 = inner3 + "    ";
 
-        // Determine if any entry is non-transient (Singleton=0 or Scoped=1)
-        var hasSingletons = entries.Any(e => e.lifetime != 2 /* not Transient */);
+        // Group entries by key literal so multiple handlers for the same key are
+        // combined into a single array entry in the dictionary.
+        var byKey = new Dictionary<string, List<(int lifetime, string handlerFqn, string ctorArgs)>>(
+            StringComparer.Ordinal
+        );
+        foreach (var (keyLiteral, lifetime, handlerFqn, ctorArgs) in entries)
+        {
+            if (!byKey.TryGetValue(keyLiteral, out var list))
+            {
+                list = [];
+                byKey[keyLiteral] = list;
+            }
+            list.Add((lifetime, handlerFqn, ctorArgs));
+        }
+
+        // Collect all singleton handlers that need a Lazy variable (Singleton=0).
+        // Scoped (1) and Transient (2) both use the active scope's IServiceProvider.
+        var singletonEntries = entries
+            .Where(e => e.lifetime == 0 /* Singleton */)
+            .Select(e => (e.handlerFqn, e.ctorArgs))
+            .Distinct()
+            .ToList();
+
+        var hasSingletons = singletonEntries.Count > 0;
 
         sb.AppendLine(
             $"{baseIndent}services.AddSingleton<global::NetMediate.KeyedHandlerRegistry<{ifceFqn}>>(static sp =>"
         );
         sb.AppendLine($"{baseIndent}{{");
 
-        // Declare Lazy variables for singleton/scoped entries
-        foreach (var (keyLiteral, lifetime, handlerFqn, ctorArgs) in entries)
+        // Declare Lazy<T> variables for singleton entries. These capture the outer `sp`
+        // (the root/singleton-scope provider) so the singleton instance is created once.
+        foreach (var (handlerFqn, ctorArgs) in singletonEntries)
         {
-            if (lifetime == 2)
-                continue; // Transient: no lazy needed
-
             var lazyVar = BuildLazyVarName(handlerFqn);
+            var args = string.IsNullOrEmpty(ctorArgs)
+                ? ctorArgs
+                : BuildCtorArgsWithSp(ctorArgs, "sp");
             sb.AppendLine(
-                $"{inner}var {lazyVar} = new global::System.Lazy<{ifceFqn}>(() => new {handlerFqn}({ctorArgs}));"
+                $"{inner}var {lazyVar} = new global::System.Lazy<{ifceFqn}>(() => new {handlerFqn}({args}));"
             );
         }
 
@@ -350,33 +374,73 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             $"{inner}return new global::NetMediate.KeyedHandlerRegistry<{ifceFqn}>("
         );
         sb.AppendLine(
-            $"{inner2}new global::System.Collections.Generic.Dictionary<object, global::System.Func<{ifceFqn}>>"
+            $"{inner2}new global::System.Collections.Generic.Dictionary<object, global::System.Func<global::System.IServiceProvider, {ifceFqn}>[]>"
         );
         sb.AppendLine($"{inner2}{{");
 
-        for (var i = 0; i < entries.Count; i++)
+        var keyList = byKey.Keys.ToList();
+        for (var ki = 0; ki < keyList.Count; ki++)
         {
-            var (keyLiteral, lifetime, handlerFqn, ctorArgs) = entries[i];
-            var comma = i < entries.Count - 1 ? "," : string.Empty;
+            var keyLiteral = keyList[ki];
+            var handlerList = byKey[keyLiteral];
+            var keyComma = ki < keyList.Count - 1 ? "," : string.Empty;
 
-            if (lifetime == 2)
+            if (handlerList.Count == 1)
             {
-                // Transient: new instance each time
-                sb.AppendLine(
-                    $"{inner3}{{ {keyLiteral}, () => new {handlerFqn}({ctorArgs}) }}{comma}"
-                );
+                var (lifetime, handlerFqn, ctorArgs) = handlerList[0];
+                var factory = BuildFactory(lifetime, handlerFqn, ctorArgs, ifceFqn);
+                sb.AppendLine($"{inner3}{{ {keyLiteral}, [{factory}] }}{keyComma}");
             }
             else
             {
-                // Singleton/Scoped: shared Lazy instance
-                var lazyVar = BuildLazyVarName(handlerFqn);
-                sb.AppendLine($"{inner3}{{ {keyLiteral}, () => {lazyVar}.Value }}{comma}");
+                sb.AppendLine($"{inner3}{{ {keyLiteral}, [");
+                for (var hi = 0; hi < handlerList.Count; hi++)
+                {
+                    var (lifetime, handlerFqn, ctorArgs) = handlerList[hi];
+                    var factory = BuildFactory(lifetime, handlerFqn, ctorArgs, ifceFqn);
+                    var handlerComma = hi < handlerList.Count - 1 ? "," : string.Empty;
+                    sb.AppendLine($"{inner4}{factory}{handlerComma}");
+                }
+                sb.AppendLine($"{inner3}] }}{keyComma}");
             }
         }
 
         sb.AppendLine($"{inner2}}});");
         sb.AppendLine($"{baseIndent}}});");
     }
+
+    private static string BuildFactory(
+        int lifetime,
+        string handlerFqn,
+        string ctorArgs,
+        string ifceFqn
+    )
+    {
+        if (lifetime == 0 /* Singleton */)
+        {
+            // Singleton: return the value from the Lazy captured in the outer `sp` scope.
+            // The `_sp` parameter is ignored because the instance must come from the root scope.
+            var lazyVar = BuildLazyVarName(handlerFqn);
+            return $"static (_sp) => {lazyVar}.Value";
+        }
+        else
+        {
+            // Scoped (1) or Transient (2): create a new instance from the active scope's _sp.
+            var args = string.IsNullOrEmpty(ctorArgs)
+                ? string.Empty
+                : BuildCtorArgsWithSp(ctorArgs, "_sp");
+            return $"(_sp) => new {handlerFqn}({args})";
+        }
+    }
+
+    /// <summary>
+    /// Replaces the service-provider variable name in a pre-built ctor-args string.
+    /// The generator builds ctor-args with a placeholder "sp" (the outer singleton factory
+    /// parameter); this method swaps it for <paramref name="spVar"/> when the actual
+    /// resolution should come from a different provider variable.
+    /// </summary>
+    private static string BuildCtorArgsWithSp(string ctorArgs, string spVar)
+        => ctorArgs.Replace("sp.GetRequiredService", $"{spVar}.GetRequiredService");
 
     /// <summary>
     /// Returns a safe local variable name for the lazy wrapper of a handler.

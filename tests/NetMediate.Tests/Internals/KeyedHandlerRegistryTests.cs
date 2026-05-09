@@ -17,133 +17,181 @@ public sealed class KeyedHandlerRegistryTests
     private sealed class BetaHandler : ITestHandler { public string Name => "beta"; }
 
     [Fact]
-    public void TryGet_WhenKeyRegistered_ReturnsTrueAndHandler()
+    public void TryGetAll_WhenKeyRegistered_ReturnsTrueAndHandler()
     {
         var alpha = new AlphaHandler();
+        using var provider = new ServiceCollection().BuildServiceProvider();
         var registry = new KeyedHandlerRegistry<ITestHandler>(
-            new Dictionary<object, Func<ITestHandler>>
+            new Dictionary<object, Func<IServiceProvider, ITestHandler>[]>
             {
-                { "alpha", () => alpha }
+                { "alpha", [_ => alpha] }
             }
         );
 
-        var found = registry.TryGet("alpha", out var handler);
+        var found = registry.TryGetAll("alpha", provider, out var handlers);
 
         Assert.True(found);
-        Assert.Same(alpha, handler);
+        Assert.Single(handlers);
+        Assert.Same(alpha, handlers[0]);
     }
 
     [Fact]
-    public void TryGet_WhenKeyNotRegistered_ReturnsFalseAndDefault()
+    public void TryGetAll_WhenKeyNotRegistered_ReturnsFalseAndEmptyArray()
     {
+        using var provider = new ServiceCollection().BuildServiceProvider();
         var registry = new KeyedHandlerRegistry<ITestHandler>(
-            new Dictionary<object, Func<ITestHandler>>
+            new Dictionary<object, Func<IServiceProvider, ITestHandler>[]>
             {
-                { "alpha", () => new AlphaHandler() }
+                { "alpha", [_ => new AlphaHandler()] }
             }
         );
 
-        var found = registry.TryGet("missing", out var handler);
+        var found = registry.TryGetAll("missing", provider, out var handlers);
 
         Assert.False(found);
-        Assert.Null(handler);
+        Assert.Empty(handlers);
     }
 
     [Fact]
-    public void TryGet_ForTransient_ReturnsNewInstanceEachCall()
+    public void TryGetAll_ForTransient_ReturnsNewInstanceEachCall()
     {
+        using var provider = new ServiceCollection().BuildServiceProvider();
         var registry = new KeyedHandlerRegistry<ITestHandler>(
-            new Dictionary<object, Func<ITestHandler>>
+            new Dictionary<object, Func<IServiceProvider, ITestHandler>[]>
             {
-                { "alpha", () => new AlphaHandler() }
+                { "alpha", [_ => new AlphaHandler()] }
             }
         );
 
-        registry.TryGet("alpha", out var first);
-        registry.TryGet("alpha", out var second);
+        registry.TryGetAll("alpha", provider, out var first);
+        registry.TryGetAll("alpha", provider, out var second);
 
-        Assert.NotNull(first);
-        Assert.NotNull(second);
-        Assert.NotSame(first, second);
+        Assert.NotEmpty(first);
+        Assert.NotEmpty(second);
+        Assert.NotSame(first[0], second[0]);
     }
 
     [Fact]
-    public void TryGet_ForSingleton_ReturnsSameInstanceEachCall()
+    public void TryGetAll_ForSingleton_ReturnsSameInstanceEachCall()
     {
         var lazy = new Lazy<ITestHandler>(() => new AlphaHandler());
+        using var provider = new ServiceCollection().BuildServiceProvider();
         var registry = new KeyedHandlerRegistry<ITestHandler>(
-            new Dictionary<object, Func<ITestHandler>>
+            new Dictionary<object, Func<IServiceProvider, ITestHandler>[]>
             {
-                { "alpha", () => lazy.Value }
+                { "alpha", [_ => lazy.Value] }
             }
         );
 
-        registry.TryGet("alpha", out var first);
-        registry.TryGet("alpha", out var second);
+        registry.TryGetAll("alpha", provider, out var first);
+        registry.TryGetAll("alpha", provider, out var second);
 
-        Assert.Same(first, second);
+        Assert.Same(first[0], second[0]);
     }
 
     [Fact]
-    public void TryGet_WithMultipleKeys_ResolvesEachCorrectly()
+    public void TryGetAll_WithMultipleKeys_ResolvesEachCorrectly()
     {
+        using var provider = new ServiceCollection().BuildServiceProvider();
         var registry = new KeyedHandlerRegistry<ITestHandler>(
-            new Dictionary<object, Func<ITestHandler>>
+            new Dictionary<object, Func<IServiceProvider, ITestHandler>[]>
             {
-                { "alpha", () => new AlphaHandler() },
-                { "beta", () => new BetaHandler() }
+                { "alpha", [_ => new AlphaHandler()] },
+                { "beta", [_ => new BetaHandler()] }
             }
         );
 
-        registry.TryGet("alpha", out var alpha);
-        registry.TryGet("beta", out var beta);
+        registry.TryGetAll("alpha", provider, out var alphaHandlers);
+        registry.TryGetAll("beta", provider, out var betaHandlers);
 
-        Assert.Equal("alpha", alpha?.Name);
-        Assert.Equal("beta", beta?.Name);
+        Assert.Equal("alpha", alphaHandlers[0].Name);
+        Assert.Equal("beta", betaHandlers[0].Name);
     }
 
     [Fact]
-    public void PipelineExecutor_FallsBackToGetServices_WhenNoRegistryRegistered()
+    public void TryGetAll_WithMultipleHandlersSameKey_ReturnsAllHandlers()
     {
+        var alpha = new AlphaHandler();
+        var beta = new BetaHandler();
+        using var provider = new ServiceCollection().BuildServiceProvider();
+        var registry = new KeyedHandlerRegistry<ITestHandler>(
+            new Dictionary<object, Func<IServiceProvider, ITestHandler>[]>
+            {
+                { "multi", [_ => alpha, _ => beta] }
+            }
+        );
+
+        var found = registry.TryGetAll("multi", provider, out var handlers);
+
+        Assert.True(found);
+        Assert.Equal(2, handlers.Length);
+        Assert.Same(alpha, handlers[0]);
+        Assert.Same(beta, handlers[1]);
+    }
+
+    [Fact]
+    public void TryGetAll_ForScoped_UsesCurrentScopeServiceProvider()
+    {
+        // Scoped factory receives the active IServiceProvider.
+        // Verify that the factory is called with the provider passed to TryGetAll.
+        IServiceProvider? capturedProvider = null;
+        using var rootProvider = new ServiceCollection().BuildServiceProvider();
+
+        var registry = new KeyedHandlerRegistry<ITestHandler>(
+            new Dictionary<object, Func<IServiceProvider, ITestHandler>[]>
+            {
+                {
+                    "scoped",
+                    [sp =>
+                    {
+                        capturedProvider = sp;
+                        return new AlphaHandler();
+                    }]
+                }
+            }
+        );
+
+        registry.TryGetAll("scoped", rootProvider, out _);
+
+        Assert.Same(rootProvider, capturedProvider);
+    }
+
+    [Fact]
+    public void Registry_WhenNotRegistered_FallbackToGetServices_ReturnsAllHandlers()
+    {
+        // When no KeyedHandlerRegistry is registered in DI, GetService returns null.
+        // Pipeline executors fall back to GetServices<T>() in this case.
         var services = new ServiceCollection();
         services.AddSingleton<ICommandHandler<string>>(
             static _ => new StringCommandHandler()
         );
         using var provider = services.BuildServiceProvider();
 
-        // No KeyedHandlerRegistry<ICommandHandler<string>> is registered.
-        // The executor should fall back to GetServices and return all handlers.
         var registry = provider.GetService<KeyedHandlerRegistry<ICommandHandler<string>>>();
         Assert.Null(registry);
 
-        // Fallback path: standard DI still resolves the handler
+        // Fallback path: standard DI resolves the handler
         var handlers = provider.GetServices<ICommandHandler<string>>().ToList();
         Assert.Single(handlers);
     }
 
     [Fact]
-    public void PipelineExecutor_UsesRegistry_WhenKeyIsRegistered()
+    public void Registry_WhenRegistered_TryGetAllResolvesCorrectHandlers()
     {
         var keyedHandler = new StringCommandHandler();
+        using var provider = new ServiceCollection().BuildServiceProvider();
 
-        var services = new ServiceCollection();
-        services.AddSingleton<KeyedHandlerRegistry<ICommandHandler<string>>>(
-            _ => new KeyedHandlerRegistry<ICommandHandler<string>>(
-                new Dictionary<object, Func<ICommandHandler<string>>>
-                {
-                    { "specific", () => keyedHandler }
-                }
-            )
+        var registry = new KeyedHandlerRegistry<ICommandHandler<string>>(
+            new Dictionary<object, Func<IServiceProvider, ICommandHandler<string>>[]>
+            {
+                { "specific", [_ => keyedHandler] }
+            }
         );
 
-        using var provider = services.BuildServiceProvider();
-
-        var registry = provider.GetService<KeyedHandlerRegistry<ICommandHandler<string>>>();
-        Assert.NotNull(registry);
-
-        var found = registry.TryGet("specific", out var resolved);
+        var found = registry.TryGetAll("specific", provider, out var handlers);
         Assert.True(found);
-        Assert.Same(keyedHandler, resolved);
+        Assert.Single(handlers);
+        Assert.Same(keyedHandler, handlers[0]);
     }
 
     private sealed class StringCommandHandler : ICommandHandler<string>

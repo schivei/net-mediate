@@ -279,12 +279,16 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
     private static void ProcessHandlerInterface(ProcessHandlerInterfaceArguments arguments)
     {
-        AddCommand(arguments);
-        AddNotification(arguments);
-        AddRequest(arguments);
+        if (!TryCreateBehaviorRegistration(arguments, out var registration))
+            return;
+
+        AddBehaviorRegistrations(registration);
     }
 
-    private static void AddRequest(ProcessHandlerInterfaceArguments arguments)
+    private static bool TryCreateBehaviorRegistration(
+        ProcessHandlerInterfaceArguments arguments,
+        out BehaviorRegistration registration
+    )
     {
         var (
             interfaceName,
@@ -297,176 +301,131 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             _
         ) = arguments;
 
-        if (arity == 2 && args.Length == 2)
+        registration = default;
+
+        if (arity == 1 && args.Length == 1 && IsAccessible(args[0]))
         {
-            if (!IsAccessible(args[0]) || !IsAccessible(args[1]))
-                return;
-
             var msg = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            var resp = args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            switch (interfaceName)
+            registration = interfaceName switch
             {
-                case RequestHandlerIfce:
-                    AddRequestBehaviors(
-                        msg,
-                        resp,
-                        hasDiagnostics,
-                        hasResilience,
-                        diagnosticsBehaviors,
-                        resilienceBehaviors
-                    );
-                    break;
-            }
+                CommandHandlerIfce => new BehaviorRegistration(
+                    CommandHandlerIfce,
+                    msg,
+                    null,
+                    hasDiagnostics,
+                    hasResilience,
+                    diagnosticsBehaviors,
+                    resilienceBehaviors
+                ),
+                NotificationHandlerIfce => new BehaviorRegistration(
+                    NotificationHandlerIfce,
+                    msg,
+                    null,
+                    hasDiagnostics,
+                    hasResilience,
+                    diagnosticsBehaviors,
+                    resilienceBehaviors
+                ),
+                _ => default
+            };
+
+            return registration.MessageFqn is not null;
         }
-    }
 
-    private static void AddCommand(ProcessHandlerInterfaceArguments arguments)
-    {
-        var (
-            _,
-            arity,
-            args,
-            hasDiagnostics,
-            hasResilience,
-            diagnosticsBehaviors,
-            resilienceBehaviors,
-            _
-        ) = arguments;
-
-        if (arity == 1 && args.Length == 1)
+        if (interfaceName == RequestHandlerIfce && arity == 2 && args.Length == 2 && IsAccessible(args[0]) && IsAccessible(args[1]))
         {
-            if (!IsAccessible(args[0]))
-                return;
-
-            var msg = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            AddCommandBehaviors(
-                msg,
+            registration = new BehaviorRegistration(
+                RequestHandlerIfce,
+                args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
                 hasDiagnostics,
                 hasResilience,
                 diagnosticsBehaviors,
                 resilienceBehaviors
             );
+            return true;
         }
+
+        return false;
     }
 
-    private static void AddCommandBehaviors(
-        string msg,
-        bool hasDiagnostics,
-        bool hasResilience,
-        Dictionary<string, bool> diag,
-        Dictionary<string, bool> res
+    private static void AddBehaviorRegistrations(BehaviorRegistration registration)
+    {
+        AddBehaviorIfEnabled(
+            registration.DiagnosticsBehaviors,
+            registration.HasDiagnostics,
+            BuildBehaviorRegistration(
+                $"{GlobalNamespace}NetMediate.Diagnostics.",
+                "Telemetry",
+                registration.InterfaceName,
+                registration.MessageFqn,
+                registration.ResponseFqn
+            )
+        );
+
+        AddBehaviorIfEnabled(
+            registration.ResilienceBehaviors,
+            registration.HasResilience,
+            BuildBehaviorRegistration(
+                $"{GlobalNamespace}NetMediate.Resilience.",
+                "Retry",
+                registration.InterfaceName,
+                registration.MessageFqn,
+                registration.ResponseFqn
+            )
+        );
+        AddBehaviorIfEnabled(
+            registration.ResilienceBehaviors,
+            registration.HasResilience,
+            BuildBehaviorRegistration(
+                $"{GlobalNamespace}NetMediate.Resilience.",
+                "Timeout",
+                registration.InterfaceName,
+                registration.MessageFqn,
+                registration.ResponseFqn
+            )
+        );
+        AddBehaviorIfEnabled(
+            registration.ResilienceBehaviors,
+            registration.HasResilience,
+            BuildBehaviorRegistration(
+                $"{GlobalNamespace}NetMediate.Resilience.",
+                "CircuitBreaker",
+                registration.InterfaceName,
+                registration.MessageFqn,
+                registration.ResponseFqn
+            )
+        );
+    }
+
+    private static void AddBehaviorIfEnabled(
+        Dictionary<string, bool> registrations,
+        bool enabled,
+        string registration
     )
     {
-        if (hasDiagnostics)
-        {
-            diag.AddIfNew(
-                $"services.TryAddSingleton<{GlobalNamespace}NetMediate.Diagnostics.TelemetryCommandBehavior<{msg}>>();"
-            );
-        }
-
-        if (hasResilience)
-        {
-            res.AddIfNew(
-                $"services.TryAddSingleton<{GlobalNamespace}NetMediate.Resilience.RetryCommandBehavior<{msg}>>();"
-            );
-            res.AddIfNew(
-                $"services.TryAddSingleton<{GlobalNamespace}NetMediate.Resilience.TimeoutCommandBehavior<{msg}>>();"
-            );
-            res.AddIfNew(
-                $"services.TryAddSingleton<{GlobalNamespace}NetMediate.Resilience.CircuitBreakerCommandBehavior<{msg}>>();"
-            );
-        }
+        if (enabled)
+            registrations.AddIfNew(registration);
     }
 
-    private static void AddNotification(ProcessHandlerInterfaceArguments arguments)
-    {
-        var (
-            _,
-            arity,
-            args,
-            hasDiagnostics,
-            hasResilience,
-            diagnosticsBehaviors,
-            resilienceBehaviors,
-            _
-        ) = arguments;
-
-        if (arity == 1 && args.Length == 1)
-        {
-            if (!IsAccessible(args[0]))
-                return;
-
-            var msg = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-
-            AddNotificationBehaviors(
-                msg,
-                hasDiagnostics,
-                hasResilience,
-                diagnosticsBehaviors,
-                resilienceBehaviors
-            );
-        }
-    }
-
-    private static void AddNotificationBehaviors(
-        string msg,
-        bool hasDiagnostics,
-        bool hasResilience,
-        Dictionary<string, bool> diag,
-        Dictionary<string, bool> res
+    private static string BuildBehaviorRegistration(
+        string namespacePrefix,
+        string behaviorPrefix,
+        string interfaceName,
+        string messageFqn,
+        string? responseFqn
     )
     {
-        if (hasDiagnostics)
+        var behaviorName = interfaceName switch
         {
-            diag.AddIfNew(
-                $"services.TryAddSingleton<{GlobalNamespace}NetMediate.Diagnostics.TelemetryNotificationBehavior<{msg}>>();"
-            );
-        }
+            CommandHandlerIfce => $"{behaviorPrefix}CommandBehavior<{messageFqn}>",
+            NotificationHandlerIfce => $"{behaviorPrefix}NotificationBehavior<{messageFqn}>",
+            RequestHandlerIfce when responseFqn is not null =>
+                $"{behaviorPrefix}RequestBehavior<{messageFqn}, {responseFqn}>",
+            _ => throw new InvalidOperationException($"Unsupported handler interface '{interfaceName}'.")
+        };
 
-        if (hasResilience)
-        {
-            res.AddIfNew(
-                $"services.TryAddSingleton<{GlobalNamespace}NetMediate.Resilience.RetryNotificationBehavior<{msg}>>();"
-            );
-            res.AddIfNew(
-                $"services.TryAddSingleton<{GlobalNamespace}NetMediate.Resilience.TimeoutNotificationBehavior<{msg}>>();"
-            );
-            res.AddIfNew(
-                $"services.TryAddSingleton<{GlobalNamespace}NetMediate.Resilience.CircuitBreakerNotificationBehavior<{msg}>>();"
-            );
-        }
-    }
-
-    private static void AddRequestBehaviors(
-        string msg,
-        string resp,
-        bool hasDiagnostics,
-        bool hasResilience,
-        Dictionary<string, bool> diag,
-        Dictionary<string, bool> res
-    )
-    {
-        if (hasDiagnostics)
-        {
-            diag.AddIfNew(
-                $"services.TryAddSingleton<{GlobalNamespace}NetMediate.Diagnostics.TelemetryRequestBehavior<{msg}, {resp}>>();"
-            );
-        }
-
-        if (hasResilience)
-        {
-            res.AddIfNew(
-                $"services.TryAddSingleton<{GlobalNamespace}NetMediate.Resilience.RetryRequestBehavior<{msg}, {resp}>>();"
-            );
-            res.AddIfNew(
-                $"services.TryAddSingleton<{GlobalNamespace}NetMediate.Resilience.TimeoutRequestBehavior<{msg}, {resp}>>();"
-            );
-            res.AddIfNew(
-                $"services.TryAddSingleton<{GlobalNamespace}NetMediate.Resilience.CircuitBreakerRequestBehavior<{msg}, {resp}>>();"
-            );
-        }
+        return $"services.TryAddSingleton<{namespacePrefix}{behaviorName}>();";
     }
 
     // -------------------------------------------------------------------------

@@ -19,11 +19,14 @@ For direct usage, this is enough:
 
 ```xml
 <PackageReference Include="NetMediate.Core" Version="x.x.x" />
-<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
 
 :::tip Library projects
-If you publish your own library, you may optionally add `PrivateAssets="all"` to the `NetMediate.SourceGeneration` reference to avoid flowing the generator package transitively to downstream consumers.
+Use `NetMediate.SourceGeneration` with the explicit analyzer-style metadata shown above.
 :::
 
 ### Configuration

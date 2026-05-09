@@ -1,9 +1,7 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using NetMediate.Tests.Messages;
+﻿using NetMediate.Tests.Messages;
 
 namespace NetMediate.Tests.RequestHandlers;
 
-[KeyedService(Key = "routing")]
 internal sealed class KeyedRequestHandler : BaseHandler, IRequestHandler<MessageRequest, int>
 {
     public async Task<int> Handle(

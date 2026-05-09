@@ -310,6 +310,9 @@ jobs:
     - name: Pack NetMediate package
       run: dotnet pack src/NetMediate/NetMediate.csproj --configuration Release --output ./packages
 
+    - name: Pack NetMediate.Core package
+      run: dotnet pack src/NetMediate.Core/NetMediate.Core.csproj --configuration Release --output ./packages
+
     - name: Pack NetMediate.Diagnostics package
       run: dotnet pack src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release --output ./packages
 

@@ -23,14 +23,20 @@ Then open your `.csproj` and add the `PackageReference`:
 
 ```xml
 <PackageReference Include="NetMediate.Core" Version="*" />
-<PackageReference Include="NetMediate.SourceGeneration" Version="*" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
 
 :::tip Library projects
-If you are building a **library** (not an application), add `PrivateAssets="all"` to the `NetMediate.SourceGeneration` reference to prevent the generator package from flowing as a transitive dependency to consumers of your library. The generator still runs for your project:
+Use the generator package with the explicit analyzer-style metadata:
 
 ```xml
-<PackageReference Include="NetMediate.SourceGeneration" Version="*" PrivateAssets="all" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
 :::
 

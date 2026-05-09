@@ -198,7 +198,10 @@ See [RESILIENCE.md](RESILIENCE.md) for full details.
 Install `NetMediate.SourceGeneration` directly in the startup/application project. Its `buildTransitive` file adds `NetMediate` and `GenDI.SourceGenerator` automatically:
 
 ```xml
-<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
 
 ### Usage

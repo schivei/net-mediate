@@ -79,10 +79,13 @@ dotnet add package NetMediate.SourceGeneration
 ### PackageReference
 ```xml
 <PackageReference Include="NetMediate.Core" Version="x.x.x" />
-<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
 
-> **Note:** `NetMediate.SourceGeneration` adds `NetMediate` and `GenDI.SourceGenerator` indirectly via `buildTransitive`. Those indirect dependencies are required for the generated experience and should not be removed.
+> **Note:** `NetMediate.SourceGeneration` should be referenced with `IncludeAssets` + `PrivateAssets="all"`. It adds `NetMediate` and `GenDI.SourceGenerator` indirectly via `buildTransitive`.
 
 ### Optional companion packages
 ```xml

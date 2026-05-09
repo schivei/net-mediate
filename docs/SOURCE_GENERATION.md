@@ -7,7 +7,10 @@ Install `NetMediate.SourceGeneration` directly in the startup/application projec
 ## Installation
 
 ```xml
-<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
 
 That is all for the startup/application project. `dotnet add package NetMediate.SourceGeneration` is enough to activate the generator and pull the required indirect dependencies.

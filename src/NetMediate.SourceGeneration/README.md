@@ -1,9 +1,12 @@
 # NetMediate.SourceGeneration
 
-Install this package in the application's startup/main project:
+Reference this package in the application's startup/main project with:
 
-```bash
-dotnet add package NetMediate.SourceGeneration
+```xml
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
 
 `NetMediate.SourceGeneration` is the package that runs the NetMediate source generator directly.

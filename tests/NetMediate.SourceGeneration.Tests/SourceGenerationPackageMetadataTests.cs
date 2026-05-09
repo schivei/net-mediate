@@ -59,6 +59,7 @@ public class SourceGenerationPackageMetadataTests
         Assert.Equal("Elton Schivei Costa", metadata.Element(ns + "authors")?.Value);
         Assert.Equal("logo.png", metadata.Element(ns + "icon")?.Value);
         Assert.Equal("README.md", metadata.Element(ns + "readme")?.Value);
+        Assert.Equal("true", metadata.Element(ns + "developmentDependency")?.Value);
     }
 
     [Fact]

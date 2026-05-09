@@ -23,7 +23,10 @@ Handler registration is generated at compile time by `NetMediate.SourceGeneratio
 Install the generator package in the startup/application project. It adds the required `NetMediate` runtime and `GenDI.SourceGenerator` automatically:
 
 ```xml
-<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
 
 > **Contracts-only projects:** Use `NetMediate.Core` in shared libraries that only need the contracts.

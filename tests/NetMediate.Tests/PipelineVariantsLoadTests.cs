@@ -452,9 +452,7 @@ public sealed class PipelineVariantsLoadTests(ITestOutputHelper output)
             async (i, _) => await body(i)
         );
 
-    private static async Task<(IMediator mediator, IHost host)> CreateHostAsync(
-        Action<IMediatorServiceBuilder> configure
-    )
+    private static async Task<(IMediator mediator, IHost host)> CreateHostAsync(Action<dynamic> configure)
     {
         var builder = Host.CreateApplicationBuilder();
         builder.Services.UseNetMediate(configure);

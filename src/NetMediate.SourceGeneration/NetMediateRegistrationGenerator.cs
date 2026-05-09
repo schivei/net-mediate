@@ -90,6 +90,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 }
                 """
             );
+            return;
         }
 
         var registrations = BuildRegistrations(types, hasDiagnostics, hasResilience, coverage);

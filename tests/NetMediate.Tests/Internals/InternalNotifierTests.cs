@@ -10,9 +10,7 @@ public class InternalNotifierTests
 {
     private record TestNotification;
 
-    private static (Notifier notifier, ServiceProvider provider) BuildNotifier(
-        Action<IMediatorServiceBuilder>? configure = null
-    )
+    private static (Notifier notifier, ServiceProvider provider) BuildNotifier(Action<dynamic>? configure = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();

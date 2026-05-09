@@ -30,10 +30,11 @@ After running the command, your `.csproj` will have `PackageReference` entries f
 ```xml
 <ItemGroup>
   <PackageReference Include="NetMediate.Core" Version="*" />
-  <PackageReference Include="NetMediate.SourceGeneration" Version="*" />
+  <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    <PrivateAssets>all</PrivateAssets>
+  </PackageReference>
 
-  <!-- Optional for NuGet-producing projects -->
-  <!-- <PackageReference Include="NetMediate.SourceGeneration" Version="*" PrivateAssets="all" /> -->
 </ItemGroup>
 ```
 
@@ -53,15 +54,21 @@ Add the following to your `.csproj` file:
 ```xml
 <ItemGroup>
   <PackageReference Include="NetMediate.Core" Version="*" />
-  <PackageReference Include="NetMediate.SourceGeneration" Version="*" />
+  <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    <PrivateAssets>all</PrivateAssets>
+  </PackageReference>
 </ItemGroup>
 ```
 
 :::tip Library projects: PrivateAssets
-If you are building a **library** (not an application), consider adding `PrivateAssets="all"` to the `NetMediate.SourceGeneration` reference to prevent the generator package from flowing transitively to consumers of your package.
+`NetMediate.SourceGeneration` should use the explicit analyzer-style metadata below:
 
 ```xml
-<PackageReference Include="NetMediate.SourceGeneration" Version="*" PrivateAssets="all" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
  
 `NetMediate.SourceGeneration` still adds `NetMediate` and `GenDI.SourceGenerator` for the direct project.

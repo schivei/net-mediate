@@ -10,6 +10,7 @@
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
 		<NoWarn>$(NoWarn);RS2008;NU5128</NoWarn>
+		<DevelopmentDependency>true</DevelopmentDependency>
 	</PropertyGroup>
 	<ItemGroup>
 		<None Include="..\..\assets\logo.png" Pack="true" PackagePath="\" />

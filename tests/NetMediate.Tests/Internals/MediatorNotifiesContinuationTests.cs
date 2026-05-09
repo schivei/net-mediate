@@ -54,7 +54,7 @@ public sealed class MediatorNotifiesContinuationTests
         ) => next(key, message.Mark(), cancellationToken);
     }
 
-    private static ServiceProvider BuildProvider(Action<IMediatorServiceBuilder> configure)
+    private static ServiceProvider BuildProvider(Action<dynamic> configure)
     {
         var services = new ServiceCollection();
         services.AddLogging();

@@ -8,7 +8,7 @@ namespace {{AssemblyNamespace}};
 /// These methods are AOT-safe and reflection-free — they call the fully-typed
 /// <c>IMediator</c> overloads directly with all type arguments resolved at compile time.
 /// </remarks>
-public partial static partial class NetMediateGeneratedDI
+public static partial class NetMediateGeneratedDI
 {
 {{TypedExtensions}}
 }

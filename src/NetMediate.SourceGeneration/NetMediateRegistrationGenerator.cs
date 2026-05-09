@@ -79,6 +79,8 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
         if (isNetMediateAssembly || types.IsEmpty)
         {
+            // This fallback stub does not flow through the template token replacement path,
+            // so the coverage attribute must stay fully qualified here.
             sourceProductionContext.AddSource(
                 "NetMediateGeneratedDI.g.cs",
                 """

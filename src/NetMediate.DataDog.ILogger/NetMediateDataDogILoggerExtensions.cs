@@ -22,7 +22,8 @@ public static class NetMediateDataDogILoggerExtensions
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
-        services.ConfigureOptions(configure ?? (static _ => { }));
+        services.AddOptions();
+        services.Configure<DataDogILoggerOptions>(configure ?? (static _ => { }));
         return services;
     }
 

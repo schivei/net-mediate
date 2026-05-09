@@ -7,11 +7,6 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <NoWarn>CS1591;xUnit1051;$(NoWarn)</NoWarn>
-    <_LocalPackageSources></_LocalPackageSources>
-    <_LocalPackageSources Condition="Exists('..\..\src\NetMediate\bin\Release')">..\..\src\NetMediate\bin\Release</_LocalPackageSources>
-    <_LocalPackageSources Condition="'$(_LocalPackageSources)' != '' and Exists('..\..\src\NetMediate.SourceGeneration\bin\Release')">$(_LocalPackageSources);..\..\src\NetMediate.SourceGeneration\bin\Release</_LocalPackageSources>
-    <_LocalPackageSources Condition="'$(_LocalPackageSources)' == '' and Exists('..\..\src\NetMediate.SourceGeneration\bin\Release')">..\..\src\NetMediate.SourceGeneration\bin\Release</_LocalPackageSources>
-    <RestoreAdditionalProjectSources>$(_LocalPackageSources)</RestoreAdditionalProjectSources>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="10.*">
@@ -22,10 +17,6 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.*" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />
-    <PackageReference Include="NetMediate.SourceGeneration" Version="*">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
     <PackageReference Include="xunit.v3" Version="3.*" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.*">
       <PrivateAssets>all</PrivateAssets>
@@ -34,12 +25,9 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
+    <ProjectReference Include="..\..\src\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
-  <Target Name="PreBuild" BeforeTargets="PreBuildEvent">
-      <MSBuild Projects="..\..\src\NetMediate\NetMediate.csproj" Targets="Pack" Properties="Configuration=Release" />
-      <MSBuild Projects="..\..\src\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj" Targets="Pack" Properties="Configuration=Release" />
-  </Target>
 </Project>

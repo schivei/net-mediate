@@ -50,7 +50,7 @@ public class SourceGenerationPackageMetadataTests
         using var stream = nuspecEntry.Open();
         var nuspec = XDocument.Load(stream);
 
-        var ns = XNamespace.Get("http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd");
+        var ns = nuspec.Root?.Name.Namespace ?? XNamespace.None;
         var metadata = nuspec.Root?.Element(ns + "metadata");
 
         Assert.NotNull(metadata);

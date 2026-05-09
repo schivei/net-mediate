@@ -228,8 +228,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     hasResilience,
                     diagnosticsBehaviors,
                     resilienceBehaviors,
-                    handlerType,
-                    coverage
+                    handlerType
                 )
             );
         }
@@ -597,8 +596,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             hasResilience,
             diagnosticsBehaviors,
             resilienceBehaviors,
-            handlerType,
-            coverage
+            handlerType
         ) = arguments;
 
         foreach (var @interface in handlerType.AllInterfaces)

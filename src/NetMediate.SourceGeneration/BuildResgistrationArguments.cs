@@ -7,8 +7,7 @@ internal readonly record struct BuildRegistrationArguments(
     bool HasResilience,
     Dictionary<string, bool> DiagnosticsBehaviors,
     Dictionary<string, bool> ResilienceBehaviors,
-    INamedTypeSymbol HandlerType,
-    string Coverage
+    INamedTypeSymbol HandlerType
 )
 {
     public static implicit operator (
@@ -16,8 +15,7 @@ internal readonly record struct BuildRegistrationArguments(
         bool hasResilience,
         Dictionary<string, bool> diagnosticsBehaviors,
         Dictionary<string, bool> resilienceBehaviors,
-        INamedTypeSymbol handlerType,
-        string coverage
+        INamedTypeSymbol handlerType
     )(BuildRegistrationArguments args)
     {
         return (
@@ -25,8 +23,7 @@ internal readonly record struct BuildRegistrationArguments(
             args.HasResilience,
             args.DiagnosticsBehaviors,
             args.ResilienceBehaviors,
-            args.HandlerType,
-            args.Coverage
+            args.HandlerType
         );
     }
 
@@ -36,8 +33,7 @@ internal readonly record struct BuildRegistrationArguments(
             bool hasResilience,
             Dictionary<string, bool> diagnosticsBehaviors,
             Dictionary<string, bool> resilienceBehaviors,
-            INamedTypeSymbol handlerType,
-            string coverage
+            INamedTypeSymbol handlerType
         ) arguments
     )
     {
@@ -46,8 +42,7 @@ internal readonly record struct BuildRegistrationArguments(
             arguments.hasResilience,
             arguments.diagnosticsBehaviors,
             arguments.resilienceBehaviors,
-            arguments.handlerType,
-            arguments.coverage
+            arguments.handlerType
         );
     }
 }

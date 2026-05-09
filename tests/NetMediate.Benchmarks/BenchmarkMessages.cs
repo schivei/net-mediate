@@ -57,22 +57,26 @@ public sealed record BenchStreamItem(int Index);
 [Injectable(ServiceLifetime.Singleton)]
 public sealed class BenchStreamHandler : IStreamHandler<BenchStreamRequest, BenchStreamItem>
 {
-    /// <inheritdoc/>
-    IAsyncEnumerable<BenchStreamItem> IHandler<BenchStreamRequest, IAsyncEnumerable<BenchStreamItem>>.Handle(
-        BenchStreamRequest message,
-        CancellationToken cancellationToken
-    ) => EnumerateBenchStreamItemsAsync(cancellationToken);
+    private readonly BenchStreamItem[] _items =
+    [
+        new(1),
+        new(2),
+        new(3),
+    ];
 
-    private static async IAsyncEnumerable<BenchStreamItem> EnumerateBenchStreamItemsAsync(
+    /// <inheritdoc/>
+    public async IAsyncEnumerable<BenchStreamItem> Handle(
+        BenchStreamRequest message,
         [System.Runtime.CompilerServices.EnumeratorCancellation]
             CancellationToken cancellationToken = default
     )
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        yield return new BenchStreamItem(1);
-        cancellationToken.ThrowIfCancellationRequested();
-        yield return new BenchStreamItem(2);
-        cancellationToken.ThrowIfCancellationRequested();
-        yield return new BenchStreamItem(3);
+        ArgumentNullException.ThrowIfNull(message);
+
+        foreach (var item in _items)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return item;
+        }
     }
 }

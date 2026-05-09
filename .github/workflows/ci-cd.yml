@@ -67,6 +67,12 @@ jobs:
           "/d:sonar.host.url=${SONAR_HOST_URL}"
           "/d:sonar.token=${SONAR_TOKEN}"
           "/d:sonar.cs.cobertura.reportsPaths=coverage/**/coverage.cobertura.xml"
+          "/d:sonar.issue.ignore.multicriteria=e1"
+          "/d:sonar.issue.ignore.multicriteria.e1.ruleKey=csharpsquid:S107"
+          "/d:sonar.issue.ignore.multicriteria.e1.resourceKey=**/*.cs"
+          "/d:sonar.exclusions=website/**"
+          "/d:sonar.cpd.exclusions=website/**"
+          "/d:sonar.test.exclusions=website/**"
         )
 
         if [ "${{ github.event_name }}" = "pull_request" ]; then

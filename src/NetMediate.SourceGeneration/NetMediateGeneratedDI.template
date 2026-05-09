@@ -10,6 +10,8 @@ namespace {{AssemblyNamespace}};
     /// <summary>Registers all discovered handlers with the mediator using AOT-safe closed-type registration.
     /// Framework behaviors (diagnostics, resilience) are registered first to ensure they wrap user behaviors
     /// and run outermost in the pipeline.</summary>
+    /// <remarks>Returns the same <see cref="global::Microsoft.Extensions.DependencyInjection.IServiceCollection"/> instance for chaining.
+    /// Callers that previously expected a dedicated mediator builder should continue configuring DI from the returned service collection.</remarks>
     public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddNetMediate(this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
     {
         global::NetMediate.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);

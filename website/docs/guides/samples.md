@@ -82,14 +82,14 @@ var app = builder.Build();
 // Dispatch to the default (null-key) handler
 app.MapPost("/orders", async (IMediator mediator, ProcessOrder cmd, CancellationToken ct) =>
 {
-    await mediator.Send(cmd, ct);
+    await mediator.SendProcessOrderAsync(cmd, ct);
     return Results.Accepted();
 });
 
 // Dispatch to the "priority" handler
 app.MapPost("/orders/priority", async (IMediator mediator, ProcessOrder cmd, CancellationToken ct) =>
 {
-    await mediator.Send("priority", cmd, ct);
+    await mediator.SendProcessOrderAsync("priority", cmd, ct);
     return Results.Accepted();
 });
 

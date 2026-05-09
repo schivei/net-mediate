@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Introduction to NetMediate
 
-> **GenDI-first ecosystem:** Throughout the docs, prefer `NetMediate.SourceGeneration` in the startup project and GenDI's `[Injectable]` + `[Inject]` style for your own services so you can control lifetime, group, order, and key. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. For generic service types, register them manually in `builder.Services`; GenDI does not support attribute-based registration for that AOT-oriented path.
+> **GenDI-first ecosystem:** Throughout the docs, prefer `NetMediate.SourceGeneration` in the startup project and GenDI's `[Injectable]` + `[Inject]` style for your own services so you can control lifetime, group, order, and key. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path.
 
 Welcome to NetMediate, a lightweight and efficient .NET implementation of the Mediator pattern for in-process messaging and communication between components.
 

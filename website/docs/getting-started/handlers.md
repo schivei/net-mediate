@@ -159,7 +159,7 @@ public class MyHandler : ICommandHandler<MyCommand>
 
 ## Handler Lifetime
 
-With GenDI you choose the lifetime per implementation: `Transient`, `Scoped`, or `Singleton`. You can also control `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. For generic service types, register them manually in `builder.Services`; GenDI does not support attribute-based registration for that AOT-oriented path.
+With GenDI you choose the lifetime per implementation: `Transient`, `Scoped`, or `Singleton`. You can also control `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path.
 
 ## Multiple Handlers
 
@@ -207,7 +207,7 @@ Exceptions thrown in handlers propagate to the caller wrapped in `MediatorExcept
 ```csharp
 try
 {
-    await mediator.Send(new MyCommand());
+    await mediator.SendMyCommandAsync(new MyCommand());
 }
 catch (MediatorException ex)
 {

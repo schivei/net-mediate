@@ -116,7 +116,7 @@ public sealed class UserFacade
 }
 ```
 
-With GenDI the consumer chooses the `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. For generic service types, register them manually in `builder.Services`; GenDI does not support attribute-based registration for that AOT-oriented path. `AddNetMediate()` already calls `AddGenDIServices()` for you.
+With GenDI the consumer chooses the `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path. `AddNetMediate()` already calls `AddGenDIServices()` for you.
 
 ### Optional companion packages
 ```xml
@@ -190,7 +190,7 @@ public static class QuickStartExample
         var host = builder.Build();
         await host.StartAsync();
         var mediator = host.Services.GetRequiredService<IMediator>();
-        await mediator.Notify(new UserCreated("123", "user@example.com"));
+        await mediator.NotifyUserCreatedAsync(new("123", "user@example.com"));
     }
 }
 ```
@@ -260,7 +260,7 @@ public class AuditLogHandler : INotificationHandler<UserRegistered>
 #### Publish Notifications
 ```csharp
 var notification = new UserRegistered("user123", "user@example.com", DateTime.UtcNow);
-await mediator.Notify(notification, cancellationToken);
+await mediator.NotifyUserRegisteredAsync(notification, cancellationToken);
 ```
 
 Batch notifications in one call:
@@ -270,7 +270,7 @@ var notifications = new[]
     new UserRegistered("user123", "user@example.com", DateTime.UtcNow),
     new UserRegistered("user321", "user2@example.com", DateTime.UtcNow)
 };
-await mediator.Notify(notifications, cancellationToken);
+await mediator.NotifyUserRegisteredAsync(notifications, cancellationToken);
 ```
 
 ### Commands
@@ -311,7 +311,7 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
 #### Send Commands
 ```csharp
 var command = new CreateUserCommand("user@example.com", "John", "Doe");
-await mediator.Send(command);
+await mediator.SendCreateUserCommandAsync(command);
 ```
 
 ### Requests
@@ -436,23 +436,24 @@ public sealed class AuditHandler : ICommandHandler<MyCommand>
 builder.Services.AddNetMediate();
 
 // Dispatch to null-key (default) handlers
-await mediator.Send(new MyCommand(), cancellationToken);
+await mediator.SendMyCommandAsync(new MyCommand(), cancellationToken);
 
 // Dispatch only to "audit" handlers
-await mediator.Send("audit", new MyCommand(), cancellationToken);
+await mediator.SendMyCommandAsync("audit", new MyCommand(), cancellationToken);
 ```
 
 The `key` is propagated through the entire pipeline — behaviors receive it in their `Handle(object? key, ...)` signature and can use it for routing, logging, or conditional logic.
 
-> **Default routing key:** A `null` key (the default when no key is passed) is normalized internally to the constant `Extensions.DEFAULT_ROUTING_KEY = "__default"`. This means `mediator.Send(command, ct)` and `mediator.Send(null, command, ct)` are exactly equivalent. Avoid using the literal string `"__default"` as your own routing key to prevent conflicts.
+> **Default routing key:** A `null` key (the default when no key is passed) is normalized internally to the constant `Extensions.DEFAULT_ROUTING_KEY = "__default"`. This means `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are exactly equivalent. Avoid using the literal string `"__default"` as your own routing key to prevent conflicts.
 
 > **NativeAOT:** Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed registration uses `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**; use it only when NativeAOT is not required.
 
 ### Pipeline Behaviors / Interceptors
 
-Behaviors wrap the handler pipeline and run in registration order. Register them as **closed types** in DI — this is the supported pattern, and it is fully AOT-safe:
+Behaviors wrap the handler pipeline and run in registration order. Concrete non-generic behavior classes can use `[Injectable]` because the closed pipeline interfaces already carry `[ServiceInjection]`. Only generic/open behavior implementations should be registered manually in `builder.Services`.
 
 ```csharp
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
 public sealed class AuditCommandBehavior : IPipelineCommandBehavior<CreateUserCommand>
 {
     public Task Handle(
@@ -463,6 +464,7 @@ public sealed class AuditCommandBehavior : IPipelineCommandBehavior<CreateUserCo
         next(key, message, cancellationToken);
 }
 
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 2)]
 public sealed class AuditRequestBehavior : IPipelineRequestBehavior<GetUserQuery, UserDto>
 {
     public Task<UserDto> Handle(
@@ -473,6 +475,7 @@ public sealed class AuditRequestBehavior : IPipelineRequestBehavior<GetUserQuery
         next(key, message, cancellationToken);
 }
 
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 3)]
 public sealed class LogNotificationBehavior : IPipelineNotificationBehavior<UserCreatedNotification>
 {
     public Task Handle(
@@ -484,14 +487,12 @@ public sealed class LogNotificationBehavior : IPipelineNotificationBehavior<User
 }
 
 builder.Services.AddNetMediate();
-builder.Services.AddSingleton<IPipelineCommandBehavior<CreateUserCommand>, AuditCommandBehavior>();
-builder.Services.AddSingleton<IPipelineRequestBehavior<GetUserQuery, UserDto>, AuditRequestBehavior>();
-builder.Services.AddSingleton<IPipelineNotificationBehavior<UserCreatedNotification>, LogNotificationBehavior>();
 ```
 
 Example behavior — audit timing for requests:
 
 ```csharp
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
 public sealed class AuditRequestBehavior : IPipelineRequestBehavior<GetUserQuery, UserDto>
 {
     // Handle receives object? key — the same key passed to the dispatch call.
@@ -513,6 +514,7 @@ public sealed class AuditRequestBehavior : IPipelineRequestBehavior<GetUserQuery
 Example notification behavior:
 
 ```csharp
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
 public sealed class LogNotificationBehavior : IPipelineNotificationBehavior<UserCreatedNotification>
 {
     public async Task Handle(

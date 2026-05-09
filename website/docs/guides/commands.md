@@ -15,7 +15,7 @@ For the complete commands documentation, see the main [README](https://github.co
 ## Basic Usage
 
 ```csharp
-await mediator.Send(new CreateUserCommand("john@example.com", "John Doe"));
+await mediator.SendCreateUserCommandAsync(new CreateUserCommand("john@example.com", "John Doe"));
 ```
 
 ## Keyed Dispatch
@@ -26,10 +26,10 @@ Register handlers under routing keys and dispatch to a specific subset at runtim
 builder.Services.AddNetMediate();
 
 // Dispatch to null-key (default) handlers
-await mediator.Send(new MyCommand(), cancellationToken);
+await mediator.SendMyCommandAsync(new MyCommand(), cancellationToken);
 
 // Dispatch only to "audit" handlers
-await mediator.Send("audit", new MyCommand(), cancellationToken);
+await mediator.SendMyCommandAsync("audit", new MyCommand(), cancellationToken);
 
 [Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public sealed class DefaultHandler : ICommandHandler<MyCommand>
@@ -48,7 +48,7 @@ public sealed class AuditHandler : ICommandHandler<MyCommand>
 
 The `key` is propagated through the entire pipeline — behaviors receive it in their `Handle(object? key, ...)` signature and can use it for routing, logging, or conditional logic.
 
-> **Default routing key:** A `null` key is normalized internally to `"__default"`. This means `mediator.Send(command, ct)` and `mediator.Send(null, command, ct)` are exactly equivalent. Avoid using `"__default"` as your own routing key.
+> **Default routing key:** A `null` key is normalized internally to `"__default"`. This means `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are exactly equivalent. Avoid using `"__default"` as your own routing key.
 
 > **NativeAOT:** Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed registration uses `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**; use it only when NativeAOT is not required.
 

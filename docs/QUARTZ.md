@@ -36,20 +36,20 @@ builder.Services.AddQuartz(q =>
 });
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
-// 2. Register the generated NetMediate services after Quartz is available
-builder.Services.AddNetMediate();
-
-// 3. Replace the default notifier with the Quartz notifier
+// 2. Register the Quartz notifier first so AddNetMediate picks up that INotifiable implementation
 builder.Services.AddNetMediateQuartz(opts =>
 {
     opts.GroupName = "MyApp";
 });
 
+// 3. Register the generated NetMediate services after the Quartz notifier is in place
+builder.Services.AddNetMediate();
+
 var host = builder.Build();
 await host.RunAsync();
 ```
 
-`AddNetMediateQuartz()` does **not** call `AddNetMediate()` for you. It only wires the Quartz-based `INotifiable` implementation and related options.
+`AddNetMediateQuartz()` does **not** call `AddNetMediate()` for you. Call `AddNetMediateQuartz()` first, then `AddNetMediate()`, so the generated mediator setup uses the Quartz-backed `INotifiable` implementation.
 
 ## Configuration
 
@@ -73,8 +73,8 @@ builder.Services.AddNetMediateQuartz(opts =>
 By default messages are serialized with `System.Text.Json`. You can replace the serializer after `AddNetMediateQuartz`:
 
 ```csharp
-builder.Services.AddNetMediate();
 builder.Services.AddNetMediateQuartz();
+builder.Services.AddNetMediate();
 
 builder.Services.AddSingleton<INotificationSerializer, MyMessagePackSerializer>();
 ```

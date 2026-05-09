@@ -65,6 +65,9 @@ jobs:
     - name: Build NetMediate
       run: dotnet build src/NetMediate/NetMediate.csproj --configuration Release --no-restore
 
+    - name: Build NetMediate.Core
+      run: dotnet build src/NetMediate.Core/NetMediate.Core.csproj --configuration Release --no-restore
+
     - name: Build NetMediate.Diagnostics
       run: dotnet build src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release
 

@@ -4,6 +4,8 @@ sidebar_position: 1
 
 # Introduction to NetMediate
 
+> **GenDI-first ecosystem:** Throughout the docs, prefer `NetMediate.SourceGeneration` in the startup project and GenDI's `[Injectable]` + `[Inject]` style for your own services so you can control lifetime, group, order, key, and the preferred contract with `[Injectable<TService>]`.
+
 Welcome to NetMediate, a lightweight and efficient .NET implementation of the Mediator pattern for in-process messaging and communication between components.
 
 ## What is NetMediate?

@@ -38,6 +38,7 @@ The package's `buildTransitive/NetMediate.SourceGeneration.props` file adds `Net
 ## Usage
 
 ```csharp
+using GenDI;
 using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
@@ -57,37 +58,66 @@ The generated method is decorated with `[ExcludeFromCodeCoverage]` — you do no
 
 If a class also implements `INotifiable` (e.g. a custom notifier), the generator uses `UseNetMediate<TNotifier>` instead of `UseNetMediate`.
 
+### GenDI-first implementation style
+
+Because `AddNetMediate()` also triggers `AddGenDIServices()`, the recommended style for your own implementations is:
+
+```csharp
+using GenDI;
+using Microsoft.Extensions.DependencyInjection;
+
+[ServiceInjection]
+public interface IInventoryGateway
+{
+    Task ReserveAsync(string sku, CancellationToken cancellationToken);
+}
+
+[Injectable<IInventoryGateway>(ServiceLifetime.Scoped, Group = 20, Order = 1, Key = "primary")]
+public sealed class InventoryGateway : IInventoryGateway
+{
+    public Task ReserveAsync(string sku, CancellationToken cancellationToken) => Task.CompletedTask;
+}
+
+[Injectable<INotificationHandler<OrderCreated>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+public sealed class ReserveInventoryHandler : INotificationHandler<OrderCreated>
+{
+    [Inject] public required IInventoryGateway InventoryGateway { get; init; }
+    [Inject] public required ILogger<ReserveInventoryHandler> Logger { get; init; }
+}
+```
+
+Use GenDI metadata to control `ServiceLifetime`, `Group`, `Order`, `Key`, and the preferred exposed contract through `[Injectable<TService>]`.
+
 > **Keyed handlers**: The source generator handles two cases automatically:
-> - Handler decorated with `[KeyedService(Key = "mykey")]` → registered with the explicit key `"mykey"`.
-> - Handler with no attribute → registered under `Extensions.DEFAULT_ROUTING_KEY = "__default"` (the same key used when `null` is passed at dispatch time, so `mediator.Send(command, ct)` and `mediator.Send(null, command, ct)` are equivalent).
+> - Handler decorated with `[Injectable<...>(..., Key = "mykey")]` → registered with the explicit key `"mykey"`.
+> - Handler with no `Key` → registered under `Extensions.DEFAULT_ROUTING_KEY = "__default"` (the same key used when `null` is passed at dispatch time, so `mediator.Send(command, ct)` and `mediator.Send(null, command, ct)` are equivalent).
 >
-> If you want to register a handler under a custom key *without* using the `[KeyedService]` attribute, you must register it manually via `UseNetMediate`. Avoid using the reserved literal `"__default"` as your own routing key.
+> If you want to register a handler under a custom key manually, you can still use `UseNetMediate`. Avoid using the reserved literal `"__default"` as your own routing key.
 
 ## AOT / NativeAOT
 
 The source-generator path is fully AOT-safe — no reflection, no `MakeGenericType`, no assembly scanning. See [AOT.md](AOT.md) for the complete compatibility guide.
 
-## Controlling registration order with `[ServiceOrder]`
+## Controlling registration order with GenDI metadata
 
-Apply `[ServiceOrder(n)]` to a handler class to control the order in which it is registered by
-the source generator. Lower values are registered first.
+Apply `Group` + `Order` on `[Injectable]` to control registration order. Lower values are registered first.
 
 ```csharp
-[ServiceOrder(1)]
+[Injectable<ICommandHandler<AuditCommand>>(ServiceLifetime.Scoped, Group = 10, Order = 1)]
 public sealed class AuditHandler : ICommandHandler<AuditCommand> { ... }
 
-[ServiceOrder(2)]
-public sealed class MetricsHandler : ICommandHandler<MetricsCommand> { ... }
+[Injectable<ICommandHandler<AuditCommand>>(ServiceLifetime.Scoped, Group = 10, Order = 2)]
+public sealed class MetricsHandler : ICommandHandler<AuditCommand> { ... }
 
-// No attribute → registered last (implicit order = int.MaxValue).
-public sealed class FallbackHandler : ICommandHandler<FallbackCommand> { ... }
+// No explicit Group/Order → registered last (implicit order = int.MaxValue).
+[Injectable<ICommandHandler<AuditCommand>>(ServiceLifetime.Scoped)]
+public sealed class FallbackHandler : ICommandHandler<AuditCommand> { ... }
 ```
 
 Registration order affects the **pipeline wrapping order**: behaviors registered earlier wrap
 the pipeline *outermost*, so they run before later-registered behaviors.
 
-> **Scope**: `[ServiceOrder]` is respected only by the source generator. Handlers registered
-> manually via `UseNetMediate(configure => ...)` follow the order you write them in code.
+> **Scope**: `Group` + `Order` come from GenDI metadata. Handlers registered manually via `UseNetMediate(configure => ...)` still follow the order you write them in code.
 
 ## Generated namespace and `AddNetMediate()` discoverability
 

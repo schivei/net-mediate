@@ -1,5 +1,7 @@
 # Custom Validation Behavior Sample
 
+> **GenDI pattern:** When wiring validators, repositories, and supporting services, prefer `[Injectable]` + `[Inject]` so the same GenDI-based activation model is used across the application.
+
 NetMediate does not include a built-in validation layer. Validation is a cross-cutting concern that you implement as a **pipeline behavior**, giving you full control over the validation library and strategy.
 
 ## Example: DataAnnotations validation for requests

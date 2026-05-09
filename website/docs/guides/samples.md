@@ -4,6 +4,8 @@ sidebar_position: 7
 
 # Samples
 
+> **GenDI pattern:** The examples below assume `NetMediate.SourceGeneration` in the startup project. Prefer `[Injectable]` + `[Inject]` for your services/handlers so the consumer can choose lifetime, group, order, key, and the preferred service contract.
+
 Real-world integration samples for API, Worker, Minimal API, and keyed dispatch scenarios.
 
 ## API sample

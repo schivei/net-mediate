@@ -4,6 +4,8 @@ sidebar_position: 3
 
 # Message Types
 
+> **GenDI pattern:** Message handlers and supporting services in the examples below are expected to follow the same GenDI-based activation model used across the ecosystem: `[Injectable]` + `[Inject]` when you need DI-controlled implementations.
+
 NetMediate supports four different message types, each designed for specific communication patterns. **No marker interfaces are required** - any class or record can be a message.
 
 ## Overview

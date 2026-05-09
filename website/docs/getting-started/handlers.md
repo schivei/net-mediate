@@ -20,22 +20,25 @@ Handlers contain the logic that processes messages in NetMediate. Each handler i
 ### Command Handler
 
 ```csharp
+using GenDI;
+using Microsoft.Extensions.DependencyInjection;
+
+[ServiceInjection]
+public interface IUserRepository
+{
+    Task AddAsync(User user, CancellationToken cancellationToken);
+    Task<User?> GetByIdAsync(string id, CancellationToken cancellationToken);
+}
+
+[Injectable<ICommandHandler<CreateUserCommand>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
 {
-    private readonly IUserRepository _repository;
-    private readonly ILogger<CreateUserCommandHandler> _logger;
-
-    public CreateUserCommandHandler(
-        IUserRepository repository,
-        ILogger<CreateUserCommandHandler> logger)
-    {
-        _repository = repository;
-        _logger = logger;
-    }
+    [Inject] public required IUserRepository Repository { get; init; }
+    [Inject] public required ILogger<CreateUserCommandHandler> Logger { get; init; }
 
     public async Task Handle(CreateUserCommand command, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Creating user {Email}", command.Email);
+        Logger.LogInformation("Creating user {Email}", command.Email);
 
         var user = new User
         {
@@ -43,9 +46,9 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
             Name = command.Name
         };
 
-        await _repository.AddAsync(user, cancellationToken);
+        await Repository.AddAsync(user, cancellationToken);
 
-        _logger.LogInformation("User created with ID {UserId}", user.Id);
+        Logger.LogInformation("User created with ID {UserId}", user.Id);
     }
 }
 ```
@@ -53,18 +56,14 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
 ### Request Handler
 
 ```csharp
+[Injectable<IRequestHandler<GetUserQuery, UserDto>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserDto>
 {
-    private readonly IUserRepository _repository;
-
-    public GetUserQueryHandler(IUserRepository repository)
-    {
-        _repository = repository;
-    }
+    [Inject] public required IUserRepository Repository { get; init; }
 
     public async Task<UserDto> Handle(GetUserQuery query, CancellationToken cancellationToken)
     {
-        var user = await _repository.GetByIdAsync(query.UserId, cancellationToken);
+        var user = await Repository.GetByIdAsync(query.UserId, cancellationToken);
 
         if (user == null)
             throw new UserNotFoundException(query.UserId);
@@ -77,18 +76,20 @@ public class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserDto>
 ### Notification Handler
 
 ```csharp
+[ServiceInjection]
+public interface IEmailService
+{
+    Task SendWelcomeEmailAsync(string email, string name, CancellationToken cancellationToken);
+}
+
+[Injectable<INotificationHandler<UserCreatedNotification>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class SendWelcomeEmailHandler : INotificationHandler<UserCreatedNotification>
 {
-    private readonly IEmailService _emailService;
-
-    public SendWelcomeEmailHandler(IEmailService emailService)
-    {
-        _emailService = emailService;
-    }
+    [Inject] public required IEmailService EmailService { get; init; }
 
     public async Task Handle(UserCreatedNotification notification, CancellationToken cancellationToken)
     {
-        await _emailService.SendWelcomeEmailAsync(
+        await EmailService.SendWelcomeEmailAsync(
             notification.Email,
             notification.Name,
             cancellationToken);
@@ -99,20 +100,22 @@ public class SendWelcomeEmailHandler : INotificationHandler<UserCreatedNotificat
 ### Stream Handler
 
 ```csharp
+[ServiceInjection]
+public interface IActivityRepository
+{
+    IAsyncEnumerable<Activity> GetUserActivitiesAsync(string userId, CancellationToken cancellationToken);
+}
+
+[Injectable<IStreamHandler<GetUserActivityQuery, ActivityDto>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class GetUserActivityHandler : IStreamHandler<GetUserActivityQuery, ActivityDto>
 {
-    private readonly IActivityRepository _repository;
-
-    public GetUserActivityHandler(IActivityRepository repository)
-    {
-        _repository = repository;
-    }
+    [Inject] public required IActivityRepository Repository { get; init; }
 
     public async IAsyncEnumerable<ActivityDto> Handle(
         GetUserActivityQuery query,
         [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        await foreach (var activity in _repository.GetUserActivitiesAsync(
+        await foreach (var activity in Repository.GetUserActivitiesAsync(
             query.UserId,
             cancellationToken))
         {
@@ -133,28 +136,19 @@ Handlers are automatically discovered and registered by the source generator whe
 builder.Services.AddNetMediate();
 ```
 
-The generator scans your assembly for all concrete (non-abstract, non-generic) classes implementing handler interfaces and registers them automatically.
+The generator scans your assembly for all concrete (non-abstract, non-generic) classes implementing handler interfaces and registers them automatically. `AddNetMediate()` also runs `AddGenDIServices()`, so GenDI metadata is active in the same setup.
 
 ## Dependency Injection
 
-Handlers support constructor injection just like any other service:
+Prefer GenDI property injection for handlers and supporting services:
 
 ```csharp
+[Injectable<ICommandHandler<MyCommand>>(ServiceLifetime.Scoped, Group = 100, Order = 1, Key = "primary")]
 public class MyHandler : ICommandHandler<MyCommand>
 {
-    private readonly IRepository _repository;
-    private readonly ILogger _logger;
-    private readonly IEmailService _emailService;
-
-    public MyHandler(
-        IRepository repository,
-        ILogger<MyHandler> logger,
-        IEmailService emailService)
-    {
-        _repository = repository;
-        _logger = logger;
-        _emailService = emailService;
-    }
+    [Inject] public required IRepository Repository { get; init; }
+    [Inject] public required ILogger<MyHandler> Logger { get; init; }
+    [Inject(Key = "primary")] public required IEmailService EmailService { get; init; }
 
     public async Task Handle(MyCommand command, CancellationToken cancellationToken)
     {
@@ -165,7 +159,7 @@ public class MyHandler : ICommandHandler<MyCommand>
 
 ## Handler Lifetime
 
-All handlers are registered as **Singleton** services by default. The same instance is reused across mediator operations.
+With GenDI you choose the lifetime per implementation: `Transient`, `Scoped`, or `Singleton`. You can also control `Group`, `Order`, `Key`, and the preferred exposed contract via `[Injectable<TService>]`.
 
 ## Multiple Handlers
 

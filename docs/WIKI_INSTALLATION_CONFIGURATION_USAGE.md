@@ -28,6 +28,7 @@ dotnet add package NetMediate.Core
 Handler registration is done automatically at compile time in the startup/application project via `NetMediate.SourceGeneration`. Call the generated method there:
 
 ```csharp
+using GenDI;
 using NetMediate;
 
 // Source generation discovers all ICommandHandler<>, IRequestHandler<,>,
@@ -35,6 +36,8 @@ using NetMediate;
 // and generates closed-type AOT-safe registrations automatically.
 builder.Services.AddNetMediate();
 ```
+
+> **GenDI-first style**: `AddNetMediate()` also triggers `AddGenDIServices()`. Prefer `[Injectable]` + `[Inject]` so the consumer can choose `ServiceLifetime`, `Group`, `Order`, `Key`, and the preferred contract through `[Injectable<TService>]`.
 
 ### Usage
 
@@ -87,11 +90,11 @@ All handler `Handle` methods return `Task` or `Task<TResponse>`:
 All `Register*Handler` methods accept an optional `key` argument. This lets you register multiple handlers for the same message type under distinct keys and dispatch to a specific one at runtime:
 
 ```csharp
-builder.Services.AddNetMediate(configure =>
-{
-    configure.RegisterCommandHandler<DefaultCommandHandler, MyCommand>();          // null key → "__default"
-    configure.RegisterCommandHandler<AuditCommandHandler, MyCommand>("audit");    // keyed
-});
+[Injectable<ICommandHandler<MyCommand>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+public sealed class DefaultCommandHandler : ICommandHandler<MyCommand> { }
+
+[Injectable<ICommandHandler<MyCommand>>(ServiceLifetime.Scoped, Group = 100, Order = 2, Key = "audit")]
+public sealed class AuditCommandHandler : ICommandHandler<MyCommand> { }
 
 // Dispatch to the default (null-key) handlers
 await mediator.Send(command, ct);

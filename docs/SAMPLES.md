@@ -1,5 +1,7 @@
 # Samples (API / Worker / Minimal API)
 
+> **GenDI pattern:** The examples below assume `NetMediate.SourceGeneration` in the startup project. Prefer `[Injectable]` + `[Inject]` for your services/handlers so the consumer can choose lifetime, group, order, key, and the preferred service contract.
+
 ## API sample
 
 ```csharp

@@ -4,6 +4,8 @@ sidebar_position: 5
 
 # Pipeline Behaviors
 
+> **GenDI pattern:** Behaviors and the services they depend on can follow the GenDI `[Injectable]` + `[Inject]` style, while NetMediate still uses `AddNetMediate()` / `UseNetMediate()` for pipeline wiring.
+
 Pipeline behaviors are middleware-style interceptors that wrap handler execution, enabling cross-cutting concerns like logging, validation, caching, and more.
 
 For detailed behavior documentation, see the main [README](https://github.com/schivei/net-mediate#pipeline-behaviors--interceptors).

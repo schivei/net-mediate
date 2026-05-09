@@ -87,6 +87,37 @@ dotnet add package NetMediate.SourceGeneration
 
 > **Note:** `NetMediate.SourceGeneration` should be referenced with `IncludeAssets` + `PrivateAssets="all"`. It adds `NetMediate` and `GenDI.SourceGenerator` indirectly via `buildTransitive`.
 
+### GenDI-first activation pattern
+
+`NetMediate.SourceGeneration` also activates GenDI in the startup project. Prefer the GenDI style for your application services and supporting implementations:
+
+```csharp
+using GenDI;
+using Microsoft.Extensions.DependencyInjection;
+
+[ServiceInjection]
+public interface IEmailService
+{
+    Task SendWelcomeEmailAsync(string email, CancellationToken cancellationToken);
+}
+
+[Injectable<IEmailService>(ServiceLifetime.Scoped, Group = 10, Order = 1, Key = "primary")]
+public sealed class SmtpEmailService : IEmailService
+{
+    public Task SendWelcomeEmailAsync(string email, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
+}
+
+[Injectable(ServiceLifetime.Scoped)]
+public sealed class UserFacade
+{
+    [Inject] public required IEmailService EmailService { get; init; }
+    [Inject] public required ILogger<UserFacade> Logger { get; init; }
+}
+```
+
+With GenDI the consumer chooses the `ServiceLifetime`, `Group`, `Order`, `Key`, and the preferred exposed contract through `[Injectable<TService>]`. `AddNetMediate()` already calls `AddGenDIServices()` for you.
+
 ### Optional companion packages
 ```xml
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
@@ -129,6 +160,7 @@ Here's a minimal example to get you started with NetMediate:
 // Startup/app project: dotnet add package NetMediate.SourceGeneration
 
 // 2. Register services — source generator discovers all handlers automatically
+using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NetMediate;
@@ -140,11 +172,14 @@ builder.Services.AddNetMediate(); // all handlers in your project are registered
 public record UserCreated(string UserId, string Email);
 
 // 4. Create a handler (Handle returns Task)
+[Injectable<INotificationHandler<UserCreated>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class UserCreatedHandler : INotificationHandler<UserCreated>
 {
+    [Inject] public required ILogger<UserCreatedHandler> Logger { get; init; }
+
     public Task Handle(UserCreated notification, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"User {notification.UserId} was created!");
+        Logger.LogInformation("User {UserId} was created", notification.UserId);
         return Task.CompletedTask;
     }
 }
@@ -191,34 +226,29 @@ public record UserRegistered(string UserId, string Email, DateTime RegisteredAt)
 
 #### Create Notification Handlers
 ```csharp
+[Injectable<INotificationHandler<UserRegistered>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class EmailNotificationHandler : INotificationHandler<UserRegistered>
 {
-    private readonly IEmailService _emailService;
-
-    public EmailNotificationHandler(IEmailService emailService)
-    {
-        _emailService = emailService;
-    }
+    [Inject] public required IEmailService EmailService { get; init; }
 
     // Handle must return Task, not Task
     public async Task Handle(UserRegistered notification, CancellationToken cancellationToken = default)
     {
-        await _emailService.SendWelcomeEmailAsync(notification.Email, cancellationToken);
+        await EmailService.SendWelcomeEmailAsync(notification.Email, cancellationToken);
     }
 }
 
+[Injectable<INotificationHandler<UserRegistered>>(ServiceLifetime.Scoped, Group = 100, Order = 2)]
 public class AuditLogHandler : INotificationHandler<UserRegistered>
 {
-    private readonly IAuditService _auditService;
-
-    public AuditLogHandler(IAuditService auditService)
-    {
-        _auditService = auditService;
-    }
+    [Inject] public required IAuditService AuditService { get; init; }
 
     public async Task Handle(UserRegistered notification, CancellationToken cancellationToken = default)
     {
-        await _auditService.LogEventAsync($"User {notification.UserId} registered", cancellationToken);
+        await AuditService.LogEventAsync(
+            $"User {notification.UserId} registered",
+            cancellationToken
+        );
     }
 }
 ```

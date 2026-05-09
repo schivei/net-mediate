@@ -1,5 +1,7 @@
 # NetMediate.Quartz
 
+> **GenDI pattern:** The examples below assume `AddNetMediate()` + GenDI working together. Prefer `[Injectable]` + `[Inject]` for serializers, notifiers, and supporting services.
+
 `NetMediate.Quartz` is an optional additional package alongside `NetMediate.Resilience` that integrates [Quartz.NET](https://www.quartz-scheduler.net/) into the notification pipeline.
 
 ## Why Quartz for notifications?

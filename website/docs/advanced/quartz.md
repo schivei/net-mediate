@@ -16,7 +16,7 @@ using Quartz;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// 1. Configure Quartz first — AddNetMediateQuartz only swaps the notifier implementation;
+// 1. Configure Quartz first - AddNetMediateQuartz only swaps the notifier implementation;
 // it does not configure Quartz itself.
 builder.Services.AddQuartz(q =>
 {

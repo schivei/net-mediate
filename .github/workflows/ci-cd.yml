@@ -46,6 +46,10 @@ jobs:
       pull-requests: write
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # Enable Sonar only when the token exists and the run is either:
+      # - a pull_request run,
+      # - a main-branch run, or
+      # - a maintainer-triggered workflow_dispatch with full PR metadata inputs.
       SONAR_SCAN_ENABLED: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != '' && github.event.inputs.pr_branch != '' && github.event.inputs.pr_base != '')) && secrets.SONAR_TOKEN != '' }}
 
     steps:

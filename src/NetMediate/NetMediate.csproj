@@ -15,7 +15,6 @@
   <!-- Enable XML documentation warnings as errors only in Release mode for stricter CI enforcement -->
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <WarningsNotAsErrors>CS1591</WarningsNotAsErrors>
-    <WarningsAsErrors />
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="NetMediate.Tests" />

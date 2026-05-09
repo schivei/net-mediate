@@ -22,8 +22,8 @@
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <WarningsNotAsErrors />
-    <WarningsAsErrors>CS1591</WarningsAsErrors>
+    <WarningsNotAsErrors>CS1591</WarningsNotAsErrors>
+    <WarningsAsErrors />
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\assets\logo.png" Pack="true" PackagePath="\" />

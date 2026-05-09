@@ -155,29 +155,13 @@ With GenDI the consumer chooses the `ServiceLifetime`, `Group`, `Order`, and `Ke
 Here's a minimal example to get you started with NetMediate:
 
 ```csharp
-// 1. Install the package
-// Shared contracts: dotnet add package NetMediate.Core
-// Startup/app project: dotnet add package NetMediate.SourceGeneration
-
-// 2. Register services — source generator discovers all handlers automatically
 using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NetMediate;
 
-var builder = Host.CreateApplicationBuilder();
-builder.Services.AddNetMediate(); // all handlers in your project are registered here
-
-// 3. Use the mediator
-var host = builder.Build();
-await host.StartAsync();
-var mediator = host.Services.GetRequiredService<IMediator>();
-await mediator.Notify(new UserCreated("123", "user@example.com"));
-
-// 4. Define a notification (no marker interface required)
 public record UserCreated(string UserId, string Email);
 
-// 5. Create a handler (Handle returns Task)
 [Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class UserCreatedHandler : INotificationHandler<UserCreated>
 {
@@ -187,6 +171,26 @@ public class UserCreatedHandler : INotificationHandler<UserCreated>
     {
         Logger.LogInformation("User {UserId} was created", notification.UserId);
         return Task.CompletedTask;
+    }
+}
+
+public static class QuickStartExample
+{
+    public static async Task RunAsync()
+    {
+        // 1. Install the package
+        // Shared contracts: dotnet add package NetMediate.Core
+        // Startup/app project: dotnet add package NetMediate.SourceGeneration
+
+        // 2. Register services — source generator discovers all handlers automatically
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddNetMediate(); // all handlers in your project are registered here
+
+        // 3. Use the mediator
+        var host = builder.Build();
+        await host.StartAsync();
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        await mediator.Notify(new UserCreated("123", "user@example.com"));
     }
 }
 ```

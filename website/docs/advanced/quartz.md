@@ -16,14 +16,15 @@ using Quartz;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// 1. Configure Quartz first
+// 1. Configure Quartz first — AddNetMediateQuartz only swaps the notifier implementation;
+// it does not configure Quartz itself.
 builder.Services.AddQuartz(q =>
 {
     q.UseMicrosoftDependencyInjectionJobFactory();
 });
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
-// 2. Register NetMediate itself
+// 2. Register NetMediate itself after Quartz is available
 builder.Services.AddNetMediate();
 
 // 3. Replace the default notifier with the Quartz-based notifier

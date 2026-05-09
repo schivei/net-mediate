@@ -128,7 +128,6 @@ public sealed class DataDogIntegrationPackageTests
         var cancellationToken = TestContext.Current.CancellationToken;
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddOptions();
         services.AddNetMediateDataDogILogger(
             options =>
             {
@@ -157,7 +156,6 @@ public sealed class DataDogIntegrationPackageTests
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddOptions();
         services.AddNetMediateDataDogILogger(configure: null, TestContext.Current.CancellationToken);
         using var provider = services.BuildServiceProvider();
         var options = provider.GetRequiredService<IOptions<DataDogILoggerOptions>>().Value;

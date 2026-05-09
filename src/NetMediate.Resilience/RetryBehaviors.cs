@@ -54,7 +54,10 @@ internal static class RetryBehaviorRunner
         var maxRetryCount = Math.Max(0, options.MaxRetryCount);
         var delay = options.Delay < TimeSpan.Zero ? TimeSpan.Zero : options.Delay;
 
-        for (var attempt = options.Disabled ? -1 : 0; ; attempt++)
+        if (options.Disabled)
+            return await operation(state, cancellationToken).ConfigureAwait(false);
+
+        for (var attempt = 0; ; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 

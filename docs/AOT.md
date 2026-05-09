@@ -9,14 +9,14 @@ NetMediate is compatible with NativeAOT and trimming when you stay on the source
 - Register custom pipeline behaviors as **closed types** directly in DI.
 - Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`.
 - Register only generic/open service implementations manually in `builder.Services`.
-- Avoid keyed dispatch when NativeAOT is required.
+- Keyed dispatch via `KeyedHandlerRegistry<T>` is fully NativeAOT + Trimming compatible since the registry is source-generated at compile time with no reflection.
 
 | Path | AOT / Trim compatible | Notes |
 |---|---|---|
 | `AddNetMediate()` | ✅ Yes | Generated at compile time — no reflection |
 | Closed-type pipeline behavior registrations | ✅ Yes | Register `IPipelineCommandBehavior<T>`, `IPipelineNotificationBehavior<T>`, or `IPipelineRequestBehavior<TMessage, TResponse>` directly |
 | Keyless `Send` / `Notify` / `Request` / `RequestStream` | ✅ Yes | Uses generated closed-type registrations |
-| Keyed dispatch (`Send(key, ...)`, `Request(key, ...)`, etc.) | ⚠️ No | Uses `IKeyedServiceProvider`, which is not NativeAOT-compatible |
+| Keyed dispatch (`Send(key, ...)`, `Request(key, ...)`, etc.) | ✅ Yes | Source-generated `KeyedHandlerRegistry<T>` — no reflection, fully NativeAOT + Trimming compatible |
 
 ## AOT-compatible setup
 
@@ -65,4 +65,3 @@ builder.Services.AddNetMediate();
 
 - Runtime reflection-based registration
 - Open-generic pipeline behavior registration guidance
-- Keyed dispatch when the application must stay NativeAOT-compatible

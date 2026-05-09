@@ -89,6 +89,8 @@ Use GenDI metadata to control `ServiceLifetime`, `Group`, `Order`, and `Key`. Us
 > **Keyed handlers**: The source generator handles two cases automatically:
 > - Handler decorated with `[Injectable(..., Key = "mykey")]` → registered with the explicit key `"mykey"`.
 > - Handler with no `Key` → registered under `Extensions.DEFAULT_ROUTING_KEY = "__default"` (the same key used when `null` is passed at dispatch time, so `mediator.SendMyCmdAsync(command, ct)` and `mediator.SendMyCmdAsync(null, command, ct)` are equivalent).
+>
+> The keyed routing table is emitted as a `KeyedHandlerRegistry<T>` at compile time — **no reflection, no `IKeyedServiceProvider`** — making keyed dispatch fully NativeAOT + Trimming compatible.
 
 ## AOT / NativeAOT
 

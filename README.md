@@ -49,7 +49,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Optional resilience package**: Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience`
 - **OpenTelemetry-ready diagnostics**: Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream
 - **Optional DataDog integrations**: OpenTelemetry, Serilog, and ILogger support packages
-- **Keyed handler routing**: Register handlers under named keys and dispatch to specific subsets at runtime
+- **Keyed handler routing**: Register handlers under named keys and dispatch to specific subsets at runtime — **fully NativeAOT + Trimming compatible** via source-generated `KeyedHandlerRegistry<T>`
 - **Streaming fan-out**: Multiple `IStreamHandler` registrations supported — their items are merged sequentially
 - **Cancellation Support**: Full cancellation token support across all operations
 - **Broad runtime compatibility**: Multi-targeted for `net10.0`, `netstandard2.0`, and `netstandard2.1`
@@ -446,7 +446,7 @@ The `key` is propagated through the entire pipeline — behaviors receive it in 
 
 > **Default routing key:** A `null` key (the default when no key is passed) is normalized internally to the constant `Extensions.DEFAULT_ROUTING_KEY = "__default"`. This means `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are exactly equivalent. Avoid using the literal string `"__default"` as your own routing key to prevent conflicts.
 
-> **NativeAOT:** Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed registration uses `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**; use it only when NativeAOT is not required.
+> **NativeAOT:** Keyed dispatch is fully NativeAOT + Trimming compatible. The source generator emits a `KeyedHandlerRegistry<T>` at compile time — no reflection, no `IKeyedServiceProvider` is used at runtime. Both keyed and non-keyed dispatch are safe for NativeAOT and trimmed deployments.
 
 ### Pipeline Behaviors / Interceptors
 

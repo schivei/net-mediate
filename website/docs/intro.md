@@ -39,7 +39,7 @@ Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream operations with
 OpenTelemetry, Serilog, and ILogger support packages for comprehensive observability.
 
 ### 🔑 **Keyed Handler Routing**
-Register handlers under named keys and dispatch to specific subsets at runtime.
+Register handlers under named keys and dispatch to specific subsets at runtime — **fully NativeAOT + Trimming compatible** via source-generated `KeyedHandlerRegistry<T>`.
 
 ### 🌊 **Streaming Fan-Out**
 Multiple `IStreamHandler` registrations supported — their items are merged sequentially.

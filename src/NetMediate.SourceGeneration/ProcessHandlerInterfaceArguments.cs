@@ -10,8 +10,7 @@ internal readonly record struct ProcessHandlerInterfaceArguments(
     bool HasDiagnostics,
     bool HasResilience,
     Dictionary<string, bool> DiagnosticsBehaviors,
-    Dictionary<string, bool> ResilienceBehaviors,
-    string Coverage
+    Dictionary<string, bool> ResilienceBehaviors
 )
 {
     public static implicit operator (
@@ -21,8 +20,7 @@ internal readonly record struct ProcessHandlerInterfaceArguments(
         bool hasDiagnostics,
         bool hasResilience,
         Dictionary<string, bool> diagnosticsBehaviors,
-        Dictionary<string, bool> resilienceBehaviors,
-        string coverage
+        Dictionary<string, bool> resilienceBehaviors
     )(ProcessHandlerInterfaceArguments args)
     {
         return (
@@ -32,8 +30,7 @@ internal readonly record struct ProcessHandlerInterfaceArguments(
             args.HasDiagnostics,
             args.HasResilience,
             args.DiagnosticsBehaviors,
-            args.ResilienceBehaviors,
-            args.Coverage
+            args.ResilienceBehaviors
         );
     }
 
@@ -45,8 +42,7 @@ internal readonly record struct ProcessHandlerInterfaceArguments(
             bool hasDiagnostics,
             bool hasResilience,
             Dictionary<string, bool> diagnosticsBehaviors,
-            Dictionary<string, bool> resilienceBehaviors,
-            string coverage
+            Dictionary<string, bool> resilienceBehaviors
         ) arguments
     )
     {
@@ -57,8 +53,7 @@ internal readonly record struct ProcessHandlerInterfaceArguments(
             arguments.hasDiagnostics,
             arguments.hasResilience,
             arguments.diagnosticsBehaviors,
-            arguments.resilienceBehaviors,
-            arguments.coverage
+            arguments.resilienceBehaviors
         );
     }
 }

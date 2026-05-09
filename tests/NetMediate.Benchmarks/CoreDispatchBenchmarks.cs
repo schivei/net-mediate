@@ -38,7 +38,6 @@ public class CoreDispatchBenchmarks
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        //services.AddNetMediate();
         services.AddGenDIServices();
 
         _provider = services.BuildServiceProvider();

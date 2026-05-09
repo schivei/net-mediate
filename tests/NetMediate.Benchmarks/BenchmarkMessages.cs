@@ -58,14 +58,21 @@ public sealed record BenchStreamItem(int Index);
 public sealed class BenchStreamHandler : IStreamHandler<BenchStreamRequest, BenchStreamItem>
 {
     /// <inheritdoc/>
-    public async IAsyncEnumerable<BenchStreamItem> Handle(
-        BenchStreamRequest message,
+    IAsyncEnumerable<BenchStreamItem> IHandler<BenchStreamRequest, IAsyncEnumerable<BenchStreamItem>>.Handle(
+        BenchStreamRequest _,
+        CancellationToken cancellationToken
+    ) => StreamItems(cancellationToken);
+
+    private static async IAsyncEnumerable<BenchStreamItem> StreamItems(
         [System.Runtime.CompilerServices.EnumeratorCancellation]
             CancellationToken cancellationToken = default
     )
     {
+        cancellationToken.ThrowIfCancellationRequested();
         yield return new BenchStreamItem(1);
+        cancellationToken.ThrowIfCancellationRequested();
         yield return new BenchStreamItem(2);
+        cancellationToken.ThrowIfCancellationRequested();
         yield return new BenchStreamItem(3);
     }
 }

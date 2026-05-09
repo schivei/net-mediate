@@ -57,7 +57,7 @@ internal static class RetryBehaviorRunner
         if (options.Disabled)
             return await operation(state, cancellationToken).ConfigureAwait(false);
 
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = 0; attempt <= maxRetryCount; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -76,6 +76,8 @@ internal static class RetryBehaviorRunner
                 await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
             }
         }
+
+        throw new InvalidOperationException("Retry execution ended without producing a result.");
     }
 
     private static Task DelayIfNeededAsync(TimeSpan delay, CancellationToken cancellationToken) =>

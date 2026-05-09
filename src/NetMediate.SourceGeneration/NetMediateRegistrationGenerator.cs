@@ -274,29 +274,14 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
             foreach (var @interface in handlerType.AllInterfaces)
             {
-                var definition = @interface.OriginalDefinition;
-                if (
-                    definition.ContainingNamespace.ToDisplayString().Replace(GlobalNamespace, "")
-                    != PackName
-                )
+                if (!TryGetSupportedHandlerInterfaceFqn(@interface, out var ifceFqn))
                     continue;
 
-                var name = definition.Name;
-                if (
-                    name != CommandHandlerIfce
-                    && name != NotificationHandlerIfce
-                    && name != RequestHandlerIfce
-                    && name != StreamHandlerIfce
-                )
-                    continue;
-
-                var ifceFqn = @interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                if (!grouped.TryGetValue(ifceFqn, out var group))
-                {
-                    group = (ifceFqn, []);
-                    grouped[ifceFqn] = group;
-                }
-                group.entries.Add((keyLiteral, lifetime, handlerFqn, ctorArgs));
+                AddKeyedHandlerEntry(
+                    grouped,
+                    ifceFqn,
+                    (keyLiteral, lifetime, handlerFqn, ctorArgs)
+                );
             }
         }
 
@@ -324,28 +309,8 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         var inner3 = inner2 + "    ";
         var inner4 = inner3 + "    ";
 
-        // Group entries by key literal so multiple handlers for the same key are
-        // combined into a single array entry in the dictionary.
-        var byKey = new Dictionary<string, List<(int lifetime, string handlerFqn, string ctorArgs)>>(
-            StringComparer.Ordinal
-        );
-        foreach (var (keyLiteral, lifetime, handlerFqn, ctorArgs) in entries)
-        {
-            if (!byKey.TryGetValue(keyLiteral, out var list))
-            {
-                list = [];
-                byKey[keyLiteral] = list;
-            }
-            list.Add((lifetime, handlerFqn, ctorArgs));
-        }
-
-        // Collect all singleton handlers that need a Lazy variable (Singleton=0).
-        // Scoped (1) and Transient (2) both use the active scope's IServiceProvider.
-        var singletonEntries = entries
-            .Where(e => e.lifetime == 0 /* Singleton */)
-            .Select(e => (e.handlerFqn, e.ctorArgs))
-            .Distinct()
-            .ToList();
+        var byKey = GroupEntriesByKey(entries);
+        var singletonEntries = GetSingletonEntries(entries);
 
         var hasSingletons = singletonEntries.Count > 0;
 
@@ -378,32 +343,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         );
         sb.AppendLine($"{inner2}{{");
 
-        var keyList = byKey.Keys.ToList();
-        for (var ki = 0; ki < keyList.Count; ki++)
-        {
-            var keyLiteral = keyList[ki];
-            var handlerList = byKey[keyLiteral];
-            var keyComma = ki < keyList.Count - 1 ? "," : string.Empty;
-
-            if (handlerList.Count == 1)
-            {
-                var (lifetime, handlerFqn, ctorArgs) = handlerList[0];
-                var factory = BuildFactory(lifetime, handlerFqn, ctorArgs, ifceFqn);
-                sb.AppendLine($"{inner3}{{ {keyLiteral}, [{factory}] }}{keyComma}");
-            }
-            else
-            {
-                sb.AppendLine($"{inner3}{{ {keyLiteral}, [");
-                for (var hi = 0; hi < handlerList.Count; hi++)
-                {
-                    var (lifetime, handlerFqn, ctorArgs) = handlerList[hi];
-                    var factory = BuildFactory(lifetime, handlerFqn, ctorArgs, ifceFqn);
-                    var handlerComma = hi < handlerList.Count - 1 ? "," : string.Empty;
-                    sb.AppendLine($"{inner4}{factory}{handlerComma}");
-                }
-                sb.AppendLine($"{inner3}] }}{keyComma}");
-            }
-        }
+        AppendKeyedRegistryEntries(sb, byKey, inner3, inner4);
 
         sb.AppendLine($"{inner2}}});");
         sb.AppendLine($"{baseIndent}}});");
@@ -412,8 +352,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     private static string BuildFactory(
         int lifetime,
         string handlerFqn,
-        string ctorArgs,
-        string ifceFqn
+        string ctorArgs
     )
     {
         if (lifetime == 0 /* Singleton */)
@@ -430,6 +369,115 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 ? string.Empty
                 : BuildCtorArgsWithSp(ctorArgs, "_sp");
             return $"(_sp) => new {handlerFqn}({args})";
+        }
+    }
+
+    private static void AddKeyedHandlerEntry(
+        Dictionary<
+            string,
+            (
+                string handlerIfceFqn,
+                List<(string keyLiteral, int lifetime, string handlerFqn, string ctorArgs)> entries
+            )
+        > grouped,
+        string ifceFqn,
+        (string keyLiteral, int lifetime, string handlerFqn, string ctorArgs) entry
+    )
+    {
+        if (!grouped.TryGetValue(ifceFqn, out var group))
+        {
+            group = (ifceFqn, []);
+            grouped[ifceFqn] = group;
+        }
+
+        group.entries.Add(entry);
+    }
+
+    private static bool TryGetSupportedHandlerInterfaceFqn(
+        INamedTypeSymbol @interface,
+        out string ifceFqn
+    )
+    {
+        var definition = @interface.OriginalDefinition;
+        var namespaceName = definition.ContainingNamespace.ToDisplayString().Replace(GlobalNamespace, "");
+        var name = definition.Name;
+
+        if (
+            namespaceName == PackName
+            && name is CommandHandlerIfce or NotificationHandlerIfce or RequestHandlerIfce or StreamHandlerIfce
+        )
+        {
+            ifceFqn = @interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            return true;
+        }
+
+        ifceFqn = string.Empty;
+        return false;
+    }
+
+    private static Dictionary<string, List<(int lifetime, string handlerFqn, string ctorArgs)>> GroupEntriesByKey(
+        List<(string keyLiteral, int lifetime, string handlerFqn, string ctorArgs)> entries
+    )
+    {
+        var byKey = new Dictionary<string, List<(int lifetime, string handlerFqn, string ctorArgs)>>(
+            StringComparer.Ordinal
+        );
+
+        foreach (var (keyLiteral, lifetime, handlerFqn, ctorArgs) in entries)
+        {
+            if (!byKey.TryGetValue(keyLiteral, out var list))
+            {
+                list = [];
+                byKey[keyLiteral] = list;
+            }
+
+            list.Add((lifetime, handlerFqn, ctorArgs));
+        }
+
+        return byKey;
+    }
+
+    private static List<(string handlerFqn, string ctorArgs)> GetSingletonEntries(
+        List<(string keyLiteral, int lifetime, string handlerFqn, string ctorArgs)> entries
+    ) =>
+        entries
+            .Where(e => e.lifetime == 0 /* Singleton */)
+            .Select(e => (e.handlerFqn, e.ctorArgs))
+            .Distinct()
+            .ToList();
+
+    private static void AppendKeyedRegistryEntries(
+        StringBuilder sb,
+        Dictionary<string, List<(int lifetime, string handlerFqn, string ctorArgs)>> byKey,
+        string entryIndent,
+        string factoryIndent
+    )
+    {
+        var keyList = byKey.Keys.ToList();
+        for (var keyIndex = 0; keyIndex < keyList.Count; keyIndex++)
+        {
+            var keyLiteral = keyList[keyIndex];
+            var handlerList = byKey[keyLiteral];
+            var keyComma = keyIndex < keyList.Count - 1 ? "," : string.Empty;
+
+            if (handlerList.Count == 1)
+            {
+                var (lifetime, handlerFqn, ctorArgs) = handlerList[0];
+                var factory = BuildFactory(lifetime, handlerFqn, ctorArgs);
+                sb.AppendLine($"{entryIndent}{{ {keyLiteral}, [{factory}] }}{keyComma}");
+                continue;
+            }
+
+            sb.AppendLine($"{entryIndent}{{ {keyLiteral}, [");
+            for (var handlerIndex = 0; handlerIndex < handlerList.Count; handlerIndex++)
+            {
+                var (lifetime, handlerFqn, ctorArgs) = handlerList[handlerIndex];
+                var factory = BuildFactory(lifetime, handlerFqn, ctorArgs);
+                var handlerComma = handlerIndex < handlerList.Count - 1 ? "," : string.Empty;
+                sb.AppendLine($"{factoryIndent}{factory}{handlerComma}");
+            }
+
+            sb.AppendLine($"{entryIndent}] }}{keyComma}");
         }
     }
 
@@ -571,8 +619,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     hasDiagnostics,
                     hasResilience,
                     diagnosticsBehaviors,
-                    resilienceBehaviors,
-                    coverage
+                    resilienceBehaviors
                 )
             );
         }
@@ -598,8 +645,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             hasDiagnostics,
             hasResilience,
             diagnosticsBehaviors,
-            resilienceBehaviors,
-            _
+            resilienceBehaviors
         ) = arguments;
 
         registration = default;

@@ -271,8 +271,11 @@ public sealed class PipelineExecutorCoverageTests
         HandlerExecutionDelegate<ICommandHandler<Cmd>, Cmd, Task> throwing =
             (_, _, _, _) => throw new InvalidOperationException("sync throw");
 
-        // Exception is swallowed inside App; Handle must complete without throwing.
-        await ex.Handle(null, new Cmd(), throwing, default);
+        var exception = await Record.ExceptionAsync(() =>
+            ex.Handle(null, new Cmd(), throwing, default)
+        );
+
+        Assert.Null(exception);
     }
 
     // ErrorReporting – faulted behavior triggers OnlyOnFaulted continuation ───
@@ -426,7 +429,11 @@ public sealed class PipelineExecutorCoverageTests
             s.AddSingleton<INotificationHandler<Notif>>(_ => new FaultingNotifHandler()));
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await ex.Handle(null, new Notif(), NotifExec(), default);
+        var exception = await Record.ExceptionAsync(() =>
+            ex.Handle(null, new Notif(), NotifExec(), default)
+        );
+
+        Assert.Null(exception);
     }
 
     // =========================================================================

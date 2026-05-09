@@ -43,7 +43,7 @@ using NetMediate;
 builder.Services.AddNetMediate();
 ```
 
-> **GenDI-first style**: `AddNetMediate()` also triggers `AddGenDIServices()`. Prefer `[Injectable]` + `[Inject]` so the consumer can choose `ServiceLifetime`, `Group`, `Order`, `Key`, and the preferred contract through `[Injectable<TService>]`.
+> **GenDI-first style**: `AddNetMediate()` also triggers `AddGenDIServices()`. Prefer `[Injectable]` + `[Inject]` so the consumer can choose `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific contract and contract discovery does not already find `[ServiceInjection]`.
 
 ### Usage
 
@@ -98,10 +98,10 @@ All handler `Handle` methods return `Task` or `Task<TResponse>`:
 All `Register*Handler` methods accept an optional `key` argument. This lets you register multiple handlers for the same message type under distinct keys and dispatch to a specific one at runtime:
 
 ```csharp
-[Injectable<ICommandHandler<MyCommand>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public sealed class DefaultCommandHandler : ICommandHandler<MyCommand> { }
 
-[Injectable<ICommandHandler<MyCommand>>(ServiceLifetime.Scoped, Group = 100, Order = 2, Key = "audit")]
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 2, Key = "audit")]
 public sealed class AuditCommandHandler : ICommandHandler<MyCommand> { }
 
 // Dispatch to the default (null-key) handlers

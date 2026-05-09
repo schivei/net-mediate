@@ -31,18 +31,12 @@
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="GenDI.SourceGenerator" Version="26.*" PrivateAssets="all" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.*" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*" />
   </ItemGroup>
-  <PropertyGroup Condition="Exists('$(ProjectAssetsFile)')">
-    <_GenDIProjectAssetsFile>$(ProjectAssetsFile)</_GenDIProjectAssetsFile>
-    <_GenDIResolvedVersionPattern>gendi\.sourcegenerator/([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)</_GenDIResolvedVersionPattern>
-    <_GenDIProjectAssetsContent>$([System.IO.File]::ReadAllText('$(_GenDIProjectAssetsFile)'))</_GenDIProjectAssetsContent>
-    <_GenDISourceGeneratorResolvedVersion>$([System.Text.RegularExpressions.Regex]::Match('$(_GenDIProjectAssetsContent)', '$(_GenDIResolvedVersionPattern)').Groups[1].Value)</_GenDISourceGeneratorResolvedVersion>
-    <_GenDIAnalyzerResolvedPath>$(NuGetPackageRoot)gendi.sourcegenerator/$(_GenDISourceGeneratorResolvedVersion)/analyzers/dotnet/cs/GenDI.SourceGenerator.dll</_GenDIAnalyzerResolvedPath>
-  </PropertyGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'netstandard2.1'">
     <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.*" />
   </ItemGroup>
@@ -52,7 +46,4 @@
   <ItemGroup>
     <ProjectReference Include="..\NetMediate.Core\NetMediate.Core.csproj" />
   </ItemGroup>
-  <Target Name="ValidateGenDIAnalyzerVersionResolution" BeforeTargets="GenerateNuspec" Condition="'$(_GenDISourceGeneratorResolvedVersion)' == ''">
-    <Warning Text="Could not resolve GenDI.SourceGenerator version from $(ProjectAssetsFile). The bundled GenDI analyzer will not be packed. Run restore and verify GenDI.SourceGenerator restore succeeded." />
-  </Target>
 </Project>

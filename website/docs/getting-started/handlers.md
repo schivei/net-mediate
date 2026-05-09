@@ -30,7 +30,7 @@ public interface IUserRepository
     Task<User?> GetByIdAsync(string id, CancellationToken cancellationToken);
 }
 
-[Injectable<ICommandHandler<CreateUserCommand>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
 {
     [Inject] public required IUserRepository Repository { get; init; }
@@ -56,7 +56,7 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
 ### Request Handler
 
 ```csharp
-[Injectable<IRequestHandler<GetUserQuery, UserDto>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserDto>
 {
     [Inject] public required IUserRepository Repository { get; init; }
@@ -82,7 +82,7 @@ public interface IEmailService
     Task SendWelcomeEmailAsync(string email, string name, CancellationToken cancellationToken);
 }
 
-[Injectable<INotificationHandler<UserCreatedNotification>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class SendWelcomeEmailHandler : INotificationHandler<UserCreatedNotification>
 {
     [Inject] public required IEmailService EmailService { get; init; }
@@ -106,7 +106,7 @@ public interface IActivityRepository
     IAsyncEnumerable<Activity> GetUserActivitiesAsync(string userId, CancellationToken cancellationToken);
 }
 
-[Injectable<IStreamHandler<GetUserActivityQuery, ActivityDto>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class GetUserActivityHandler : IStreamHandler<GetUserActivityQuery, ActivityDto>
 {
     [Inject] public required IActivityRepository Repository { get; init; }
@@ -143,7 +143,7 @@ The generator scans your assembly for all concrete (non-abstract, non-generic) c
 Prefer GenDI property injection for handlers and supporting services:
 
 ```csharp
-[Injectable<ICommandHandler<MyCommand>>(ServiceLifetime.Scoped, Group = 100, Order = 1, Key = "primary")]
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1, Key = "primary")]
 public class MyHandler : ICommandHandler<MyCommand>
 {
     [Inject] public required IRepository Repository { get; init; }
@@ -159,7 +159,7 @@ public class MyHandler : ICommandHandler<MyCommand>
 
 ## Handler Lifetime
 
-With GenDI you choose the lifetime per implementation: `Transient`, `Scoped`, or `Singleton`. You can also control `Group`, `Order`, `Key`, and the preferred exposed contract via `[Injectable<TService>]`.
+With GenDI you choose the lifetime per implementation: `Transient`, `Scoped`, or `Singleton`. You can also control `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific contract and contract discovery does not already find `[ServiceInjection]`.
 
 ## Multiple Handlers
 

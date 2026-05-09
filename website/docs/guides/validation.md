@@ -43,10 +43,13 @@ public sealed class DataAnnotationsRequestBehavior<TMessage, TResponse>
 ### Registration
 
 ```csharp
-// Open-generic: validates every request type
-builder.Services.AddSingleton(
-    typeof(IPipelineRequestBehavior<,>),
-    typeof(DataAnnotationsRequestBehavior<,>));
+builder.Services.UseNetMediate(configure =>
+{
+    configure.RegisterBehavior<
+        DataAnnotationsRequestBehavior<CreateUserRequest, UserDto>,
+        CreateUserRequest,
+        Task<UserDto>>();
+});
 ```
 
 ## Example: FluentValidation for requests
@@ -84,10 +87,13 @@ public sealed class FluentValidationRequestBehavior<TMessage, TResponse>(
 // Register FluentValidation validators from your assembly
 builder.Services.AddValidatorsFromAssemblyContaining<MyValidator>();
 
-// Register the behavior open-generic
-builder.Services.AddSingleton(
-    typeof(IPipelineRequestBehavior<,>),
-    typeof(FluentValidationRequestBehavior<,>));
+builder.Services.UseNetMediate(configure =>
+{
+    configure.RegisterBehavior<
+        FluentValidationRequestBehavior<CreateUserRequest, UserDto>,
+        CreateUserRequest,
+        Task<UserDto>>();
+});
 ```
 
 ## Example: Notification validation behavior
@@ -117,10 +123,13 @@ public sealed class DataAnnotationsNotificationBehavior<TMessage>
 ```
 
 ```csharp
-// Open-generic: validates every notification type
-builder.Services.AddSingleton(
-    typeof(IPipelineBehavior<>),
-    typeof(DataAnnotationsNotificationBehavior<>));
+builder.Services.UseNetMediate(configure =>
+{
+    configure.RegisterBehavior<
+        DataAnnotationsNotificationBehavior<UserCreatedNotification>,
+        UserCreatedNotification,
+        Task>();
+});
 ```
 
 ## `MessageValidationException`

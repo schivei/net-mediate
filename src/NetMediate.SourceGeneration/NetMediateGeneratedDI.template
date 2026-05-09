@@ -5,16 +5,18 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 namespace {{AssemblyNamespace}};
 
 /// <summary>Generated mediator handler registration extension methods.</summary>
-{{Coverage}}public partial static class NetMediateGeneratedDI
+{{Coverage}}public static partial class NetMediateGeneratedDI
 {
     /// <summary>Registers all discovered handlers with the mediator using AOT-safe closed-type registration.
     /// Framework behaviors (diagnostics, resilience) are registered first to ensure they wrap user behaviors
     /// and run outermost in the pipeline.</summary>
-    public static global::NetMediate.IMediatorServiceBuilder AddNetMediate(this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
+    public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddNetMediate(this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
     {
+        global::NetMediate.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
         {{AssemblyNamespace}}.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
 
 {{FrameworkBehaviors}}
 {{Registrations}}
+        return services;
     }
 }

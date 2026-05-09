@@ -66,7 +66,7 @@ Install-Package NetMediate.Core
 Install-Package NetMediate.SourceGeneration
 ```
 
-> **Note:** Install `NetMediate.Core` where you only need the contracts (`IMediator`, handlers, behaviors). Install `NetMediate.SourceGeneration` in the executable/startup project that calls `AddNetMediate()`. That package pulls in `NetMediate` and `GenDI.SourceGenerator` automatically via `buildTransitive`.
+> **Note:** Install `NetMediate.Core` where you only need the contracts (`IMediator`, handlers, behaviors). Install `NetMediate.SourceGeneration` in the executable/startup project that calls `AddNetMediate()`. Its `buildTransitive` file adds the required `PackageReference` entries for `NetMediate` and `GenDI.SourceGenerator`.
 
 ### .NET CLI
 ```bash
@@ -101,7 +101,7 @@ public interface IEmailService
     Task SendWelcomeEmailAsync(string email, CancellationToken cancellationToken);
 }
 
-[Injectable<IEmailService>(ServiceLifetime.Scoped, Group = 10, Order = 1, Key = "primary")]
+[Injectable(ServiceLifetime.Scoped, Group = 10, Order = 1, Key = "primary")]
 public sealed class SmtpEmailService : IEmailService
 {
     public Task SendWelcomeEmailAsync(string email, CancellationToken cancellationToken) =>
@@ -116,7 +116,7 @@ public sealed class UserFacade
 }
 ```
 
-With GenDI the consumer chooses the `ServiceLifetime`, `Group`, `Order`, `Key`, and the preferred exposed contract through `[Injectable<TService>]`. `AddNetMediate()` already calls `AddGenDIServices()` for you.
+With GenDI the consumer chooses the `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific contract and contract discovery does not already find `[ServiceInjection]`. `AddNetMediate()` already calls `AddGenDIServices()` for you.
 
 ### Optional companion packages
 ```xml
@@ -172,7 +172,7 @@ builder.Services.AddNetMediate(); // all handlers in your project are registered
 public record UserCreated(string UserId, string Email);
 
 // 4. Create a handler (Handle returns Task)
-[Injectable<INotificationHandler<UserCreated>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class UserCreatedHandler : INotificationHandler<UserCreated>
 {
     [Inject] public required ILogger<UserCreatedHandler> Logger { get; init; }
@@ -226,7 +226,7 @@ public record UserRegistered(string UserId, string Email, DateTime RegisteredAt)
 
 #### Create Notification Handlers
 ```csharp
-[Injectable<INotificationHandler<UserRegistered>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class EmailNotificationHandler : INotificationHandler<UserRegistered>
 {
     [Inject] public required IEmailService EmailService { get; init; }
@@ -238,7 +238,7 @@ public class EmailNotificationHandler : INotificationHandler<UserRegistered>
     }
 }
 
-[Injectable<INotificationHandler<UserRegistered>>(ServiceLifetime.Scoped, Group = 100, Order = 2)]
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 2)]
 public class AuditLogHandler : INotificationHandler<UserRegistered>
 {
     [Inject] public required IAuditService AuditService { get; init; }

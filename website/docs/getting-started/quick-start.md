@@ -66,14 +66,14 @@ public interface IEmailService
     Task SendWelcomeEmailAsync(string email, CancellationToken cancellationToken);
 }
 
-[Injectable<IEmailService>(ServiceLifetime.Scoped)]
+[Injectable(ServiceLifetime.Scoped)]
 public sealed class EmailService : IEmailService
 {
     public Task SendWelcomeEmailAsync(string email, CancellationToken cancellationToken) =>
         Task.CompletedTask;
 }
 
-[Injectable<INotificationHandler<UserCreated>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class WelcomeEmailHandler : INotificationHandler<UserCreated>
 {
     [Inject] public required IEmailService EmailService { get; init; }
@@ -102,13 +102,13 @@ public interface IAuditService
     Task LogAsync(string message, CancellationToken cancellationToken);
 }
 
-[Injectable<IAuditService>(ServiceLifetime.Scoped)]
+[Injectable(ServiceLifetime.Scoped)]
 public sealed class AuditService : IAuditService
 {
     public Task LogAsync(string message, CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
-[Injectable<INotificationHandler<UserCreated>>(ServiceLifetime.Scoped, Group = 100, Order = 2)]
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 2)]
 public class AuditLogHandler : INotificationHandler<UserCreated>
 {
     [Inject] public required IAuditService AuditService { get; init; }
@@ -147,7 +147,7 @@ await host.StartAsync();
 `AddNetMediate()` is generated at compile-time by the source generator. It automatically discovers and registers all handler implementations in your project - no manual registration needed!
 :::
 
-> **GenDI style:** prefer `[Injectable]` + `[Inject]`. With GenDI you can choose the service lifetime, `Group`, `Order`, keyed registrations (`Key`) and the preferred exposed contract with `[Injectable<TService>]`.
+> **GenDI style:** prefer `[Injectable]` + `[Inject]`. With GenDI you can choose the service lifetime, `Group`, `Order`, and keyed registrations (`Key`). Use `[Injectable<TService>]` only when you need to force a specific contract and contract discovery does not already find `[ServiceInjection]`.
 
 ## 📣 Step 5: Use the Mediator
 
@@ -217,7 +217,7 @@ public record CreateUserRequest(string Email);
 public record UserCreated(string UserId, string Email, DateTime CreatedAt);
 
 // Handler
-[Injectable<INotificationHandler<UserCreated>>(ServiceLifetime.Scoped)]
+[Injectable(ServiceLifetime.Scoped)]
 public class UserCreatedHandler : INotificationHandler<UserCreated>
 {
     [Inject] public required ILogger<UserCreatedHandler> Logger { get; init; }

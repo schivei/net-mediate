@@ -10,9 +10,9 @@ sidebar_position: 5
 
 ## Why Quartz for notifications?
 
-The default NetMediate notification transport is an in-memory `Channel<T>` processed by a background service. This is fast and appropriate for most scenarios. However, if your process crashes before a notification is dispatched, the in-memory queue is lost.
+The default NetMediate notification path dispatches handlers immediately in-process. This is fast and appropriate for most scenarios. However, if your process crashes before that work completes, there is no persisted transport to replay it automatically.
 
-`NetMediate.Quartz` replaces the in-memory transport with persistent Quartz jobs:
+`NetMediate.Quartz` replaces the default in-process notification path with persistent Quartz jobs:
 
 - **Crash recovery** — if the process terminates before a job fires, Quartz (with a persistent `AdoJobStore`) replays the job on the next startup.
 - **Cluster distribution** — with Quartz clustering enabled, notification jobs are load-balanced across nodes.

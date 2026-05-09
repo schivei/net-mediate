@@ -6,7 +6,7 @@ sidebar_position: 1
 
 `NetMediate.SourceGeneration` is a Roslyn incremental source generator that emits handler registrations automatically at compile time. It is the standard and only supported registration path for NetMediate handlers.
 
-Install `NetMediate.SourceGeneration` directly in the startup/application project. Its `buildTransitive` file adds the required `NetMediate` runtime package and `GenDI.SourceGenerator` automatically. If you keep contracts in a separate project, reference `NetMediate.Core` there.
+Install `NetMediate.SourceGeneration` directly in the startup/application project. Its `buildTransitive` file adds the required `PackageReference` entries for `NetMediate` and `GenDI.SourceGenerator`. If you keep contracts in a separate project, reference `NetMediate.Core` there.
 
 ## Installation
 
@@ -25,7 +25,7 @@ That is all for the startup/application project. `dotnet add package NetMediate.
 > <PackageReference Include="NetMediate.Core" Version="x.x.x" />
 > ```
 
-### Bundled analyzers
+### Activated generators
 
 The `NetMediate.SourceGeneration` package activates two generators in the consuming project:
 
@@ -34,9 +34,9 @@ The `NetMediate.SourceGeneration` package activates two generators in the consum
 | `NetMediate.SourceGeneration.dll` | `AddNetMediate()`, `NetMediateGeneratedDI`, `NetMediateTypedExtensions`, global usings |
 | `GenDI.SourceGenerator.dll` | `AddGenDIServices()` for your own `[Injectable]`-annotated classes |
 
-Because `GenDI.SourceGenerator.dll` is injected indirectly, you can use `[Injectable]`, `[ServiceInjection]`, and related attributes **without installing a separate package** in the startup project.
+Because `GenDI.SourceGenerator.dll` is referenced indirectly through `buildTransitive`, you can use `[Injectable]`, `[ServiceInjection]`, and related attributes **without installing a separate package** in the startup project.
 
-The package's `buildTransitive/NetMediate.SourceGeneration.props` file adds `NetMediate` and `GenDI.SourceGenerator` automatically. This keeps the startup project minimal while still provisioning the runtime and generator stack.
+The package's `buildTransitive/NetMediate.SourceGeneration.props` file adds those `PackageReference` entries automatically. This keeps the startup project minimal while still provisioning the runtime and generator stack.
 
 ## Usage
 
@@ -75,13 +75,13 @@ public interface IInventoryGateway
     Task ReserveAsync(string sku, CancellationToken cancellationToken);
 }
 
-[Injectable<IInventoryGateway>(ServiceLifetime.Scoped, Group = 20, Order = 1, Key = "primary")]
+[Injectable(ServiceLifetime.Scoped, Group = 20, Order = 1, Key = "primary")]
 public sealed class InventoryGateway : IInventoryGateway
 {
     public Task ReserveAsync(string sku, CancellationToken cancellationToken) => Task.CompletedTask;
 }
 
-[Injectable<INotificationHandler<OrderCreated>>(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public sealed class ReserveInventoryHandler : INotificationHandler<OrderCreated>
 {
     [Inject] public required IInventoryGateway InventoryGateway { get; init; }
@@ -89,10 +89,10 @@ public sealed class ReserveInventoryHandler : INotificationHandler<OrderCreated>
 }
 ```
 
-Use GenDI metadata to control `ServiceLifetime`, `Group`, `Order`, `Key`, and the preferred exposed contract through `[Injectable<TService>]`.
+Use GenDI metadata to control `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific contract and contract discovery does not already find `[ServiceInjection]`.
 
 > **Keyed handlers**: The source generator handles two cases automatically:
-> - Handler decorated with `[Injectable<...>(..., Key = "mykey")]` → registered with the explicit key `"mykey"`.
+> - Handler decorated with `[Injectable(..., Key = "mykey")]` → registered with the explicit key `"mykey"`.
 > - Handler with no `Key` → registered under `Extensions.DEFAULT_ROUTING_KEY = "__default"` (the same key used when `null` is passed at dispatch time, so `mediator.Send(command, ct)` and `mediator.Send(null, command, ct)` are equivalent).
 >
 > If you want to register a handler under a custom key manually, you can still use `UseNetMediate`. Avoid using the reserved literal `"__default"` as your own routing key.
@@ -106,14 +106,14 @@ The source-generator path is fully AOT-safe — no reflection, no `MakeGenericTy
 Apply `Group` + `Order` on `[Injectable]` to control registration order. Lower values are registered first.
 
 ```csharp
-[Injectable<ICommandHandler&lt;AuditCommand&gt;>(ServiceLifetime.Scoped, Group = 10, Order = 1)]
+[Injectable(ServiceLifetime.Scoped, Group = 10, Order = 1)]
 public sealed class AuditHandler : ICommandHandler&lt;AuditCommand&gt; { ... }
 
-[Injectable<ICommandHandler&lt;MetricsCommand&gt;>(ServiceLifetime.Scoped, Group = 10, Order = 2)]
+[Injectable(ServiceLifetime.Scoped, Group = 10, Order = 2)]
 public sealed class MetricsHandler : ICommandHandler&lt;MetricsCommand&gt; { ... }
 
 // No explicit Group/Order → registered last (implicit order = int.MaxValue).
-[Injectable<ICommandHandler&lt;AuditCommand&gt;>(ServiceLifetime.Scoped)]
+[Injectable(ServiceLifetime.Scoped)]
 public sealed class FallbackHandler : ICommandHandler&lt;AuditCommand&gt; { ... }
 ```
 

@@ -8,7 +8,7 @@ NetMediate is fully compatible with NativeAOT-compiled and trimmed applications.
 
 ## Summary
 
-Handler registration is generated at compile time by `NetMediate.SourceGeneration` — there is no assembly scanning and no reflection involved in registering handlers. Pipeline behaviors must be registered via `RegisterBehavior<>` on the builder; open-generic DI patterns are not supported.
+Handler registration is generated at compile time by `NetMediate.SourceGeneration` — there is no assembly scanning and no reflection involved in registering handlers. Pipeline behaviors must be registered via `RegisterBehavior<>` on the builder using closed types only.
 
 | Path | AOT / Trim compatible | Notes |
 |---|---|---|
@@ -56,4 +56,4 @@ builder.Services.UseNetMediate(configure =>
 
 - Calling `MakeGenericType` at runtime — not supported by NativeAOT
 - Using `Type.GetGenericArguments()` to construct service types at runtime
-- Registering behaviors via open-generic `services.AddSingleton(typeof(IPipeline...<,>), typeof(...<,>))` — not supported
+- Registering pipeline behaviors with anything other than closed-type `RegisterBehavior<>` calls on the builder — not supported

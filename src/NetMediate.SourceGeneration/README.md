@@ -13,7 +13,7 @@ Reference this package in the application's startup/main project with:
 
 ## Indirect but required dependencies
 
-When you install this package, its `buildTransitive` file adds these required dependencies automatically:
+When you install this package, its `buildTransitive` file adds these required `PackageReference` entries automatically:
 
 - `NetMediate` — runtime implementation used by the generated registrations
 - `GenDI.SourceGenerator` — generator that emits the DI builder APIs used by NetMediate

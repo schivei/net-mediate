@@ -5,7 +5,9 @@
 [![NuGet NetMediate](https://img.shields.io/nuget/v/NetMediate?style=flat)](https://www.nuget.org/packages/NetMediate/)
 [![NuGet NetMediate.Core](https://img.shields.io/nuget/v/NetMediate.Core?style=flat)](https://www.nuget.org/packages/NetMediate.Core/)
 [![NuGet NetMediate.SourceGeneration](https://img.shields.io/nuget/v/NetMediate.SourceGeneration?style=flat)](https://www.nuget.org/packages/NetMediate.SourceGeneration/)
-[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Quality Gate](https://img.shields.io/sonar/quality_gate/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Bugs](https://img.shields.io/sonar/bugs/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Code Smells](https://img.shields.io/sonar/code_smells/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/schivei/net-mediate/blob/main/LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-website-blue)](https://elton.schivei.nom.br/net-mediate)
 

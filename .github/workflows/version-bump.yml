@@ -1,0 +1,69 @@
+name: Version Bump on PR Merge
+
+# Triggered when a PR is closed (merged) into main.
+# Analyzes the size of the change and bumps major or minor accordingly.
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+
+jobs:
+  bump-version:
+    name: Analyze Impact and Bump Version
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true && github.actor != 'github-actions[bot]'
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+    - name: Checkout main
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        ref: main
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Python
+      uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: '3.x'
+
+    - name: Analyze PR impact
+      id: impact
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      run: |
+        BUMP_TYPE=$(python .github/scripts/analyze_version_impact.py "$BASE_SHA" "$HEAD_SHA")
+        echo "bump_type=${BUMP_TYPE}" >> "$GITHUB_OUTPUT"
+        echo "Determined bump type: ${BUMP_TYPE}"
+
+    - name: Bump version
+      id: bump
+      run: python .github/scripts/bump_version.py --type ${{ steps.impact.outputs.bump_type }}
+
+    - name: Commit and push bumped version
+      run: |
+        git config user.name  "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add versions.props
+        git diff --cached --quiet && echo "No changes to commit." && exit 0
+        BUMP_TYPE="${{ steps.impact.outputs.bump_type }}"
+        VERSION=$(python -c "
+        import xml.etree.ElementTree as ET
+        r = ET.parse('versions.props').getroot()
+        p = r.find('PropertyGroup')
+        y = p.findtext('VersionYear','0')
+        maj = p.findtext('VersionMajor','0')
+        min_ = p.findtext('VersionMinor','0')
+        pat = p.findtext('VersionPatch','0')
+        print(f'{y}.{maj}.{min_}.{pat}')
+        ")
+        git commit -m "chore: bump ${BUMP_TYPE} version to ${VERSION} [skip ci]"
+        git push origin HEAD:refs/heads/main

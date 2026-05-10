@@ -1,11 +1,49 @@
-namespace NetMediate.Diagnostics;
+namespace NetMediate;
 
 /// <summary>
-/// Notification and command pipeline behavior that records OpenTelemetry traces and metrics.
-/// Registered per-handler by the source generator when <c>NetMediate.Diagnostics</c> is referenced.
+/// Provides a pipeline behavior that records telemetry for command notifications, enabling activity tracking and error
+/// reporting during command execution.
 /// </summary>
-[ServiceOrder(int.MinValue)]
-public sealed class TelemetryNotificationBehavior<TMessage> : IPipelineBehavior<TMessage>
+/// <remarks>This behavior integrates with the pipeline to start a diagnostic activity for each command
+/// notification and records telemetry data, including error status if an exception occurs. It is typically used to
+/// enable distributed tracing and monitoring for command handling operations.</remarks>
+/// <typeparam name="TMessage">The type of the command message to be processed. Must be non-null.</typeparam>
+public sealed class TelemetryCommandBehavior<TMessage> : IPipelineCommandBehavior<TMessage>
+    where TMessage : notnull
+{
+    /// <inheritdoc />
+    public async Task Handle(
+        object? key,
+        TMessage message,
+        PipelineBehaviorDelegate<TMessage, Task> next,
+        CancellationToken cancellationToken
+    )
+    {
+        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Send");
+        try
+        {
+            await next(key, message, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
+        finally
+        {
+            NetMediateDiagnostics.RecordSend<TMessage>();
+        }
+    }
+}
+
+/// <summary>
+/// Provides a pipeline behavior that records telemetry for notification messages as they are processed.
+/// </summary>
+/// <remarks>This behavior starts a diagnostic activity for each notification and records telemetry data,
+/// including error status if an exception occurs during processing. It is intended to be used within a pipeline to
+/// enable observability and monitoring of notification handling.</remarks>
+/// <typeparam name="TMessage">The type of the notification message to be handled. Must not be null.</typeparam>
+public sealed class TelemetryNotificationBehavior<TMessage> : IPipelineNotificationBehavior<TMessage>
     where TMessage : notnull
 {
     /// <inheritdoc />
@@ -37,7 +75,6 @@ public sealed class TelemetryNotificationBehavior<TMessage> : IPipelineBehavior<
 /// Request pipeline behavior that records OpenTelemetry traces and metrics.
 /// Registered per-handler by the source generator when <c>NetMediate.Diagnostics</c> is referenced.
 /// </summary>
-[ServiceOrder(int.MinValue)]
 public sealed class TelemetryRequestBehavior<TMessage, TResponse>
     : IPipelineRequestBehavior<TMessage, TResponse>
     where TMessage : notnull
@@ -63,45 +100,6 @@ public sealed class TelemetryRequestBehavior<TMessage, TResponse>
         finally
         {
             NetMediateDiagnostics.RecordRequest<TMessage>();
-        }
-    }
-}
-
-/// <summary>
-/// Stream pipeline behavior that records OpenTelemetry traces and metrics.
-/// Registered per-handler by the source generator when <c>NetMediate.Diagnostics</c> is referenced.
-/// </summary>
-/// <remarks>
-/// The activity is scoped to the stream <em>dispatch</em> (i.e. the call to
-/// <see cref="IMediator.RequestStream{TMessage,TResponse}"/>), not to the full enumeration.
-/// This is intentional: <see cref="IAsyncEnumerable{T}"/> is lazy and the consumer drives
-/// enumeration independently. The metric counter is also incremented at dispatch time to
-/// track how many streams were started.
-/// </remarks>
-[ServiceOrder(int.MinValue)]
-public sealed class TelemetryStreamBehavior<TMessage, TResponse>
-    : IPipelineStreamBehavior<TMessage, TResponse>
-    where TMessage : notnull
-{
-    /// <inheritdoc />
-    public IAsyncEnumerable<TResponse> Handle(
-        object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> next,
-        CancellationToken cancellationToken
-    )
-    {
-        using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Stream");
-        try
-        {
-            var result = next(key, message, cancellationToken);
-            NetMediateDiagnostics.RecordStream<TMessage>();
-            return result;
-        }
-        catch (Exception ex)
-        {
-            activity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
-            throw;
         }
     }
 }

@@ -6,89 +6,119 @@ sidebar_position: 1
 
 `NetMediate.SourceGeneration` is a Roslyn incremental source generator that emits handler registrations automatically at compile time. It is the standard and only supported registration path for NetMediate handlers.
 
-The source generator is **bundled inside the `NetMediate` package** — you do not need to install `NetMediate.SourceGeneration` separately. The `GenDI.SourceGenerator` is also bundled so you can annotate your own classes with `[Injectable]` etc. without installing GenDI separately.
+Install `NetMediate.SourceGeneration` directly in the startup/application project. Its `buildTransitive` file adds the required `PackageReference` entries for `NetMediate` and `GenDI.SourceGenerator`. If you keep contracts in a separate project, reference `NetMediate.Core` there.
 
 ## Installation
 
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
 
-That is all. `dotnet add package NetMediate` also works without any extra configuration — the bundled analyzers are loaded automatically by MSBuild for any project that directly references the package.
+That is all for the startup/application project. `dotnet add package NetMediate.SourceGeneration` is enough to activate the generator and pull the required indirect dependencies.
 
-> **Library projects:** Add `PrivateAssets="all"` to prevent `NetMediate` and its bundled analyzers from flowing as a transitive dependency to downstream consumers of your library. This does **not** affect whether the analyzers run for your own project — they always run for direct references.
+> **Contracts-only projects:** Use `NetMediate.Core` if the project only needs NetMediate contracts and should not run the generator itself.
 >
 > ```xml
-> <!-- Library project recommendation -->
-> <PackageReference Include="NetMediate" Version="x.x.x" PrivateAssets="all" />
+> <PackageReference Include="NetMediate.Core" Version="x.x.x" />
 > ```
 
-### Bundled analyzers
+### Activated generators
 
-The `NetMediate` package ships two source generators under `analyzers/dotnet/cs/`:
+The `NetMediate.SourceGeneration` package activates two generators in the consuming project:
 
 | Generator DLL | What it generates |
 |---|---|
 | `NetMediate.SourceGeneration.dll` | `AddNetMediate()`, `NetMediateGeneratedDI`, `NetMediateTypedExtensions`, global usings |
 | `GenDI.SourceGenerator.dll` | `AddGenDIServices()` for your own `[Injectable]`-annotated classes |
 
-Because `GenDI.SourceGenerator.dll` is bundled, you can use `[Injectable]`, `[ServiceInjection]`, and related attributes **without installing a separate package**.
+Because `GenDI.SourceGenerator.dll` is referenced indirectly through `buildTransitive`, you can use `[Injectable]`, `[ServiceInjection]`, and related attributes **without installing a separate package** in the startup project.
 
-Both generators also propagate transitively via a `buildTransitive/NetMediate.props` file. This means that if a library in your solution references NetMediate (without `PrivateAssets="all"`), the generators will also run in projects that consume that library — no extra package reference required.
+The package's `buildTransitive/NetMediate.SourceGeneration.props` file adds those `PackageReference` entries automatically. This keeps the startup project minimal while still provisioning the runtime and generator stack.
 
 ## Usage
 
 ```csharp
+using GenDI;
 using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
 builder.Services.AddNetMediate();
 ```
 
-That's it. The generator discovers all concrete (non-abstract, non-generic) classes that implement one of the NetMediate handler interfaces in your project and wires them up:
+That's it. The generator discovers all concrete (non-abstract, non-generic) classes that implement one of the NetMediate handler interfaces in your project and wires them up with closed-type DI registrations:
 
-| Discovered interface | Generated call |
+| Discovered interface | Generated result |
 |---|---|
-| `ICommandHandler<TMessage>` | `configure.RegisterCommandHandler<THandler, TMessage>()` |
-| `INotificationHandler<TMessage>` | `configure.RegisterNotificationHandler<THandler, TMessage>()` |
-| `IRequestHandler<TMessage, TResponse>` | `configure.RegisterRequestHandler<THandler, TMessage, TResponse>()` |
-| `IStreamHandler<TMessage, TResponse>` | `configure.RegisterStreamHandler<THandler, TMessage, TResponse>()` |
+| `ICommandHandler<TMessage>` | Closed-type registrations for the handler and command executor |
+| `INotificationHandler<TMessage>` | Closed-type registrations for the handler and notification executor |
+| `IRequestHandler<TMessage, TResponse>` | Closed-type registrations for the handler and request executor |
+| `IStreamHandler<TMessage, TResponse>` | Closed-type registrations for the handler and stream executor |
 
 The generated method is decorated with `[ExcludeFromCodeCoverage]` — you do not need to test it directly.
 
-If a class also implements `INotifiable` (e.g. a custom notifier), the generator uses `UseNetMediate<TNotifier>` instead of `UseNetMediate`.
+## GenDI-first implementation style
+
+Because `AddNetMediate()` also triggers `AddGenDIServices()`, the recommended style for your own implementations is:
+
+```csharp
+using GenDI;
+using Microsoft.Extensions.DependencyInjection;
+
+[ServiceInjection]
+public interface IInventoryGateway
+{
+    Task ReserveAsync(string sku, CancellationToken cancellationToken);
+}
+
+[Injectable(ServiceLifetime.Scoped, Group = 20, Order = 1, Key = "primary")]
+public sealed class InventoryGateway : IInventoryGateway
+{
+    public Task ReserveAsync(string sku, CancellationToken cancellationToken) => Task.CompletedTask;
+}
+
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+public sealed class ReserveInventoryHandler : INotificationHandler<OrderCreated>
+{
+    [Inject] public required IInventoryGateway InventoryGateway { get; init; }
+    [Inject] public required ILogger<ReserveInventoryHandler> Logger { get; init; }
+}
+```
+
+Use GenDI metadata to control `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path.
 
 > **Keyed handlers**: The source generator handles two cases automatically:
-> - Handler decorated with `[KeyedService(Key = "mykey")]` → registered with the explicit key `"mykey"`.
-> - Handler with no attribute → registered under `Extensions.DEFAULT_ROUTING_KEY = "__default"` (the same key used when `null` is passed at dispatch time, so `mediator.Send(command, ct)` and `mediator.Send(null, command, ct)` are equivalent).
+> - Handler decorated with `[Injectable(..., Key = "mykey")]` → registered with the explicit key `"mykey"`.
+> - Handler with no `Key` → registered as a regular non-keyed service in the container. `mediator.SendMyCmdAsync(command, ct)` and `mediator.SendMyCmdAsync(null, command, ct)` are equivalent and target those non-keyed handlers.
 >
-> If you want to register a handler under a custom key *without* using the `[KeyedService]` attribute, you must register it manually via `UseNetMediate`. Avoid using the reserved literal `"__default"` as your own routing key.
+> The keyed routing table is emitted as a `KeyedHandlerRegistry<T>` at compile time — **no reflection, no `IKeyedServiceProvider`** — making keyed dispatch fully NativeAOT + Trimming compatible.
 
 ## AOT / NativeAOT
 
 The source-generator path is fully AOT-safe — no reflection, no `MakeGenericType`, no assembly scanning. See [Native AOT Support](./aot-support) for the complete compatibility guide.
 
-## Controlling registration order with `[ServiceOrder]`
+## Controlling registration order with GenDI metadata
 
-Apply `[ServiceOrder(n)]` to a handler class to control the order in which it is registered by
-the source generator. Lower values are registered first.
+Apply `Group` + `Order` on `[Injectable]` to control registration order. Lower values are registered first.
 
 ```csharp
-[ServiceOrder(1)]
+[Injectable(ServiceLifetime.Scoped, Group = 10, Order = 1)]
 public sealed class AuditHandler : ICommandHandler&lt;AuditCommand&gt; { ... }
 
-[ServiceOrder(2)]
+[Injectable(ServiceLifetime.Scoped, Group = 10, Order = 2)]
 public sealed class MetricsHandler : ICommandHandler&lt;MetricsCommand&gt; { ... }
 
-// No attribute → registered last (implicit order = int.MaxValue).
-public sealed class FallbackHandler : ICommandHandler&lt;FallbackCommand&gt; { ... }
+// No explicit Group/Order → registered last (implicit order = int.MaxValue).
+[Injectable(ServiceLifetime.Scoped)]
+public sealed class FallbackHandler : ICommandHandler&lt;AuditCommand&gt; { ... }
 ```
 
 Registration order affects the **pipeline wrapping order**: behaviors registered earlier wrap
 the pipeline *outermost*, so they run before later-registered behaviors.
 
-> **Scope**: `[ServiceOrder]` is respected only by the source generator. Handlers registered
-> manually via `UseNetMediate(configure => ...)` follow the order you write them in code.
+> **Scope**: `Group` + `Order` come from GenDI metadata on the discovered implementations.
 
 ## Generated namespace and `AddNetMediate()` discoverability
 
@@ -149,7 +179,7 @@ compile time.
 **Commands and notifications** receive four overloads:
 
 ```csharp
-// 1. Key-less dispatch (uses the default routing key)
+// 1. Key-less dispatch (passes null and uses the non-keyed handlers)
 Task SendMyCmdAsync(this IMediator mediator, MyCmd message, CancellationToken ct = default);
 
 // 2. Explicit routing key

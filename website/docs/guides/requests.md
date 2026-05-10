@@ -11,5 +11,5 @@ For detailed request documentation, see the main [README](https://github.com/sch
 ## Usage
 
 ```csharp
-var user = await mediator.Request<GetUserQuery, UserDto>(new GetUserQuery("user-123"));
+var user = await mediator.RequestGetUserQueryAsync(new GetUserQuery("user-123"));
 ```

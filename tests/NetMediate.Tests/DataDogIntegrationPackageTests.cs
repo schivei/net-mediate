@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NetMediate.DataDog.ILogger;
 using NetMediate.DataDog.OpenTelemetry;
 using NetMediate.DataDog.Serilog;
@@ -138,10 +139,13 @@ public sealed class DataDogIntegrationPackageTests
         );
 
         using var provider = services.BuildServiceProvider();
-        var options = provider.GetRequiredService<DataDogILoggerOptions>();
+        var options = provider.GetRequiredService<IOptions<DataDogILoggerOptions>>().Value;
         var logger = provider.GetRequiredService<ILogger<DataDogIntegrationPackageTests>>();
 
-        using var scope = logger.BeginNetMediateDataDogScope(options, cancellationToken);
+        using var scope = logger.BeginNetMediateDataDogScope(
+            Options.Create(options),
+            cancellationToken
+        );
         Assert.Equal("net-mediate-tests", options.Service);
         Assert.Equal("test", options.Environment);
         Assert.Equal("1.0.0", options.Version);
@@ -154,7 +158,7 @@ public sealed class DataDogIntegrationPackageTests
         services.AddLogging();
         services.AddNetMediateDataDogILogger(configure: null, TestContext.Current.CancellationToken);
         using var provider = services.BuildServiceProvider();
-        var options = provider.GetRequiredService<DataDogILoggerOptions>();
+        var options = provider.GetRequiredService<IOptions<DataDogILoggerOptions>>().Value;
 
         Assert.Equal("netmediate", options.Service);
         Assert.Equal("dev", options.Environment);
@@ -173,7 +177,7 @@ public sealed class DataDogIntegrationPackageTests
         };
 
         using var scope = nullScopeLogger.BeginNetMediateDataDogScope(
-            opts,
+            Options.Create(opts),
             TestContext.Current.CancellationToken
         );
 

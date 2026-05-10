@@ -4,6 +4,8 @@ sidebar_position: 3
 
 # Message Types
 
+> **GenDI pattern:** Message handlers and supporting services in the examples below are expected to follow the same GenDI-based activation model used across the ecosystem: `[Injectable]` + `[Inject]` when you need DI-controlled implementations.
+
 NetMediate supports four different message types, each designed for specific communication patterns. **No marker interfaces are required** - any class or record can be a message.
 
 ## Overview
@@ -51,7 +53,7 @@ public class PaymentAuditor : ICommandHandler<ProcessPaymentCommand>
 }
 
 // Usage
-await mediator.Send(new ProcessPaymentCommand("ORD-123", 99.99m));
+await mediator.SendProcessPaymentCommandAsync(new ProcessPaymentCommand("ORD-123", 99.99m));
 ```
 
 ## Requests
@@ -67,11 +69,16 @@ Requests follow the request-response pattern. Only one handler is invoked, retur
 ### Example
 
 ```csharp
+// Usage
+var user = await mediator.RequestGetUserQueryAsync(
+    new GetUserQuery("123"));
+
 // Define request and response
 public record GetUserQuery(string UserId);
 public record UserDto(string Id, string Name, string Email);
 
 // Create handler
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserDto>
 {
     public async Task<UserDto> Handle(GetUserQuery query, CancellationToken ct)
@@ -80,10 +87,6 @@ public class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserDto>
         return new UserDto("123", "John Doe", "john@example.com");
     }
 }
-
-// Usage
-var user = await mediator.Request<GetUserQuery, UserDto>(
-    new GetUserQuery("123"));
 ```
 
 ## Notifications
@@ -100,10 +103,14 @@ Notifications are events dispatched to multiple handlers simultaneously. All han
 ### Example
 
 ```csharp
+// Usage - all handlers started in parallel (fire-and-forget)
+await mediator.NotifyOrderShippedAsync(new OrderShipped("ORD-456", "TRACK-789", DateTime.UtcNow));
+
 // Define a notification
 public record OrderShipped(string OrderId, string TrackingNumber, DateTime ShippedAt);
 
 // Create handlers
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class EmailNotifier : INotificationHandler<OrderShipped>
 {
     public async Task Handle(OrderShipped notification, CancellationToken ct)
@@ -113,6 +120,7 @@ public class EmailNotifier : INotificationHandler<OrderShipped>
     }
 }
 
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 2)]
 public class InventoryUpdater : INotificationHandler<OrderShipped>
 {
     public async Task Handle(OrderShipped notification, CancellationToken ct)
@@ -121,9 +129,6 @@ public class InventoryUpdater : INotificationHandler<OrderShipped>
         await Task.CompletedTask;
     }
 }
-
-// Usage - all handlers started in parallel (fire-and-forget)
-await mediator.Notify(new OrderShipped("ORD-456", "TRACK-789", DateTime.UtcNow));
 ```
 
 ### Batch Notifications
@@ -138,7 +143,7 @@ var notifications = new[]
     new OrderShipped("ORD-3", "TRACK-3", DateTime.UtcNow)
 };
 
-await mediator.Notify(notifications);
+await mediator.NotifyOrderShippedAsync(notifications);
 ```
 
 ## Streams
@@ -154,11 +159,19 @@ Streams handle requests that return multiple values over time using `IAsyncEnume
 ### Example
 
 ```csharp
+// Usage
+await foreach (var order in mediator.StreamGetRecentOrdersQueryAsync(
+    new GetRecentOrdersQuery("CUST-123", 10)))
+{
+    Console.WriteLine($"Order: {order.OrderId}, Total: {order.Total}");
+}
+
 // Define stream request and response
 public record GetRecentOrdersQuery(string CustomerId, int MaxResults);
 public record OrderSummary(string OrderId, decimal Total, DateTime CreatedAt);
 
 // Create handler
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class GetRecentOrdersHandler : IStreamHandler<GetRecentOrdersQuery, OrderSummary>
 {
     public async IAsyncEnumerable<OrderSummary> Handle(
@@ -179,13 +192,6 @@ public class GetRecentOrdersHandler : IStreamHandler<GetRecentOrdersQuery, Order
             await Task.Delay(100, ct); // Simulate processing
         }
     }
-}
-
-// Usage
-await foreach (var order in mediator.RequestStream<GetRecentOrdersQuery, OrderSummary>(
-    new GetRecentOrdersQuery("CUST-123", 10)))
-{
-    Console.WriteLine($"Order: {order.OrderId}, Total: {order.Total}");
 }
 ```
 

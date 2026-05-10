@@ -1,104 +1,98 @@
 # Custom Validation Behavior Sample
 
-NetMediate does not include a built-in validation layer. Validation is a cross-cutting concern that you implement as a **pipeline behavior**, giving you full control over the validation library and strategy.
+> **GenDI pattern:** Use `[Injectable]` + `[Inject]` for regular application services. Concrete non-generic validation behaviors can also use `[Injectable]` because `IPipelineRequestBehavior<,>` / `IPipelineNotificationBehavior<>` already expose `ServiceInjection`. Only generic/open behavior implementations should be registered manually in `builder.Services`.
+
+NetMediate does not include a built-in validation layer. Validation is a cross-cutting concern that you implement as a pipeline behavior.
 
 ## Example: DataAnnotations validation for requests
 
 ```csharp
 using System.ComponentModel.DataAnnotations;
+using GenDI;
+using Microsoft.Extensions.DependencyInjection;
 using NetMediate;
 
-/// <summary>
-/// Validates the incoming request using DataAnnotations before forwarding to the handler.
-/// Throws <see cref="MessageValidationException"/> when validation fails.
-/// </summary>
-public sealed class DataAnnotationsRequestBehavior<TMessage, TResponse>
-    : IPipelineRequestBehavior<TMessage, TResponse>
-    where TMessage : notnull
+public record CreateUserRequest(string Email);
+public record UserDto(string Id, string Email);
+
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
+public sealed class CreateUserDataAnnotationsBehavior : IPipelineRequestBehavior<CreateUserRequest, UserDto>
 {
-    public Task<TResponse> Handle(
+    public Task<UserDto> Handle(
         object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        CreateUserRequest message,
+        PipelineBehaviorDelegate<CreateUserRequest, Task<UserDto>> next,
         CancellationToken cancellationToken)
     {
         var context = new ValidationContext(message);
         var results = new List<ValidationResult>();
 
         if (!Validator.TryValidateObject(message, context, results, validateAllProperties: true))
-        {
-            // MessageValidationException is provided by NetMediate and accepts a ValidationResult.
             throw new MessageValidationException(results[0]);
-        }
 
         return next(key, message, cancellationToken);
     }
 }
-```
 
-### Registration
-
-```csharp
-// Open-generic: validates every request type
-builder.Services.AddSingleton(
-    typeof(IPipelineRequestBehavior<,>),
-    typeof(DataAnnotationsRequestBehavior<,>));
+builder.Services.AddNetMediate();
 ```
 
 ## Example: FluentValidation for requests
 
 ```csharp
 using FluentValidation;
+using GenDI;
+using Microsoft.Extensions.DependencyInjection;
 using NetMediate;
 
-public sealed class FluentValidationRequestBehavior<TMessage, TResponse>(
-    IValidator<TMessage>? validator = null
-) : IPipelineRequestBehavior<TMessage, TResponse>
-    where TMessage : notnull
+public record CreateUserRequest(string Email);
+public record UserDto(string Id, string Email);
+
+public sealed class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
 {
-    public async Task<TResponse> Handle(
+    public CreateUserRequestValidator() => RuleFor(x => x.Email).NotEmpty().EmailAddress();
+}
+
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
+public sealed class CreateUserFluentValidationBehavior : IPipelineRequestBehavior<CreateUserRequest, UserDto>
+{
+    [Inject] public required IValidator<CreateUserRequest> Validator { get; init; }
+
+    public async Task<UserDto> Handle(
         object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        CreateUserRequest message,
+        PipelineBehaviorDelegate<CreateUserRequest, Task<UserDto>> next,
         CancellationToken cancellationToken)
     {
-        if (validator is not null)
-        {
-            var result = await validator.ValidateAsync(message, cancellationToken);
-            if (!result.IsValid)
-                throw new ValidationException(result.Errors);
-        }
+        var result = await Validator.ValidateAsync(message, cancellationToken);
+        if (!result.IsValid)
+            throw new ValidationException(result.Errors);
 
         return await next(key, message, cancellationToken);
     }
 }
-```
 
-### Registration
-
-```csharp
-// Register FluentValidation validators from your assembly
-builder.Services.AddValidatorsFromAssemblyContaining<MyValidator>();
-
-// Register the behavior open-generic
-builder.Services.AddSingleton(
-    typeof(IPipelineRequestBehavior<,>),
-    typeof(FluentValidationRequestBehavior<,>));
+builder.Services.AddValidatorsFromAssemblyContaining<CreateUserRequestValidator>();
+builder.Services.AddNetMediate();
 ```
 
 ## Example: Notification validation behavior
 
-The same approach works for notifications:
-
 ```csharp
-public sealed class DataAnnotationsNotificationBehavior<TMessage>
-    : IPipelineBehavior<TMessage>
-    where TMessage : notnull
+using System.ComponentModel.DataAnnotations;
+using GenDI;
+using Microsoft.Extensions.DependencyInjection;
+using NetMediate;
+
+public record UserCreatedNotification(string UserId, string Email);
+
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
+public sealed class UserCreatedValidationBehavior : IPipelineNotificationBehavior<UserCreatedNotification>
 {
     public Task Handle(
         object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task> next,
+        UserCreatedNotification message,
+        PipelineBehaviorDelegate<UserCreatedNotification, Task> next,
         CancellationToken cancellationToken)
     {
         var context = new ValidationContext(message);
@@ -110,13 +104,8 @@ public sealed class DataAnnotationsNotificationBehavior<TMessage>
         return next(key, message, cancellationToken);
     }
 }
-```
 
-```csharp
-// Open-generic: validates every notification type
-builder.Services.AddSingleton(
-    typeof(IPipelineBehavior<>),
-    typeof(DataAnnotationsNotificationBehavior<>));
+builder.Services.AddNetMediate();
 ```
 
 ## `MessageValidationException`

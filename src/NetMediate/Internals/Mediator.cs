@@ -1,8 +1,10 @@
 using System.Diagnostics;
+using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
 
+[Injectable<IMediator>(ServiceLifetime.Singleton)]
 internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable notifier) : IMediator
 {
     /// <inheritdoc/>
@@ -17,7 +19,7 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     )
     {
         await notifier
-            .Notify(key ?? Extensions.DEFAULT_ROUTING_KEY, message, cancellationToken)
+            .Notify(key, message, cancellationToken)
             .ConfigureAwait(false);
     }
 
@@ -27,7 +29,7 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
         CancellationToken cancellationToken = default
     )
         where TMessage : notnull =>
-        Notify(Extensions.DEFAULT_ROUTING_KEY, messages, cancellationToken);
+        Notify(null, messages, cancellationToken);
 
     /// <inheritdoc/>
     public async Task Notify<TMessage>(
@@ -38,14 +40,14 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
         where TMessage : notnull
     {
         await notifier
-            .Notify(key ?? Extensions.DEFAULT_ROUTING_KEY, messages, cancellationToken)
+            .Notify(key, messages, cancellationToken)
             .ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
     public Task Send<TMessage>(TMessage message, CancellationToken cancellationToken = default)
         where TMessage : notnull =>
-        Send(Extensions.DEFAULT_ROUTING_KEY, message, cancellationToken);
+        Send(null, message, cancellationToken);
 
     /// <inheritdoc/>
     public async Task Send<TMessage>(
@@ -55,9 +57,7 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     )
         where TMessage : notnull
     {
-        var pipeline = serviceProvider.GetService<
-            PipelineExecutor<TMessage, Task, ICommandHandler<TMessage>>
-        >();
+        var pipeline = serviceProvider.GetService<CommandPipelineExecutor<TMessage>>();
 
         if (pipeline is null)
             return;
@@ -66,7 +66,7 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
         {
             await pipeline
                 .Handle(
-                    key ?? Extensions.DEFAULT_ROUTING_KEY,
+                    key,
                     message,
                     CommandHandlers,
                     cancellationToken
@@ -94,7 +94,7 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
         CancellationToken cancellationToken = default
     )
         where TMessage : notnull =>
-        Send(Extensions.DEFAULT_ROUTING_KEY, messages, cancellationToken);
+        Send(null, messages, cancellationToken);
 
     /// <inheritdoc/>
     public async Task Send<TMessage>(
@@ -106,7 +106,7 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     {
         foreach (var sender in messages)
         {
-            await Send(key ?? Extensions.DEFAULT_ROUTING_KEY, sender, cancellationToken).ConfigureAwait(false);
+            await Send(key, sender, cancellationToken).ConfigureAwait(false);
         }
     }
 
@@ -128,7 +128,7 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
         CancellationToken cancellationToken = default
     )
         where TMessage : notnull =>
-        Request<TMessage, TResponse>(Extensions.DEFAULT_ROUTING_KEY, message, cancellationToken);
+        Request<TMessage, TResponse>(null, message, cancellationToken);
 
     /// <inheritdoc/>
     public async Task<TResponse> Request<TMessage, TResponse>(
@@ -138,15 +138,13 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     )
         where TMessage : notnull
     {
-        var pipeline = serviceProvider.GetRequiredService<
-            RequestPipelineExecutor<TMessage, TResponse>
-        >();
+        var pipeline = serviceProvider.GetRequiredService<RequestPipelineExecutor<TMessage, TResponse>>();
 
         try
         {
             return await pipeline
                 .Handle(
-                    key ?? Extensions.DEFAULT_ROUTING_KEY,
+                    key,
                     message,
                     cancellationToken
                 )
@@ -174,7 +172,7 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     )
         where TMessage : notnull =>
         RequestStream<TMessage, TResponse>(
-            Extensions.DEFAULT_ROUTING_KEY,
+            null,
             message,
             cancellationToken
         );
@@ -192,7 +190,7 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
         >();
 
         return pipeline.Handle(
-            key ?? Extensions.DEFAULT_ROUTING_KEY,
+            key,
             message,
             StreamHandlers,
             cancellationToken

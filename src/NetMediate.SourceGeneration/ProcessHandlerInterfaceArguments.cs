@@ -3,44 +3,34 @@ using Microsoft.CodeAnalysis;
 
 namespace NetMediate.SourceGeneration;
 
-#pragma warning disable S107
 internal readonly record struct ProcessHandlerInterfaceArguments(
     string InterfaceName,
     int Arity,
-    string HandlerName,
-    string HandlerKeyArgument,
     ImmutableArray<ITypeSymbol> Args,
     bool HasDiagnostics,
     bool HasResilience,
     Dictionary<string, bool> DiagnosticsBehaviors,
-    Dictionary<string, bool> ResilienceBehaviors,
-    Dictionary<string, bool> Handlers
+    Dictionary<string, bool> ResilienceBehaviors
 )
 {
     public static implicit operator (
         string interfaceName,
         int arity,
-        string handlerName,
-        string handlerKeyArgument,
         ImmutableArray<ITypeSymbol> args,
         bool hasDiagnostics,
         bool hasResilience,
         Dictionary<string, bool> diagnosticsBehaviors,
-        Dictionary<string, bool> resilienceBehaviors,
-        Dictionary<string, bool> handlers
+        Dictionary<string, bool> resilienceBehaviors
     )(ProcessHandlerInterfaceArguments args)
     {
         return (
             args.InterfaceName,
             args.Arity,
-            args.HandlerName,
-            args.HandlerKeyArgument,
             args.Args,
             args.HasDiagnostics,
             args.HasResilience,
             args.DiagnosticsBehaviors,
-            args.ResilienceBehaviors,
-            args.Handlers
+            args.ResilienceBehaviors
         );
     }
 
@@ -48,29 +38,22 @@ internal readonly record struct ProcessHandlerInterfaceArguments(
         (
             string interfaceName,
             int arity,
-            string handlerName,
-            string handlerKeyArgument,
             ImmutableArray<ITypeSymbol> args,
             bool hasDiagnostics,
             bool hasResilience,
             Dictionary<string, bool> diagnosticsBehaviors,
-            Dictionary<string, bool> resilienceBehaviors,
-            Dictionary<string, bool> handlers
+            Dictionary<string, bool> resilienceBehaviors
         ) arguments
     )
     {
         return new(
             arguments.interfaceName,
             arguments.arity,
-            arguments.handlerName,
-            arguments.handlerKeyArgument,
             arguments.args,
             arguments.hasDiagnostics,
             arguments.hasResilience,
             arguments.diagnosticsBehaviors,
-            arguments.resilienceBehaviors,
-            arguments.handlers
+            arguments.resilienceBehaviors
         );
     }
 }
-#pragma warning restore S107

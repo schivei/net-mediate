@@ -11,24 +11,30 @@ This page centralizes installation, configuration, and usage details for each Ne
 ### Installation
 
 ```bash
-dotnet add package NetMediate
+dotnet add package NetMediate.Core
+dotnet add package NetMediate.SourceGeneration
 ```
 
 For direct usage, this is enough:
 
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" />
+<PackageReference Include="NetMediate.Core" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
 
 :::tip Library projects
-If you publish your own library, you may optionally add `PrivateAssets="all"` to avoid flowing NetMediate and bundled analyzers transitively to downstream consumers.
+Use `NetMediate.SourceGeneration` with the explicit analyzer-style metadata shown above.
 :::
 
 ### Configuration
 
-Handler registration is done automatically at compile time via the bundled source generator. Call the generated method:
+Handler registration is done automatically at compile time via `NetMediate.SourceGeneration`. Call the generated method:
 
 ```csharp
+using GenDI;
 using NetMediate;
 
 // Source generation discovers all ICommandHandler<>, IRequestHandler<,>,
@@ -37,23 +43,25 @@ using NetMediate;
 builder.Services.AddNetMediate();
 ```
 
+> **GenDI-first style**: `AddNetMediate()` also triggers `AddGenDIServices()`. Prefer `[Injectable]` + `[Inject]` so the consumer can choose `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path.
+
 ### Usage
 
 ```csharp
 // Command: dispatched sequentially to all registered handlers, no return value
-await mediator.Send(new CreateUserCommand("user-1"), cancellationToken);
+await mediator.SendCreateUserCommandAsync(new CreateUserCommand("user-1"), cancellationToken);
 
 // Request: single handler, returns a response
-var dto = await mediator.Request<GetUserRequest, UserDto>(new GetUserRequest("user-1"), cancellationToken);
+var dto = await mediator.RequestGetUserRequestAsync(new GetUserRequest("user-1"), cancellationToken);
 
 // Notification: all handlers started in parallel (fire-and-forget); handler exceptions discarded by executor
-await mediator.Notify(new UserCreatedNotification("user-1"), cancellationToken);
+await mediator.NotifyUserCreatedNotificationAsync(new UserCreatedNotification("user-1"), cancellationToken);
 
 // Notification (batch): each message's pipeline dispatched in parallel (Task.WhenAll across messages)
-await mediator.Notify(new[] { n1, n2, n3 }, cancellationToken);
+await mediator.NotifyUserCreatedNotificationAsync(new[] { n1, n2, n3 }, cancellationToken);
 
 // Stream: single handler; yields items asynchronously
-await foreach (var item in mediator.RequestStream<GetEventsQuery, EventDto>(new GetEventsQuery(), cancellationToken))
+await foreach (var item in mediator.StreamGetEventsQueryAsync(new GetEventsQuery(), cancellationToken))
     Console.WriteLine(item);
 ```
 
@@ -87,26 +95,26 @@ All handler `Handle` methods return `Task` or `Task<TResponse>`:
 
 ### Keyed handler registration
 
-All `Register*Handler` methods accept an optional `key` argument. This lets you register multiple handlers for the same message type under distinct keys and dispatch to a specific one at runtime:
+Use GenDI metadata to register multiple handlers for the same message type under distinct keys and dispatch to a specific one at runtime:
 
 ```csharp
-builder.Services.AddNetMediate(configure =>
-{
-    configure.RegisterCommandHandler<DefaultCommandHandler, MyCommand>();          // null key → "__default"
-    configure.RegisterCommandHandler<AuditCommandHandler, MyCommand>("audit");    // keyed
-});
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+public sealed class DefaultCommandHandler : ICommandHandler<MyCommand> { }
+
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 2, Key = "audit")]
+public sealed class AuditCommandHandler : ICommandHandler<MyCommand> { }
 
 // Dispatch to the default (null-key) handlers
-await mediator.Send(command, ct);
+await mediator.SendMyCommandAsync(command, ct);
 
 // Dispatch only to handlers registered under "audit"
-await mediator.Send("audit", command, ct);
+await mediator.SendMyCommandAsync("audit", command, ct);
 ```
 
 The same `key` parameter is available on all dispatch methods: `Send(key, ...)`, `Notify(key, ...)`, `Request(key, ...)`, and `RequestStream(key, ...)`.
 
 :::note Default routing key
-A `null` key is normalized internally to `Extensions.DEFAULT_ROUTING_KEY = "__default"`. This means `mediator.Send(command, ct)` and `mediator.Send(null, command, ct)` are exactly equivalent. Avoid using the literal string `"__default"` as your own routing key to prevent conflicts.
+A `null` key flows through the pipeline unchanged. This means `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are exactly equivalent and target the non-keyed handlers registered in the container.
 :::
 
 :::caution NativeAOT
@@ -121,14 +129,21 @@ Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed reg
 
 ### Configuration
 
-Register behavior implementations using the builder:
+Register concrete non-generic behavior implementations with `[Injectable]`. Reserve manual DI registration only for generic/open behavior implementations:
 
 ```csharp
-// Via builder (closed-type, fully AOT-safe — the only supported approach)
-builder.Services.UseNetMediate(configure =>
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
+public sealed class MyLoggingBehavior : IPipelineRequestBehavior<MyRequest, MyResponse>
 {
-    configure.RegisterBehavior<MyLoggingBehavior, MyRequest, Task<MyResponse>>();
-});
+    public Task<MyResponse> Handle(
+        object? key,
+        MyRequest message,
+        PipelineBehaviorDelegate<MyRequest, Task<MyResponse>> next,
+        CancellationToken cancellationToken) =>
+        next(key, message, cancellationToken);
+}
+
+builder.Services.AddNetMediate();
 ```
 
 ### Behavior interfaces
@@ -145,14 +160,13 @@ builder.Services.UseNetMediate(configure =>
 The `next` delegate accepts `(message, cancellationToken)`. Behaviors execute in registration order (outer-to-inner for pre, inner-to-outer for post). Every `Handle` method receives an optional `key` parameter — the same key that was passed to the dispatch call, which you can use for routing or contextual filtering:
 
 ```csharp
-public sealed class AuditRequestBehavior<TMessage, TResponse>
-    : IPipelineRequestBehavior<TMessage, TResponse>
-    where TMessage : notnull
+public sealed class AuditMyRequestBehavior
+    : IPipelineRequestBehavior<MyRequest, MyResponse>
 {
-    public async Task<TResponse> Handle(
+    public async Task<MyResponse> Handle(
         object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        MyRequest message,
+        PipelineBehaviorDelegate<MyRequest, Task<MyResponse>> next,
         CancellationToken cancellationToken)
     {
         // pre-processing (key is available for routing/filtering)
@@ -204,7 +218,7 @@ See the [Resilience guide](../advanced/resilience) for full details.
 
 ### Installation
 
-`NetMediate.SourceGeneration` is **bundled inside the `NetMediate` package** — no separate installation is required. It runs automatically for direct `NetMediate` references (see the Core package section above).
+`NetMediate.SourceGeneration` is installed directly in the startup/application project. Its `buildTransitive` file adds `NetMediate` and `GenDI.SourceGenerator` automatically.
 
 ### Usage
 
@@ -234,6 +248,7 @@ builder.Services.AddNetMediateQuartz(opts =>
     opts.GroupName = "MyApp";
     opts.MisfireRetryCount = 1;
 });
+builder.Services.AddNetMediate();
 ```
 
 See the [Quartz guide](../advanced/quartz) for full details.

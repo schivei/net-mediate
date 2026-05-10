@@ -77,7 +77,7 @@ public sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvide
             }
             catch (Exception ex) when (LogFailure(ex))
             {
-                return default!;
+                throw;
             }
         }
 
@@ -89,7 +89,7 @@ public sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvide
                 typeof(TMessage).FullName,
                 ex.Message
             );
-            return false;
+            return true;
         }
     }
 }

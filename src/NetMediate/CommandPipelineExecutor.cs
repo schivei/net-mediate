@@ -80,6 +80,7 @@ public sealed class CommandPipelineExecutor<TMessage>(IServiceProvider servicePr
             }
             catch (Exception ex) when (LogFailure(ex))
             {
+                throw;
             }
         }
 
@@ -91,7 +92,7 @@ public sealed class CommandPipelineExecutor<TMessage>(IServiceProvider servicePr
                 typeof(TMessage).FullName,
                 ex.Message
             );
-            return false;
+            return true;
         }
     }
 }

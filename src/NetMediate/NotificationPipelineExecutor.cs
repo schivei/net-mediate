@@ -83,6 +83,7 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
             }
             catch (Exception ex) when (LogFailure(ex))
             {
+                throw;
             }
         }
 
@@ -94,7 +95,7 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
                 typeof(TMessage).FullName,
                 ex.Message
             );
-            return false;
+            return true;
         }
     }
 }

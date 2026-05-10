@@ -283,8 +283,10 @@ public sealed class MediatorAndNotifierCoverageTests
         using var provider = new ServiceCollection().BuildServiceProvider();
         var mediator = new Mediator(provider, new SpyNotifiable());
 
-        // Should complete without throwing because the pipeline is simply not registered
-        await mediator.Send(new CommandMessage(99), TestContext.Current.CancellationToken);
+        // The pipeline is simply not registered → should complete without throwing
+        var ex = await Record.ExceptionAsync(() =>
+            mediator.Send(new CommandMessage(99), TestContext.Current.CancellationToken));
+        Assert.Null(ex);
     }
 
     [Fact]
@@ -321,13 +323,15 @@ public sealed class MediatorAndNotifierCoverageTests
         // Notifier.cs line 16: handlers.Length == 0 → return Task.CompletedTask
         var notifier = new Notifier(new ServiceCollection().BuildServiceProvider());
 
-        // Should complete without throwing
-        await notifier.DispatchNotifications(
-            null,
-            new NotificationMessage("value"),
-            [],
-            TestContext.Current.CancellationToken
-        );
+        // The handlers array is empty → should complete without throwing
+        var ex = await Record.ExceptionAsync(() =>
+            notifier.DispatchNotifications(
+                null,
+                new NotificationMessage("value"),
+                [],
+                TestContext.Current.CancellationToken
+            ));
+        Assert.Null(ex);
     }
 
     [Fact]
@@ -336,8 +340,10 @@ public sealed class MediatorAndNotifierCoverageTests
         // Notifier.cs line 33: pipeline is null → return Task.CompletedTask
         var notifier = new Notifier(new ServiceCollection().BuildServiceProvider());
 
-        // Should complete without throwing because the pipeline executor is not registered
-        await notifier.Notify(null, new NotificationMessage("value"), TestContext.Current.CancellationToken);
+        // The pipeline executor is not registered → should complete without throwing
+        var ex = await Record.ExceptionAsync(() =>
+            notifier.Notify(null, new NotificationMessage("value"), TestContext.Current.CancellationToken));
+        Assert.Null(ex);
     }
 
     private static ServiceProvider BuildProvider(Action<ServiceCollection> configure)

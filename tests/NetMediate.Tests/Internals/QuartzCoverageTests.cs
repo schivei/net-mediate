@@ -66,13 +66,13 @@ public sealed class QuartzCoverageTests
         public void ReturnJob(IJob job) { }
     }
 
-    private static IScheduler CreateScheduler() =>
-        new StdSchedulerFactory().GetScheduler(TestContext.Current.CancellationToken).GetAwaiter().GetResult();
+    private static Task<IScheduler> CreateSchedulerAsync() =>
+        new StdSchedulerFactory().GetScheduler(TestContext.Current.CancellationToken);
 
     [Fact]
-    public void AddNetMediateQuartz_ConfiguresQuartzNotifierAndOptions()
+    public async Task AddNetMediateQuartz_ConfiguresQuartzNotifierAndOptions()
     {
-        var scheduler = CreateScheduler();
+        var scheduler = await CreateSchedulerAsync();
         var services = new ServiceCollection();
 
         services.AddOptions();
@@ -92,7 +92,7 @@ public sealed class QuartzCoverageTests
     [Fact]
     public async Task QuartzNotifier_Notify_SchedulesQuartzJobWithSerializedRoutingKey()
     {
-        var scheduler = CreateScheduler();
+        var scheduler = await CreateSchedulerAsync();
         var services = new ServiceCollection();
 
         services.AddOptions();
@@ -126,7 +126,7 @@ public sealed class QuartzCoverageTests
     public async Task QuartzNotificationJob_Execute_DispatchesStoredNotificationThroughResolvedINotifiable()
     {
         var capture = new CapturingNotifiable();
-        var scheduler = CreateScheduler();
+        var scheduler = await CreateSchedulerAsync();
         var services = new ServiceCollection();
 
         services.AddOptions();
@@ -173,7 +173,7 @@ public sealed class QuartzCoverageTests
     [Fact]
     public async Task QuartzNotifier_DispatchNotifications_WithNoHandlers_Completes()
     {
-        var scheduler = CreateScheduler();
+        var scheduler = await CreateSchedulerAsync();
         var services = new ServiceCollection();
 
         services.AddOptions();

@@ -8,7 +8,7 @@ namespace NetMediate.SourceGeneration.Tests;
 
 public sealed class GeneratorUtilityCoverageTests
 {
-    private static readonly Assembly s_generatorAssembly = LoadGeneratorAssembly();
+    private static readonly System.Reflection.Assembly s_generatorAssembly = GeneratorAssemblyLoader.Load();
 
     [Fact]
     public void BuildRegistrationArguments_ImplicitOperators_RoundTrip()
@@ -126,40 +126,6 @@ public sealed class GeneratorUtilityCoverageTests
             type.GetField("PipelineExecutorsTemplateResourceName", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)!.GetValue(null)
         );
     }
-
-    private static Assembly LoadGeneratorAssembly()
-    {
-        var copiedGeneratorDll = Path.Combine(AppContext.BaseDirectory, "NetMediate.SourceGeneration.dll");
-        if (File.Exists(copiedGeneratorDll))
-            return Assembly.LoadFrom(copiedGeneratorDll);
-
-        var configuration =
-#if DEBUG
-            "Debug";
-#else
-            "Release";
-#endif
-
-        var localGeneratorDll = Path.GetFullPath(
-            Path.Combine(
-                AppContext.BaseDirectory,
-                "..",
-                "..",
-                "..",
-                "..",
-                "..",
-                "src",
-                "NetMediate.SourceGeneration",
-                "bin",
-                configuration,
-                "netstandard2.0",
-                "NetMediate.SourceGeneration.dll"
-            )
-        );
-
-        return Assembly.LoadFrom(localGeneratorDll);
-    }
-
     private static CSharpCompilation CreateCompilation() =>
         CSharpCompilation.Create(
             "GeneratorUtilityCoverageTests",

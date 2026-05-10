@@ -55,7 +55,10 @@ function HomepageHeader() {
             <img src="https://img.shields.io/sonar/code_smells/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Code%20Smells" alt="Code Smells" />
           </a>
           <a href="https://sonarcloud.io/component_measures?id=schivei_net-mediate&amp;metric=new_coverage&amp;view=list">
-            <img src="https://raw.githubusercontent.com/schivei/net-mediate/main/docs/badges/coverage.svg" alt="Coverage" />
+            <img src="https://raw.githubusercontent.com/schivei/net-mediate/main/docs/badges/coverage-lines.svg" alt="Coverage Lines" />
+          </a>
+          <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
+            <img src="https://raw.githubusercontent.com/schivei/net-mediate/main/docs/badges/coverage-branches.svg" alt="Coverage Branches" />
           </a>
           <a href="https://github.com/schivei/net-mediate/blob/main/LICENSE">
             <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT" />

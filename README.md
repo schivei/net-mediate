@@ -8,7 +8,8 @@
 [![Quality Gate](https://img.shields.io/sonar/quality_gate/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Quality%20Gate)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
 [![Bugs](https://img.shields.io/sonar/bugs/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Bugs)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
 [![Code Smells](https://img.shields.io/sonar/code_smells/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Code%20Smells)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
-[![Coverage](docs/badges/coverage.svg)](https://sonarcloud.io/component_measures?id=schivei_net-mediate&metric=new_coverage&view=list)
+[![Coverage Lines](docs/badges/coverage-lines.svg)](https://sonarcloud.io/component_measures?id=schivei_net-mediate&metric=new_coverage&view=list)
+[![Coverage Branches](docs/badges/coverage-branches.svg)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/schivei/net-mediate/blob/main/LICENSE)
 [![Documentation](https://img.shields.io/badge/Documentation-Website-blue)](https://elton.schivei.nom.br/net-mediate)
 

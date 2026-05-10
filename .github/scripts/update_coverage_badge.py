@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 COVERAGE_DIR = Path(os.environ.get("COVERAGE_DIR", ROOT / "coverage"))
-OUTPUT_PATH = Path(os.environ.get("COVERAGE_BADGE_PATH", ROOT / "docs" / "badges" / "coverage.svg"))
+BADGE_DIR = Path(os.environ.get("COVERAGE_BADGE_DIR", ROOT / "docs" / "badges"))
 
 
 def format_rate(rate: float) -> str:
@@ -102,16 +102,12 @@ def load_rates() -> tuple[float, float]:
     return line_rate, branch_rate
 
 
-def build_svg(line_rate: float, branch_rate: float) -> str:
-    label = "line coverage"
-    value = f"{format_rate(line_rate)} lines"
-    title = f"line coverage: {format_rate(line_rate)} lines, {format_rate(branch_rate)} branches"
+def build_svg(label: str, value: str, title: str, color: str) -> str:
     label_width = text_width(label)
     value_width = text_width(value)
     label_length = text_length(label)
     value_length = text_length(value)
     total_width = label_width + value_width
-    color = badge_color(line_rate)
 
     label_x = label_width / 2
     value_x = label_width + value_width / 2
@@ -140,6 +136,29 @@ def build_svg(line_rate: float, branch_rate: float) -> str:
 """
 
 
+def build_badges(line_rate: float, branch_rate: float) -> dict[str, str]:
+    return {
+        "coverage.svg": build_svg(
+            label="coverage",
+            value=f"{format_rate(line_rate)} lines / {format_rate(branch_rate)} branches",
+            title=f"coverage: {format_rate(line_rate)} lines, {format_rate(branch_rate)} branches",
+            color=badge_color(min(line_rate, branch_rate)),
+        ),
+        "coverage-lines.svg": build_svg(
+            label="coverage lines",
+            value=format_rate(line_rate),
+            title=f"coverage lines: {format_rate(line_rate)}",
+            color=badge_color(line_rate),
+        ),
+        "coverage-branches.svg": build_svg(
+            label="coverage branches",
+            value=format_rate(branch_rate),
+            title=f"coverage branches: {format_rate(branch_rate)}",
+            color=badge_color(branch_rate),
+        ),
+    }
+
+
 def main() -> int:
     try:
         line_rate, branch_rate = load_rates()
@@ -147,11 +166,13 @@ def main() -> int:
         print(str(exc), file=sys.stderr)
         return 1
 
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT_PATH.write_text(build_svg(line_rate, branch_rate), encoding="utf-8")
-    print(
-        f"Wrote {OUTPUT_PATH} with {format_rate(line_rate)} lines / {format_rate(branch_rate)} branches."
-    )
+    BADGE_DIR.mkdir(parents=True, exist_ok=True)
+    badges = build_badges(line_rate, branch_rate)
+    for filename, svg in badges.items():
+        output_path = BADGE_DIR / filename
+        output_path.write_text(svg, encoding="utf-8")
+        print(f"Wrote {output_path}")
+    print(f"Coverage rates: {format_rate(line_rate)} lines / {format_rate(branch_rate)} branches.")
     return 0
 
 

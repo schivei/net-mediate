@@ -27,20 +27,29 @@ jobs:
     name: Auto-Publish (Second Thursday)
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    permissions:
+      issues: write
+      packages: write
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Setup .NET SDK 10.x
-      uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
       with:
         dotnet-version: '10.x'
 
+    - name: Setup Python
+      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+      with:
+        python-version: '3.x'
+
     - name: Cache NuGet packages
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: ~/.nuget/packages
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
@@ -50,14 +59,58 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx -p:Configuration=Release
 
+    - name: Check for outdated dependency versions
+      id: check_deps
+      run: |
+        # We use wildcard versions (e.g. "10.*") so git-diffing .csproj files
+        # will never show a version change. Instead, ask NuGet whether any
+        # currently-resolved package has a newer version that satisfies our
+        # constraints — that means a new transitive dependency was published.
+        OUTDATED_JSON=$(dotnet list net-mediate.slnx package --outdated --format json 2>&1)
+        DOTNET_EXIT=$?
+        if [ "$DOTNET_EXIT" -ne 0 ]; then
+          echo "::warning::dotnet list package --outdated failed (exit ${DOTNET_EXIT}): ${OUTDATED_JSON}"
+          OUTDATED_JSON='{"projects":[]}'
+        fi
+        OUTDATED_COUNT=$(echo "$OUTDATED_JSON" | python3 -c "
+        import json, sys
+        try:
+            data = json.load(sys.stdin)
+            count = sum(
+                len(fw.get('topLevelPackages', []))
+                for proj in data.get('projects', [])
+                for fw in proj.get('frameworks', [])
+            )
+            print(count)
+        except Exception as e:
+            # Parsing failed -- fail safe by publishing (assume something changed).
+            print(f'::error::Failed to parse dotnet list package output: {e}', file=sys.stderr)
+            print(1)
+        ")
+        if [ "${OUTDATED_COUNT:-0}" -gt 0 ]; then
+          echo "Found ${OUTDATED_COUNT} outdated package(s) with new versions available -- publishing."
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "::notice::All packages are at their latest versions -- skipping publish."
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Bump patch version (pre-publish)
+      if: steps.check_deps.outputs.skip != 'true'
+      id: bump
+      run: python .github/scripts/bump_version.py --type patch
+
     - name: Build all projects
+      if: steps.check_deps.outputs.skip != 'true'
       run: dotnet build net-mediate.slnx --no-restore --configuration Release
 
     - name: Run tests
+      if: steps.check_deps.outputs.skip != 'true'
       run: |
         dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release --verbosity normal
 
     - name: Pack all packages
+      if: steps.check_deps.outputs.skip != 'true'
       run: |
         dotnet pack src/NetMediate/NetMediate.csproj --no-build --no-restore --configuration Release --output ./packages
         dotnet pack src/NetMediate.Core/NetMediate.Core.csproj --no-build --no-restore --configuration Release --output ./packages
@@ -71,11 +124,13 @@ jobs:
         dotnet pack src/NetMediate.Quartz/NetMediate.Quartz.csproj --no-build --no-restore --configuration Release --output ./packages
 
     - name: Publish to NuGet
+      if: steps.check_deps.outputs.skip != 'true'
       run: dotnet nuget push ./packages/*.nupkg --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
       env:
         NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
 
     - name: Publish to GitHub Packages
+      if: steps.check_deps.outputs.skip != 'true'
       continue-on-error: true
       run: dotnet nuget push ./packages/*.nupkg --api-key $GITHUB_TOKEN --source https://nuget.pkg.github.com/schivei/index.json --skip-duplicate
       env:
@@ -83,7 +138,7 @@ jobs:
 
     - name: Create failure issue
       if: failure()
-      uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
       with:
         script: |
           const date = new Date().toISOString().slice(0, 10);

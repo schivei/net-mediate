@@ -71,7 +71,7 @@ public abstract class ACircuitBreakerBehavior<TMessage, TResult>(
     protected bool IsDisabled() => optionsAccessor.Value.Disabled;
 
     protected async Task<TResponse> ExecuteAsync<TResponse>(
-        string openMessage,
+        string circuitOpenMessage,
         object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
@@ -86,7 +86,7 @@ public abstract class ACircuitBreakerBehavior<TMessage, TResult>(
         }
 
         if (IsCircuitOpen())
-            throw new InvalidOperationException(openMessage);
+            throw new InvalidOperationException(circuitOpenMessage);
 
         try
         {
@@ -102,7 +102,7 @@ public abstract class ACircuitBreakerBehavior<TMessage, TResult>(
     }
 
     protected async Task ExecuteAsync(
-        string openMessage,
+        string circuitOpenMessage,
         object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task> next,
@@ -117,7 +117,7 @@ public abstract class ACircuitBreakerBehavior<TMessage, TResult>(
         }
 
         if (IsCircuitOpen())
-            throw new InvalidOperationException(openMessage);
+            throw new InvalidOperationException(circuitOpenMessage);
 
         try
         {

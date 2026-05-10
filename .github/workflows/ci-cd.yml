@@ -182,10 +182,9 @@ jobs:
                 for line in cls.findall('./lines/line'):
                     hits = int(line.get('hits', 0) or 0)
                     lnum = int(line.get('number', 0) or 0)
-                    key = (filename, lnum)
                     if hits > 0:
                         covered_by_file[filename] = covered_by_file.get(filename, 0) + 1
-                        uncovered_by_file[filename]  # ensure key exists
+                        uncovered_by_file.setdefault(filename, [])
                     else:
                         uncovered_by_file[filename].append(lnum)
 

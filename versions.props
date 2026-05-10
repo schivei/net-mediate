@@ -4,7 +4,7 @@
     <Suffix />
     <VersionYear>2026</VersionYear>
     <VersionMajor>0</VersionMajor>
-    <VersionMinor>1</VersionMinor>
+    <VersionMinor>2</VersionMinor>
     <VersionPatch>0</VersionPatch>
     <Version>$(VersionYear).$(VersionMajor).$(VersionMinor).$(VersionPatch)$(Suffix)</Version>
     <NoWarn>nullable;NU5118;$(NoWarn)</NoWarn>

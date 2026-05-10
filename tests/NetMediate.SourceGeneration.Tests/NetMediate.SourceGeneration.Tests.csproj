@@ -28,16 +28,22 @@
     <!-- Analyzer-only reference so the test project exercises the current local generator without restoring a stale package copy. -->
     <ProjectReference Include="..\..\src\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
+  <PropertyGroup>
+    <LocalSourceGeneratorDll>..\..\src\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll</LocalSourceGeneratorDll>
+    <LocalSourceGeneratorPdb>..\..\src\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.pdb</LocalSourceGeneratorPdb>
+  </PropertyGroup>
   <Target Name="CopyLocalSourceGeneratorArtifacts" AfterTargets="Build">
+    <Warning
+      Text="Expected local source generator assembly at '$(LocalSourceGeneratorDll)' so tests can load the instrumented analyzer build."
+      Condition="!Exists('$(LocalSourceGeneratorDll)')" />
     <ItemGroup>
-      <LocalSourceGeneratorArtifacts Include="..\..\src\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll" />
-      <LocalSourceGeneratorArtifacts Include="..\..\src\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.pdb" />
+      <LocalSourceGeneratorArtifacts Include="$(LocalSourceGeneratorDll)" Condition="Exists('$(LocalSourceGeneratorDll)')" />
+      <LocalSourceGeneratorArtifacts Include="$(LocalSourceGeneratorPdb)" Condition="Exists('$(LocalSourceGeneratorPdb)')" />
     </ItemGroup>
     <Copy
       SourceFiles="@(LocalSourceGeneratorArtifacts)"
       DestinationFolder="$(OutDir)"
-      SkipUnchangedFiles="true"
-      Condition="Exists('%(LocalSourceGeneratorArtifacts.Identity)')" />
+      SkipUnchangedFiles="true" />
   </Target>
   <ItemGroup>
     <Using Include="Xunit" />

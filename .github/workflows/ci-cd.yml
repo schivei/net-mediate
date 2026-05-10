@@ -68,6 +68,7 @@ jobs:
           "/d:sonar.host.url=${SONAR_HOST_URL}"
           "/d:sonar.token=${SONAR_TOKEN}"
           "/d:sonar.cs.cobertura.reportsPaths=coverage/**/coverage.cobertura.xml"
+          "/d:sonar.coverage.exclusions=.github/scripts/update_coverage_badge.py,src/NetMediate.Diagnostics/**,src/NetMediate.SourceGeneration/**"
           "/d:sonar.issue.ignore.multicriteria=e1"
           "/d:sonar.issue.ignore.multicriteria.e1.ruleKey=csharpsquid:S107"
           "/d:sonar.issue.ignore.multicriteria.e1.resourceKey=**/*.cs"
@@ -244,18 +245,30 @@ jobs:
         default_author: github_actions
         push: 'origin HEAD:refs/heads/main'
 
-    - name: Update coverage badge (main branch only)
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+    - name: Update coverage badges
+      if: >-
+        ((github.event_name == 'pull_request') ||
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')))
+        && !endsWith(github.actor, '[bot]')
       run: python3 .github/scripts/update_coverage_badge.py
 
-    - name: Commit coverage badge (main branch only)
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+    - name: Commit coverage badges to PR branch
+      if: github.event_name == 'pull_request' && !endsWith(github.actor, '[bot]')
       uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321 # v10.0.0
       with:
         add: 'docs/badges/*.svg'
-        message: 'chore: update coverage badge [skip ci]'
+        message: 'chore: update coverage badges [skip ci]'
         default_author: github_actions
-        push: 'origin HEAD:refs/heads/main'
+        push: 'origin HEAD:refs/heads/${{ github.event.pull_request.head.ref }}'
+
+    - name: Commit coverage badges to branch
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') && !endsWith(github.actor, '[bot]')
+      uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321 # v10.0.0
+      with:
+        add: 'docs/badges/*.svg'
+        message: 'chore: update coverage badges [skip ci]'
+        default_author: github_actions
+        push: 'origin HEAD:refs/heads/${{ github.ref_name }}'
 
     - name: Post coverage summary to PR
       if: github.event_name == 'pull_request'

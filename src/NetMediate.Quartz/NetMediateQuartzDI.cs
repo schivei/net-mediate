@@ -45,7 +45,9 @@ public static class NetMediateQuartzDI
         Action<QuartzNotificationOptions>? configureOptions = null
     )
     {
-        services.ConfigureOptions(configureOptions ?? delegate { });
+        services.AddOptions<QuartzNotificationOptions>();
+        if (configureOptions is not null)
+            services.Configure(configureOptions);
 
         services.AddGenDIServices();
 

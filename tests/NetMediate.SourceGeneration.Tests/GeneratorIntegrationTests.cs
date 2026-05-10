@@ -38,7 +38,7 @@ public sealed class GeneratorIntegrationTests
     /// </summary>
     private static IIncrementalGenerator CreateGenerator()
     {
-        var generatorDll = GetLocalGeneratorDllPath();
+        var generatorDll = GeneratorAssemblyLoader.GetProjectBuildDllPath();
 
         if (!File.Exists(generatorDll))
         {
@@ -59,7 +59,7 @@ public sealed class GeneratorIntegrationTests
                 generatorDll
             );
 
-        var asm = Assembly.LoadFrom(generatorDll);
+        var asm = GeneratorAssemblyLoader.Load();
         var type =
             asm.GetType("NetMediate.SourceGeneration.NetMediateRegistrationGenerator")
             ?? throw new InvalidOperationException(
@@ -67,36 +67,6 @@ public sealed class GeneratorIntegrationTests
             );
 
         return (IIncrementalGenerator)Activator.CreateInstance(type)!;
-    }
-
-    private static string GetLocalGeneratorDllPath()
-    {
-        var configuration = GetBuildConfiguration();
-        return Path.GetFullPath(
-            Path.Combine(
-                AppContext.BaseDirectory,
-                "..",
-                "..",
-                "..",
-                "..",
-                "..",
-                "src",
-                "NetMediate.SourceGeneration",
-                "bin",
-                configuration,
-                "netstandard2.0",
-                "NetMediate.SourceGeneration.dll"
-            )
-        );
-    }
-
-    private static string GetBuildConfiguration()
-    {
-#if DEBUG
-        return "Debug";
-#else
-        return "Release";
-#endif
     }
 
     private static string GetSourceGenerationPackageRoot()

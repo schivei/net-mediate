@@ -155,7 +155,6 @@ jobs:
       run: |
         python3 << 'PYEOF'
         import xml.etree.ElementTree as ET, os, sys
-        from collections import defaultdict
 
         xml_files = [
             os.path.join(r, f)
@@ -166,30 +165,34 @@ jobs:
             print("No coverage.cobertura.xml found.", file=sys.stderr)
             sys.exit(1)
 
-        uncovered_by_file: dict = defaultdict(list)
-        covered_by_file: dict = defaultdict(int)
+        # Merge all reports: for each (filename, lineNumber) take the max hits
+        # across all test-project Cobertura files so lines covered by any test
+        # project count as covered.
+        merged: dict = {}  # (filename, lineNumber) -> max hits
 
         for xml_file in xml_files:
             root = ET.parse(xml_file).getroot()
             for cls in root.findall('.//class'):
                 filename = cls.get('filename', '')
-                # Only src/NetMediate/ (not sub-packages like NetMediate.Quartz, etc.)
                 norm = filename.replace('\\', '/')
-                if not (norm.startswith('NetMediate/') or '/NetMediate/' in norm):
+                # Only src/NetMediate/ (not sub-packages like NetMediate.Quartz, etc.)
+                if not norm.startswith('NetMediate/'):
                     continue
                 if '/obj/' in norm or norm.startswith('NetMediate.'):
                     continue
                 for line in cls.findall('./lines/line'):
                     hits = int(line.get('hits', 0) or 0)
                     lnum = int(line.get('number', 0) or 0)
-                    if hits > 0:
-                        covered_by_file[filename] = covered_by_file.get(filename, 0) + 1
-                        uncovered_by_file.setdefault(filename, [])
-                    else:
-                        uncovered_by_file[filename].append(lnum)
+                    key = (filename, lnum)
+                    merged[key] = max(merged.get(key, 0), hits)
 
-        total = sum(covered_by_file.get(f, 0) + len(v) for f, v in uncovered_by_file.items())
-        covered = sum(covered_by_file.values())
+        uncovered_by_file: dict = {}
+        for (filename, lnum), hits in merged.items():
+            if hits == 0:
+                uncovered_by_file.setdefault(filename, []).append(lnum)
+
+        total   = len(merged)
+        covered = sum(1 for hits in merged.values() if hits > 0)
         uncovered_files = {f: v for f, v in uncovered_by_file.items() if v}
 
         if not uncovered_files:

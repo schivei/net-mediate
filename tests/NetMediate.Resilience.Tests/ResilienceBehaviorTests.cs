@@ -249,6 +249,29 @@ public sealed class ResilienceBehaviorTests
     }
 
     [Fact]
+    public async Task CircuitBreakerRequestBehavior_WhenDisabled_BypassesCircuit()
+    {
+        var behavior = new CircuitBreakerRequestBehavior<CircuitRequestMessage, Response>(
+            Options.Create(
+                new CircuitBreakerBehaviorOptions
+                {
+                    Disabled = true,
+                    FailureThreshold = 1,
+                }
+            )
+        );
+
+        var response = await behavior.Handle(
+            null,
+            new CircuitRequestMessage(),
+            (_, _, _) => Task.FromResult(new Response(5)),
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(5, response.Value);
+    }
+
+    [Fact]
     public async Task CircuitBreakerCommandBehavior_CompletesOnSuccess()
     {
         var behavior = new CircuitBreakerCommandBehavior<CircuitCommandMessage>(
@@ -369,6 +392,73 @@ public sealed class ResilienceBehaviorTests
         );
 
         Assert.True(called);
+    }
+
+    [Fact]
+    public async Task CircuitBreakerNotificationBehavior_WhenThresholdReached_OpensCircuit()
+    {
+        var behavior = new CircuitBreakerNotificationBehavior<CircuitNotificationMessage>(
+            Options.Create(
+                new CircuitBreakerBehaviorOptions
+                {
+                    FailureThreshold = 1,
+                    OpenDuration = TimeSpan.FromMilliseconds(20),
+                }
+            )
+        );
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            behavior.Handle(
+                null,
+                new CircuitNotificationMessage(),
+                (_, _, _) => Task.FromException(new InvalidOperationException("boom")),
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        var openException = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            behavior.Handle(
+                null,
+                new CircuitNotificationMessage(),
+                (_, _, _) => Task.CompletedTask,
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Contains("Circuit open for notification", openException.Message);
+    }
+
+    [Fact]
+    public async Task RetryRequestBehavior_WhenDelayIsConfigured_WaitsBeforeRetrying()
+    {
+        var behavior = new RetryRequestBehavior<RetryRequestMessage, Response>(
+            Options.Create(
+                new RetryBehaviorOptions
+                {
+                    MaxRetryCount = 1,
+                    Delay = TimeSpan.FromMilliseconds(25),
+                }
+            )
+        );
+        var attempts = 0;
+        var startedAt = DateTimeOffset.UtcNow;
+
+        var response = await behavior.Handle(
+            null,
+            new RetryRequestMessage(),
+            (_, _, _) =>
+            {
+                attempts++;
+                return attempts == 1
+                    ? Task.FromException<Response>(new InvalidOperationException("fail"))
+                    : Task.FromResult(new Response(9));
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(2, attempts);
+        Assert.Equal(9, response.Value);
+        Assert.True(DateTimeOffset.UtcNow - startedAt >= TimeSpan.FromMilliseconds(20));
     }
 
     private static async Task<T> WaitUntilSucceedsAsync<T>(Func<Task<T>> action)

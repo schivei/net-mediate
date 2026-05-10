@@ -67,6 +67,7 @@ jobs:
           "/d:sonar.host.url=${SONAR_HOST_URL}"
           "/d:sonar.token=${SONAR_TOKEN}"
           "/d:sonar.cs.cobertura.reportsPaths=coverage/**/coverage.cobertura.xml"
+          "/d:sonar.coverage.exclusions=.github/scripts/update_coverage_badge.py,src/NetMediate.Diagnostics/**,src/NetMediate.SourceGeneration/**"
           "/d:sonar.issue.ignore.multicriteria=e1"
           "/d:sonar.issue.ignore.multicriteria.e1.ruleKey=csharpsquid:S107"
           "/d:sonar.issue.ignore.multicriteria.e1.resourceKey=**/*.cs"

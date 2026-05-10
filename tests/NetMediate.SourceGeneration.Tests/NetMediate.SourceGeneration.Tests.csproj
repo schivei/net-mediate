@@ -28,6 +28,17 @@
     <!-- Analyzer-only reference so the test project exercises the current local generator without restoring a stale package copy. -->
     <ProjectReference Include="..\..\src\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
+  <Target Name="CopyLocalSourceGeneratorArtifacts" AfterTargets="Build">
+    <ItemGroup>
+      <LocalSourceGeneratorArtifacts Include="..\..\src\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll" />
+      <LocalSourceGeneratorArtifacts Include="..\..\src\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.pdb" />
+    </ItemGroup>
+    <Copy
+      SourceFiles="@(LocalSourceGeneratorArtifacts)"
+      DestinationFolder="$(OutDir)"
+      SkipUnchangedFiles="true"
+      Condition="Exists('%(LocalSourceGeneratorArtifacts.Identity)')" />
+  </Target>
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>

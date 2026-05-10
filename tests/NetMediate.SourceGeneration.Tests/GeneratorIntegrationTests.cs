@@ -71,6 +71,10 @@ public sealed class GeneratorIntegrationTests
 
     private static string GetLocalGeneratorDllPath()
     {
+        var copiedGeneratorDll = Path.Combine(AppContext.BaseDirectory, "NetMediate.SourceGeneration.dll");
+        if (File.Exists(copiedGeneratorDll))
+            return copiedGeneratorDll;
+
         var configuration = GetBuildConfiguration();
         return Path.GetFullPath(
             Path.Combine(

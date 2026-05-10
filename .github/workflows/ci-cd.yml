@@ -151,6 +151,62 @@ jobs:
     - name: Test SourceGeneration (package-reference integration)
       run: dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
 
+    - name: Enforce 100% line coverage for src/NetMediate
+      run: |
+        python3 << 'PYEOF'
+        import xml.etree.ElementTree as ET, os, sys
+
+        xml_files = [
+            os.path.join(r, f)
+            for r, _, files in os.walk('./coverage')
+            for f in files if f == 'coverage.cobertura.xml'
+        ]
+        if not xml_files:
+            print("No coverage.cobertura.xml found.", file=sys.stderr)
+            sys.exit(1)
+
+        # Merge all reports: for each (filename, lineNumber) take the max hits
+        # across all test-project Cobertura files so lines covered by any test
+        # project count as covered.
+        merged: dict = {}  # (filename, lineNumber) -> max hits
+
+        for xml_file in xml_files:
+            root = ET.parse(xml_file).getroot()
+            for cls in root.findall('.//class'):
+                filename = cls.get('filename', '')
+                norm = filename.replace('\\', '/')
+                # Only src/NetMediate/ (not sub-packages like NetMediate.Quartz, etc.)
+                if not norm.startswith('NetMediate/'):
+                    continue
+                if '/obj/' in norm or norm.startswith('NetMediate.'):
+                    continue
+                for line in cls.findall('./lines/line'):
+                    hits = int(line.get('hits', 0) or 0)
+                    lnum = int(line.get('number', 0) or 0)
+                    key = (filename, lnum)
+                    merged[key] = max(merged.get(key, 0), hits)
+
+        uncovered_by_file: dict = {}
+        for (filename, lnum), hits in merged.items():
+            if hits == 0:
+                uncovered_by_file.setdefault(filename, []).append(lnum)
+
+        total   = len(merged)
+        covered = sum(1 for hits in merged.values() if hits > 0)
+        uncovered_files = {f: v for f, v in uncovered_by_file.items() if v}
+
+        if not uncovered_files:
+            pct = 100.0 * covered / total if total > 0 else 100.0
+            print(f"✅ src/NetMediate line coverage: {pct:.1f}% ({covered}/{total} lines) — gate passed.")
+            sys.exit(0)
+
+        pct = 100.0 * covered / total if total > 0 else 0.0
+        print(f"❌ src/NetMediate line coverage: {pct:.1f}% — 100% required.", file=sys.stderr)
+        for f, lines in sorted(uncovered_files.items()):
+            print(f"  {f}: uncovered lines {sorted(lines)}", file=sys.stderr)
+        sys.exit(1)
+        PYEOF
+
     - name: End Sonar analysis
       if: ${{ always() && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && env.SONAR_TOKEN != '' }}
       run: |

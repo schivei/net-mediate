@@ -35,6 +35,26 @@ def text_width(text: str) -> int:
     return max(40, 7 * len(text) + 10)
 
 
+def text_length(text: str) -> int:
+    return text_width(text) * 10
+
+
+def parse_condition_coverage(coverage: str, hits: int) -> tuple[int, int]:
+    if "(" in coverage and "/" in coverage:
+        try:
+            fraction = coverage.split("(", 1)[1].split(")", 1)[0]
+            covered_raw, valid_raw = fraction.split("/", 1)
+            covered = int(covered_raw)
+            valid = int(valid_raw)
+            if valid > 0 and covered >= 0:
+                return covered, valid
+        except (IndexError, ValueError):
+            pass
+
+    covered = 1 if hits > 0 else 0
+    return covered, 1
+
+
 def load_rates() -> tuple[float, float]:
     xml_files = sorted(COVERAGE_DIR.rglob("coverage.cobertura.xml"))
     if not xml_files:
@@ -57,13 +77,10 @@ def load_rates() -> tuple[float, float]:
                 merged_lines[line_key] = max(merged_lines.get(line_key, 0), hits)
 
                 if line.get("branch") == "True":
-                    coverage = line.get("condition-coverage", "")
-                    if "(" in coverage and "/" in coverage:
-                        fraction = coverage.split("(", 1)[1].split(")", 1)[0]
-                        covered, valid = (int(part) for part in fraction.split("/", 1))
-                    else:
-                        covered = 1 if hits > 0 else 0
-                        valid = 1
+                    covered, valid = parse_condition_coverage(
+                        line.get("condition-coverage", ""),
+                        hits,
+                    )
 
                     branch_key = (filename, line_number)
                     previous = merged_branches.get(branch_key, (0, 0))
@@ -91,6 +108,8 @@ def build_svg(line_rate: float, branch_rate: float) -> str:
     title = f"line coverage: {format_rate(line_rate)} lines, {format_rate(branch_rate)} branches"
     label_width = text_width(label)
     value_width = text_width(value)
+    label_length = text_length(label)
+    value_length = text_length(value)
     total_width = label_width + value_width
     color = badge_color(line_rate)
 
@@ -112,10 +131,10 @@ def build_svg(line_rate: float, branch_rate: float) -> str:
   <rect width="{total_width}" height="20" fill="url(#s)"/>
 </g>
 <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" text-rendering="geometricPrecision" font-size="110">
-  <text aria-hidden="true" x="{label_x * 10:.0f}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{len(label) * 70}">{html.escape(label)}</text>
-  <text x="{label_x * 10:.0f}" y="140" transform="scale(.1)" fill="#fff" textLength="{len(label) * 70}">{html.escape(label)}</text>
-  <text aria-hidden="true" x="{value_x * 10:.0f}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{len(value) * 70}">{html.escape(value)}</text>
-  <text x="{value_x * 10:.0f}" y="140" transform="scale(.1)" fill="#fff" textLength="{len(value) * 70}">{html.escape(value)}</text>
+  <text aria-hidden="true" x="{label_x * 10:.0f}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{label_length}">{html.escape(label)}</text>
+  <text x="{label_x * 10:.0f}" y="140" transform="scale(.1)" fill="#fff" textLength="{label_length}">{html.escape(label)}</text>
+  <text aria-hidden="true" x="{value_x * 10:.0f}" y="150" fill="#010101" fill-opacity=".3" transform="scale(.1)" textLength="{value_length}">{html.escape(value)}</text>
+  <text x="{value_x * 10:.0f}" y="140" transform="scale(.1)" fill="#fff" textLength="{value_length}">{html.escape(value)}</text>
 </g>
 </svg>
 """

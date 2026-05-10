@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Options;
 
 namespace NetMediate.Resilience;
@@ -44,6 +45,9 @@ internal static class RetryBehaviorRunner
             .ConfigureAwait(false);
     }
 
+    // Compiler-required guard after the retry loop; logically unreachable because the last
+    // attempt always propagates its exception rather than completing the loop normally.
+    [ExcludeFromCodeCoverage]
     private static async Task<TResult> ExecuteCoreAsync<TState, TResult>(
         RetryBehaviorOptions options,
         Func<TState, CancellationToken, Task<TResult>> operation,

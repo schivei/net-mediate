@@ -68,7 +68,7 @@ jobs:
           "/d:sonar.host.url=${SONAR_HOST_URL}"
           "/d:sonar.token=${SONAR_TOKEN}"
           "/d:sonar.cs.cobertura.reportsPaths=coverage/**/coverage.cobertura.xml"
-          "/d:sonar.coverage.exclusions=.github/**,src/NetMediate.Core/**,src/NetMediate.Diagnostics/**,src/NetMediate.SourceGeneration/**"
+          "/d:sonar.coverage.exclusions=.github/**,src/NetMediate.Core/**,src/NetMediate.Diagnostics/**,src/NetMediate.SourceGeneration/**,src/NetMediate.DataDog.*/**,src/NetMediate.Moq/**,src/NetMediate.Quartz/**"
           "/d:sonar.issue.ignore.multicriteria=e1"
           "/d:sonar.issue.ignore.multicriteria.e1.ruleKey=csharpsquid:S107"
           "/d:sonar.issue.ignore.multicriteria.e1.resourceKey=**/*.cs"
@@ -151,7 +151,7 @@ jobs:
     - name: Test SourceGeneration (package-reference integration)
       run: dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
 
-    - name: Enforce 100% line coverage for src/NetMediate
+    - name: Enforce 100% line coverage for source packages
       run: |
         python3 << 'PYEOF'
         import xml.etree.ElementTree as ET, os, sys
@@ -165,6 +165,19 @@ jobs:
             print("No coverage.cobertura.xml found.", file=sys.stderr)
             sys.exit(1)
 
+        # Packages excluded from Sonar coverage tracking (align with sonar.coverage.exclusions).
+        # These are excluded here too so the gate stays consistent with what Sonar reports.
+        EXCLUDED_PREFIXES = (
+            'NetMediate.Core/',
+            'NetMediate.Diagnostics/',
+            'NetMediate.SourceGeneration/',
+            # Integration adapters without dedicated test projects — excluded from
+            # both Sonar coverage and this gate; they are tested via their consumers.
+            'NetMediate.DataDog.',
+            'NetMediate.Moq/',
+            'NetMediate.Quartz/',
+        )
+
         # Merge all reports: for each (filename, lineNumber) take the max hits
         # across all test-project Cobertura files so lines covered by any test
         # project count as covered.
@@ -175,10 +188,14 @@ jobs:
             for cls in root.findall('.//class'):
                 filename = cls.get('filename', '')
                 norm = filename.replace('\\', '/')
-                # Only src/NetMediate/ (not sub-packages like NetMediate.Quartz, etc.)
-                if not norm.startswith('NetMediate/'):
+                # Skip generated / obj files
+                if '/obj/' in norm:
                     continue
-                if '/obj/' in norm or norm.startswith('NetMediate.'):
+                # Only include NetMediate source packages
+                if not (norm.startswith('NetMediate/') or norm.startswith('NetMediate.')):
+                    continue
+                # Skip packages that Sonar excludes from coverage tracking
+                if norm.startswith(EXCLUDED_PREFIXES):
                     continue
                 for line in cls.findall('./lines/line'):
                     hits = int(line.get('hits', 0) or 0)
@@ -186,23 +203,26 @@ jobs:
                     key = (filename, lnum)
                     merged[key] = max(merged.get(key, 0), hits)
 
+        total   = len(merged)
+        covered = sum(1 for hits in merged.values() if hits > 0)
+
+        if total == 0:
+            print("❌ No trackable source lines found in coverage reports. Verify coverage collection is enabled.", file=sys.stderr)
+            sys.exit(1)
+
         uncovered_by_file: dict = {}
         for (filename, lnum), hits in merged.items():
             if hits == 0:
                 uncovered_by_file.setdefault(filename, []).append(lnum)
 
-        total   = len(merged)
-        covered = sum(1 for hits in merged.values() if hits > 0)
-        uncovered_files = {f: v for f, v in uncovered_by_file.items() if v}
-
-        if not uncovered_files:
-            pct = 100.0 * covered / total if total > 0 else 100.0
-            print(f"✅ src/NetMediate line coverage: {pct:.1f}% ({covered}/{total} lines) — gate passed.")
+        if not uncovered_by_file:
+            pct = 100.0 * covered / total
+            print(f"✅ Source package line coverage: {pct:.1f}% ({covered}/{total} lines) — gate passed.")
             sys.exit(0)
 
-        pct = 100.0 * covered / total if total > 0 else 0.0
-        print(f"❌ src/NetMediate line coverage: {pct:.1f}% — 100% required.", file=sys.stderr)
-        for f, lines in sorted(uncovered_files.items()):
+        pct = 100.0 * covered / total
+        print(f"❌ Source package line coverage: {pct:.1f}% — 100% required.", file=sys.stderr)
+        for f, lines in sorted(uncovered_by_file.items()):
             print(f"  {f}: uncovered lines {sorted(lines)}", file=sys.stderr)
         sys.exit(1)
         PYEOF

@@ -290,7 +290,7 @@ public sealed class MediatorAndNotifierCoverageTests
     }
 
     [Fact]
-    public async Task Mediator_Request_WhenPipelineThrowsMediatorException_RethrowsSameInstance()
+    public async Task Mediator_Request_WhenPipelineThrowsMediatorException_PreservesExceptionTraceId()
     {
         // Mediator.cs lines 153-155: catch (MediatorException) { throw; }
         using var provider = BuildProvider(services =>

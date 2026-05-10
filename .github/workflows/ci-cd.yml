@@ -2,7 +2,10 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop, 'feature/*', 'hotfix/*', 'release/*' ]
+    # 'main' is intentionally excluded here: CI on main is triggered by the
+    # 'workflow_run' event below so it always runs AFTER version-bump has
+    # committed the new versions.props, ensuring builds use the correct version.
+    branches: [ develop, 'feature/*', 'hotfix/*', 'release/*' ]
     tags: [ 'v*' ]
     paths:
       - 'src/**'
@@ -15,6 +18,12 @@ on:
       - 'tests/**'
       - 'versions.props'
       - '.github/workflows/ci-cd.yml'
+  workflow_run:
+    # Triggered after version-bump commits the new versions.props to main so
+    # CI always builds with the bumped version, never with the stale one.
+    workflows: ["Version Bump on PR Merge"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 env:
@@ -38,6 +47,9 @@ jobs:
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         fetch-depth: 0
+        # When triggered by workflow_run (after version-bump), explicitly checkout
+        # refs/heads/main so we get the bumped versions.props, not the stale merge commit.
+        ref: ${{ github.event_name == 'workflow_run' && 'refs/heads/main' || '' }}
         
     - name: Setup .NET SDK 10.x
       uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
@@ -294,7 +306,8 @@ jobs:
       # "Commit baseline update" below carries [skip ci] in the message, but the
       # actor check adds a second layer of protection for any runner that ignores
       # [skip ci].  Both the run step and the commit step use the same condition.
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+      # workflow_run is included so the baseline also updates after version-bump commits.
+      if: (github.event_name == 'push' || github.event_name == 'workflow_run') && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
       env:
         BENCH_REPORT: ${{ runner.temp }}/bench-report.md
         BENCH_BASELINE_ONLY: 'true'
@@ -313,7 +326,7 @@ jobs:
 
     - name: Commit baseline update (main branch only)
       # Same actor guard as the run step above — see comment there for rationale.
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+      if: (github.event_name == 'push' || github.event_name == 'workflow_run') && github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
       uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321 # v10.0.0
       with:
         add: 'docs/BENCHMARKS.md website/docs/performance/benchmarks.md'
@@ -324,7 +337,8 @@ jobs:
     - name: Update coverage badges
       if: >-
         ((github.event_name == 'pull_request') ||
-        (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')))
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) ||
+        (github.event_name == 'workflow_run' && github.ref == 'refs/heads/main'))
         && !endsWith(github.actor, '[bot]')
       run: python3 .github/scripts/update_coverage_badge.py
 
@@ -338,7 +352,10 @@ jobs:
         push: 'origin HEAD:refs/heads/${{ github.event.pull_request.head.ref }}'
 
     - name: Commit coverage badges to branch
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/') && !endsWith(github.actor, '[bot]')
+      if: >-
+        ((github.event_name == 'push' && startsWith(github.ref, 'refs/heads/')) ||
+        (github.event_name == 'workflow_run' && github.ref == 'refs/heads/main'))
+        && !endsWith(github.actor, '[bot]')
       uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321 # v10.0.0
       with:
         add: 'docs/badges/*.svg'

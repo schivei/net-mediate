@@ -101,15 +101,6 @@ jobs:
       id: bump
       run: python .github/scripts/bump_version.py --type patch
 
-    - name: Commit and push version bump
-      if: steps.check_deps.outputs.skip != 'true'
-      uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321 # v10.0.0
-      with:
-        add: 'versions.props'
-        message: 'chore: bump version to ${{ steps.bump.outputs.version }} [skip ci]'
-        default_author: github_actions
-        push: 'origin HEAD:refs/heads/main'
-
     - name: Build all projects
       if: steps.check_deps.outputs.skip != 'true'
       run: dotnet build net-mediate.slnx --no-restore --configuration Release
@@ -145,6 +136,15 @@ jobs:
       run: dotnet nuget push ./packages/*.nupkg --api-key $GITHUB_TOKEN --source https://nuget.pkg.github.com/schivei/index.json --skip-duplicate
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Commit and push version bump
+      if: steps.check_deps.outputs.skip != 'true'
+      uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321 # v10.0.0
+      with:
+        add: 'versions.props'
+        message: 'chore: bump version to ${{ steps.bump.outputs.version }} [skip ci]'
+        default_author: github_actions
+        push: 'origin HEAD:refs/heads/main'
 
     - name: Create failure issue
       if: failure()

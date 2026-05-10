@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="..\..\pack.props" />
   <PropertyGroup>
     <AssemblyName>NetMediate.Quartz</AssemblyName>
@@ -22,8 +22,8 @@
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <WarningsNotAsErrors />
-    <WarningsAsErrors>CS1591</WarningsAsErrors>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>CS1591</WarningsNotAsErrors>
   </PropertyGroup>
   <ItemGroup>
     <None Include="..\..\assets\logo.png" Pack="true" PackagePath="\" />
@@ -31,6 +31,10 @@
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
+	  <PackageReference Include="GenDI.SourceGenerator" Version="26.5.8.1272">
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		  <PrivateAssets>all</PrivateAssets>
+	  </PackageReference>
     <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
     <PackageReference
       Include="Microsoft.Extensions.DependencyInjection.Abstractions"

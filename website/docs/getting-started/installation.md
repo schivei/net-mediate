@@ -17,32 +17,35 @@ This guide will help you install NetMediate and its companion packages in your .
 ### Using .NET CLI (Recommended)
 
 ```bash
-dotnet add package NetMediate
+dotnet add package NetMediate.Core
+dotnet add package NetMediate.SourceGeneration
 ```
 
 :::tip Why this release improves setup
-`dotnet add package NetMediate` is now enough for a complete direct-consumer experience: runtime APIs + bundled generators (`NetMediate.SourceGeneration` and `GenDI.SourceGenerator`) work without extra package metadata edits.
+Use `NetMediate.Core` in shared/contracts projects and `NetMediate.SourceGeneration` in the startup/application project. The generator package injects `NetMediate` and `GenDI.SourceGenerator` automatically via `buildTransitive`.
 :::
 
-After running the command, your `.csproj` will have a `PackageReference` for `NetMediate`. For **library projects**, optionally add `PrivateAssets="all"` to prevent `NetMediate` from flowing as a transitive dependency to consumers of your library:
+After running the command, your `.csproj` will have `PackageReference` entries for `NetMediate.Core` and `NetMediate.SourceGeneration`. For **library projects**, optionally add `PrivateAssets="all"` to the generator package to avoid transitive flow:
 
 ```xml
 <ItemGroup>
-  <!-- Application projects: no PrivateAssets needed -->
-  <PackageReference Include="NetMediate" Version="*" />
+  <PackageReference Include="NetMediate.Core" Version="*" />
+  <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    <PrivateAssets>all</PrivateAssets>
+  </PackageReference>
 
-  <!-- Library projects: add PrivateAssets to prevent transitive flow -->
-  <!-- <PackageReference Include="NetMediate" Version="*" PrivateAssets="all" /> -->
 </ItemGroup>
 ```
 
 ### Using Package Manager Console
 
 ```powershell
-Install-Package NetMediate
+Install-Package NetMediate.Core
+Install-Package NetMediate.SourceGeneration
 ```
 
-After running the command, your `.csproj` will have a `PackageReference` for `NetMediate`. See the note on `PrivateAssets` in the .NET CLI section above if you are building a library.
+After running the command, your `.csproj` will have `PackageReference` entries for `NetMediate.Core` and `NetMediate.SourceGeneration`. See the note on `PrivateAssets` in the .NET CLI section above if you are building a library.
 
 ### Using PackageReference
 
@@ -50,21 +53,30 @@ Add the following to your `.csproj` file:
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="NetMediate" Version="*" />
+  <PackageReference Include="NetMediate.Core" Version="*" />
+  <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+    <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    <PrivateAssets>all</PrivateAssets>
+  </PackageReference>
 </ItemGroup>
 ```
 
 :::tip Library projects: PrivateAssets
-If you are building a **library** (not an application), consider adding `PrivateAssets="all"` to prevent `NetMediate` and its bundled source generator from flowing as a transitive dependency to consumers of your package. The analyzer runs for your project regardless — `PrivateAssets` only controls transitive flow.
+`NetMediate.SourceGeneration` should use the explicit analyzer-style metadata below:
 
 ```xml
-<PackageReference Include="NetMediate" Version="*" PrivateAssets="all" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
+ 
+`NetMediate.SourceGeneration` still adds `NetMediate` and `GenDI.SourceGenerator` for the direct project.
 :::
 
 ## Source Generation
 
-The `NetMediate.SourceGeneration` analyzer is **bundled inside the `NetMediate` package** — you do not need to install it separately. It runs automatically for any project that directly references `NetMediate`.
+`NetMediate.SourceGeneration` is the package you install directly in the startup/application project. Its `buildTransitive` file adds the required `NetMediate` runtime and `GenDI.SourceGenerator` automatically.
 
 ## Optional Packages
 
@@ -119,8 +131,9 @@ dotnet add package NetMediate.DataDog.ILogger
 
 | Package | Minimum .NET Version | Supported TFMs |
 |---------|---------------------|----------------|
+| NetMediate.Core | .NET Standard 2.0 | netstandard2.0 |
 | NetMediate | .NET Standard 2.0 | net10.0, netstandard2.0, netstandard2.1 |
-| NetMediate.SourceGeneration (bundled) | .NET Standard 2.0 | netstandard2.0 (analyzer) |
+| NetMediate.SourceGeneration | .NET Standard 2.0 | netstandard2.0 (analyzer) |
 | NetMediate.Resilience | .NET Standard 2.0 | net10.0, netstandard2.0, netstandard2.1 |
 | NetMediate.Moq | .NET Standard 2.0 | net10.0, netstandard2.0, netstandard2.1 |
 | NetMediate.Quartz | .NET Standard 2.0 | net10.0, netstandard2.0, netstandard2.1 |
@@ -134,11 +147,11 @@ using NetMediate;
 using Microsoft.Extensions.DependencyInjection;
 
 var services = new ServiceCollection();
-services.AddNetMediate(); // Generated by the bundled NetMediate.SourceGeneration analyzer
+services.AddNetMediate(); // Generated by the NetMediate.SourceGeneration package
 ```
 
 If `AddNetMediate()` is not recognized, make sure:
-1. Your project references `NetMediate` directly
+1. Your startup project references `NetMediate.SourceGeneration`
 2. You've rebuilt your project
 3. Your IDE has refreshed its IntelliSense cache
 

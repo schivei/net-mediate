@@ -12,6 +12,10 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <PackageReference Include="GenDI.SourceGenerator" Version="26.*">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.*" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.*" />
@@ -25,6 +29,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.Moq\NetMediate.Moq.csproj" />
+    <ProjectReference Include="..\..\src\NetMediate.Quartz\NetMediate.Quartz.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.DataDog.OpenTelemetry\NetMediate.DataDog.OpenTelemetry.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.DataDog.Serilog\NetMediate.DataDog.Serilog.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.DataDog.ILogger\NetMediate.DataDog.ILogger.csproj" />

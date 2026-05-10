@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
@@ -11,11 +11,21 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
+	<PackageReference Include="GenDI.SourceGenerator" Version="26.*">
+		<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		<PrivateAssets>all</PrivateAssets>
+	</PackageReference>
     <PackageReference Include="BenchmarkDotNet" Version="0.*" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
+	<ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
+	  <ProjectReference
+		Include="../../src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj"
+		PrivateAssets="all"
+		OutputItemType="Analyzer"
+		ReferenceOutputAssembly="false"
+    />
   </ItemGroup>
 </Project>

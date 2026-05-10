@@ -9,5 +9,5 @@ Notifications are events dispatched to multiple handlers. All handlers are start
 ## Usage
 
 ```csharp
-await mediator.Notify(new UserCreatedNotification("user-123", "john@example.com"));
+await mediator.NotifyUserCreatedNotificationAsync(new UserCreatedNotification("user-123", "john@example.com"));
 ```

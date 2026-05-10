@@ -1,8 +1,17 @@
 # NetMediate
 
 [![CI/CD Pipeline](https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml)
-[![NuGet](https://img.shields.io/nuget/v/NetMediate?style=flat)](https://www.nuget.org/packages/NetMediate/)
-[![Documentation](https://img.shields.io/badge/docs-website-blue)](https://elton.schivei.nom.br/net-mediate)
+[![Deploy Documentation](https://github.com/schivei/net-mediate/actions/workflows/deploy-docs.yml/badge.svg)](https://github.com/schivei/net-mediate/actions/workflows/deploy-docs.yml)
+[![NuGet NetMediate](https://img.shields.io/nuget/v/NetMediate?style=flat&label=NetMediate&logo=nuget)](https://www.nuget.org/packages/NetMediate/)
+[![NuGet NetMediate.Core](https://img.shields.io/nuget/v/NetMediate.Core?style=flat&label=NetMediate.Core&logo=nuget)](https://www.nuget.org/packages/NetMediate.Core/)
+[![NuGet NetMediate.SourceGeneration](https://img.shields.io/nuget/v/NetMediate.SourceGeneration?style=flat&label=NetMediate.SourceGeneration&logo=nuget)](https://www.nuget.org/packages/NetMediate.SourceGeneration/)
+[![Quality Gate](https://img.shields.io/sonar/quality_gate/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Quality%20Gate)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Bugs](https://img.shields.io/sonar/bugs/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Bugs)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Code Smells](https://img.shields.io/sonar/code_smells/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Code%20Smells)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Coverage Lines](docs/badges/coverage-lines.svg)](https://sonarcloud.io/component_measures?id=schivei_net-mediate&metric=new_coverage&view=list)
+[![Coverage Branches](docs/badges/coverage-branches.svg)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/schivei/net-mediate/blob/main/LICENSE)
+[![Documentation](https://img.shields.io/badge/Documentation-Website-blue)](https://elton.schivei.nom.br/net-mediate)
 
 A lightweight and efficient .NET implementation of the Mediator pattern for in-process messaging and communication between components.
 
@@ -28,8 +37,8 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 
 ### What’s new in this version
 
-- ✅ `dotnet add package NetMediate` now works out-of-the-box for compile-time + runtime usage (no extra package metadata tweaks required).
-- 📦 Bundled source generators are now a stronger default experience: `NetMediate.SourceGeneration` and `GenDI.SourceGenerator` are included and available immediately to direct package consumers.
+- ✅ `dotnet add package NetMediate.SourceGeneration` is now the recommended entrypoint for application/startup projects.
+- 📦 `NetMediate.Core` now carries the contracts, while `NetMediate.SourceGeneration` injects `NetMediate` and `GenDI.SourceGenerator` through `buildTransitive`.
 - ✨ New generated typed dispatch extensions (for commands, notifications, requests, and streams) reduce boilerplate and improve call-site readability.
 - 🔁 `buildTransitive` propagation keeps generator behavior consistent in larger multi-project solutions when you intentionally allow transitive flow.
 
@@ -49,33 +58,74 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Optional resilience package**: Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience`
 - **OpenTelemetry-ready diagnostics**: Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream
 - **Optional DataDog integrations**: OpenTelemetry, Serilog, and ILogger support packages
-- **Keyed handler routing**: Register handlers under named keys and dispatch to specific subsets at runtime
+- **Keyed handler routing**: Register handlers under named keys and dispatch to specific subsets at runtime — **fully NativeAOT + Trimming compatible** via source-generated `KeyedHandlerRegistry<T>`
 - **Streaming fan-out**: Multiple `IStreamHandler` registrations supported — their items are merged sequentially
 - **Cancellation Support**: Full cancellation token support across all operations
 - **Broad runtime compatibility**: Multi-targeted for `net10.0`, `netstandard2.0`, and `netstandard2.1`
 
 ## Installation
 
-### Package Manager Console
+### Shared contracts project
 ```powershell
-Install-Package NetMediate
+Install-Package NetMediate.Core
 ```
 
-> **Note:** After installing via Package Manager Console or .NET CLI, you may add `PrivateAssets="all"` to the `PackageReference` element if you are building a **library** and want to prevent `NetMediate` and its bundled source generator from flowing as a transitive dependency to consumers of your package. For application projects this is optional — the analyzer runs for direct references automatically.
+### Application / startup project
+```powershell
+Install-Package NetMediate.SourceGeneration
+```
+
+> **Note:** Install `NetMediate.Core` where you only need the contracts (`IMediator`, handlers, behaviors). Install `NetMediate.SourceGeneration` in the executable/startup project that calls `AddNetMediate()`. Its `buildTransitive` file adds the required `PackageReference` entries for `NetMediate` and `GenDI.SourceGenerator`.
 
 ### .NET CLI
 ```bash
-dotnet add package NetMediate
+dotnet add package NetMediate.Core
+dotnet add package NetMediate.SourceGeneration
 ```
 
-> **Note:** After running the CLI command, you may add `PrivateAssets="all"` to the `PackageReference` element if you are building a **library** and want to prevent `NetMediate` from flowing transitively to downstream consumers. For application projects this is optional.
+> **Note:** If you are publishing your own library, you may add `PrivateAssets="all"` to the `NetMediate.SourceGeneration` reference to avoid flowing the generator package transitively. The startup project can keep the default behavior.
 
 ### PackageReference
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" />
+<PackageReference Include="NetMediate.Core" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
 
-> **Note:** `PrivateAssets="all"` is **recommended for library/NuGet projects** to prevent `NetMediate` and its bundled source generators from flowing as transitive dependencies to consumers of your library. For application projects (e.g., ASP.NET Core apps, console apps) it is optional.
+> **Note:** `NetMediate.SourceGeneration` should be referenced with `IncludeAssets` + `PrivateAssets="all"`. It adds `NetMediate` and `GenDI.SourceGenerator` indirectly via `buildTransitive`.
+
+### GenDI-first activation pattern
+
+`NetMediate.SourceGeneration` also activates GenDI in the startup project. Prefer the GenDI style for your application services and supporting implementations:
+
+```csharp
+using GenDI;
+using Microsoft.Extensions.DependencyInjection;
+
+[ServiceInjection]
+public interface IEmailService
+{
+    Task SendWelcomeEmailAsync(string email, CancellationToken cancellationToken);
+}
+
+[Injectable(ServiceLifetime.Scoped, Group = 10, Order = 1, Key = "primary")]
+public sealed class SmtpEmailService : IEmailService
+{
+    public Task SendWelcomeEmailAsync(string email, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
+}
+
+[Injectable(ServiceLifetime.Scoped)]
+public sealed class UserFacade
+{
+    [Inject] public required IEmailService EmailService { get; init; }
+    [Inject] public required ILogger<UserFacade> Logger { get; init; }
+}
+```
+
+With GenDI the consumer chooses the `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path. `AddNetMediate()` already calls `AddGenDIServices()` for you.
 
 ### Optional companion packages
 ```xml
@@ -114,36 +164,44 @@ dotnet add package NetMediate
 Here's a minimal example to get you started with NetMediate:
 
 ```csharp
-// 1. Install the package
-// dotnet add package NetMediate
-// Library projects may optionally add PrivateAssets="all" to avoid transitive flow.
-
-// 2. Register services — source generator discovers all handlers automatically
+using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using NetMediate;
 
-var builder = Host.CreateApplicationBuilder();
-builder.Services.AddNetMediate(); // all handlers in your project are registered here
-
-// 3. Define a notification (no marker interface required)
 public record UserCreated(string UserId, string Email);
 
-// 4. Create a handler (Handle returns Task)
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class UserCreatedHandler : INotificationHandler<UserCreated>
 {
+    [Inject] public required ILogger<UserCreatedHandler> Logger { get; init; }
+
     public Task Handle(UserCreated notification, CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"User {notification.UserId} was created!");
+        Logger.LogInformation("User {UserId} was created", notification.UserId);
         return Task.CompletedTask;
     }
 }
 
-// 5. Use the mediator
-var host = builder.Build();
-await host.StartAsync();
-var mediator = host.Services.GetRequiredService<IMediator>();
-await mediator.Notify(new UserCreated("123", "user@example.com"));
+public static class QuickStartExample
+{
+    public static async Task RunAsync()
+    {
+        // 1. Install the package
+        // Shared contracts: dotnet add package NetMediate.Core
+        // Startup/app project: dotnet add package NetMediate.SourceGeneration
+
+        // 2. Register services — source generator discovers all handlers automatically
+        var builder = Host.CreateApplicationBuilder();
+        builder.Services.AddNetMediate(); // all handlers in your project are registered here
+
+        // 3. Use the mediator
+        var host = builder.Build();
+        await host.StartAsync();
+        var mediator = host.Services.GetRequiredService<IMediator>();
+        await mediator.NotifyUserCreatedAsync(new("123", "user@example.com"));
+    }
+}
 ```
 
 For more detailed examples, see the [Usage Examples](#usage-examples) section below.
@@ -161,8 +219,8 @@ using NetMediate;
 
 var builder = Host.CreateApplicationBuilder();
 
-// The bundled source generator discovers handlers automatically at compile time
-// automatically discovers and registers all handlers at compile time.
+// NetMediate.SourceGeneration discovers handlers automatically at compile time
+// and registers all handlers in your project.
 builder.Services.AddNetMediate();
 
 var host = builder.Build();
@@ -181,34 +239,29 @@ public record UserRegistered(string UserId, string Email, DateTime RegisteredAt)
 
 #### Create Notification Handlers
 ```csharp
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class EmailNotificationHandler : INotificationHandler<UserRegistered>
 {
-    private readonly IEmailService _emailService;
-
-    public EmailNotificationHandler(IEmailService emailService)
-    {
-        _emailService = emailService;
-    }
+    [Inject] public required IEmailService EmailService { get; init; }
 
     // Handle must return Task, not Task
     public async Task Handle(UserRegistered notification, CancellationToken cancellationToken = default)
     {
-        await _emailService.SendWelcomeEmailAsync(notification.Email, cancellationToken);
+        await EmailService.SendWelcomeEmailAsync(notification.Email, cancellationToken);
     }
 }
 
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 2)]
 public class AuditLogHandler : INotificationHandler<UserRegistered>
 {
-    private readonly IAuditService _auditService;
-
-    public AuditLogHandler(IAuditService auditService)
-    {
-        _auditService = auditService;
-    }
+    [Inject] public required IAuditService AuditService { get; init; }
 
     public async Task Handle(UserRegistered notification, CancellationToken cancellationToken = default)
     {
-        await _auditService.LogEventAsync($"User {notification.UserId} registered", cancellationToken);
+        await AuditService.LogEventAsync(
+            $"User {notification.UserId} registered",
+            cancellationToken
+        );
     }
 }
 ```
@@ -216,7 +269,7 @@ public class AuditLogHandler : INotificationHandler<UserRegistered>
 #### Publish Notifications
 ```csharp
 var notification = new UserRegistered("user123", "user@example.com", DateTime.UtcNow);
-await mediator.Notify(notification, cancellationToken);
+await mediator.NotifyUserRegisteredAsync(notification, cancellationToken);
 ```
 
 Batch notifications in one call:
@@ -226,7 +279,7 @@ var notifications = new[]
     new UserRegistered("user123", "user@example.com", DateTime.UtcNow),
     new UserRegistered("user321", "user2@example.com", DateTime.UtcNow)
 };
-await mediator.Notify(notifications, cancellationToken);
+await mediator.NotifyUserRegisteredAsync(notifications, cancellationToken);
 ```
 
 ### Commands
@@ -244,14 +297,10 @@ public record CreateUserCommand(string Email, string FirstName, string LastName)
 Multiple handlers can be registered for the same command type — all run sequentially on each `Send` call.
 
 ```csharp
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
 {
-    private readonly IUserRepository _userRepository;
-
-    public CreateUserCommandHandler(IUserRepository userRepository)
-    {
-        _userRepository = userRepository;
-    }
+    [Inject] public required IUserRepository UserRepository { get; init; }
 
     // Handle must return Task
     public async Task Handle(CreateUserCommand command, CancellationToken cancellationToken = default)
@@ -263,7 +312,7 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
             LastName = command.LastName
         };
 
-        await _userRepository.CreateAsync(user, cancellationToken);
+        await UserRepository.CreateAsync(user, cancellationToken);
     }
 }
 ```
@@ -271,7 +320,7 @@ public class CreateUserCommandHandler : ICommandHandler<CreateUserCommand>
 #### Send Commands
 ```csharp
 var command = new CreateUserCommand("user@example.com", "John", "Doe");
-await mediator.Send(command);
+await mediator.SendCreateUserCommandAsync(command);
 ```
 
 ### Requests
@@ -287,19 +336,15 @@ public record UserDto(string Id, string Email, string FirstName, string LastName
 
 #### Create a Request Handler
 ```csharp
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserDto>
 {
-    private readonly IUserRepository _userRepository;
-
-    public GetUserQueryHandler(IUserRepository userRepository)
-    {
-        _userRepository = userRepository;
-    }
+    [Inject] public required IUserRepository UserRepository { get; init; }
 
     // Handle must return Task<TResponse>
     public async Task<UserDto> Handle(GetUserQuery query, CancellationToken cancellationToken = default)
     {
-        var user = await _userRepository.GetByIdAsync(query.UserId, cancellationToken);
+        var user = await UserRepository.GetByIdAsync(query.UserId, cancellationToken);
 
         return new UserDto(user.Id, user.Email, user.FirstName, user.LastName);
     }
@@ -309,7 +354,7 @@ public class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserDto>
 #### Send Requests
 ```csharp
 var query = new GetUserQuery("user123");
-var userDto = await mediator.Request<GetUserQuery, UserDto>(query);
+var userDto = await mediator.RequestGetUserQueryAsync(query);
 ```
 
 ### Streams
@@ -325,20 +370,16 @@ public record ActivityDto(string Id, string Action, DateTime Timestamp);
 
 #### Create a Stream Handler
 ```csharp
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class GetUserActivityQueryHandler : IStreamHandler<GetUserActivityQuery, ActivityDto>
 {
-    private readonly IActivityRepository _activityRepository;
-    
-    public GetUserActivityQueryHandler(IActivityRepository activityRepository)
-    {
-        _activityRepository = activityRepository;
-    }
+    [Inject] public required IActivityRepository ActivityRepository { get; init; }
     
     public async IAsyncEnumerable<ActivityDto> Handle(
         GetUserActivityQuery query, 
         [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await foreach (var activity in _activityRepository.GetUserActivityStreamAsync(
+        await foreach (var activity in ActivityRepository.GetUserActivityStreamAsync(
             query.UserId, query.FromDate, cancellationToken))
         {
             yield return new ActivityDto(activity.Id, activity.Action, activity.Timestamp);
@@ -351,7 +392,7 @@ public class GetUserActivityQueryHandler : IStreamHandler<GetUserActivityQuery, 
 ```csharp
 var query = new GetUserActivityQuery("user123", DateTime.UtcNow.AddDays(-30));
 
-await foreach (var activity in mediator.RequestStream<GetUserActivityQuery, ActivityDto>(query))
+await foreach (var activity in mediator.StreamGetUserActivityQueryAsync(query))
 {
     Console.WriteLine($"{activity.Timestamp}: {activity.Action}");
 }
@@ -387,57 +428,93 @@ public record GetRecentEventsQuery(int MaxItems);
 Register handlers under routing keys and dispatch to a specific subset at runtime. This is useful for scenarios such as queue/topic routing, tenant isolation, or environment-specific handling:
 
 ```csharp
-// Registration — same message type, different keys
-builder.Services.AddNetMediate(configure =>
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+public sealed class DefaultHandler : ICommandHandler<MyCommand>
 {
-    configure.RegisterCommandHandler<DefaultHandler, MyCommand>();        // null key → "__default"
-    configure.RegisterCommandHandler<AuditHandler, MyCommand>("audit");  // keyed
-});
+    public Task Handle(MyCommand message, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+}
+
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 2, Key = "audit")]
+public sealed class AuditHandler : ICommandHandler<MyCommand>
+{
+    public Task Handle(MyCommand message, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+}
+
+builder.Services.AddNetMediate();
 
 // Dispatch to null-key (default) handlers
-await mediator.Send(new MyCommand(), cancellationToken);
+await mediator.SendMyCommandAsync(new MyCommand(), cancellationToken);
 
 // Dispatch only to "audit" handlers
-await mediator.Send("audit", new MyCommand(), cancellationToken);
+await mediator.SendMyCommandAsync("audit", new MyCommand(), cancellationToken);
 ```
 
 The `key` is propagated through the entire pipeline — behaviors receive it in their `Handle(object? key, ...)` signature and can use it for routing, logging, or conditional logic.
 
-> **Default routing key:** A `null` key (the default when no key is passed) is normalized internally to the constant `Extensions.DEFAULT_ROUTING_KEY = "__default"`. This means `mediator.Send(command, ct)` and `mediator.Send(null, command, ct)` are exactly equivalent. Avoid using the literal string `"__default"` as your own routing key to prevent conflicts.
+> **Keyless dispatch:** A `null` key (the default when no key is passed) flows through the pipeline unchanged. `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are exactly equivalent and target the non-keyed handlers registered in the container.
 
-> **NativeAOT:** Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed registration uses `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**; use it only when NativeAOT is not required.
+> **NativeAOT:** Keyed dispatch is fully NativeAOT + Trimming compatible. The source generator emits a `KeyedHandlerRegistry<T>` at compile time — no reflection, no `IKeyedServiceProvider` is used at runtime. Both keyed and non-keyed dispatch are safe for NativeAOT and trimmed deployments.
 
 ### Pipeline Behaviors / Interceptors
 
-Behaviors wrap the handler pipeline and run in registration order. Register them via the builder using closed types — this is the only supported pattern, and it is fully AOT-safe:
+Behaviors wrap the handler pipeline and run in registration order. Concrete non-generic behavior classes can use `[Injectable]` because the closed pipeline interfaces already carry `[ServiceInjection]`. Only generic/open behavior implementations should be registered manually in `builder.Services`.
 
 ```csharp
-builder.Services.UseNetMediate(configure =>
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
+public sealed class AuditCommandBehavior : IPipelineCommandBehavior<CreateUserCommand>
 {
-    configure.RegisterBehavior<AuditCommandBehavior, CreateUserCommand, Task>();
-    configure.RegisterBehavior<AuditRequestBehavior<GetUserQuery, UserDto>, GetUserQuery, Task<UserDto>>();
-    configure.RegisterBehavior<LogNotificationBehavior<UserCreatedNotification>, UserCreatedNotification, Task>();
-});
+    public Task Handle(
+        object? key,
+        CreateUserCommand message,
+        PipelineBehaviorDelegate<CreateUserCommand, Task> next,
+        CancellationToken cancellationToken) =>
+        next(key, message, cancellationToken);
+}
+
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 2)]
+public sealed class AuditRequestBehavior : IPipelineRequestBehavior<GetUserQuery, UserDto>
+{
+    public Task<UserDto> Handle(
+        object? key,
+        GetUserQuery message,
+        PipelineBehaviorDelegate<GetUserQuery, Task<UserDto>> next,
+        CancellationToken cancellationToken) =>
+        next(key, message, cancellationToken);
+}
+
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 3)]
+public sealed class LogNotificationBehavior : IPipelineNotificationBehavior<UserCreatedNotification>
+{
+    public Task Handle(
+        object? key,
+        UserCreatedNotification message,
+        PipelineBehaviorDelegate<UserCreatedNotification, Task> next,
+        CancellationToken cancellationToken) =>
+        next(key, message, cancellationToken);
+}
+
+builder.Services.AddNetMediate();
 ```
 
 Example behavior — audit timing for requests:
 
 ```csharp
-public sealed class AuditRequestBehavior<TMessage, TResponse>
-    : IPipelineRequestBehavior<TMessage, TResponse>
-    where TMessage : notnull
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
+public sealed class AuditRequestBehavior : IPipelineRequestBehavior<GetUserQuery, UserDto>
 {
     // Handle receives object? key — the same key passed to the dispatch call.
     // Use it for routing (e.g. queue/topic selection) or contextual filtering.
-    public async Task<TResponse> Handle(
+    public async Task<UserDto> Handle(
         object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        GetUserQuery message,
+        PipelineBehaviorDelegate<GetUserQuery, Task<UserDto>> next,
         CancellationToken cancellationToken)
     {
         var startedAt = DateTimeOffset.UtcNow;
         var response = await next(key, message, cancellationToken);
-        Console.WriteLine($"{typeof(TMessage).Name} handled in {DateTimeOffset.UtcNow - startedAt}");
+        Console.WriteLine($"{nameof(GetUserQuery)} handled in {DateTimeOffset.UtcNow - startedAt}");
         return response;
     }
 }
@@ -446,19 +523,18 @@ public sealed class AuditRequestBehavior<TMessage, TResponse>
 Example notification behavior:
 
 ```csharp
-public sealed class LogNotificationBehavior<TMessage>
-    : IPipelineBehavior<TMessage>
-    where TMessage : notnull
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
+public sealed class LogNotificationBehavior : IPipelineNotificationBehavior<UserCreatedNotification>
 {
     public async Task Handle(
         object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task> next,
+        UserCreatedNotification message,
+        PipelineBehaviorDelegate<UserCreatedNotification, Task> next,
         CancellationToken cancellationToken)
     {
-        Console.WriteLine($"Dispatching {typeof(TMessage).Name} (key={key})");
+        Console.WriteLine($"Dispatching {nameof(UserCreatedNotification)} (key={key})");
         await next(key, message, cancellationToken);
-        Console.WriteLine($"Dispatched {typeof(TMessage).Name}");
+        Console.WriteLine($"Dispatched {nameof(UserCreatedNotification)}");
     }
 }
 ```
@@ -475,7 +551,7 @@ All runtime packages are published with:
 - `netstandard2.0`
 - `netstandard2.1`
 
-`NetMediate.SourceGeneration` is bundled inside the `NetMediate` package as an analyzer (`netstandard2.0`) and runs automatically for direct package references.
+`NetMediate.SourceGeneration` is shipped as its own package (`netstandard2.0` analyzer). When installed directly, its `buildTransitive` file adds the required `NetMediate` runtime and `GenDI.SourceGenerator` dependencies automatically.
 
 ### Application types covered
 

@@ -1,9 +1,13 @@
+using GenDI;
+using Microsoft.Extensions.DependencyInjection;
+
 namespace NetMediate.Benchmarks;
 
 /// <summary>Benchmark command message.</summary>
 public sealed record BenchCommand : ICommand;
 
 /// <summary>No-op command handler used in benchmarks.</summary>
+[Injectable(ServiceLifetime.Singleton)]
 public sealed class BenchCommandHandler : ICommandHandler<BenchCommand>
 {
     /// <inheritdoc/>
@@ -15,6 +19,7 @@ public sealed class BenchCommandHandler : ICommandHandler<BenchCommand>
 public sealed record BenchNotification : INotification;
 
 /// <summary>No-op notification handler used in benchmarks.</summary>
+[Injectable(ServiceLifetime.Singleton)]
 public sealed class BenchNotificationHandler : INotificationHandler<BenchNotification>
 {
     /// <inheritdoc/>
@@ -29,6 +34,7 @@ public sealed record BenchRequest : IRequest<BenchResponse>;
 public sealed record BenchResponse(int Value);
 
 /// <summary>No-op request handler used in benchmarks.</summary>
+[Injectable(ServiceLifetime.Singleton)]
 public sealed class BenchRequestHandler : IRequestHandler<BenchRequest, BenchResponse>
 {
     private static readonly Task<BenchResponse> s_response = Task.FromResult(new BenchResponse(42));
@@ -41,14 +47,23 @@ public sealed class BenchRequestHandler : IRequestHandler<BenchRequest, BenchRes
 }
 
 /// <summary>Benchmark stream message.</summary>
+[Injectable(ServiceLifetime.Singleton)]
 public sealed record BenchStreamRequest : IStream<BenchStreamItem>;
 
 /// <summary>Benchmark stream item.</summary>
 public sealed record BenchStreamItem(int Index);
 
 /// <summary>No-op stream handler that yields three items, used in benchmarks.</summary>
+[Injectable(ServiceLifetime.Singleton)]
 public sealed class BenchStreamHandler : IStreamHandler<BenchStreamRequest, BenchStreamItem>
 {
+    private readonly BenchStreamItem[] _items =
+    [
+        new(1),
+        new(2),
+        new(3),
+    ];
+
     /// <inheritdoc/>
     public async IAsyncEnumerable<BenchStreamItem> Handle(
         BenchStreamRequest message,
@@ -56,8 +71,12 @@ public sealed class BenchStreamHandler : IStreamHandler<BenchStreamRequest, Benc
             CancellationToken cancellationToken = default
     )
     {
-        yield return new BenchStreamItem(1);
-        yield return new BenchStreamItem(2);
-        yield return new BenchStreamItem(3);
+        ArgumentNullException.ThrowIfNull(message);
+
+        foreach (var item in _items)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            yield return item;
+        }
     }
 }

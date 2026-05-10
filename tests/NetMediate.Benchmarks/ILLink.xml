@@ -1,0 +1,8 @@
+<linker>
+  <assembly fullname="NetMediate.Benchmarks">
+    <type
+      fullname="NetMediate.Benchmarks.NetMediateGeneratedDI"
+      preserve="all"
+    />
+  </assembly>
+</linker>

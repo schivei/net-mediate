@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
+using GenDI;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NetMediate.Internals;
+using Microsoft.Extensions.Options;
 using Quartz;
 
 namespace NetMediate.Quartz;
@@ -12,13 +14,14 @@ namespace NetMediate.Quartz;
 [RequiresUnreferencedCode(
     "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
 )]
-public sealed class QuartzNotifier(
-    IScheduler scheduler,
-    INotificationSerializer serializer,
-    QuartzNotificationOptions options,
-    ILogger<QuartzNotifier> logger
-) : INotifiable
+[Injectable(ServiceLifetime.Singleton)]
+    public sealed class QuartzNotifier : INotifiable
 {
+    [Inject] internal IScheduler Scheduler { get; init; }
+    [Inject] internal INotificationSerializer Serializer { get; init; }
+    [Inject] internal IOptions<QuartzNotificationOptions> Options { get; init; }
+    [Inject] internal ILogger<QuartzNotifier> Logger { get; init; }
+
     /// <inheritdoc />
     public async Task Notify<TMessage>(
         object? key,
@@ -27,14 +30,14 @@ public sealed class QuartzNotifier(
     )
         where TMessage : notnull
     {
-        var json = serializer.Serialize(message);
+        var json = Serializer.Serialize(message);
         var typeName =
             typeof(TMessage).AssemblyQualifiedName
             ?? throw new InvalidOperationException(
                 $"Cannot determine assembly-qualified name for type '{typeof(TMessage).FullName}'."
             );
 
-        var jobKey = new JobKey($"{typeof(TMessage).Name}_{Guid.NewGuid():N}", options.GroupName);
+        var jobKey = new JobKey($"{typeof(TMessage).Name}_{Guid.NewGuid():N}", Options.Value.GroupName);
 
         var jobBuilder = JobBuilder
             .Create<QuartzNotificationJob>()
@@ -60,17 +63,20 @@ public sealed class QuartzNotifier(
 
         var trigger = TriggerBuilder
             .Create()
-            .WithIdentity($"{jobKey.Name}_trigger", options.GroupName)
+            .WithIdentity($"{jobKey.Name}_trigger", Options.Value.GroupName)
             .StartNow()
             .Build();
 
-        await scheduler.ScheduleJob(job, trigger, cancellationToken).ConfigureAwait(false);
+        await Scheduler.ScheduleJob(job, trigger, cancellationToken).ConfigureAwait(false);
 
-        logger.LogDebug(
-            "QuartzNotifier: scheduled notification job {JobKey} for message type {MessageType}.",
-            jobKey,
-            typeof(TMessage).Name
-        );
+        if (Logger.IsEnabled(LogLevel.Debug))
+        {
+            Logger.LogDebug(
+                "QuartzNotifier: scheduled notification job {JobKey} for message type {MessageType}.",
+                jobKey,
+                typeof(TMessage).Name
+            );
+        }
     }
 
     /// <inheritdoc />
@@ -96,10 +102,13 @@ public sealed class QuartzNotifier(
     {
         if (handlers.Length == 0)
         {
-            logger.LogDebug(
-                "QuartzNotifier: no handlers registered for notification type {MessageType}.",
-                typeof(TMessage).Name
-            );
+            if (Logger.IsEnabled(LogLevel.Debug))
+            {
+                Logger.LogDebug(
+                    "QuartzNotifier: no handlers registered for notification type {MessageType}.",
+                    typeof(TMessage).Name
+                );
+            }
         }
 
         foreach (var handler in handlers)

@@ -1,7 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
+using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using NetMediate.Internals;
 using Quartz;
 
 namespace NetMediate.Quartz;
@@ -33,12 +33,13 @@ namespace NetMediate.Quartz;
 [RequiresUnreferencedCode(
     "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
 )]
-public sealed class QuartzNotificationJob(
-    IServiceProvider serviceProvider,
-    INotificationSerializer serializer,
-    ILogger<QuartzNotificationJob> logger
-) : IJob
+[Injectable<IJob>]
+public sealed class QuartzNotificationJob : IJob
 {
+    [Inject] internal IServiceProvider ServiceProvider { get; init; }
+    [Inject] internal INotificationSerializer Serializer { get; init; }
+    [Inject] internal ILogger<QuartzNotificationJob> Logger { get; init; }
+
     /// <summary>Key used to store the serialized message in the <see cref="JobDataMap"/>.</summary>
     public const string MessageDataKey = "netmediate_message";
 
@@ -65,7 +66,7 @@ public sealed class QuartzNotificationJob(
 
         if (string.IsNullOrEmpty(json) || string.IsNullOrEmpty(typeName))
         {
-            logger.LogWarning(
+            Logger.LogWarning(
                 "QuartzNotificationJob: missing message data in job {JobKey}.",
                 context.JobDetail.Key
             );
@@ -75,7 +76,7 @@ public sealed class QuartzNotificationJob(
         var messageType = Type.GetType(typeName);
         if (messageType is null)
         {
-            logger.LogError(
+            Logger.LogError(
                 "QuartzNotificationJob: cannot resolve type '{TypeName}' for job {JobKey}.",
                 typeName,
                 context.JobDetail.Key
@@ -83,10 +84,10 @@ public sealed class QuartzNotificationJob(
             return;
         }
 
-        var message = serializer.Deserialize(json, messageType);
+        var message = Serializer.Deserialize(json, messageType);
         if (message is null)
         {
-            logger.LogWarning(
+            Logger.LogWarning(
                 "QuartzNotificationJob: deserialized message is null for job {JobKey}.",
                 context.JobDetail.Key
             );
@@ -103,7 +104,7 @@ public sealed class QuartzNotificationJob(
                 routingKey = System.Text.Json.JsonSerializer.Deserialize(keyJson, keyType);
         }
 
-        var notifiable = serviceProvider.GetRequiredService<INotifiable>();
+        var notifiable = ServiceProvider.GetRequiredService<INotifiable>();
         var dispatcher = s_dispatcherCache.GetOrAdd(messageType, BuildDispatcher);
 
         await dispatcher(notifiable, routingKey, message, context.CancellationToken)

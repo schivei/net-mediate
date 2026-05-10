@@ -11,24 +11,32 @@ Get up and running with NetMediate in just a few minutes! This guide will walk y
 First, install the required NuGet package:
 
 ```bash
-dotnet add package NetMediate
+dotnet add package NetMediate.Core
+dotnet add package NetMediate.SourceGeneration
 ```
 
 > 💡 **Release productivity highlight**
 >
-> This version keeps setup intentionally lean: a direct `NetMediate` package reference gives you runtime APIs plus bundled source generators immediately, helping teams standardize architecture with less manual DI wiring.
+> Use `NetMediate.Core` for contracts and `NetMediate.SourceGeneration` in the startup project. The generator package brings the runtime + required generators automatically.
 
 Then open your `.csproj` and add the `PackageReference`:
 
 ```xml
-<PackageReference Include="NetMediate" Version="*" />
+<PackageReference Include="NetMediate.Core" Version="*" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
 
 :::tip Library projects
-If you are building a **library** (not an application), add `PrivateAssets="all"` to prevent `NetMediate` and its bundled analyzer from flowing as a transitive dependency to consumers of your library. The analyzer always runs for your project regardless:
+Use the generator package with the explicit analyzer-style metadata:
 
 ```xml
-<PackageReference Include="NetMediate" Version="*" PrivateAssets="all" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
 :::
 
@@ -47,31 +55,38 @@ public record UserCreated(string UserId, string Email, DateTime CreatedAt);
 Create one or more handlers for your message:
 
 ```csharp
+using GenDI;
 using NetMediate;
 
 namespace MyApp.Handlers;
 
+[ServiceInjection]
+public interface IEmailService
+{
+    Task SendWelcomeEmailAsync(string email, CancellationToken cancellationToken);
+}
+
+[Injectable(ServiceLifetime.Scoped)]
+public sealed class EmailService : IEmailService
+{
+    public Task SendWelcomeEmailAsync(string email, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
+}
+
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
 public class WelcomeEmailHandler : INotificationHandler<UserCreated>
 {
-    private readonly IEmailService _emailService;
-    private readonly ILogger<WelcomeEmailHandler> _logger;
-
-    public WelcomeEmailHandler(
-        IEmailService emailService,
-        ILogger<WelcomeEmailHandler> logger)
-    {
-        _emailService = emailService;
-        _logger = logger;
-    }
+    [Inject] public required IEmailService EmailService { get; init; }
+    [Inject] public required ILogger<WelcomeEmailHandler> Logger { get; init; }
 
     public async Task Handle(UserCreated notification, CancellationToken cancellationToken)
     {
-        _logger.LogInformation(
+        Logger.LogInformation(
             "Sending welcome email to {Email} for user {UserId}",
             notification.Email,
             notification.UserId);
 
-        await _emailService.SendWelcomeEmailAsync(
+        await EmailService.SendWelcomeEmailAsync(
             notification.Email,
             cancellationToken);
     }
@@ -81,18 +96,26 @@ public class WelcomeEmailHandler : INotificationHandler<UserCreated>
 You can create multiple handlers for the same notification:
 
 ```csharp
+[ServiceInjection]
+public interface IAuditService
+{
+    Task LogAsync(string message, CancellationToken cancellationToken);
+}
+
+[Injectable(ServiceLifetime.Scoped)]
+public sealed class AuditService : IAuditService
+{
+    public Task LogAsync(string message, CancellationToken cancellationToken) => Task.CompletedTask;
+}
+
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 2)]
 public class AuditLogHandler : INotificationHandler<UserCreated>
 {
-    private readonly IAuditService _auditService;
-
-    public AuditLogHandler(IAuditService auditService)
-    {
-        _auditService = auditService;
-    }
+    [Inject] public required IAuditService AuditService { get; init; }
 
     public async Task Handle(UserCreated notification, CancellationToken cancellationToken)
     {
-        await _auditService.LogAsync(
+        await AuditService.LogAsync(
             $"User {notification.UserId} was created",
             cancellationToken);
     }
@@ -113,9 +136,8 @@ var builder = Host.CreateApplicationBuilder(args);
 // The source generator discovers all handlers automatically
 builder.Services.AddNetMediate();
 
-// Register your other services
-builder.Services.AddSingleton<IEmailService, EmailService>();
-builder.Services.AddSingleton<IAuditService, AuditService>();
+// AddNetMediate also triggers AddGenDIServices(),
+// so [Injectable] implementations are registered automatically.
 
 var host = builder.Build();
 await host.StartAsync();
@@ -125,23 +147,21 @@ await host.StartAsync();
 `AddNetMediate()` is generated at compile-time by the source generator. It automatically discovers and registers all handler implementations in your project - no manual registration needed!
 :::
 
+> **GenDI style:** prefer `[Injectable]` + `[Inject]`. With GenDI you can choose the service lifetime, `Group`, `Order`, and keyed registrations (`Key`). Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path.
+
 ## 📣 Step 5: Use the Mediator
 
 Inject `IMediator` and publish your notification:
 
 ```csharp
+using GenDI;
 using NetMediate;
 
+[Injectable(ServiceLifetime.Scoped)]
 public class UserService
 {
-    private readonly IMediator _mediator;
-    private readonly IUserRepository _userRepository;
-
-    public UserService(IMediator mediator, IUserRepository userRepository)
-    {
-        _mediator = mediator;
-        _userRepository = userRepository;
-    }
+    [Inject] public required IMediator Mediator { get; init; }
+    [Inject] public required IUserRepository UserRepository { get; init; }
 
     public async Task<User> CreateUserAsync(
         string email,
@@ -149,10 +169,10 @@ public class UserService
     {
         // Create the user
         var user = new User { Email = email };
-        await _userRepository.AddAsync(user, cancellationToken);
+        await UserRepository.AddAsync(user, cancellationToken);
 
         // Publish the notification - all handlers will be invoked
-        await _mediator.Notify(
+        await Mediator.Notify(
             new UserCreated(user.Id, user.Email, DateTime.UtcNow),
             cancellationToken);
 
@@ -169,6 +189,7 @@ Here's a complete minimal API example:
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate;
+using GenDI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -181,7 +202,7 @@ var app = builder.Build();
 app.MapPost("/users", async (CreateUserRequest request, IMediator mediator) =>
 {
     // Publish a notification
-    await mediator.Notify(new UserCreated(
+    await mediator.NotifyUserCreatedAsync(new(
         Guid.NewGuid().ToString(),
         request.Email,
         DateTime.UtcNow));
@@ -196,18 +217,14 @@ public record CreateUserRequest(string Email);
 public record UserCreated(string UserId, string Email, DateTime CreatedAt);
 
 // Handler
+[Injectable(ServiceLifetime.Scoped)]
 public class UserCreatedHandler : INotificationHandler<UserCreated>
 {
-    private readonly ILogger<UserCreatedHandler> _logger;
-
-    public UserCreatedHandler(ILogger<UserCreatedHandler> logger)
-    {
-        _logger = logger;
-    }
+    [Inject] public required ILogger<UserCreatedHandler> Logger { get; init; }
 
     public Task Handle(UserCreated notification, CancellationToken cancellationToken)
     {
-        _logger.LogInformation(
+        Logger.LogInformation(
             "User created: {UserId}, {Email}",
             notification.UserId,
             notification.Email);
@@ -233,7 +250,7 @@ Now that you have a working example, explore more features:
 
 If the `AddNetMediate()` method is not available:
 
-1. Ensure your project has a direct `NetMediate` package reference
+1. Ensure your startup project has a direct `NetMediate.SourceGeneration` package reference
 2. Rebuild your project
 3. Restart your IDE or refresh IntelliSense
 4. Check that your handler classes are not abstract or generic

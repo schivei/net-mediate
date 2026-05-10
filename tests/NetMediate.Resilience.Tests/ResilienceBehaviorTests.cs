@@ -210,7 +210,7 @@ public sealed class ResilienceBehaviorTests
                 new CircuitBreakerBehaviorOptions
                 {
                     FailureThreshold = 1,
-                    OpenDuration = TimeSpan.FromMilliseconds(20),
+                    OpenDuration = TimeSpan.FromMilliseconds(100),
                 }
             )
         );
@@ -235,13 +235,14 @@ public sealed class ResilienceBehaviorTests
 
         Assert.Contains("Circuit open for request", openException.Message);
 
-        await Task.Delay(TimeSpan.FromMilliseconds(50), TestContext.Current.CancellationToken);
-
-        var response = await behavior.Handle(
-            null,
-            new CircuitRequestMessage(),
-            (_, _, _) => Task.FromResult(new Response(7)),
-            TestContext.Current.CancellationToken
+        var response = await WaitUntilSucceedsAsync(
+            async () =>
+                await behavior.Handle(
+                    null,
+                    new CircuitRequestMessage(),
+                    (_, _, _) => Task.FromResult(new Response(7)),
+                    TestContext.Current.CancellationToken
+                )
         );
 
         Assert.Equal(7, response.Value);
@@ -368,5 +369,27 @@ public sealed class ResilienceBehaviorTests
         );
 
         Assert.True(called);
+    }
+
+    private static async Task<T> WaitUntilSucceedsAsync<T>(Func<Task<T>> action)
+    {
+        Exception? lastException = null;
+
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            try
+            {
+                return await action();
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("Circuit open"))
+            {
+                lastException = ex;
+                await Task.Delay(TimeSpan.FromMilliseconds(20), TestContext.Current.CancellationToken);
+            }
+        }
+
+        throw new Xunit.Sdk.XunitException(
+            $"Expected circuit to close within the retry window, but it stayed open. Last error: {lastException?.Message}"
+        );
     }
 }

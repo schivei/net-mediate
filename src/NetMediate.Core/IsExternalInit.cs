@@ -1,11 +1,14 @@
 #if NETSTANDARD2_0 || NETSTANDARD2_1
 #pragma warning disable IDE0130
+using System.Diagnostics.CodeAnalysis;
 namespace System.Runtime.CompilerServices;
 
 #pragma warning disable S2094
+[ExcludeFromCodeCoverage]
 internal sealed class IsExternalInit { }
 #pragma warning restore S2094
 
+[ExcludeFromCodeCoverage]
 [AttributeUsage(AttributeTargets.Parameter)]
 internal sealed class CallerArgumentExpressionAttribute(string parameterName) : Attribute
 {

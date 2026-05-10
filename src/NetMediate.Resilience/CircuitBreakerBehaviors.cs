@@ -19,6 +19,13 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
         CancellationToken cancellationToken
     )
     {
+        if (IsDisabled())
+        {
+            var result = await next(key, message, cancellationToken).ConfigureAwait(false);
+            RegisterSuccess();
+            return result;
+        }
+
         if (IsCircuitOpen())
             throw new InvalidOperationException("Circuit open for request.");
 
@@ -53,6 +60,13 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(
         CancellationToken cancellationToken
     )
     {
+        if (IsDisabled())
+        {
+            await next(key, message, cancellationToken).ConfigureAwait(false);
+            RegisterSuccess();
+            return;
+        }
+
         if (IsCircuitOpen())
             throw new InvalidOperationException("Circuit open for notification.");
 
@@ -86,6 +100,13 @@ public sealed class CircuitBreakerCommandBehavior<TMessage>(
         CancellationToken cancellationToken
     )
     {
+        if (IsDisabled())
+        {
+            await next(key, message, cancellationToken).ConfigureAwait(false);
+            RegisterSuccess();
+            return;
+        }
+
         if (IsCircuitOpen())
             throw new InvalidOperationException("Circuit open for command.");
 
@@ -110,6 +131,8 @@ public abstract class ACircuitBreakerBehavior<TMessage, TResult>(
     private static readonly Lock s_sync = new();
     private static int s_consecutiveFailures;
     private static DateTimeOffset? s_openUntil;
+
+    protected bool IsDisabled() => optionsAccessor.Value.Disabled;
 
     protected static bool IsCircuitOpen()
     {

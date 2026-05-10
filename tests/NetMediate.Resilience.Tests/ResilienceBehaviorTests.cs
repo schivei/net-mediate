@@ -7,8 +7,10 @@ public sealed class ResilienceBehaviorTests
     private sealed record RetryRequestMessage;
     private sealed record RetryDisabledMessage;
     private sealed record RetryCommandMessage;
+    private sealed record RetryNotificationMessage;
     private sealed record TimeoutRequestMessage;
     private sealed record TimeoutCommandMessage;
+    private sealed record TimeoutNotificationMessage;
     private sealed record CircuitRequestMessage;
     private sealed record CircuitCommandMessage;
     private sealed record CircuitNotificationMessage;
@@ -94,6 +96,30 @@ public sealed class ResilienceBehaviorTests
     }
 
     [Fact]
+    public async Task RetryNotificationBehavior_RetriesUntilSuccess()
+    {
+        var behavior = new RetryNotificationBehavior<RetryNotificationMessage>(
+            Options.Create(new RetryBehaviorOptions { MaxRetryCount = 2 })
+        );
+        var attempts = 0;
+
+        await behavior.Handle(
+            null,
+            new RetryNotificationMessage(),
+            (_, _, _) =>
+            {
+                attempts++;
+                return attempts < 3
+                    ? Task.FromException(new InvalidOperationException("fail"))
+                    : Task.CompletedTask;
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(3, attempts);
+    }
+
+    [Fact]
     public async Task TimeoutRequestBehavior_ThrowsTimeoutException_WhenElapsed()
     {
         var behavior = new TimeoutRequestBehavior<TimeoutRequestMessage, Response>(
@@ -147,6 +173,33 @@ public sealed class ResilienceBehaviorTests
         );
 
         Assert.True(called);
+    }
+
+    [Fact]
+    public async Task TimeoutNotificationBehavior_ThrowsTimeoutException_WhenElapsed()
+    {
+        var behavior = new TimeoutNotificationBehavior<TimeoutNotificationMessage>(
+            Options.Create(
+                new TimeoutBehaviorOptions
+                {
+                    NotificationTimeout = TimeSpan.FromMilliseconds(10),
+                }
+            )
+        );
+
+        var exception = await Assert.ThrowsAsync<TimeoutException>(() =>
+            behavior.Handle(
+                null,
+                new TimeoutNotificationMessage(),
+                async (_, _, cancellationToken) =>
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+                },
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Contains("Notification exceeded timeout", exception.Message);
     }
 
     [Fact]
@@ -217,6 +270,68 @@ public sealed class ResilienceBehaviorTests
     }
 
     [Fact]
+    public async Task CircuitBreakerCommandBehavior_WhenThresholdReached_OpensCircuit()
+    {
+        var behavior = new CircuitBreakerCommandBehavior<CircuitCommandMessage>(
+            Options.Create(
+                new CircuitBreakerBehaviorOptions
+                {
+                    FailureThreshold = 1,
+                    OpenDuration = TimeSpan.FromMilliseconds(20),
+                }
+            )
+        );
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            behavior.Handle(
+                null,
+                new CircuitCommandMessage(),
+                (_, _, _) => Task.FromException(new InvalidOperationException("boom")),
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        var openException = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            behavior.Handle(
+                null,
+                new CircuitCommandMessage(),
+                (_, _, _) => Task.CompletedTask,
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Contains("Circuit open for command", openException.Message);
+    }
+
+    [Fact]
+    public async Task CircuitBreakerCommandBehavior_WhenDisabled_BypassesCircuit()
+    {
+        var behavior = new CircuitBreakerCommandBehavior<CircuitCommandMessage>(
+            Options.Create(
+                new CircuitBreakerBehaviorOptions
+                {
+                    Disabled = true,
+                    FailureThreshold = 1,
+                }
+            )
+        );
+        var called = false;
+
+        await behavior.Handle(
+            null,
+            new CircuitCommandMessage(),
+            (_, _, _) =>
+            {
+                called = true;
+                return Task.CompletedTask;
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.True(called);
+    }
+
+    [Fact]
     public async Task CircuitBreakerNotificationBehavior_RethrowsFailures()
     {
         var behavior = new CircuitBreakerNotificationBehavior<CircuitNotificationMessage>(
@@ -231,5 +346,27 @@ public sealed class ResilienceBehaviorTests
                 TestContext.Current.CancellationToken
             )
         );
+    }
+
+    [Fact]
+    public async Task CircuitBreakerNotificationBehavior_CompletesOnSuccess()
+    {
+        var behavior = new CircuitBreakerNotificationBehavior<CircuitNotificationMessage>(
+            Options.Create(new CircuitBreakerBehaviorOptions())
+        );
+        var called = false;
+
+        await behavior.Handle(
+            null,
+            new CircuitNotificationMessage(),
+            (_, _, _) =>
+            {
+                called = true;
+                return Task.CompletedTask;
+            },
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.True(called);
     }
 }

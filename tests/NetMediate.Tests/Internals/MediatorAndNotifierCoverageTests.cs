@@ -21,6 +21,10 @@ public sealed class MediatorAndNotifierCoverageTests
 
         await mediator.Notify(new NotificationMessage("one"), TestContext.Current.CancellationToken);
         await mediator.Notify(
+            [new NotificationMessage("batch-one"), new NotificationMessage("batch-two")],
+            TestContext.Current.CancellationToken
+        );
+        await mediator.Notify(
             "key",
             [new NotificationMessage("two"), new NotificationMessage("three")],
             TestContext.Current.CancellationToken
@@ -36,6 +40,14 @@ public sealed class MediatorAndNotifierCoverageTests
         );
         Assert.Collection(
             notifier.BatchCalls,
+            call =>
+            {
+                Assert.Null(call.Key);
+                Assert.Equal(
+                    ["batch-one", "batch-two"],
+                    call.Messages.Select(message => message.Value).ToArray()
+                );
+            },
             call =>
             {
                 Assert.Equal("key", call.Key);

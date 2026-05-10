@@ -57,7 +57,7 @@ internal static class RetryBehaviorRunner
         if (options.Disabled)
             return await operation(state, cancellationToken).ConfigureAwait(false);
 
-        for (var attempt = 0; attempt <= maxRetryCount; attempt++)
+        for (var attempt = 0; attempt < maxRetryCount; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -77,10 +77,8 @@ internal static class RetryBehaviorRunner
             }
         }
 
-        // The loop either returns a result or lets the final exception escape; this guard
-        // only exists to keep the compiler/static analysis aware that control never reaches
-        // the end of the method without a result.
-        throw new InvalidOperationException("Retry execution ended without producing a result.");
+        cancellationToken.ThrowIfCancellationRequested();
+        return await operation(state, cancellationToken).ConfigureAwait(false);
     }
 
     private static Task DelayIfNeededAsync(TimeSpan delay, CancellationToken cancellationToken) =>

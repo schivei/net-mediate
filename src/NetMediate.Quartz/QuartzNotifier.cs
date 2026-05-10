@@ -100,15 +100,12 @@ namespace NetMediate.Quartz;
     )
         where TMessage : notnull
     {
-        if (handlers.Length == 0)
+        if (handlers.Length == 0 && Logger.IsEnabled(LogLevel.Debug))
         {
-            if (Logger.IsEnabled(LogLevel.Debug))
-            {
-                Logger.LogDebug(
-                    "QuartzNotifier: no handlers registered for notification type {MessageType}.",
-                    typeof(TMessage).Name
-                );
-            }
+            Logger.LogDebug(
+                "QuartzNotifier: no handlers registered for notification type {MessageType}.",
+                typeof(TMessage).Name
+            );
         }
 
         foreach (var handler in handlers)

@@ -276,6 +276,76 @@ public sealed class MediatorAndNotifierCoverageTests
         Assert.True(batchCount >= 3);
     }
 
+    [Fact]
+    public async Task Mediator_Send_WhenNoPipelineRegistered_CompletesWithoutError()
+    {
+        // Mediator.cs line 63: pipeline is null → early return
+        using var provider = new ServiceCollection().BuildServiceProvider();
+        var mediator = new Mediator(provider, new SpyNotifiable());
+
+        // The pipeline is simply not registered → should complete without throwing
+        var ex = await Record.ExceptionAsync(() =>
+            mediator.Send(new CommandMessage(99), TestContext.Current.CancellationToken));
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public async Task Mediator_Request_WhenPipelineThrowsMediatorException_PreservesExceptionTraceId()
+    {
+        // Mediator.cs lines 153-155: catch (MediatorException) { throw; }
+        using var provider = BuildProvider(services =>
+        {
+            services.AddSingleton<IRequestHandler<RequestMessage, Response>, RecordingRequestHandler>();
+            services.AddSingleton<IPipelineRequestBehavior<RequestMessage, Response>, ThrowingMediatorExceptionRequestBehavior>();
+            services.AddSingleton(sp =>
+                new RequestPipelineExecutor<RequestMessage, Response>(
+                    sp,
+                    NullLogger<RequestPipelineExecutor<RequestMessage, Response>>.Instance
+                )
+            );
+        });
+
+        var mediator = new Mediator(provider, new SpyNotifiable());
+
+        var exception = await Assert.ThrowsAsync<MediatorException>(() =>
+            mediator.Request<RequestMessage, Response>(
+                new RequestMessage(1),
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Equal("trace-id-request", exception.TraceId);
+    }
+
+    [Fact]
+    public async Task Notifier_DispatchNotifications_WithEmptyHandlers_ReturnsImmediately()
+    {
+        // Notifier.cs line 16: handlers.Length == 0 → return Task.CompletedTask
+        var notifier = new Notifier(new ServiceCollection().BuildServiceProvider());
+
+        // The handlers array is empty → should complete without throwing
+        var ex = await Record.ExceptionAsync(() =>
+            notifier.DispatchNotifications(
+                null,
+                new NotificationMessage("value"),
+                [],
+                TestContext.Current.CancellationToken
+            ));
+        Assert.Null(ex);
+    }
+
+    [Fact]
+    public async Task Notifier_Notify_WhenNoPipelineRegistered_CompletesWithoutError()
+    {
+        // Notifier.cs line 33: pipeline is null → return Task.CompletedTask
+        var notifier = new Notifier(new ServiceCollection().BuildServiceProvider());
+
+        // The pipeline executor is not registered → should complete without throwing
+        var ex = await Record.ExceptionAsync(() =>
+            notifier.Notify(null, new NotificationMessage("value"), TestContext.Current.CancellationToken));
+        Assert.Null(ex);
+    }
+
     private static ServiceProvider BuildProvider(Action<ServiceCollection> configure)
     {
         var services = new ServiceCollection();
@@ -376,6 +446,21 @@ public sealed class MediatorAndNotifierCoverageTests
             typeof(CommandMessage),
             typeof(ICommandHandler<CommandMessage>),
             "trace-id",
+            new InvalidOperationException("boom")
+        );
+    }
+
+    private sealed class ThrowingMediatorExceptionRequestBehavior : IPipelineRequestBehavior<RequestMessage, Response>
+    {
+        public Task<Response> Handle(
+            object? key,
+            RequestMessage message,
+            PipelineBehaviorDelegate<RequestMessage, Task<Response>> next,
+            CancellationToken cancellationToken
+        ) => throw new MediatorException(
+            typeof(RequestMessage),
+            typeof(IRequestHandler<RequestMessage, Response>),
+            "trace-id-request",
             new InvalidOperationException("boom")
         );
     }

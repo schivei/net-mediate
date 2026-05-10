@@ -60,9 +60,10 @@ def write_version(state: dict, path: Path) -> None:
     tree.write(path, encoding="unicode", xml_declaration=False)
 
     # Ensure file ends with a newline
-    content = path.read_text()
+    content = path.read_text(encoding="utf-8")
     if not content.endswith("\n"):
-        path.write_text(content + "\n")
+        with path.open("a", encoding="utf-8") as stream:
+            stream.write("\n")
 
 
 def main() -> None:

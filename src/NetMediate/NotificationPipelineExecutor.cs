@@ -81,14 +81,20 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
             {
                 await pipeline(routingKey, msg, ct).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (LogFailure(ex))
             {
-                logger.LogError(
-                    ex,
-                    "Error executing notification pipeline for message of type {MessageType}: {Message}",
-                    typeof(TMessage).FullName, ex.Message);
-                throw;
             }
+        }
+
+        bool LogFailure(Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Error executing notification pipeline for message of type {MessageType}: {Message}",
+                typeof(TMessage).FullName,
+                ex.Message
+            );
+            return false;
         }
     }
 }

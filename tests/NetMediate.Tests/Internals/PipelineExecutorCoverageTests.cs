@@ -614,7 +614,7 @@ public sealed class PipelineExecutorCoverageTests
     // ─── static helpers ───────────────────────────────────────────────────────
 
     private static HandlerExecutionDelegate<IStreamHandler<Str, int>, Str, IAsyncEnumerable<int>> StreamExec()
-        => (_, msg, handlers, ct) => Merge(handlers.Select(h => h.Handle(msg, ct)));
+        => (_, msg, handlers, ct) => Merge(handlers.Select(h => h.Handle(msg, ct)), ct);
 
     private static async IAsyncEnumerable<int> Merge(
         IEnumerable<IAsyncEnumerable<int>> streams,

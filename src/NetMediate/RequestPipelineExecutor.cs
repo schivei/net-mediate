@@ -75,14 +75,21 @@ public sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvide
             {
                 return await pipeline(routingKey, msg, ct).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (LogFailure(ex))
             {
-                logger.LogError(
-                    ex,
-                    "Error executing request pipeline for message of type {MessageType}: {Message}",
-                    typeof(TMessage).FullName, ex.Message);
-                throw;
+                return default!;
             }
+        }
+
+        bool LogFailure(Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "Error executing request pipeline for message of type {MessageType}: {Message}",
+                typeof(TMessage).FullName,
+                ex.Message
+            );
+            return false;
         }
     }
 }

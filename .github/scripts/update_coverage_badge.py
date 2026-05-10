@@ -55,6 +55,56 @@ def parse_condition_coverage(coverage: str, hits: int) -> tuple[int, int]:
     return covered, 1
 
 
+def merge_line_coverage(
+    merged_lines: dict[tuple[str, int], int],
+    line_number: int,
+    hits: int,
+    filename: str,
+) -> None:
+    line_key = (filename, line_number)
+    merged_lines[line_key] = max(merged_lines.get(line_key, 0), hits)
+
+
+def merge_branch_coverage(
+    merged_branches: dict[tuple[str, int], tuple[int, int]],
+    line: ET.Element,
+    line_number: int,
+    hits: int,
+    filename: str,
+) -> None:
+    if line.get("branch") != "True":
+        return
+
+    covered, valid = parse_condition_coverage(
+        line.get("condition-coverage", ""),
+        hits,
+    )
+
+    branch_key = (filename, line_number)
+    previous = merged_branches.get(branch_key, (0, 0))
+    merged_branches[branch_key] = (
+        max(previous[0], covered),
+        max(previous[1], valid),
+    )
+
+
+def merge_class_coverage(
+    merged_lines: dict[tuple[str, int], int],
+    merged_branches: dict[tuple[str, int], tuple[int, int]],
+    cls: ET.Element,
+) -> None:
+    filename = cls.get("filename")
+    if not filename or "/obj/" in filename.replace("\\", "/"):
+        return
+
+    for line in cls.findall("./lines/line"):
+        line_number = int(line.get("number", 0) or 0)
+        hits = int(line.get("hits", 0) or 0)
+
+        merge_line_coverage(merged_lines, line_number, hits, filename)
+        merge_branch_coverage(merged_branches, line, line_number, hits, filename)
+
+
 def load_rates() -> tuple[float, float]:
     xml_files = sorted(COVERAGE_DIR.rglob("coverage.cobertura.xml"))
     if not xml_files:
@@ -66,28 +116,7 @@ def load_rates() -> tuple[float, float]:
     for xml_file in xml_files:
         root = ET.parse(xml_file).getroot()
         for cls in root.findall(".//class"):
-            filename = cls.get("filename")
-            if not filename or "/obj/" in filename.replace("\\", "/"):
-                continue
-
-            for line in cls.findall("./lines/line"):
-                line_number = int(line.get("number", 0) or 0)
-                hits = int(line.get("hits", 0) or 0)
-                line_key = (filename, line_number)
-                merged_lines[line_key] = max(merged_lines.get(line_key, 0), hits)
-
-                if line.get("branch") == "True":
-                    covered, valid = parse_condition_coverage(
-                        line.get("condition-coverage", ""),
-                        hits,
-                    )
-
-                    branch_key = (filename, line_number)
-                    previous = merged_branches.get(branch_key, (0, 0))
-                    merged_branches[branch_key] = (
-                        max(previous[0], covered),
-                        max(previous[1], valid),
-                    )
+            merge_class_coverage(merged_lines, merged_branches, cls)
 
     total_valid = len(merged_lines)
     total_covered = sum(1 for hits in merged_lines.values() if hits > 0)

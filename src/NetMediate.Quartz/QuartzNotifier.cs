@@ -69,11 +69,14 @@ namespace NetMediate.Quartz;
 
         await Scheduler.ScheduleJob(job, trigger, cancellationToken).ConfigureAwait(false);
 
-        Logger.LogDebug(
-            "QuartzNotifier: scheduled notification job {JobKey} for message type {MessageType}.",
-            jobKey,
-            typeof(TMessage).Name
-        );
+        if (Logger.IsEnabled(LogLevel.Debug))
+        {
+            Logger.LogDebug(
+                "QuartzNotifier: scheduled notification job {JobKey} for message type {MessageType}.",
+                jobKey,
+                typeof(TMessage).Name
+            );
+        }
     }
 
     /// <inheritdoc />
@@ -99,10 +102,13 @@ namespace NetMediate.Quartz;
     {
         if (handlers.Length == 0)
         {
-            Logger.LogDebug(
-                "QuartzNotifier: no handlers registered for notification type {MessageType}.",
-                typeof(TMessage).Name
-            );
+            if (Logger.IsEnabled(LogLevel.Debug))
+            {
+                Logger.LogDebug(
+                    "QuartzNotifier: no handlers registered for notification type {MessageType}.",
+                    typeof(TMessage).Name
+                );
+            }
         }
 
         foreach (var handler in handlers)

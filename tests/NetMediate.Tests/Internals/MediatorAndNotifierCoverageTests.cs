@@ -30,14 +30,9 @@ public sealed class MediatorAndNotifierCoverageTests
             TestContext.Current.CancellationToken
         );
 
-        Assert.Collection(
-            notifier.SingleCalls,
-            call =>
-            {
-                Assert.Null(call.Key);
-                Assert.Equal("one", call.Message.Value);
-            }
-        );
+        var singleCall = Assert.Single(notifier.SingleCalls);
+        Assert.Null(singleCall.Key);
+        Assert.Equal("one", singleCall.Message.Value);
         Assert.Collection(
             notifier.BatchCalls,
             call =>

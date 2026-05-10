@@ -95,7 +95,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             return;
         }
 
-        var registrations = BuildRegistrations(types, hasDiagnostics, hasResilience, coverage);
+        var registrations = BuildRegistrations(types, hasDiagnostics, hasResilience);
         var keyedRegistryBlock = BuildKeyedHandlerRegistries(types);
         var frameworkBehaviors = BuildFrameworkInfrastructure(types);
         var source = BuildSource(registrations, keyedRegistryBlock, frameworkBehaviors, assemblyName, coverage);
@@ -212,8 +212,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     private static IEnumerable<string> BuildRegistrations(
         ImmutableArray<INamedTypeSymbol> types,
         bool hasDiagnostics,
-        bool hasResilience,
-        string coverage
+        bool hasResilience
     )
     {
         var diagnosticsBehaviors = new Dictionary<string, bool>();

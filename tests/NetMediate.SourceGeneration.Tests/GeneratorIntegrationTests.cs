@@ -1,3 +1,5 @@
+#pragma warning disable xUnit1004
+
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Text.Json;
@@ -1339,9 +1341,9 @@ public sealed class GeneratorIntegrationTests
         );
 
         // If emitted at all, must be just the skip comment (not real extension methods)
-        if (files.ContainsKey("NetMediateTypedExtensions.g.cs"))
+        if (files.TryGetValue("NetMediateTypedExtensions.g.cs", out var typedExtensionsSource))
         {
-            Assert.DoesNotContain("public static", files["NetMediateTypedExtensions.g.cs"]);
+            Assert.DoesNotContain("public static", typedExtensionsSource);
         }
     }
 
@@ -1350,3 +1352,5 @@ public sealed class GeneratorIntegrationTests
         return source.AsSpan().Count(pattern.AsSpan());
     }
 }
+
+#pragma warning restore xUnit1004

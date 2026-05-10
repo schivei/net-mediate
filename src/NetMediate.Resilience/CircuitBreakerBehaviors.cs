@@ -12,7 +12,66 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     where TMessage : notnull
 {
     /// <inheritdoc />
-    public override async Task<TResponse> Handle(
+    public override Task<TResponse> Handle(
+        object? key,
+        TMessage message,
+        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        CancellationToken cancellationToken
+    ) =>
+        ExecuteAsync("Circuit open for request.", key, message, next, cancellationToken);
+}
+
+/// <summary>
+/// Notification pipeline behavior that applies circuit-breaker logic.
+/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
+/// </summary>
+public sealed class CircuitBreakerNotificationBehavior<TMessage>(
+    IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
+) : ACircuitBreakerBehavior<TMessage, Task>(optionsAccessor), IPipelineNotificationBehavior<TMessage>
+    where TMessage : notnull
+{
+    /// <inheritdoc />
+    public override Task Handle(
+        object? key,
+        TMessage message,
+        PipelineBehaviorDelegate<TMessage, Task> next,
+        CancellationToken cancellationToken
+    ) =>
+        ExecuteAsync("Circuit open for notification.", key, message, next, cancellationToken);
+}
+
+/// <summary>
+/// Command pipeline behavior that applies circuit-breaker logic.
+/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
+/// </summary>
+public sealed class CircuitBreakerCommandBehavior<TMessage>(
+    IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
+) : ACircuitBreakerBehavior<TMessage, Task>(optionsAccessor), IPipelineCommandBehavior<TMessage>
+    where TMessage : notnull
+{
+    /// <inheritdoc />
+    public override Task Handle(
+        object? key,
+        TMessage message,
+        PipelineBehaviorDelegate<TMessage, Task> next,
+        CancellationToken cancellationToken
+    ) =>
+        ExecuteAsync("Circuit open for command.", key, message, next, cancellationToken);
+}
+
+public abstract class ACircuitBreakerBehavior<TMessage, TResult>(
+    IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
+) : IPipelineBehavior<TMessage, TResult>
+    where TMessage : notnull
+{
+    private static readonly Lock s_sync = new();
+    private static int s_consecutiveFailures;
+    private static DateTimeOffset? s_openUntil;
+
+    protected bool IsDisabled() => optionsAccessor.Value.Disabled;
+
+    protected async Task<TResponse> ExecuteAsync<TResponse>(
+        string openMessage,
         object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
@@ -27,7 +86,7 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
         }
 
         if (IsCircuitOpen())
-            throw new InvalidOperationException("Circuit open for request.");
+            throw new InvalidOperationException(openMessage);
 
         try
         {
@@ -41,19 +100,9 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
             throw;
         }
     }
-}
 
-/// <summary>
-/// Notification pipeline behavior that applies circuit-breaker logic.
-/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
-/// </summary>
-public sealed class CircuitBreakerNotificationBehavior<TMessage>(
-    IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
-) : ACircuitBreakerBehavior<TMessage, Task>(optionsAccessor), IPipelineNotificationBehavior<TMessage>
-    where TMessage : notnull
-{
-    /// <inheritdoc />
-    public override async Task Handle(
+    protected async Task ExecuteAsync(
+        string openMessage,
         object? key,
         TMessage message,
         PipelineBehaviorDelegate<TMessage, Task> next,
@@ -68,7 +117,7 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(
         }
 
         if (IsCircuitOpen())
-            throw new InvalidOperationException("Circuit open for notification.");
+            throw new InvalidOperationException(openMessage);
 
         try
         {
@@ -81,58 +130,6 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(
             throw;
         }
     }
-}
-
-/// <summary>
-/// Command pipeline behavior that applies circuit-breaker logic.
-/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
-/// </summary>
-public sealed class CircuitBreakerCommandBehavior<TMessage>(
-    IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
-) : ACircuitBreakerBehavior<TMessage, Task>(optionsAccessor), IPipelineCommandBehavior<TMessage>
-    where TMessage : notnull
-{
-    /// <inheritdoc />
-    public override async Task Handle(
-        object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task> next,
-        CancellationToken cancellationToken
-    )
-    {
-        if (IsDisabled())
-        {
-            await next(key, message, cancellationToken).ConfigureAwait(false);
-            RegisterSuccess();
-            return;
-        }
-
-        if (IsCircuitOpen())
-            throw new InvalidOperationException("Circuit open for command.");
-
-        try
-        {
-            await next(key, message, cancellationToken).ConfigureAwait(false);
-            RegisterSuccess();
-        }
-        catch
-        {
-            RegisterFailure();
-            throw;
-        }
-    }
-}
-
-public abstract class ACircuitBreakerBehavior<TMessage, TResult>(
-    IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
-) : IPipelineBehavior<TMessage, TResult>
-    where TMessage : notnull
-{
-    private static readonly Lock s_sync = new();
-    private static int s_consecutiveFailures;
-    private static DateTimeOffset? s_openUntil;
-
-    protected bool IsDisabled() => optionsAccessor.Value.Disabled;
 
     protected static bool IsCircuitOpen()
     {

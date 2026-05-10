@@ -33,9 +33,10 @@ public sealed class GeneratorUtilityCoverageTests
 
         var toTuple = type.GetMethods(BindingFlags.Public | BindingFlags.Static)
             .Single(m => m.Name == "op_Implicit" && m.ReturnType != type);
-        var roundTrip = Assert.IsAssignableFrom<System.Runtime.CompilerServices.ITuple>(
-            toTuple.Invoke(null, [value])!
-        );
+        var roundTripObject = toTuple.Invoke(null, [value]);
+        Assert.NotNull(roundTripObject);
+        Assert.True(roundTripObject is System.Runtime.CompilerServices.ITuple);
+        var roundTrip = (System.Runtime.CompilerServices.ITuple)roundTripObject;
 
         Assert.True((bool)roundTrip[0]!);
         Assert.False((bool)roundTrip[1]!);
@@ -73,9 +74,10 @@ public sealed class GeneratorUtilityCoverageTests
 
         var toTuple = type.GetMethods(BindingFlags.Public | BindingFlags.Static)
             .Single(m => m.Name == "op_Implicit" && m.ReturnType != type);
-        var roundTrip = Assert.IsAssignableFrom<System.Runtime.CompilerServices.ITuple>(
-            toTuple.Invoke(null, [value])!
-        );
+        var roundTripObject = toTuple.Invoke(null, [value]);
+        Assert.NotNull(roundTripObject);
+        Assert.True(roundTripObject is System.Runtime.CompilerServices.ITuple);
+        var roundTrip = (System.Runtime.CompilerServices.ITuple)roundTripObject;
 
         Assert.Equal("IRequestHandler", roundTrip[0]);
         Assert.Equal(2, roundTrip[1]);

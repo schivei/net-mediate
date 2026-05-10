@@ -57,7 +57,8 @@ internal static class RetryBehaviorRunner
         if (options.Disabled)
             return await operation(state, cancellationToken).ConfigureAwait(false);
 
-        for (var attempt = 0; ; attempt++)
+        var attempt = 0;
+        while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -69,10 +70,12 @@ internal static class RetryBehaviorRunner
                 !cancellationToken.IsCancellationRequested && attempt < maxRetryCount
             )
             {
+                attempt++;
                 await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
             }
             catch (Exception) when (attempt < maxRetryCount)
             {
+                attempt++;
                 await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
             }
         }

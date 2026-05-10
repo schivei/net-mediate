@@ -27,6 +27,11 @@ jobs:
     name: Auto-Publish (Second Thursday)
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
+    # Needs contents: write to push the version-bump commit back to main.
+    permissions:
+      contents: write
+      issues: write
+      packages: write
 
     steps:
     - name: Checkout code
@@ -35,28 +40,60 @@ jobs:
         fetch-depth: 0
         token: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Setup .NET SDK 10.x
+      uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      with:
+        dotnet-version: '10.x'
+
     - name: Setup Python
       uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
       with:
         python-version: '3.x'
 
-    - name: Check for dependency changes since last tag
+    - name: Cache NuGet packages
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore dependencies
+      run: dotnet restore net-mediate.slnx -p:Configuration=Release
+
+    - name: Check for outdated dependency versions
       id: check_deps
       run: |
-        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-        if [ -z "$LAST_TAG" ]; then
-          echo "No previous tag found — treating as changed."
-          echo "skip=false" >> "$GITHUB_OUTPUT"
-          exit 0
+        # We use wildcard versions (e.g. "10.*") so git-diffing .csproj files
+        # will never show a version change. Instead, ask NuGet whether any
+        # currently-resolved package has a newer version that satisfies our
+        # constraints — that means a new transitive dependency was published.
+        OUTDATED_JSON=$(dotnet list net-mediate.slnx package --outdated --format json 2>&1)
+        DOTNET_EXIT=$?
+        if [ "$DOTNET_EXIT" -ne 0 ]; then
+          echo "::warning::dotnet list package --outdated failed (exit ${DOTNET_EXIT}): ${OUTDATED_JSON}"
+          OUTDATED_JSON='{"projects":[]}'
         fi
-        DIFF=$(git diff "$LAST_TAG" HEAD -- src/**/*.csproj src/**/*.props 2>/dev/null || \
-               git diff "$LAST_TAG" HEAD -- $(git ls-files 'src/**/*.csproj' 'src/**/*.props') 2>/dev/null || \
-               echo "")
-        if echo "$DIFF" | grep -qE '<PackageReference[^>]+Version='; then
-          echo "Dependency version changes detected since ${LAST_TAG}."
+        OUTDATED_COUNT=$(echo "$OUTDATED_JSON" | python3 -c "
+        import json, sys
+        try:
+            data = json.load(sys.stdin)
+            count = sum(
+                len(fw.get('topLevelPackages', []))
+                for proj in data.get('projects', [])
+                for fw in proj.get('frameworks', [])
+            )
+            print(count)
+        except Exception as e:
+            # Parsing failed -- fail safe by publishing (assume something changed).
+            print(f'::error::Failed to parse dotnet list package output: {e}', file=sys.stderr)
+            print(1)
+        ")
+        if [ "${OUTDATED_COUNT:-0}" -gt 0 ]; then
+          echo "Found ${OUTDATED_COUNT} outdated package(s) with new versions available -- publishing."
           echo "skip=false" >> "$GITHUB_OUTPUT"
         else
-          echo "::notice::No PackageReference version changes detected since ${LAST_TAG} — skipping publish."
+          echo "::notice::All packages are at their latest versions -- skipping publish."
           echo "skip=true" >> "$GITHUB_OUTPUT"
         fi
 
@@ -84,25 +121,6 @@ jobs:
         ")
         git commit -m "chore: bump patch version to ${VERSION} [skip ci]"
         git push origin HEAD:refs/heads/main
-
-    - name: Setup .NET SDK 10.x
-      if: steps.check_deps.outputs.skip != 'true'
-      uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
-      with:
-        dotnet-version: '10.x'
-
-    - name: Cache NuGet packages
-      if: steps.check_deps.outputs.skip != 'true'
-      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-      with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget-
-
-    - name: Restore dependencies
-      if: steps.check_deps.outputs.skip != 'true'
-      run: dotnet restore net-mediate.slnx -p:Configuration=Release
 
     - name: Build all projects
       if: steps.check_deps.outputs.skip != 'true'

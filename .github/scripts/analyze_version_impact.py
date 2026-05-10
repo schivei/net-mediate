@@ -24,7 +24,7 @@ from pathlib import Path
 THRESHOLD = 0.20  # 20 % impact triggers a major bump
 
 
-def git(*args: str, cwd: Path | None = None) -> str:
+def git(*args: str, cwd: Path | None = None, required: bool = True) -> str:
     result = subprocess.run(
         ["git", *args],
         capture_output=True,
@@ -32,7 +32,12 @@ def git(*args: str, cwd: Path | None = None) -> str:
         cwd=cwd or Path(__file__).resolve().parents[2],
     )
     if result.returncode != 0:
-        print(f"::warning::git {' '.join(args)} failed: {result.stderr.strip()}", file=sys.stderr)
+        msg = f"git {' '.join(args)} failed: {result.stderr.strip()}"
+        if required:
+            print(f"::error::{msg}", file=sys.stderr)
+            sys.exit(1)
+        else:
+            print(f"::warning::{msg}", file=sys.stderr)
     return result.stdout
 
 

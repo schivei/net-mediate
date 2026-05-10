@@ -23,7 +23,7 @@ jobs:
 
     steps:
     - name: Checkout main
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       with:
         ref: main
         fetch-depth: 0
@@ -36,10 +36,20 @@ jobs:
 
     - name: Analyze PR impact
       id: impact
-      env:
-        BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       run: |
+        BASE_SHA="${{ github.event.pull_request.base.sha }}"
+        # Use merge_commit_sha — this commit already exists on main after the merge
+        # and is guaranteed to be reachable from the full-depth checkout above.
+        HEAD_SHA="${{ github.event.pull_request.merge_commit_sha }}"
+        # Explicitly fetch both SHAs in case history depth or fork state means
+        # they are not yet in the local object store. Errors here are expected
+        # when a SHA is already present; the cat-file check below is authoritative.
+        git fetch origin "$BASE_SHA" "$HEAD_SHA" 2>/dev/null || true
+        if ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null || \
+           ! git cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null; then
+          echo "::warning::One or both SHAs not reachable -- fetching all refs."
+          git fetch --all
+        fi
         BUMP_TYPE=$(python .github/scripts/analyze_version_impact.py "$BASE_SHA" "$HEAD_SHA")
         echo "bump_type=${BUMP_TYPE}" >> "$GITHUB_OUTPUT"
         echo "Determined bump type: ${BUMP_TYPE}"

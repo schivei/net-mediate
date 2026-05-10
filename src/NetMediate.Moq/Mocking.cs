@@ -49,8 +49,6 @@ public static class Mocking
     )
         where TService : class
     {
-        Guard.ThrowIfNull(services);
-
         var mock = new global::Moq.Mock<TService>(behavior);
         services.ReplaceWithMock(mock);
         return mock;
@@ -70,9 +68,6 @@ public static class Mocking
     )
         where TService : class
     {
-        Guard.ThrowIfNull(services);
-        Guard.ThrowIfNull(mock);
-
         services.ReplaceWithMock(mock);
         return mock;
     }

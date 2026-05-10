@@ -15,7 +15,7 @@ For the complete commands documentation, see the main [README](https://github.co
 ## Basic Usage
 
 ```csharp
-await mediator.Send(new CreateUserCommand("john@example.com", "John Doe"));
+await mediator.SendCreateUserCommandAsync(new CreateUserCommand("john@example.com", "John Doe"));
 ```
 
 ## Keyed Dispatch
@@ -23,25 +23,34 @@ await mediator.Send(new CreateUserCommand("john@example.com", "John Doe"));
 Register handlers under routing keys and dispatch to a specific subset at runtime. This is useful for scenarios such as queue/topic routing, tenant isolation, or environment-specific handling:
 
 ```csharp
-// Registration — same message type, different keys
-builder.Services.AddNetMediate(configure =>
-{
-    configure.RegisterCommandHandler<DefaultHandler, MyCommand>();        // null key → "__default"
-    configure.RegisterCommandHandler<AuditHandler, MyCommand>("audit");  // keyed
-});
+builder.Services.AddNetMediate();
 
 // Dispatch to null-key (default) handlers
-await mediator.Send(new MyCommand(), cancellationToken);
+await mediator.SendMyCommandAsync(new MyCommand(), cancellationToken);
 
 // Dispatch only to "audit" handlers
-await mediator.Send("audit", new MyCommand(), cancellationToken);
+await mediator.SendMyCommandAsync("audit", new MyCommand(), cancellationToken);
+
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+public sealed class DefaultHandler : ICommandHandler<MyCommand>
+{
+    public Task Handle(MyCommand message, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+}
+
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 2, Key = "audit")]
+public sealed class AuditHandler : ICommandHandler<MyCommand>
+{
+    public Task Handle(MyCommand message, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
+}
 ```
 
 The `key` is propagated through the entire pipeline — behaviors receive it in their `Handle(object? key, ...)` signature and can use it for routing, logging, or conditional logic.
 
-> **Default routing key:** A `null` key is normalized internally to `"__default"`. This means `mediator.Send(command, ct)` and `mediator.Send(null, command, ct)` are exactly equivalent. Avoid using `"__default"` as your own routing key.
+> **Keyless dispatch:** A `null` key flows through the pipeline unchanged. `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are equivalent and target the non-keyed handlers registered in the container.
 
-> **NativeAOT:** Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed registration uses `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**; use it only when NativeAOT is not required.
+> **NativeAOT:** Keyed dispatch is fully NativeAOT + Trimming compatible. The source generator emits a `KeyedHandlerRegistry<T>` at compile time — no reflection, no `IKeyedServiceProvider` is used at runtime. Both keyed and non-keyed dispatch are safe for NativeAOT and trimmed deployments.
 
 ## See Also
 

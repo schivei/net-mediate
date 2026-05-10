@@ -32,7 +32,7 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 
 ## Medium term
 
-- [x] **Synchronous fire-and-forget notifier** — optional `INotifiable` implementation that dispatches notification handlers inline (no `Channel<T>` + `BackgroundService` overhead) for scenarios where latency matters more than isolation.
+- [x] **Synchronous fire-and-forget notifier** — optional `INotifiable` implementation that dispatches notification handlers inline with no extra transport layer for scenarios where latency matters more than isolation.
 - [x] **Pre-compiled behavior chain** — build the behavior delegate chain once at startup per message type and cache it in a static generic field, eliminating the per-call `Reverse`/`Aggregate`/closure allocation.
 - [x] **Single-handler fast path for `Send`** — when exactly one `ICommandHandler<T>` is registered, invoke it directly without the `foreach` loop.
 - [x] **`IPipelineNotificationBehavior<TMessage>` shorthand** — a dedicated interface mirroring `IPipelineRequestBehavior<,>` so notification-specific behaviors have a symmetric registration experience.
@@ -42,6 +42,5 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 
 - [x] **`NetMediate.Diagnostics` package** — `NetMediateDiagnostics` (`ActivitySource`/`Meter`) extracted from the core assembly into `NetMediate.Diagnostics`; implemented as pipeline behaviors (`TelemetryNotificationBehavior`, `TelemetryRequestBehavior`, `TelemetryStreamBehavior`); auto-registered by the source generator when the package is referenced (first in pipeline order).
 - [x] **Streaming fan-out** — multiple `IStreamHandler<TMsg, TResp>` registrations are supported; their items are merged sequentially into a single `IAsyncEnumerable<TResp>`, analogous to how `Send` fans out to multiple command handlers.
-- [x] **Keyed handler registration** — runtime routing via service keys. Handlers can be registered with an optional key (`RegisterCommandHandler<THandler, TMsg>("routingKey")`) and dispatched with `Send(key, message)`, `Request(key, ...)`, `Notify(key, ...)`, or `RequestStream(key, ...)`. Non-keyed registration and dispatch (using `null` key) continues to work as before.
+- [x] **Keyed handler registration** — runtime routing via source-generated `KeyedHandlerRegistry<T>`. Handlers can be decorated with GenDI metadata such as `[Injectable(..., Key = "routingKey")]` and dispatched with `Send(key, message)`, `Request(key, ...)`, `Notify(key, ...)`, or `RequestStream(key, ...)`. The routing table is emitted at compile time — **no reflection, fully NativeAOT + Trimming compatible**.
 - [x] **Activity-link propagation** — `NetMediateDiagnostics.StartActivity<TMessage>` now adds an `ActivityLink` to the ambient `Activity.Current` at dispatch time, ensuring distributed traces are correctly connected across async boundaries (especially important for fire-and-forget notifications).
-

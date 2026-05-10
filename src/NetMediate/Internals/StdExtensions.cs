@@ -28,14 +28,5 @@ public static class StdExtensions
             yield return item;
         }
     }
-
-    /// <summary>
-    /// Reverses the order of the elements in a sequence.
-    /// </summary>
-    /// <param name="source">The sequence to reverse.</param>
-    /// <typeparam name="T">The type of elements in the sequence.</typeparam>
-    /// <returns>An <see cref="IEnumerable{T}"/> with the elements in reverse order.</returns>
-    public static IEnumerable<T> Reverse<T>(this IEnumerable<T> source) =>
-        Enumerable.Reverse(source);
 }
 #endif

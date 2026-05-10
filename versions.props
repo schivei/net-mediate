@@ -1,9 +1,12 @@
 <Project>
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
-    <Suffix></Suffix>
-    <Stable>$([System.DateTime]::UtcNow.ToString("yy.MM.dd"))</Stable>
-    <Version>$([System.DateTime]::UtcNow.ToString("yy.MM.dd")).$([System.DateTime]::UtcNow.Subtract($([System.DateTime]::UtcNow.Date)).TotalMinutes.ToString("F0"))$(Suffix)</Version>
+    <Suffix />
+    <VersionYear>2026</VersionYear>
+    <VersionMajor>0</VersionMajor>
+    <VersionMinor>1</VersionMinor>
+    <VersionPatch>0</VersionPatch>
+    <Version>$(VersionYear).$(VersionMajor).$(VersionMinor).$(VersionPatch)$(Suffix)</Version>
     <NoWarn>nullable;NU5118;$(NoWarn)</NoWarn>
   </PropertyGroup>
 </Project>

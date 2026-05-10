@@ -6,6 +6,11 @@
 public sealed class RetryBehaviorOptions
 {
     /// <summary>
+    /// Gets or sets a value indicating whether the feature or component is disabled.
+    /// </summary>
+    public bool Disabled { get; set; }
+
+    /// <summary>
     /// Gets or sets the maximum retry count after the first attempt.
     /// </summary>
     public int MaxRetryCount { get; set; } = 2;
@@ -22,6 +27,11 @@ public sealed class RetryBehaviorOptions
 public sealed class TimeoutBehaviorOptions
 {
     /// <summary>
+    /// Gets or sets a value indicating whether the feature or component is disabled.
+    /// </summary>
+    public bool Disabled { get; set; }
+
+    /// <summary>
     /// Gets or sets the timeout for request handlers.
     /// </summary>
     public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(30);
@@ -37,6 +47,11 @@ public sealed class TimeoutBehaviorOptions
 /// </summary>
 public sealed class CircuitBreakerBehaviorOptions
 {
+    /// <summary>
+    /// Gets or sets a value indicating whether the feature or component is disabled.
+    /// </summary>
+    public bool Disabled { get; set; }
+
     /// <summary>
     /// Gets or sets consecutive failure threshold before opening the circuit.
     /// </summary>

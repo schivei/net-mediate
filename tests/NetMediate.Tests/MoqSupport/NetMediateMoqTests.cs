@@ -76,7 +76,7 @@ public class NetMediateMoqTests
         services.AddLogging();
         using var provider = services.BuildServiceProvider();
 
-        var notifier = new Notifier(provider);
+        var notifier = new NotifierMock(provider);
 
         var h1Called = false;
         var h2Called = false;

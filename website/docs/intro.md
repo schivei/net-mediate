@@ -4,6 +4,8 @@ sidebar_position: 1
 
 # Introduction to NetMediate
 
+> **GenDI-first ecosystem:** Throughout the docs, prefer `NetMediate.SourceGeneration` in the startup project and GenDI's `[Injectable]` + `[Inject]` style for your own services so you can control lifetime, group, order, and key. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path.
+
 Welcome to NetMediate, a lightweight and efficient .NET implementation of the Mediator pattern for in-process messaging and communication between components.
 
 ## What is NetMediate?
@@ -37,7 +39,7 @@ Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream operations with
 OpenTelemetry, Serilog, and ILogger support packages for comprehensive observability.
 
 ### 🔑 **Keyed Handler Routing**
-Register handlers under named keys and dispatch to specific subsets at runtime.
+Register handlers under named keys and dispatch to specific subsets at runtime — **fully NativeAOT + Trimming compatible** via source-generated `KeyedHandlerRegistry<T>`.
 
 ### 🌊 **Streaming Fan-Out**
 Multiple `IStreamHandler` registrations supported — their items are merged sequentially.
@@ -50,7 +52,7 @@ Multi-targeted for `net10.0`, `netstandard2.0`, and `netstandard2.1`.
 
 ## Why this version is a productivity upgrade
 
-- **Less setup friction**: direct `NetMediate` references immediately enable runtime APIs plus bundled generators.
+- **Less setup friction**: `NetMediate.Core` + `NetMediate.SourceGeneration` keep contracts and startup wiring clean while still enabling the runtime automatically.
 - **Better code organization**: generated typed dispatch methods keep mediator calls explicit and easier to maintain.
 - **Scales with teams**: compile-time registration and transitive generator propagation improve consistency across multi-project solutions.
 
@@ -115,7 +117,9 @@ Ready to dive in? Head over to the [Installation Guide](./getting-started/instal
 
 NetMediate consists of several packages:
 
-- **NetMediate** - Core mediator implementation; includes bundled `NetMediate.SourceGeneration` + `GenDI.SourceGenerator` analyzers for direct references
+- **NetMediate.Core** - Contracts package for shared projects and reusable message definitions
+- **NetMediate** - Runtime mediator implementation consumed indirectly by the generator package or directly when needed
+- **NetMediate.SourceGeneration** - Source generator package for startup projects; injects `NetMediate` + `GenDI.SourceGenerator` through `buildTransitive`
 - **NetMediate.Resilience** - Retry, timeout, and circuit breaker behaviors
 - **NetMediate.Diagnostics** - OpenTelemetry integration
 - **NetMediate.Quartz** - Persistent notifications with Quartz.NET

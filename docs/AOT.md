@@ -1,32 +1,35 @@
 # AOT / Trimming Support
 
-NetMediate is fully compatible with NativeAOT-compiled and trimmed applications.
+NetMediate is compatible with NativeAOT and trimming when you stay on the source-generated, closed-type registration path.
 
 ## Summary
 
-Handler registration is generated at compile time by `NetMediate.SourceGeneration` — there is no assembly scanning and no reflection involved in registering handlers. Pipeline behaviors must be registered via `RegisterBehavior<>` on the builder; open-generic DI patterns are not supported.
+- Use `NetMediate.SourceGeneration` in the startup project.
+- Call `builder.Services.AddNetMediate();`.
+- Register custom pipeline behaviors as **closed types** directly in DI.
+- Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`.
+- Register only generic/open service implementations manually in `builder.Services`.
+- Keyed dispatch via `KeyedHandlerRegistry<T>` is fully NativeAOT + Trimming compatible since the registry is source-generated at compile time with no reflection.
 
 | Path | AOT / Trim compatible | Notes |
 |---|---|---|
-| Source generation (`AddNetMediate()`) | ✅ Yes | Generated at compile time — no reflection |
-| `RegisterBehavior<TBehavior, TMessage, TResult>()` | ✅ Yes | Closed-type — no reflection, fully AOT-safe |
-| `RegisterCommandHandler<THandler, TMsg>()` (no key) | ✅ Yes | Resolved via `GetServices<T>()` |
-| `RegisterCommandHandler<THandler, TMsg>("key")` | ⚠️ No | Uses `IKeyedServiceProvider` — not NativeAOT-compatible |
-| `RegisterNotificationHandler<THandler, TMsg>("key")` | ⚠️ No | Uses `IKeyedServiceProvider` — not NativeAOT-compatible |
-| `RegisterRequestHandler<THandler, TMsg, TResp>("key")` | ⚠️ No | Uses `IKeyedServiceProvider` — not NativeAOT-compatible |
-| `RegisterStreamHandler<THandler, TMsg, TResp>("key")` | ⚠️ No | Uses `IKeyedServiceProvider` — not NativeAOT-compatible |
+| `AddNetMediate()` | ✅ Yes | Generated at compile time — no reflection |
+| Closed-type pipeline behavior registrations | ✅ Yes | Register `IPipelineCommandBehavior<T>`, `IPipelineNotificationBehavior<T>`, or `IPipelineRequestBehavior<TMessage, TResponse>` directly |
+| Keyless `Send` / `Notify` / `Request` / `RequestStream` | ✅ Yes | Uses generated closed-type registrations |
+| Keyed dispatch (`Send(key, ...)`, `Request(key, ...)`, etc.) | ✅ Yes | Source-generated `KeyedHandlerRegistry<T>` — no reflection, fully NativeAOT + Trimming compatible |
 
 ## AOT-compatible setup
 
-### Step 1: Install `NetMediate`
-
-The source generator is bundled inside the `NetMediate` package and runs automatically for direct references:
+### Step 1: Install `NetMediate.SourceGeneration`
 
 ```xml
-<PackageReference Include="NetMediate" Version="x.x.x" />
+<PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
+  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+  <PrivateAssets>all</PrivateAssets>
+</PackageReference>
 ```
 
-> **Library projects:** You may optionally add `PrivateAssets="all"` to avoid transitive package/analyzer flow to downstream consumers. This does not change generator execution for your own direct reference.
+> **Contracts-only projects:** Use `NetMediate.Core` in shared libraries that only need the contracts.
 
 ### Step 2: Call the generated extension method
 
@@ -35,22 +38,30 @@ The source generator is bundled inside the `NetMediate` package and runs automat
 builder.Services.AddNetMediate();
 ```
 
-The source generator discovers all handler types in your project and emits closed-type `Register*Handler<>` calls — fully AOT-safe.
+The source generator discovers all handler types in your project and emits the closed-type registrations for handlers, executors, and generated dispatch extensions.
 
-### Registering behaviors
-
-Register pipeline behaviors via the builder using closed types:
+### Step 3: Register custom behaviors as closed types
 
 ```csharp
-builder.Services.UseNetMediate(configure =>
+using GenDI;
+using Microsoft.Extensions.DependencyInjection;
+using NetMediate;
+
+[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
+public sealed class AuditCreateUserBehavior : IPipelineRequestBehavior<CreateUserRequest, UserDto>
 {
-    configure.RegisterBehavior<AuditBehavior<MyRequest, Task<MyResponse>>, MyRequest, Task<MyResponse>>();
-});
+    public Task<UserDto> Handle(
+        object? key,
+        CreateUserRequest message,
+        PipelineBehaviorDelegate<CreateUserRequest, Task<UserDto>> next,
+        CancellationToken cancellationToken) =>
+        next(key, message, cancellationToken);
+}
+
+builder.Services.AddNetMediate();
 ```
 
 ## AOT-unsafe patterns to avoid
 
-- Calling `MakeGenericType` at runtime — not supported by NativeAOT
-- Using `Type.GetGenericArguments()` to construct service types at runtime
-- Registering behaviors via open-generic `services.AddSingleton(typeof(IPipeline...<,>), typeof(...<,>))` — not supported
-- Using keyed handler registration (`Register*Handler<T,M>("routingKey")`) — uses `IKeyedServiceProvider` which is not supported in NativeAOT. Use keyed handlers only when NativeAOT is not required.
+- Runtime reflection-based registration
+- Open-generic pipeline behavior registration guidance

@@ -15,7 +15,9 @@ internal class Notifier(IServiceProvider serviceProvider) : INotifiable
         if (handlers.Length == 0)
             return Task.CompletedTask;
 
-        return Task.WhenAll(handlers.Select(h => h.Handle(message, cancellationToken)));
+        _ = Task.WhenAll(handlers.Select(h => h.Handle(message, cancellationToken))).ContinueWith(_ => { }, cancellationToken);
+
+        return Task.CompletedTask;
     }
 
     public Task Notify<TMessage>(
@@ -30,12 +32,14 @@ internal class Notifier(IServiceProvider serviceProvider) : INotifiable
         if (pipeline is null)
             return Task.CompletedTask;
 
-        return pipeline.Handle(
-            key ?? Extensions.DEFAULT_ROUTING_KEY,
+        _ = pipeline.Handle(
+            key,
             message,
             DispatchNotifications,
             cancellationToken
-        );
+        ).ContinueWith(static _ => { }, cancellationToken);
+
+        return Task.CompletedTask;
     }
 
     public Task Notify<TMessage>(
@@ -45,8 +49,10 @@ internal class Notifier(IServiceProvider serviceProvider) : INotifiable
     )
         where TMessage : notnull
     {
-        return Task.WhenAll(
-            messages.Select(m => Notify(key ?? Extensions.DEFAULT_ROUTING_KEY, m, cancellationToken))
-        );
+        _ = Task.WhenAll(
+            messages.Select(m => Notify(key, m, cancellationToken))
+        ).ContinueWith(static _ => { }, cancellationToken);
+
+        return Task.CompletedTask;
     }
 }

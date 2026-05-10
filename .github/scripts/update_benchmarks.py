@@ -497,3 +497,35 @@ print(f'BENCHMARKS.md updated successfully. '
       f'Baseline ring: {ring_size} entr{"y" if ring_size == 1 else "ies"} '
       f'(medians: cmd={median_from_ring(baseline_ring, "cmd") or "—"}ns, '
       f'notify={median_from_ring(baseline_ring, "notify") or "—"}ns)')
+
+# ---------------------------------------------------------------------------
+# Throughput regression gate — fail CI if 'command' drops more than 5 %
+# relative to the baseline (live same-run base preferred; stored ring fallback).
+# Only enforced when a baseline is available (skip on the very first run).
+# ---------------------------------------------------------------------------
+REGRESSION_GATE_KEY   = 'cmd'
+REGRESSION_THRESHOLD  = 5.0   # percent
+
+if REGRESSION_GATE_KEY in metrics:
+    cur_ns  = metrics[REGRESSION_GATE_KEY]['mean']
+    prev_ns = get_base_mean(REGRESSION_GATE_KEY)
+    if prev_ns is not None and prev_ns > 0:
+        delta_pct = (cur_ns - prev_ns) / prev_ns * 100
+        if delta_pct > REGRESSION_THRESHOLD:
+            print(
+                f'\n❌ Throughput regression gate FAILED: '
+                f'Command `Send` slowed by {delta_pct:+.1f}% '
+                f'(baseline {prev_ns:.2f} ns → current {cur_ns:.2f} ns; '
+                f'threshold {REGRESSION_THRESHOLD:.0f}%).',
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        else:
+            print(
+                f'\n✅ Throughput regression gate PASSED: '
+                f'Command `Send` delta {delta_pct:+.1f}% '
+                f'(threshold >{REGRESSION_THRESHOLD:.0f}% regression).'
+            )
+    else:
+        print('\nℹ️  Throughput regression gate skipped: no baseline available yet.')
+

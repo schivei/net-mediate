@@ -8,8 +8,15 @@
 		<PackageTags>Mediator;NetMediate;SourceGenerator;AOT;Startup</PackageTags>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 		<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-		<NoWarn>$(NoWarn);RS2008;NU5128</NoWarn>
-		<DevelopmentDependency>true</DevelopmentDependency>
+		<!-- NU1701/NU1202: netstandard2.0 project referencing net10.0-only packages with ExcludeAssets – intentional -->
+		<NoWarn>$(NoWarn);RS2008;NU5128;NU1701;NU1202</NoWarn>
+		<!--
+		  DevelopmentDependency is intentionally NOT set here. Setting it causes NuGet pack to strip
+		  ALL package dependencies from the generated nuspec, which would prevent NetMediate and
+		  GenDI.SourceGenerator from being restored by consuming projects. Consumers that want to
+		  treat this package as dev-only should add PrivateAssets="all" to their PackageReference
+		  (see installation docs), which is also what the buildTransitive props enforces automatically.
+		-->
 	</PropertyGroup>
 	<ItemGroup>
 		<None Include="..\..\assets\logo.png" Pack="true" PackagePath="\" />
@@ -24,6 +31,25 @@
 	<ItemGroup>
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.*" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.*" PrivateAssets="all" />
+
+		<!--
+		  Declare NetMediate and GenDI.SourceGenerator as nuspec dependencies so NuGet includes them
+		  in project.assets.json during dotnet restore. Without these entries the packages are only
+		  injected via buildTransitive MSBuild props at build time — too late for pipelines that run
+		  dotnet restore and dotnet build as separate steps (e.g. Azure DevOps no-restore builds).
+
+		  ExcludeAssets="compile" prevents the netstandard2.0 generator project from trying to use
+		  the net10.0 compile-time DLLs directly (NU1701 is suppressed above). Runtime / build /
+		  buildTransitive slots are unused for this project (IncludeBuildOutput=false, no lib folder).
+		  The consuming project's own buildTransitive props provides the correct asset metadata
+		  (IncludeAssets / PrivateAssets) when these packages are actually used.
+		-->
+		<PackageReference Include="NetMediate" Version="$(VersionYear).*">
+			<ExcludeAssets>compile; runtime</ExcludeAssets>
+		</PackageReference>
+		<PackageReference Include="GenDI.SourceGenerator" Version="26.*">
+			<ExcludeAssets>compile</ExcludeAssets>
+		</PackageReference>
 
 		<None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
 	</ItemGroup>

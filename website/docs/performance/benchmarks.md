@@ -6,7 +6,7 @@ sidebar_position: 1
 
 > **GenDI pattern:** The benchmark scenarios assume the current NetMediate ecosystem, where startup projects use `NetMediate.SourceGeneration` and supporting services can follow the GenDI `[Injectable]` + `[Inject]` model.
 
-<!-- netmediate-bench-baseline: [{"cmd":90.82,"notify":189.43,"request":89.91,"stream":198.95,"cmd_a":48.0,"notify_a":432.0,"request_a":112.0,"stream_a":216.0},{"cmd":90.55,"notify":102.32,"request":95.3,"stream":196.07,"cmd_a":48.0,"notify_a":112.0,"request_a":112.0,"stream_a":216.0},{"cmd":84.24,"notify":128.85,"request":88.62,"stream":177.08,"cmd_a":48.0,"notify_a":288.0,"request_a":120.0,"stream_a":216.0}] -->
+<!-- netmediate-bench-baseline: [] -->
 
 This document describes the performance characteristics of NetMediate under the current implementation, which uses **explicit handler registration only** (no assembly scanning) and **closed-type pipeline executors** registered at startup.
 

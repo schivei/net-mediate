@@ -15,6 +15,9 @@ namespace NetMediate;
 public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serviceProvider, ILogger<NotificationPipelineExecutor<TMessage>> logger)
     where TMessage : notnull
 {
+    // Cached pipeline for the common key-less path; built once on the first call.
+    private PipelineBehaviorDelegate<TMessage, Task>? _noKeyPipeline;
+
     /// <summary>
     /// Invokes the notification handler pipeline for the specified message and key.
     /// </summary>
@@ -33,12 +36,22 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
         CancellationToken cancellationToken
     )
     {
-        var lazy = new Lazy<PipelineBehaviorDelegate<TMessage, Task>>(
-            () => BuildPipeline(key, exec),
-            LazyThreadSafetyMode.ExecutionAndPublication
-        );
+        if (key is null)
+        {
+            // Fast path: reuse the cached pipeline for the key-less case.
+            var pipeline = _noKeyPipeline ?? InitNoKeyPipeline(exec);
+            return pipeline(null, message, cancellationToken);
+        }
 
-        return lazy.Value(key, message, cancellationToken);
+        return BuildPipeline(key, exec)(key, message, cancellationToken);
+    }
+
+    private PipelineBehaviorDelegate<TMessage, Task> InitNoKeyPipeline(
+        HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> exec)
+    {
+        var built = BuildPipeline(null, exec);
+        Interlocked.CompareExchange(ref _noKeyPipeline, built, null);
+        return _noKeyPipeline!;
     }
 
     private INotificationHandler<TMessage>[] ResolveKeyedHandlers(object key)
@@ -75,15 +88,22 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
 
         return ErrorReporting;
 
-        async Task ErrorReporting(object? routingKey, TMessage msg, CancellationToken ct)
+        Task ErrorReporting(object? routingKey, TMessage msg, CancellationToken ct)
         {
-            try
+            var task = pipeline(routingKey, msg, ct);
+            // Avoid async state-machine allocation on the hot success path.
+            return task.IsCompletedSuccessfully ? task : AwaitAndCatch(task);
+
+            async Task AwaitAndCatch(Task t)
             {
-                await pipeline(routingKey, msg, ct).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (LogFailure(ex))
-            {
-                throw;
+                try
+                {
+                    await t.ConfigureAwait(false);
+                }
+                catch (Exception ex) when (LogFailure(ex))
+                {
+                    throw;
+                }
             }
         }
 

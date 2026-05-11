@@ -40,13 +40,13 @@ public sealed class MediatorAndNotifierCoverageTests
                 Assert.Null(call.Key);
                 Assert.Equal(
                     ["batch-one", "batch-two"],
-                    call.Messages.Select(message => message.Value).ToArray()
+                    [.. call.Messages.Select(message => message.Value)]
                 );
             },
             call =>
             {
                 Assert.Equal("key", call.Key);
-                Assert.Equal(["two", "three"], call.Messages.Select(message => message.Value).ToArray());
+                Assert.Equal(["two", "three"], [.. call.Messages.Select(message => message.Value)]);
             }
         );
     }

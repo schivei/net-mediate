@@ -48,7 +48,7 @@ public sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvider
         var registry = serviceProvider.GetService<KeyedHandlerRegistry<IStreamHandler<TMessage, TResponse>>>();
         if (registry is not null && registry.TryGetAll(key, serviceProvider, out var handlers) && handlers.Length > 0)
             return handlers;
-        return serviceProvider.GetServices<IStreamHandler<TMessage, TResponse>>().ToArray();
+        return [.. serviceProvider.GetServices<IStreamHandler<TMessage, TResponse>>()];
     }
 
     private PipelineBehaviorDelegate<TMessage, IAsyncEnumerable<TResponse>> BuildPipeline(
@@ -61,7 +61,7 @@ public sealed class StreamPipelineExecutor<TMessage, TResponse>(IServiceProvider
     )
     {
         var handlers = key is null
-            ? serviceProvider.GetServices<IStreamHandler<TMessage, TResponse>>().ToArray()
+            ? [.. serviceProvider.GetServices<IStreamHandler<TMessage, TResponse>>()]
             : ResolveKeyedHandlers(key);
 
         var behaviors = serviceProvider.GetServices<IPipelineStreamBehavior<TMessage, TResponse>>().ToArray();

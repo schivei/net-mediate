@@ -152,6 +152,12 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         return typeSymbol;
     }
 
+    private static (INamedTypeSymbol ifce, string handlerName)[] GetHandlerInterfaces(ImmutableArray<INamedTypeSymbol> types) =>
+        [.. types.SelectMany(t => t.AllInterfaces.Select(i => (ifce: i, handlerName: t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))))
+            .Where(t => t.ifce.ContainingNamespace.ToDisplayString().Replace(GlobalNamespace, "") == PackName && (
+                (t.ifce.OriginalDefinition.Name is RequestHandlerIfce or StreamHandlerIfce && t.ifce.Arity == 2 && t.ifce.TypeArguments.Length == 2) ||
+                (t.ifce.OriginalDefinition.Name is CommandHandlerIfce or NotificationHandlerIfce && t.ifce.Arity == 1 && t.ifce.TypeArguments.Length == 1)))];
+
     /// <summary>
     /// Builds the infrastructure setup lines that go before the generated handler registrations.
     /// For Resilience: registers default option singletons (user may override by registering the
@@ -165,43 +171,53 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         var sb = new StringBuilder();
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var (ifce, _) in types.SelectMany(t => t.AllInterfaces.Select(i => (ifce: i, handlerName: t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))))
-                .Where(t => t.ifce.ContainingNamespace.ToDisplayString().Replace(GlobalNamespace, "") == PackName && (
-                    (t.ifce.OriginalDefinition.Name is RequestHandlerIfce or StreamHandlerIfce && t.ifce.Arity == 2 && t.ifce.TypeArguments.Length == 2) ||
-                    (t.ifce.OriginalDefinition.Name is CommandHandlerIfce or NotificationHandlerIfce && t.ifce.Arity == 1 && t.ifce.TypeArguments.Length == 1))))
+        foreach (var (ifce, _) in GetHandlerInterfaces(types))
         {
-            var definition = ifce.OriginalDefinition;
-            var name = definition.Name;
-            var arity = definition.Arity;
-            var args = ifce.TypeArguments;
-            var isTwoArgHandler = (name == RequestHandlerIfce || name == StreamHandlerIfce) && arity == 2 && args.Length == 2 && IsAccessible(args[0]) && IsAccessible(args[1]);
-            var isOneArgHandler = (name == CommandHandlerIfce || name == NotificationHandlerIfce) && arity == 1 && args.Length == 1 && IsAccessible(args[0]);
-
-            var executorPrefix = name switch
-            {
-                RequestHandlerIfce => "Request",
-                StreamHandlerIfce => "Stream",
-                NotificationHandlerIfce => "Notification",
-                _ => "Command"
-            };
-
-            if (isTwoArgHandler)
-            {
-                var line =
-                    $"{indent}services.TryAddSingleton<{executorPrefix}PipelineExecutor<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>>();";
-                if (seen.Add(line))
-                    sb.AppendLine(line);
-            }
-            else if (isOneArgHandler)
-            {
-                var line =
-                    $"{indent}services.TryAddSingleton<{executorPrefix}PipelineExecutor<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>>();";
-                if (seen.Add(line))
-                    sb.AppendLine(line);
-            }
+            GetVariables(ifce, out ImmutableArray<ITypeSymbol> args, out bool isTwoArgHandler, out bool isOneArgHandler, out string executorPrefix);
+            TwoArgsHandler(indent, sb, seen, args, isTwoArgHandler, executorPrefix);
+            OneArgHandler(indent, sb, seen, args, isOneArgHandler, executorPrefix);
         }
 
         return sb.ToString();
+    }
+
+    private static void OneArgHandler(string indent, StringBuilder sb, HashSet<string> seen, ImmutableArray<ITypeSymbol> args, bool isOneArgHandler, string executorPrefix)
+    {
+        if (isOneArgHandler)
+        {
+            var line =
+                $"{indent}services.TryAddSingleton<{executorPrefix}PipelineExecutor<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>>();";
+            if (seen.Add(line))
+                sb.AppendLine(line);
+        }
+    }
+
+    private static void TwoArgsHandler(string indent, StringBuilder sb, HashSet<string> seen, ImmutableArray<ITypeSymbol> args, bool isTwoArgHandler, string executorPrefix)
+    {
+        if (isTwoArgHandler)
+        {
+            var line =
+                $"{indent}services.TryAddSingleton<{executorPrefix}PipelineExecutor<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>>();";
+            if (seen.Add(line))
+                sb.AppendLine(line);
+        }
+    }
+
+    private static void GetVariables(INamedTypeSymbol ifce, out ImmutableArray<ITypeSymbol> args, out bool isTwoArgHandler, out bool isOneArgHandler, out string executorPrefix)
+    {
+        var definition = ifce.OriginalDefinition;
+        var name = definition.Name;
+        var arity = definition.Arity;
+        args = ifce.TypeArguments;
+        isTwoArgHandler = (name == RequestHandlerIfce || name == StreamHandlerIfce) && arity == 2 && args.Length == 2 && IsAccessible(args[0]) && IsAccessible(args[1]);
+        isOneArgHandler = (name == CommandHandlerIfce || name == NotificationHandlerIfce) && arity == 1 && args.Length == 1 && IsAccessible(args[0]);
+        executorPrefix = name switch
+        {
+            RequestHandlerIfce => "Request",
+            StreamHandlerIfce => "Stream",
+            NotificationHandlerIfce => "Notification",
+            _ => "Command"
+        };
     }
 
     /// <summary>
@@ -439,11 +455,10 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     private static List<(string handlerFqn, string ctorArgs)> GetSingletonEntries(
         List<(string keyLiteral, int lifetime, string handlerFqn, string ctorArgs)> entries
     ) =>
-        entries
+        [.. entries
             .Where(e => e.lifetime == 0 /* Singleton */)
             .Select(e => (e.handlerFqn, e.ctorArgs))
-            .Distinct()
-            .ToList();
+            .Distinct()];
 
     private static void AppendKeyedRegistryEntries(
         StringBuilder sb,

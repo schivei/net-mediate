@@ -46,7 +46,7 @@ public sealed class CommandPipelineExecutor<TMessage>(IServiceProvider servicePr
         var registry = serviceProvider.GetService<KeyedHandlerRegistry<ICommandHandler<TMessage>>>();
         if (registry is not null && registry.TryGetAll(key, serviceProvider, out var handlers) && handlers.Length > 0)
             return handlers;
-        return serviceProvider.GetServices<ICommandHandler<TMessage>>().ToArray();
+        return [.. serviceProvider.GetServices<ICommandHandler<TMessage>>()];
     }
 
     private PipelineBehaviorDelegate<TMessage, Task> BuildPipeline(
@@ -55,7 +55,7 @@ public sealed class CommandPipelineExecutor<TMessage>(IServiceProvider servicePr
     )
     {
         var handlers = key is null
-            ? serviceProvider.GetServices<ICommandHandler<TMessage>>().ToArray()
+            ? [.. serviceProvider.GetServices<ICommandHandler<TMessage>>()]
             : ResolveKeyedHandlers(key);
 
         var behaviorArray = serviceProvider.GetServices<IPipelineCommandBehavior<TMessage>>().ToArray();

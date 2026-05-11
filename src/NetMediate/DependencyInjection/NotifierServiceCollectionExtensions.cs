@@ -1,12 +1,14 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NetMediate.Internals;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.DependencyInjection;
 
 /// <summary>
 /// Extension methods for registering the default in-process <see cref="INotifiable"/> implementation.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public static class NotifierServiceCollectionExtensions
 {
     /// <summary>

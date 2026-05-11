@@ -46,7 +46,7 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
         var registry = serviceProvider.GetService<KeyedHandlerRegistry<INotificationHandler<TMessage>>>();
         if (registry is not null && registry.TryGetAll(key, serviceProvider, out var handlers) && handlers.Length > 0)
             return handlers;
-        return serviceProvider.GetServices<INotificationHandler<TMessage>>().ToArray();
+        return [.. serviceProvider.GetServices<INotificationHandler<TMessage>>()];
     }
 
     private PipelineBehaviorDelegate<TMessage, Task> BuildPipeline(
@@ -55,7 +55,7 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
     )
     {
         var handlers = key is null
-            ? serviceProvider.GetServices<INotificationHandler<TMessage>>().ToArray()
+            ? [.. serviceProvider.GetServices<INotificationHandler<TMessage>>()]
             : ResolveKeyedHandlers(key);
 
         var behaviors = serviceProvider.GetServices<IPipelineNotificationBehavior<TMessage>>().ToArray();

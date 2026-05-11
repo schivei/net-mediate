@@ -44,13 +44,13 @@ public sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvide
         var registry = serviceProvider.GetService<KeyedHandlerRegistry<IRequestHandler<TMessage, TResponse>>>();
         if (registry is not null && registry.TryGetAll(key, serviceProvider, out var handlers) && handlers.Length > 0)
             return handlers;
-        return serviceProvider.GetServices<IRequestHandler<TMessage, TResponse>>().ToArray();
+        return [.. serviceProvider.GetServices<IRequestHandler<TMessage, TResponse>>()];
     }
 
     private PipelineBehaviorDelegate<TMessage, Task<TResponse>> BuildPipeline(object? key)
     {
         var handlers = key is null
-            ? serviceProvider.GetServices<IRequestHandler<TMessage, TResponse>>().ToArray()
+            ? [.. serviceProvider.GetServices<IRequestHandler<TMessage, TResponse>>()]
             : ResolveKeyedHandlers(key);
 
         var handler = handlers.Single();

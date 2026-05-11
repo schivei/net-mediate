@@ -59,7 +59,17 @@ public class SourceGenerationPackageMetadataTests
         Assert.Equal("Elton Schivei Costa", metadata.Element(ns + "authors")?.Value);
         Assert.Equal("logo.png", metadata.Element(ns + "icon")?.Value);
         Assert.Equal("README.md", metadata.Element(ns + "readme")?.Value);
-        Assert.Equal("true", metadata.Element(ns + "developmentDependency")?.Value);
+        // DevelopmentDependency is intentionally NOT set — setting it causes NuGet pack to strip all
+        // package dependencies from the nuspec, which would prevent consumers from restoring them.
+        Assert.Null(metadata.Element(ns + "developmentDependency")?.Value);
+
+        // NetMediate and GenDI.SourceGenerator must appear as nuspec dependencies so that
+        // `dotnet restore` downloads them before `dotnet build --no-restore` runs.
+        var deps = metadata.Element(ns + "dependencies");
+        Assert.NotNull(deps);
+        var allDeps = deps.Descendants(ns + "dependency").ToList();
+        Assert.Contains(allDeps, d => d.Attribute("id")?.Value == "NetMediate");
+        Assert.Contains(allDeps, d => d.Attribute("id")?.Value == "GenDI.SourceGenerator");
     }
 
     [Fact]

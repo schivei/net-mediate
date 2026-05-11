@@ -21,7 +21,37 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # calculate version, build/test all projects, and run SonarCloud analysis; on main branch also run benchmarks and post results to PR comment
+  # <VersionYear>$([System.DateTime]::UtcNow.Year)</VersionYear>
+  # <VersionMajor>$([System.DateTime]::UtcNow.Month)</VersionMajor>
+  # <VersionMinor>$([System.DateTime]::UtcNow.Day)</VersionMinor>
+  # <VersionPatch>$([System.DateTime]::UtcNow.Subtract($([System.DateTime]::UtcNow.Date)).TotalMinutes.ToString("F0"))</VersionPatch>
+  # <Stable>$(VersionYear).$(VersionMajor).$(VersionMinor)</Stable>
+  # <Version>$(Stable).$(VersionPatch)$(Suffix)</Version>
+  # the Version must be propagated to all projects for the source-generation integration tests to work, so we run the version-bump workflow on every PR and main commit, but only publish packages from main commits (the version-bump workflow creates a separate commit with the new version after the PR is merged, so the merge commit itself is not published and does not trigger a release)
+
+  version-calculation:
+    name: Version Calculation
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.create-variable.outputs.version }}
+
+    steps:
+    - name: Create Variable
+      id: create-variable
+      shell: pwsh
+      run: |
+        $year=[System.DateTime]::UtcNow.Year
+        $month=[System.DateTime]::UtcNow.Month
+        $day=[System.DateTime]::UtcNow.Day
+        $patch=[System.DateTime]::UtcNow.Subtract([System.DateTime]::UtcNow.Date).TotalMinutes.ToString("F0")
+        $env:VERSION="$year.$month.$day.$patch"
+        echo "version=$env:VERSION" >> $GITHUB_ENV
+        echo "version=$env:VERSION" >> $GITHUB_OUTPUT
+        echo "::set-output name=version::$env:VERSION"
+
   build-and-test:
+    needs: [version-calculation]
     name: Build and Test
     runs-on: ubuntu-latest
     permissions:
@@ -29,6 +59,7 @@ jobs:
       pull-requests: write
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      VERSION: ${{ needs.version-calculation.outputs.version }}
 
     steps:
     - name: Checkout code
@@ -103,13 +134,17 @@ jobs:
         key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/*.props') }}
         restore-keys: |
           ${{ runner.os }}-nuget-
+          
+    - name: Update props
+      run: |
+        sed 's|<PackageReference Include="NetMediate" Version=".*" />|<PackageReference Include="NetMediate" Version="${VERSION}" />|g src/NetMediate.SourceGeneration/buildTransitive/NetMediate.SourceGeneration.props
 
     - name: Pre-pack NetMediate packages for package-metadata and source-generation tests
       run: |
         dotnet restore src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj
-        dotnet pack    src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --no-restore
+        dotnet pack    src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --no-restore /p:Version=${VERSION}
         dotnet restore src/NetMediate/NetMediate.csproj
-        dotnet pack    src/NetMediate/NetMediate.csproj --configuration Release --no-restore
+        dotnet pack    src/NetMediate/NetMediate.csproj --configuration Release --no-restore /p:Version=${VERSION}
       # Package metadata tests and source-generation package-reference tests read the
       # nupkg directly from src/**/bin/Release/, so the packages must exist before test.
 
@@ -117,37 +152,37 @@ jobs:
       run: dotnet restore net-mediate.slnx
 
     - name: Build NetMediate
-      run: dotnet build src/NetMediate/NetMediate.csproj --configuration Release --no-restore
+      run: dotnet build src/NetMediate/NetMediate.csproj --configuration Release --no-restore /p:Version=${VERSION}
 
     - name: Build NetMediate.Core
-      run: dotnet build src/NetMediate.Core/NetMediate.Core.csproj --configuration Release --no-restore
+      run: dotnet build src/NetMediate.Core/NetMediate.Core.csproj --configuration Release --no-restore /p:Version=${VERSION}
 
     - name: Build NetMediate.Diagnostics
-      run: dotnet build src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release
+      run: dotnet build src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release /p:Version=${VERSION}
 
     - name: Build NetMediate.Moq
-      run: dotnet build src/NetMediate.Moq/NetMediate.Moq.csproj --configuration Release
+      run: dotnet build src/NetMediate.Moq/NetMediate.Moq.csproj --configuration Release /p:Version=${VERSION}
 
     - name: Build NetMediate.Resilience
-      run: dotnet build src/NetMediate.Resilience/NetMediate.Resilience.csproj --configuration Release
-
+      run: dotnet build src/NetMediate.Resilience/NetMediate.Resilience.csproj --configuration Release /p:Version=${VERSION}
+      
     - name: Build NetMediate.SourceGeneration
-      run: dotnet build src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release
+      run: dotnet build src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release /p:Version=${VERSION}
       
     - name: Build NetMediate.Quartz
-      run: dotnet build src/NetMediate.Quartz/NetMediate.Quartz.csproj --configuration Release
+      run: dotnet build src/NetMediate.Quartz/NetMediate.Quartz.csproj --configuration Release /p:Version=${VERSION}
       
     - name: Test
-      run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+      run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage  /p:Version=${VERSION}
 
     - name: Test Resilience
-      run: dotnet test tests/NetMediate.Resilience.Tests/NetMediate.Resilience.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+      run: dotnet test tests/NetMediate.Resilience.Tests/NetMediate.Resilience.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage  /p:Version=${VERSION}
 
     - name: Test Diagnostics
-      run: dotnet test tests/NetMediate.Diagnostics.Tests/NetMediate.Diagnostics.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+      run: dotnet test tests/NetMediate.Diagnostics.Tests/NetMediate.Diagnostics.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage  /p:Version=${VERSION}
 
     - name: Test SourceGeneration (package-reference integration)
-      run: dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+      run: dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage  /p:Version=${VERSION}
 
     - name: Enforce 100% line coverage for source packages
       run: |
@@ -393,13 +428,13 @@ jobs:
   package:
     name: Build and Package
     runs-on: ubuntu-latest
-    needs: [build-and-test]
+    needs: [version-calculation, build-and-test]
     if: >-
       ((github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v'))
     permissions:
       contents: read
-    outputs:
-      version: ${{ steps.get_version.outputs.version }}
+    env:
+      VERSION: ${{ needs.version-calculation.outputs.version }}
     
     steps:
     - name: Checkout code
@@ -412,57 +447,36 @@ jobs:
       with:
         dotnet-version: '10.x'
         
-    - name: Pre-build NetMediate (generates nupkg for source generation integration tests)
+    - name: Update props
       run: |
-        dotnet restore src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj
-        dotnet build   src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --no-restore
-        dotnet restore src/NetMediate/NetMediate.csproj
-        dotnet build   src/NetMediate/NetMediate.csproj --configuration Release --no-restore
-      # GeneratePackageOnBuild=true places the nupkg in src/NetMediate/bin/Release/.
+        sed 's|<PackageReference Include="NetMediate" Version=".*" />|<PackageReference Include="NetMediate" Version="${VERSION}" />|g src/NetMediate.SourceGeneration/buildTransitive/NetMediate.SourceGeneration.props
 
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx
       
     - name: Build Release (all projects/targets)
-      run: dotnet build net-mediate.slnx --configuration Release
+      run: dotnet build net-mediate.slnx --configuration Release /p:Version=${VERSION}
 
     - name: Pack NetMediate package
-      run: dotnet pack src/NetMediate/NetMediate.csproj --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate/NetMediate.csproj --configuration Release --output ./packages /p:Version=${VERSION}
 
     - name: Pack NetMediate.Core package
-      run: dotnet pack src/NetMediate.Core/NetMediate.Core.csproj --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.Core/NetMediate.Core.csproj --configuration Release --output ./packages /p:Version=${VERSION}
 
     - name: Pack NetMediate.Diagnostics package
-      run: dotnet pack src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release --output ./packages /p:Version=${VERSION}
 
     - name: Pack NetMediate.Moq package
-      run: dotnet pack src/NetMediate.Moq/NetMediate.Moq.csproj --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.Moq/NetMediate.Moq.csproj --configuration Release --output ./packages /p:Version=${VERSION}
 
     - name: Pack NetMediate.Resilience package
-      run: dotnet pack src/NetMediate.Resilience/NetMediate.Resilience.csproj --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.Resilience/NetMediate.Resilience.csproj --configuration Release --output ./packages /p:Version=${VERSION}
 
     - name: Pack NetMediate.SourceGeneration package
-      run: dotnet pack src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --output ./packages
+      run: dotnet pack src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --output ./packages /p:Version=${VERSION}
       
     - name: Pack NetMediate.Quartz package
-      run: dotnet pack src/NetMediate.Quartz/NetMediate.Quartz.csproj --configuration Release --output ./packages
-      
-    - name: Get package version
-      id: get_version
-      run: |
-        PKG=$(find ./packages -maxdepth 1 -name 'NetMediate.[0-9]*.nupkg' | sort -V | tail -1)
-        if [[ -z "$PKG" ]]; then
-          echo "::error::No NetMediate .nupkg found in ./packages — cannot determine release version."
-          exit 1
-        fi
-        BASENAME=$(basename "$PKG")
-        VERSION="${BASENAME#NetMediate.}"
-        VERSION="${VERSION%.nupkg}"
-        echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-        echo "Detected package version: $VERSION"
-
-    - name: List package contents
-      run: ls -la ./packages/
+      run: dotnet pack src/NetMediate.Quartz/NetMediate.Quartz.csproj --configuration Release --output ./packages /p:Version=${VERSION}
       
     - name: Upload package artifacts
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -512,7 +526,7 @@ jobs:
   release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [package, publish]
+    needs: [version-calculation, package, publish]
     # Run when the package job succeeded AND either:
     #   • publish succeeded (main branch — both NuGet push and GitHub Release)
     #   • publish was skipped (tag push — create GitHub Release without a NuGet push)
@@ -522,7 +536,7 @@ jobs:
       (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
     permissions:
       contents: write
-      
+
     steps:
     - name: Checkout code
       uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -539,7 +553,7 @@ jobs:
         if [[ "$GITHUB_REF" == refs/tags/* ]]; then
           echo "tag_name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
         else
-          echo "tag_name=v${{ needs.package.outputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=v${{ needs.version-calculation.outputs.version }}" >> "$GITHUB_OUTPUT"
         fi
 
     - name: Create Release

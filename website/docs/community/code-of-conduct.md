@@ -111,8 +111,8 @@ For questions about this Code of Conduct or to report violations, please contact
 
 ## Additional Resources
 
-- [Contributing Guidelines](CONTRIBUTING.md)
-- [Project License](LICENSE)
+- [Contributing Guidelines](contributing)
+- [Project License](https://github.com/schivei/net-mediate/blob/main/LICENSE)
 - [GitHub Community Guidelines](https://docs.github.com/en/site-policy/github-terms/github-community-guidelines)
 
 ## Attribution

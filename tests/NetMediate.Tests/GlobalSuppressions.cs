@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
+[assembly: GenDI.GenDICoveration(false)]
+
 [assembly: SuppressMessage(
     "CodeQuality",
     "IDE0076:Invalid global 'SuppressMessageAttribute'",

@@ -35,9 +35,6 @@ Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience` to make
 ### 📊 **OpenTelemetry-Ready Diagnostics**
 Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream operations with full distributed tracing support.
 
-### 🐕 **Optional DataDog Integrations**
-OpenTelemetry, Serilog, and ILogger support packages for comprehensive observability.
-
 ### 🔑 **Keyed Handler Routing**
 Register handlers under named keys and dispatch to specific subsets at runtime — **fully NativeAOT + Trimming compatible** via source-generated `KeyedHandlerRegistry<T>`.
 
@@ -124,9 +121,6 @@ NetMediate consists of several packages:
 - **NetMediate.Diagnostics** - OpenTelemetry integration
 - **NetMediate.Quartz** - Persistent notifications with Quartz.NET
 - **NetMediate.Moq** - Testing utilities for Moq
-- **NetMediate.DataDog.OpenTelemetry** - DataDog OTLP exporter integration
-- **NetMediate.DataDog.Serilog** - DataDog Serilog sink integration
-- **NetMediate.DataDog.ILogger** - DataDog ILogger integration
 
 ## Community and Support
 

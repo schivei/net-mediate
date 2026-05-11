@@ -10,7 +10,6 @@ This page is the wiki entry point for the repository documentation set.
 - [Resilience](RESILIENCE.md)
 - [Quartz persistent notifications](QUARTZ.md)
 - [Source generation](SOURCE_GENERATION.md)
-- [DataDog integrations](DATADOG.md)
 - [NetMediate.Moq recipes](NETMEDIATE_MOQ_RECIPES.md)
 - [Samples](SAMPLES.md)
 - [AOT / NativeAOT and trimming](AOT.md)

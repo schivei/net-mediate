@@ -108,6 +108,91 @@ public class NetMediateMoqTests
     }
 
     [Fact]
+    public async Task MoqNotifier_DispatchNotifications_WithNoHandlers_Completes()
+    {
+        using var provider = new ServiceCollection().BuildServiceProvider();
+        var notifier = new NotifierMock(provider);
+
+        var exception = await Record.ExceptionAsync(() =>
+            notifier.DispatchNotifications(
+                null,
+                new NotifierTestMessage(),
+                [],
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task MoqNotifier_Notify_DelegatesToInnerNotifier()
+    {
+        var handled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var services = new ServiceCollection();
+        services.AddSingleton<INotificationHandler<NotifierTestMessage>>(
+            new LambdaNotificationHandler<NotifierTestMessage>((_, _) =>
+            {
+                handled.TrySetResult();
+                return Task.CompletedTask;
+            })
+        );
+        services.AddSingleton(sp =>
+            new NotificationPipelineExecutor<NotifierTestMessage>(
+                sp,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<
+                    NotificationPipelineExecutor<NotifierTestMessage>
+                >.Instance
+            )
+        );
+
+        using var provider = services.BuildServiceProvider();
+        var notifier = new NotifierMock(provider);
+
+        await notifier.Notify(null, new NotifierTestMessage(), TestContext.Current.CancellationToken);
+
+        await handled.Task.WaitAsync(TestContext.Current.CancellationToken);
+        Assert.True(handled.Task.IsCompletedSuccessfully);
+    }
+
+    [Fact]
+    public async Task MoqNotifier_NotifyBatch_DelegatesToInnerNotifier()
+    {
+        var callCount = 0;
+        var allHandled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var services = new ServiceCollection();
+        services.AddSingleton<INotificationHandler<NotifierTestMessage>>(
+            new LambdaNotificationHandler<NotifierTestMessage>((_, _) =>
+            {
+                if (Interlocked.Increment(ref callCount) == 2)
+                    allHandled.TrySetResult();
+
+                return Task.CompletedTask;
+            })
+        );
+        services.AddSingleton(sp =>
+            new NotificationPipelineExecutor<NotifierTestMessage>(
+                sp,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<
+                    NotificationPipelineExecutor<NotifierTestMessage>
+                >.Instance
+            )
+        );
+
+        using var provider = services.BuildServiceProvider();
+        var notifier = new NotifierMock(provider);
+
+        await notifier.Notify(
+            null,
+            [new NotifierTestMessage(), new NotifierTestMessage()],
+            TestContext.Current.CancellationToken
+        );
+
+        await allHandled.Task.WaitAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(2, callCount);
+    }
+
+    [Fact]
     public void AddMediatorMock_ShouldRegisterMediatorMock()
     {
         var services = new ServiceCollection();

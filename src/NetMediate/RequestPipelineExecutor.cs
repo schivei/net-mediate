@@ -15,6 +15,9 @@ namespace NetMediate;
 public sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvider serviceProvider, ILogger<RequestPipelineExecutor<TMessage, TResponse>> logger)
     where TMessage : notnull
 {
+    // Cached pipeline for the common key-less path; built once on the first call.
+    private PipelineBehaviorDelegate<TMessage, Task<TResponse>>? _noKeyPipeline;
+
     /// <summary>
     /// Invokes the request handler pipeline for the specified message and returns the response asynchronously.
     /// </summary>
@@ -31,12 +34,21 @@ public sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvide
         CancellationToken cancellationToken
     )
     {
-        var lazy = new Lazy<PipelineBehaviorDelegate<TMessage, Task<TResponse>>>(
-            () => BuildPipeline(key),
-            LazyThreadSafetyMode.ExecutionAndPublication
-        );
+        if (key is null)
+        {
+            // Fast path: reuse the cached pipeline for the key-less case.
+            var pipeline = _noKeyPipeline ?? InitNoKeyPipeline();
+            return pipeline(null, message, cancellationToken);
+        }
 
-        return lazy.Value(key, message, cancellationToken);
+        return BuildPipeline(key)(key, message, cancellationToken);
+    }
+
+    private PipelineBehaviorDelegate<TMessage, Task<TResponse>> InitNoKeyPipeline()
+    {
+        var built = BuildPipeline(null);
+        Interlocked.CompareExchange(ref _noKeyPipeline, built, null);
+        return _noKeyPipeline!;
     }
 
     private IRequestHandler<TMessage, TResponse>[] ResolveKeyedHandlers(object key)
@@ -44,13 +56,13 @@ public sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvide
         var registry = serviceProvider.GetService<KeyedHandlerRegistry<IRequestHandler<TMessage, TResponse>>>();
         if (registry is not null && registry.TryGetAll(key, serviceProvider, out var handlers) && handlers.Length > 0)
             return handlers;
-        return serviceProvider.GetServices<IRequestHandler<TMessage, TResponse>>().ToArray();
+        return [.. serviceProvider.GetServices<IRequestHandler<TMessage, TResponse>>()];
     }
 
     private PipelineBehaviorDelegate<TMessage, Task<TResponse>> BuildPipeline(object? key)
     {
         var handlers = key is null
-            ? serviceProvider.GetServices<IRequestHandler<TMessage, TResponse>>().ToArray()
+            ? [.. serviceProvider.GetServices<IRequestHandler<TMessage, TResponse>>()]
             : ResolveKeyedHandlers(key);
 
         var handler = handlers.Single();
@@ -69,15 +81,22 @@ public sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvide
 
         Task<TResponse> App(object? _, TMessage msg, CancellationToken ct) => handler.Handle(msg, ct);
 
-        async Task<TResponse> ErrorReporting(object? routingKey, TMessage msg, CancellationToken ct)
+        Task<TResponse> ErrorReporting(object? routingKey, TMessage msg, CancellationToken ct)
         {
-            try
+            var task = pipeline(routingKey, msg, ct);
+            // Avoid async state-machine allocation on the hot success path.
+            return task.IsCompletedSuccessfully ? task : AwaitAndCatch(task);
+
+            async Task<TResponse> AwaitAndCatch(Task<TResponse> t)
             {
-                return await pipeline(routingKey, msg, ct).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (LogFailure(ex))
-            {
-                throw;
+                try
+                {
+                    return await t.ConfigureAwait(false);
+                }
+                catch (Exception ex) when (LogFailure(ex))
+                {
+                    throw;
+                }
             }
         }
 

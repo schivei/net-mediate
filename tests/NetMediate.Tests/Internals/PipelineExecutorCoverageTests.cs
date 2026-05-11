@@ -47,6 +47,22 @@ public sealed class PipelineExecutorCoverageTests
             => Task.FromException(new InvalidOperationException("notif fault"));
     }
 
+    // Async handler stubs – Task.Yield() ensures the task is NOT pre-completed
+    // when returned, which forces ErrorReporting into the AwaitAndCatch path
+    // and exercises the success-path closing braces (uncovered without these).
+
+    private sealed class AsyncCmdHandler : ICommandHandler<Cmd>
+    {
+        public async Task Handle(Cmd command, CancellationToken cancellationToken = default)
+            => await Task.Yield();
+    }
+
+    private sealed class AsyncNotifHandler : INotificationHandler<Notif>
+    {
+        public async Task Handle(Notif notification, CancellationToken cancellationToken = default)
+            => await Task.Yield();
+    }
+
     private sealed class ReqHandler : IRequestHandler<Req, Rsp>
     {
         public bool Handled { get; private set; }
@@ -54,6 +70,15 @@ public sealed class PipelineExecutorCoverageTests
         {
             Handled = true;
             return Task.FromResult(new Rsp(42));
+        }
+    }
+
+    private sealed class AsyncReqHandler : IRequestHandler<Req, Rsp>
+    {
+        public async Task<Rsp> Handle(Req request, CancellationToken cancellationToken = default)
+        {
+            await Task.Yield();
+            return new Rsp(99);
         }
     }
 
@@ -267,6 +292,19 @@ public sealed class PipelineExecutorCoverageTests
         await Assert.ThrowsAsync<InvalidOperationException>(async () => await t);
     }
 
+    // ErrorReporting – async handler completes successfully (covers AwaitAndCatch
+    // success-path closing braces that are unreachable via pre-completed tasks) ─
+    [Fact]
+    public async Task Cmd_AsyncHandler_AwaitAndCatch_SuccessPath()
+    {
+        var sp = BuildProvider(s => s.AddSingleton<ICommandHandler<Cmd>>(_ => new AsyncCmdHandler()));
+        var ex = new CommandPipelineExecutor<Cmd>(sp, NullLogger<CommandPipelineExecutor<Cmd>>.Instance);
+
+        // AsyncCmdHandler uses Task.Yield(), so pipeline returns a non-completed
+        // task → ErrorReporting calls AwaitAndCatch → task completes successfully.
+        await ex.Handle(null, new Cmd(), CmdExec(), TestCancellationToken);
+    }
+
     // =========================================================================
     // NotificationPipelineExecutor
     // =========================================================================
@@ -405,6 +443,19 @@ public sealed class PipelineExecutorCoverageTests
         );
     }
 
+    // ErrorReporting – async handler completes successfully (covers AwaitAndCatch
+    // success-path closing braces that are unreachable via pre-completed tasks) ─
+    [Fact]
+    public async Task Notif_AsyncHandler_AwaitAndCatch_SuccessPath()
+    {
+        var sp = BuildProvider(s => s.AddSingleton<INotificationHandler<Notif>>(_ => new AsyncNotifHandler()));
+        var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
+
+        // AsyncNotifHandler uses Task.Yield(), so pipeline returns a non-completed
+        // task → ErrorReporting calls AwaitAndCatch → task completes successfully.
+        await ex.Handle(null, new Notif(), NotifExec(), TestCancellationToken);
+    }
+
     // =========================================================================
     // RequestPipelineExecutor
     // =========================================================================
@@ -504,6 +555,20 @@ public sealed class PipelineExecutorCoverageTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             ex.Handle(null, new Req(), TestCancellationToken)
         );
+    }
+
+    // ErrorReporting – async handler completes successfully (covers AwaitAndCatch
+    // success-path closing braces that are unreachable via pre-completed tasks) ─
+    [Fact]
+    public async Task Req_AsyncHandler_AwaitAndCatch_SuccessPath()
+    {
+        var sp = BuildProvider(s => s.AddSingleton<IRequestHandler<Req, Rsp>>(_ => new AsyncReqHandler()));
+        var ex = new RequestPipelineExecutor<Req, Rsp>(sp, NullLogger<RequestPipelineExecutor<Req, Rsp>>.Instance);
+
+        // AsyncReqHandler uses Task.Yield(), so pipeline returns a non-completed
+        // task → ErrorReporting calls AwaitAndCatch → task completes successfully.
+        var response = await ex.Handle(null, new Req(), TestCancellationToken);
+        Assert.Equal(99, response.Value);
     }
 
     // =========================================================================

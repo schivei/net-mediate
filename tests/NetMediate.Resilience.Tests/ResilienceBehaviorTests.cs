@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Options;
 
+[assembly: GenDI.GenDICoveration(false)]
+
 namespace NetMediate.Resilience.Tests;
 
 public sealed class ResilienceBehaviorTests

@@ -8,185 +8,201 @@ import PropTypes from 'prop-types';
 import styles from './index.module.css';
 
 function HomepageHeader() {
-  const {siteConfig} = useDocusaurusContext();
-  return (
-    <header className={clsx('hero hero--primary', styles.heroBanner)}>
-      <div className="container">
-        <Heading as="h1" className="hero__title">
-          {siteConfig.title}
-        </Heading>
-        <p className="hero__subtitle">{siteConfig.tagline}</p>
-        <div className={styles.buttons}>
-          <Link
-            className="button button--secondary button--lg"
-            to="/docs/intro">
-            Get Started - 5min ⏱️
-          </Link>
-          <Link
-            className="button button--outline button--secondary button--lg"
-            to="/docs/getting-started/installation"
-            style={{marginLeft: '1rem'}}>
-            Installation Guide
-          </Link>
-        </div>
-        <div className={styles.badges}>
-          <a href="https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml">
-            <img src="https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml/badge.svg" alt="CI/CD Pipeline" />
-          </a>
-          <a href="https://github.com/schivei/net-mediate/actions/workflows/deploy-docs.yml">
-            <img src="https://github.com/schivei/net-mediate/actions/workflows/deploy-docs.yml/badge.svg" alt="Deploy Documentation" />
-          </a>
-          <a href="https://www.nuget.org/packages/NetMediate/">
-            <img src="https://img.shields.io/nuget/v/NetMediate?style=flat&label=NetMediate&logo=nuget" alt="NuGet NetMediate" />
-          </a>
-          <a href="https://www.nuget.org/packages/NetMediate.Core/">
-            <img src="https://img.shields.io/nuget/v/NetMediate.Core?style=flat&label=NetMediate.Core&logo=nuget" alt="NuGet NetMediate.Core" />
-          </a>
-          <a href="https://www.nuget.org/packages/NetMediate.SourceGeneration/">
-            <img src="https://img.shields.io/nuget/v/NetMediate.SourceGeneration?style=flat&label=NetMediate.SourceGeneration&logo=nuget" alt="NuGet NetMediate.SourceGeneration" />
-          </a>
-          <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
-            <img src="https://img.shields.io/sonar/quality_gate/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Quality%20Gate" alt="Quality Gate" />
-          </a>
-          <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
-            <img src="https://img.shields.io/sonar/bugs/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Bugs" alt="Bugs" />
-          </a>
-          <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
-            <img src="https://img.shields.io/sonar/code_smells/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Code%20Smells" alt="Code Smells" />
-          </a>
-          <a href="https://sonarcloud.io/component_measures?id=schivei_net-mediate&amp;metric=new_coverage&amp;view=list">
-            <img src="https://raw.githubusercontent.com/schivei/net-mediate/main/docs/badges/coverage-lines.svg" alt="Coverage Lines" />
-          </a>
-          <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
-            <img src="https://raw.githubusercontent.com/schivei/net-mediate/main/docs/badges/coverage-branches.svg" alt="Coverage Branches" />
-          </a>
-          <a href="https://github.com/schivei/net-mediate/blob/main/LICENSE">
-            <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT" />
-          </a>
-          <a href="https://elton.schivei.nom.br/net-mediate">
-            <img src="https://img.shields.io/badge/Documentation-Website-blue" alt="Documentation" />
-          </a>
-        </div>
-      </div>
-    </header>
-  );
+    const { siteConfig } = useDocusaurusContext();
+    return (
+        <header className={clsx('hero hero--primary', styles.heroBanner)}>
+            <div className="container">
+                <Heading as="h1" className="hero__title">
+                    {siteConfig.title}
+                </Heading>
+                <p className="hero__subtitle">{siteConfig.tagline}</p>
+                <div className={styles.buttons}>
+                    <Link
+                        className="button button--secondary button--lg"
+                        to="/docs/intro">
+                        Get Started - 5min ⏱️
+                    </Link>
+                    <Link
+                        className="button button--outline button--secondary button--lg"
+                        to="/docs/getting-started/installation"
+                        style={{ marginLeft: '1rem' }}>
+                        Installation Guide
+                    </Link>
+                </div>
+                <div className={styles.badges}>
+                    <a href="https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml">
+                        <img src="https://github.com/schivei/net-mediate/actions/workflows/ci-cd.yml/badge.svg" alt="CI/CD Pipeline" />
+                    </a>
+                    <a href="https://github.com/schivei/net-mediate/actions/workflows/deploy-docs.yml">
+                        <img src="https://github.com/schivei/net-mediate/actions/workflows/deploy-docs.yml/badge.svg" alt="Deploy Documentation" />
+                    </a>
+                    <a href="https://www.nuget.org/packages/NetMediate/">
+                        <img src="https://img.shields.io/nuget/v/NetMediate?style=flat&label=NetMediate&logo=nuget" alt="NuGet NetMediate" />
+                    </a>
+                    <a href="https://www.nuget.org/packages/NetMediate.Core/">
+                        <img src="https://img.shields.io/nuget/v/NetMediate.Core?style=flat&label=NetMediate.Core&logo=nuget" alt="NuGet NetMediate.Core" />
+                    </a>
+                    <a href="https://www.nuget.org/packages/NetMediate.SourceGeneration/">
+                        <img src="https://img.shields.io/nuget/v/NetMediate.SourceGeneration?style=flat&label=NetMediate.SourceGeneration&logo=nuget" alt="NuGet NetMediate.SourceGeneration" />
+                    </a>
+                    <br />
+                    <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
+                        <img src="https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=alert_status" alt="Quality Gate" />
+                    </a>
+                    <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
+                        <img src="https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=bugs" alt="Bugs" />
+                    </a>
+                    <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
+                        <img src="https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=code_smells" alt="Code Smells" />
+                    </a>
+                    <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
+                        <img src="https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=duplicated_lines_density" alt="Duplicated Lines" />
+                    </a>
+                    <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
+                        <img src="https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=ncloc" alt="Lines of Code" />
+                    </a>
+                    <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
+                        <img src="https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=reliability_rating" alt="Reliability Rating" />
+                    </a>
+                    <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
+                        <img src="https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=security_rating" alt="Security Rating" />
+                    </a>
+                    <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
+                        <img src="https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=sqale_index" alt="Technical Debt" />
+                    </a>
+                    <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
+                        <img src="https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=sqale_rating" alt="Maintainability Rating" />
+                    </a>
+                    <a href="https://sonarcloud.io/summary/new_code?id=schivei_net-mediate">
+                        <img src="https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=vulnerabilities" alt="Vulnerabilities" />
+                    </a>
+                    <br />
+                    <a href="https://github.com/schivei/net-mediate/blob/main/LICENSE">
+                        <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License MIT" />
+                    </a>
+                    <a href="https://elton.schivei.nom.br/net-mediate">
+                        <img src="https://img.shields.io/badge/Documentation-Website-blue" alt="Documentation" />
+                    </a>
+                </div>
+            </div>
+        </header>
+    );
 }
 
 const FeatureList = [
-  {
-    title: 'Easy to Use',
-    emoji: '🚀',
-    description: (
-      <>
-        NetMediate is designed to be simple and intuitive. Define your messages
-        and handlers, register them with dependency injection, and start using
-        the mediator pattern immediately.
-      </>
-    ),
-  },
-  {
-    title: 'Type-Safe',
-    emoji: '🔒',
-    description: (
-      <>
-        Built with strong typing in mind. Commands, requests, notifications, and
-        streams are all fully typed, providing compile-time safety and excellent
-        IDE support.
-      </>
-    ),
-  },
-  {
-    title: 'AOT Compatible',
-    emoji: '⚡',
-    description: (
-      <>
-        Full support for .NET Native AOT compilation with source generators.
-        No reflection at runtime means blazing-fast performance and small
-        deployment sizes.
-      </>
-    ),
-  },
-  {
-    title: 'Pipeline Behaviors',
-    emoji: '🔄',
-    description: (
-      <>
-        Implement cross-cutting concerns like logging, validation, and caching
-        with pipeline behaviors. Wrap your handlers with reusable middleware-style
-        interceptors.
-      </>
-    ),
-  },
-  {
-    title: 'Built-in Resilience',
-    emoji: '🛡️',
-    description: (
-      <>
-        Optional resilience package provides retry, timeout, and circuit breaker
-        behaviors out of the box. Make your applications more robust with minimal
-        configuration.
-      </>
-    ),
-  },
-  {
-    title: 'Observability Ready',
-    emoji: '📊',
-    description: (
-      <>
-        Native OpenTelemetry support with ActivitySource and Meter for traces
-        and metrics. DataDog integration packages available for comprehensive
-        observability.
-      </>
-    ),
-  },
+    {
+        title: 'Easy to Use',
+        emoji: '🚀',
+        description: (
+            <>
+                NetMediate is designed to be simple and intuitive. Define your messages
+                and handlers, register them with dependency injection, and start using
+                the mediator pattern immediately.
+            </>
+        ),
+    },
+    {
+        title: 'Type-Safe',
+        emoji: '🔒',
+        description: (
+            <>
+                Built with strong typing in mind. Commands, requests, notifications, and
+                streams are all fully typed, providing compile-time safety and excellent
+                IDE support.
+            </>
+        ),
+    },
+    {
+        title: 'AOT Compatible',
+        emoji: '⚡',
+        description: (
+            <>
+                Full support for .NET Native AOT compilation with source generators.
+                No reflection at runtime means blazing-fast performance and small
+                deployment sizes.
+            </>
+        ),
+    },
+    {
+        title: 'Pipeline Behaviors',
+        emoji: '🔄',
+        description: (
+            <>
+                Implement cross-cutting concerns like logging, validation, and caching
+                with pipeline behaviors. Wrap your handlers with reusable middleware-style
+                interceptors.
+            </>
+        ),
+    },
+    {
+        title: 'Built-in Resilience',
+        emoji: '🛡️',
+        description: (
+            <>
+                Optional resilience package provides retry, timeout, and circuit breaker
+                behaviors out of the box. Make your applications more robust with minimal
+                configuration.
+            </>
+        ),
+    },
+    {
+        title: 'Observability Ready',
+        emoji: '📊',
+        description: (
+            <>
+                Native OpenTelemetry support with ActivitySource and Meter for traces
+                and metrics.
+            </>
+        ),
+    },
 ];
 
 function Feature({ emoji, title, description }) {
-  return (
-    <div className={clsx('col col--4')}>
-      <div className="text--center">
-        <div className={styles.featureEmoji}>{emoji}</div>
-      </div>
-      <div className="text--center padding-horiz--md">
-        <Heading as="h3">{title}</Heading>
-        <p>{description}</p>
-      </div>
-    </div>
-  );
+    return (
+        <div className={clsx('col col--4')}>
+            <div className="text--center">
+                <div className={styles.featureEmoji}>{emoji}</div>
+            </div>
+            <div className="text--center padding-horiz--md">
+                <Heading as="h3">{title}</Heading>
+                <p>{description}</p>
+            </div>
+        </div>
+    );
 }
 
 Feature.propTypes = {
-  emoji: PropTypes.string.isRequired,
-  title: PropTypes.string.isRequired,
-  description: PropTypes.node.isRequired,
+    emoji: PropTypes.string.isRequired,
+    title: PropTypes.string.isRequired,
+    description: PropTypes.node.isRequired,
 };
 
 function HomepageFeatures() {
-  return (
-    <section className={styles.features}>
-      <div className="container">
-        <div className="row">
-          {FeatureList.map((props) => (
-            <Feature key={props.title} {...props} /> // NOSONAR S6774
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+    return (
+        <section className={styles.features}>
+            <div className="container">
+                <div className="row">
+                    {FeatureList.map((props) => (
+                        <Feature key={props.title} {...props} /> // NOSONAR S6774
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
 }
 
 function QuickExample() {
-  return (
-    <section className={styles.quickExample}>
-      <div className="container">
-        <div className="row">
-          <div className="col">
-            <Heading as="h2" className="text--center margin-bottom--lg">
-              Quick Example
-            </Heading>
-            <div className="margin-bottom--lg">
-              <pre>
-                <code className="language-csharp">{`// 1. Install the packages
+    return (
+        <section className={styles.quickExample}>
+            <div className="container">
+                <div className="row">
+                    <div className="col">
+                        <Heading as="h2" className="text--center margin-bottom--lg">
+                            Quick Example
+                        </Heading>
+                        <div className="margin-bottom--lg">
+                            <pre>
+                                <code className="language-csharp">{`// 1. Install the packages
 dotnet add package NetMediate
 dotnet add package NetMediate.SourceGeneration
 
@@ -208,33 +224,33 @@ builder.Services.AddNetMediate();
 
 // 5. Use the mediator
 await mediator.Notify(new UserCreated("123", "user@example.com"));`}</code>
-              </pre>
+                            </pre>
+                        </div>
+                        <div className="text--center">
+                            <Link
+                                className="button button--primary button--lg"
+                                to="/docs/getting-started/quick-start">
+                                View Full Quick Start Guide →
+                            </Link>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div className="text--center">
-              <Link
-                className="button button--primary button--lg"
-                to="/docs/getting-started/quick-start">
-                View Full Quick Start Guide →
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
+        </section>
+    );
 }
 
 export default function Home() {
-  const {siteConfig} = useDocusaurusContext();
-  return (
-    <Layout
-      title={`${siteConfig.title} - ${siteConfig.tagline}`}
-      description="A lightweight and efficient .NET implementation of the Mediator pattern for in-process messaging and communication between components.">
-      <HomepageHeader />
-      <main>
-        <HomepageFeatures />
-        <QuickExample />
-      </main>
-    </Layout>
-  );
+    const { siteConfig } = useDocusaurusContext();
+    return (
+        <Layout
+            title={`${siteConfig.title} - ${siteConfig.tagline}`}
+            description="A lightweight and efficient .NET implementation of the Mediator pattern for in-process messaging and communication between components.">
+            <HomepageHeader />
+            <main>
+                <HomepageFeatures />
+                <QuickExample />
+            </main>
+        </Layout>
+    );
 }

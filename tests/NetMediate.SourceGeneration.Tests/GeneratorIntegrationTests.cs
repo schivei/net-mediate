@@ -40,26 +40,28 @@ public sealed class GeneratorIntegrationTests
     /// </summary>
     private static IIncrementalGenerator CreateGenerator()
     {
-        var generatorDll = GeneratorAssemblyLoader.GetProjectBuildDllPath();
-
-        if (!File.Exists(generatorDll))
+        try
+        {
+            GeneratorAssemblyLoader.GetProjectBuildDllPath();
+        }
+        catch (Exception ex)
         {
             var packageRoot = GetSourceGenerationPackageRoot();
-            generatorDll = Path.Combine(
+            var generatorDll = Path.Combine(
                 packageRoot,
                 "analyzers",
                 "dotnet",
                 "cs",
                 "NetMediate.SourceGeneration.dll"
             );
-        }
 
-        if (!File.Exists(generatorDll))
-            throw new FileNotFoundException(
-                $"NetMediate.SourceGeneration.dll not found at '{generatorDll}'. "
-                    + $"Ensure the referenced NetMediate.SourceGeneration package contains the analyzer.",
-                generatorDll
-            );
+            if (!File.Exists(generatorDll))
+                throw new FileNotFoundException(
+                    $"NetMediate.SourceGeneration.dll not found at '{generatorDll}'. "
+                        + $"Ensure the referenced NetMediate.SourceGeneration package contains the analyzer.",
+                    generatorDll, ex
+                );
+        }
 
         var asm = GeneratorAssemblyLoader.Load();
         var type =

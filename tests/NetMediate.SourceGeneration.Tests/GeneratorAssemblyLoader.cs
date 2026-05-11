@@ -1,5 +1,7 @@
 using System.Reflection;
 
+[assembly: GenDI.GenDICoveration(false)]
+
 namespace NetMediate.SourceGeneration.Tests;
 
 internal static class GeneratorAssemblyLoader
@@ -8,12 +10,15 @@ internal static class GeneratorAssemblyLoader
     {
         var copiedGeneratorDll = Path.Combine(AppContext.BaseDirectory, "NetMediate.SourceGeneration.dll");
         if (File.Exists(copiedGeneratorDll))
-            return Assembly.LoadFrom(copiedGeneratorDll);
+        {
+            var binaryContent = File.ReadAllBytes(copiedGeneratorDll);
+            return Assembly.Load(binaryContent);
+        }
 
-        return Assembly.LoadFrom(GetProjectBuildDllPath());
+        return Assembly.Load(GetProjectBuildDllPath());
     }
 
-    internal static string GetProjectBuildDllPath()
+    internal static byte[] GetProjectBuildDllPath()
     {
         var configuration =
 #if DEBUG
@@ -22,7 +27,7 @@ internal static class GeneratorAssemblyLoader
             "Release";
 #endif
 
-        return Path.GetFullPath(
+        var path = Path.GetFullPath(
             Path.Combine(
                 AppContext.BaseDirectory,
                 "..",
@@ -38,5 +43,10 @@ internal static class GeneratorAssemblyLoader
                 "NetMediate.SourceGeneration.dll"
             )
         );
+
+        if (!File.Exists(path))
+            throw new FileNotFoundException($"Could not find the generator assembly at path: {path}");
+
+        return File.ReadAllBytes(path);
     }
 }

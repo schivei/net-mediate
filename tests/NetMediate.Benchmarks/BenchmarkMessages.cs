@@ -71,8 +71,6 @@ public sealed class BenchStreamHandler : IStreamHandler<BenchStreamRequest, Benc
             CancellationToken cancellationToken = default
     )
     {
-        ArgumentNullException.ThrowIfNull(message);
-
         foreach (var item in _items)
         {
             cancellationToken.ThrowIfCancellationRequested();

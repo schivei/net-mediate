@@ -178,7 +178,7 @@ public sealed class AuditMyRequestBehavior
 ```
 
 :::tip Validation
-There is no built-in validation in NetMediate. Implement your own validation as a pipeline behavior. See the [Validation guide](validation) for an example.
+There is no built-in validation in NetMediate. Implement your own validation as a pipeline behavior. See the [Validation guide](../guides/validation) for an example.
 :::
 
 ## Resilience package (`NetMediate.Resilience`)
@@ -276,15 +276,3 @@ var clockMock = services.AddMockSingleton<IClock>();
 ```
 
 See the [Moq Recipes guide](../testing/moq-recipes) for full details.
-
-## DataDog integrations
-
-### Installation
-
-```bash
-dotnet add package NetMediate.DataDog.OpenTelemetry
-dotnet add package NetMediate.DataDog.Serilog
-dotnet add package NetMediate.DataDog.ILogger
-```
-
-See the [DataDog guide](../advanced/datadog) for full details.

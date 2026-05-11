@@ -2,11 +2,12 @@
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
     <Suffix />
-    <VersionYear>2026</VersionYear>
-    <VersionMajor>0</VersionMajor>
-    <VersionMinor>2</VersionMinor>
-    <VersionPatch>0</VersionPatch>
-    <Version>$(VersionYear).$(VersionMajor).$(VersionMinor).$(VersionPatch)$(Suffix)</Version>
+    <VersionYear>$([System.DateTime]::UtcNow.Year)</VersionYear>
+    <VersionMajor>$([System.DateTime]::UtcNow.Month)</VersionMajor>
+    <VersionMinor>$([System.DateTime]::UtcNow.Day)</VersionMinor>
+    <VersionPatch>$([System.DateTime]::UtcNow.Subtract($([System.DateTime]::UtcNow.Date)).TotalMinutes.ToString("F0"))</VersionPatch>
+    <Stable>$(VersionYear).$(VersionMajor).$(VersionMinor)</Stable>
+    <Version>$(Stable).$(VersionPatch)$(Suffix)</Version>
     <NoWarn>nullable;NU5118;$(NoWarn)</NoWarn>
   </PropertyGroup>
 </Project>

@@ -41,18 +41,6 @@ builder.Services.AddOpenTelemetry()
     .WithMetrics(m => m.AddMeter(NetMediateDiagnostics.MeterName));
 ```
 
-For DataDog, use the dedicated package instead:
-
-```csharp
-builder.Services.AddNetMediateDataDogOpenTelemetry(options =>
-{
-    options.ServiceName    = "my-service";
-    options.OtlpEndpoint   = new Uri("http://localhost:4318");
-});
-```
-
-See [DATADOG.md](DATADOG.md) for full details.
-
 ## Performance comparison (main vs current branch)
 
 Measurements were captured with the same load scenarios used in tests, using **5 runs per branch** and reporting the **median throughput**:
@@ -78,4 +66,3 @@ Environment used for these measurements:
 ## See Also
 
 - [BENCHMARKS.md](BENCHMARKS.md) — full benchmark matrix and reproduction steps
-- [DATADOG.md](DATADOG.md) — DataDog integration guide

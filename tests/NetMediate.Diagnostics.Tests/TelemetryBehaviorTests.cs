@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using System.Diagnostics.Metrics;
+
+[assembly: GenDI.GenDICoveration(false)]
 
 namespace NetMediate.Diagnostics.Tests;
 
@@ -119,6 +122,63 @@ public sealed class TelemetryBehaviorTests
         );
 
         Assert.Equal(ActivityStatusCode.Error, Assert.Single(stoppedActivities).Status);
+    }
+
+    [Fact]
+    public void StartActivity_WithParentActivity_CreatesLinkedActivityAndTags()
+    {
+        using var listener = CreateListener(out var stoppedActivities);
+        using var parent = new Activity("parent").Start();
+
+        using (var activity = NetMediateDiagnostics.StartActivity<CommandMessage>("Send"))
+        {
+            Assert.NotNull(activity);
+            Assert.Equal("NetMediate.Send", activity.OperationName);
+            Assert.Contains(activity.Links, link => link.Context.TraceId == parent.TraceId);
+            Assert.Equal("Send", activity.GetTagItem("netmediate.operation"));
+            Assert.Equal(nameof(CommandMessage), activity.GetTagItem("netmediate.message_type"));
+        }
+
+        Assert.Single(stoppedActivities);
+    }
+
+    [Fact]
+    public void RecordNotify_WhenMeterEnabled_EmitsCounter()
+    {
+        var emitted = false;
+        using var meterListener = new MeterListener();
+        meterListener.InstrumentPublished = (instrument, listener) =>
+        {
+            if (
+                instrument.Meter.Name == NetMediateDiagnostics.MeterName
+                && instrument.Name == NetMediateDiagnostics.NotifyCountMetricName
+            )
+            {
+                listener.EnableMeasurementEvents(instrument);
+            }
+        };
+        meterListener.SetMeasurementEventCallback<long>((_, value, tags, _) =>
+        {
+            var hasMessageTypeTag = false;
+            foreach (var tag in tags)
+            {
+                if (
+                    tag.Key == NetMediateDiagnostics.MessageTypeName
+                    && Equals(tag.Value, nameof(NotificationMessage))
+                )
+                {
+                    hasMessageTypeTag = true;
+                    break;
+                }
+            }
+
+            emitted = value == 1 && hasMessageTypeTag;
+        });
+        meterListener.Start();
+
+        NetMediateDiagnostics.RecordNotify<NotificationMessage>();
+
+        Assert.True(emitted);
     }
 
     private static ActivityListener CreateListener(out List<Activity> stoppedActivities)

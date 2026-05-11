@@ -1,7 +1,9 @@
 <Solution>
   <Folder Name="/.sln/">
     <File Path=".github/dependabot.yml" />
+    <File Path=".github/scripts/update_benchmarks.py" />
     <File Path=".github/workflows/ci-cd.yml" />
+    <File Path=".github/workflows/deploy-docs.yml" />
     <File Path=".gitignore" />
     <File Path="LICENSE" />
     <File Path="pack.props" />
@@ -10,11 +12,70 @@
     <File Path="sonar-project.properties" />
     <File Path="versions.props" />
   </Folder>
+  <Folder Name="/.sln/docs/">
+    <File Path="docs/AOT.md" />
+    <File Path="docs/BENCHMARKS.md" />
+    <File Path="docs/DIAGNOSTICS.md" />
+    <File Path="docs/NETMEDIATE_MOQ_RECIPES.md" />
+    <File Path="docs/PERFORMANCE_IMPROVEMENTS.md" />
+    <File Path="docs/QUARTZ.md" />
+    <File Path="docs/RESILIENCE.md" />
+    <File Path="docs/SAMPLES.md" />
+    <File Path="docs/SOURCE_GENERATION.md" />
+    <File Path="docs/VALIDATION_BEHAVIOR_SAMPLE.md" />
+    <File Path="docs/WIKI.md" />
+    <File Path="docs/WIKI_INSTALLATION_CONFIGURATION_USAGE.md" />
+  </Folder>
+  <Folder Name="/.sln/website/">
+    <File Path="website/docs/intro.md" />
+    <File Path="website/src/pages/index.js" />
+  </Folder>
+  <Folder Name="/.sln/website/advanced/">
+    <File Path="website/docs/advanced/aot-support.md" />
+    <File Path="website/docs/advanced/diagnostics.md" />
+    <File Path="website/docs/advanced/quartz.md" />
+    <File Path="website/docs/advanced/resilience.md" />
+    <File Path="website/docs/advanced/source-generation.md" />
+  </Folder>
+  <Folder Name="/.sln/website/api/">
+    <File Path="website/docs/api/behaviors.md" />
+    <File Path="website/docs/api/core-interfaces.md" />
+    <File Path="website/docs/api/extensions.md" />
+    <File Path="website/docs/api/handlers.md" />
+  </Folder>
+  <Folder Name="/.sln/website/community/">
+    <File Path="website/docs/community/code-of-conduct.md" />
+    <File Path="website/docs/community/contributing.md" />
+    <File Path="website/docs/community/roadmap.md" />
+    <File Path="website/docs/community/security.md" />
+  </Folder>
+  <Folder Name="/.sln/website/getting-started/">
+    <File Path="website/docs/getting-started/handlers.md" />
+    <File Path="website/docs/getting-started/installation-config.md" />
+    <File Path="website/docs/getting-started/installation.md" />
+    <File Path="website/docs/getting-started/message-types.md" />
+    <File Path="website/docs/getting-started/quick-start.md" />
+  </Folder>
+  <Folder Name="/.sln/website/guides/">
+    <File Path="website/docs/guides/commands.md" />
+    <File Path="website/docs/guides/notifications.md" />
+    <File Path="website/docs/guides/pipeline-behaviors.md" />
+    <File Path="website/docs/guides/requests.md" />
+    <File Path="website/docs/guides/samples.md" />
+    <File Path="website/docs/guides/streams.md" />
+    <File Path="website/docs/guides/validation.md" />
+  </Folder>
+  <Folder Name="/.sln/website/performance/">
+    <File Path="website/docs/performance/benchmarks.md" />
+    <File Path="website/docs/performance/best-practices.md" />
+    <File Path="website/docs/performance/improvements-roadmap.md" />
+  </Folder>
+  <Folder Name="/.sln/website/testing/">
+    <File Path="website/docs/testing/moq-recipes.md" />
+    <File Path="website/docs/testing/unit-testing.md" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/NetMediate.Core/NetMediate.Core.csproj" Id="080fa9f8-4840-4188-ae28-602ddc1cc8d9" />
-    <Project Path="src/NetMediate.DataDog.ILogger/NetMediate.DataDog.ILogger.csproj" Id="2aabfa26-9c0d-4a0f-80f2-f5f2d1b13f2a" />
-    <Project Path="src/NetMediate.DataDog.OpenTelemetry/NetMediate.DataDog.OpenTelemetry.csproj" Id="dc9d6521-e745-44d8-8e4b-4d5c4f4eb070" />
-    <Project Path="src/NetMediate.DataDog.Serilog/NetMediate.DataDog.Serilog.csproj" Id="141fb2d3-cd7b-4184-9b6a-a1f7d18db143" />
     <Project Path="src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj" Id="e5f6a7b8-c9d0-4e1f-a2b3-c4d5e6f7a8b9" />
     <Project Path="src/NetMediate.Moq/NetMediate.Moq.csproj" Id="9d54e570-e883-4296-b281-c8d40ed4e8af" />
     <Project Path="src/NetMediate.Quartz/NetMediate.Quartz.csproj" Id="c2d3e4f5-a6b7-48c9-d0e1-f2a3b4c5d6e7">

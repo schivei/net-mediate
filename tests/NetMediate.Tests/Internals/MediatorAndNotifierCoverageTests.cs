@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NetMediate.Internals;
@@ -40,13 +41,13 @@ public sealed class MediatorAndNotifierCoverageTests
                 Assert.Null(call.Key);
                 Assert.Equal(
                     ["batch-one", "batch-two"],
-                    call.Messages.Select(message => message.Value).ToArray()
+                    [.. call.Messages.Select(message => message.Value)]
                 );
             },
             call =>
             {
                 Assert.Equal("key", call.Key);
-                Assert.Equal(["two", "three"], call.Messages.Select(message => message.Value).ToArray());
+                Assert.Equal(["two", "three"], [.. call.Messages.Select(message => message.Value)]);
             }
         );
     }
@@ -99,6 +100,31 @@ public sealed class MediatorAndNotifierCoverageTests
         Assert.Equal(typeof(CommandMessage), exception.MessageType);
         Assert.Equal(typeof(ICommandHandler<CommandMessage>), exception.HandlerType);
         Assert.IsType<InvalidOperationException>(exception.InnerException);
+    }
+
+    [Fact]
+    public async Task Mediator_Send_WhenPipelineThrowsWithCurrentActivity_CapturesTraceId()
+    {
+        using var provider = BuildProvider(services =>
+        {
+            services.AddSingleton<ICommandHandler<CommandMessage>, RecordingCommandHandler>();
+            services.AddSingleton<IPipelineCommandBehavior<CommandMessage>, ThrowingCommandBehavior>();
+            services.AddSingleton(sp =>
+                new CommandPipelineExecutor<CommandMessage>(
+                    sp,
+                    NullLogger<CommandPipelineExecutor<CommandMessage>>.Instance
+                )
+            );
+        });
+
+        using var activity = new Activity("send").Start();
+        var mediator = new Mediator(provider, new SpyNotifiable());
+
+        var exception = await Assert.ThrowsAsync<MediatorException>(() =>
+            mediator.Send(new CommandMessage(10), TestContext.Current.CancellationToken)
+        );
+
+        Assert.Equal(activity.Id, exception.TraceId);
     }
 
     [Fact]
@@ -176,6 +202,34 @@ public sealed class MediatorAndNotifierCoverageTests
     }
 
     [Fact]
+    public async Task Mediator_Request_WhenPipelineThrowsWithCurrentActivity_CapturesTraceId()
+    {
+        using var provider = BuildProvider(services =>
+        {
+            services.AddSingleton<IRequestHandler<RequestMessage, Response>, RecordingRequestHandler>();
+            services.AddSingleton<IPipelineRequestBehavior<RequestMessage, Response>, ThrowingRequestBehavior>();
+            services.AddSingleton(sp =>
+                new RequestPipelineExecutor<RequestMessage, Response>(
+                    sp,
+                    NullLogger<RequestPipelineExecutor<RequestMessage, Response>>.Instance
+                )
+            );
+        });
+
+        using var activity = new Activity("request").Start();
+        var mediator = new Mediator(provider, new SpyNotifiable());
+
+        var exception = await Assert.ThrowsAsync<MediatorException>(() =>
+            mediator.Request<RequestMessage, Response>(
+                new RequestMessage(11),
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Equal(activity.Id, exception.TraceId);
+    }
+
+    [Fact]
     public async Task Mediator_RequestStream_ConcatenatesHandlerStreams()
     {
         using var provider = BuildProvider(services =>
@@ -198,6 +252,28 @@ public sealed class MediatorAndNotifierCoverageTests
         );
 
         Assert.Equal([3, 4, 30, 40], items);
+    }
+
+    [Fact]
+    public async Task Mediator_RequestStream_WithSingleHandler_ReturnsSingleStream()
+    {
+        using var provider = BuildProvider(services =>
+        {
+            services.AddSingleton<IStreamHandler<StreamMessage, int>>(
+                new RecordingStreamHandler(multiplier: 2)
+            );
+            services.AddSingleton(sp => new StreamPipelineExecutor<StreamMessage, int>(sp));
+        });
+
+        var mediator = new Mediator(provider, new SpyNotifiable());
+        var items = await ToList(
+            mediator.RequestStream<StreamMessage, int>(
+                new StreamMessage(3),
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Equal([6, 8], items);
     }
 
     [Fact]
@@ -287,6 +363,47 @@ public sealed class MediatorAndNotifierCoverageTests
         var ex = await Record.ExceptionAsync(() =>
             mediator.Send(new CommandMessage(99), TestContext.Current.CancellationToken));
         Assert.Null(ex);
+    }
+
+    [Fact]
+    public async Task Mediator_Send_WithEmptyBatch_CompletesWithoutError()
+    {
+        using var provider = BuildProvider(services =>
+        {
+            services.AddSingleton<ICommandHandler<CommandMessage>, RecordingCommandHandler>();
+            services.AddSingleton(sp =>
+                new CommandPipelineExecutor<CommandMessage>(
+                    sp,
+                    NullLogger<CommandPipelineExecutor<CommandMessage>>.Instance
+                )
+            );
+        });
+
+        var mediator = new Mediator(provider, new SpyNotifiable());
+        var exception = await Record.ExceptionAsync(() =>
+            mediator.Send(Array.Empty<CommandMessage>(), TestContext.Current.CancellationToken)
+        );
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task Mediator_Send_WhenNoHandlersRegistered_CompletesWithoutError()
+    {
+        using var provider = BuildProvider(services =>
+            services.AddSingleton(sp =>
+                new CommandPipelineExecutor<CommandMessage>(
+                    sp,
+                    NullLogger<CommandPipelineExecutor<CommandMessage>>.Instance
+                )
+            ));
+
+        var mediator = new Mediator(provider, new SpyNotifiable());
+        var exception = await Record.ExceptionAsync(() =>
+            mediator.Send(new CommandMessage(12), TestContext.Current.CancellationToken)
+        );
+
+        Assert.Null(exception);
     }
 
     [Fact]
@@ -463,6 +580,16 @@ public sealed class MediatorAndNotifierCoverageTests
             "trace-id-request",
             new InvalidOperationException("boom")
         );
+    }
+
+    private sealed class ThrowingRequestBehavior : IPipelineRequestBehavior<RequestMessage, Response>
+    {
+        public Task<Response> Handle(
+            object? key,
+            RequestMessage message,
+            PipelineBehaviorDelegate<RequestMessage, Task<Response>> next,
+            CancellationToken cancellationToken
+        ) => throw new InvalidOperationException("boom");
     }
 
     private sealed class LambdaNotificationHandler<TMessage>(

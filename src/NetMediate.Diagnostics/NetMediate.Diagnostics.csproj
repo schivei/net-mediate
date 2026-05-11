@@ -19,7 +19,4 @@
       Version="10.*"
     />
   </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'netstandard2.1'">
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.*" />
-  </ItemGroup>
 </Project>

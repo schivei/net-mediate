@@ -137,7 +137,7 @@ jobs:
           
     - name: Update props
       run: |
-        sed 's|<PackageReference Include="NetMediate" Version=".*" />|<PackageReference Include="NetMediate" Version="${VERSION}" />|g src/NetMediate.SourceGeneration/buildTransitive/NetMediate.SourceGeneration.props
+        sed -i "s|<PackageReference Include=\"NetMediate\" Version=\"[^\"]*\" />|<PackageReference Include=\"NetMediate\" Version=\"${VERSION}\" />|g" src/NetMediate.SourceGeneration/buildTransitive/NetMediate.SourceGeneration.props
 
     - name: Pre-pack NetMediate packages for package-metadata and source-generation tests
       run: |
@@ -449,7 +449,7 @@ jobs:
         
     - name: Update props
       run: |
-        sed 's|<PackageReference Include="NetMediate" Version=".*" />|<PackageReference Include="NetMediate" Version="${VERSION}" />|g src/NetMediate.SourceGeneration/buildTransitive/NetMediate.SourceGeneration.props
+        sed -i "s|<PackageReference Include=\"NetMediate\" Version=\"[^\"]*\" />|<PackageReference Include=\"NetMediate\" Version=\"${VERSION}\" />|g" src/NetMediate.SourceGeneration/buildTransitive/NetMediate.SourceGeneration.props
 
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx

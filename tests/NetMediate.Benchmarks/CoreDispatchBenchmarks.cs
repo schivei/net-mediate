@@ -1,7 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Engines;
 using Microsoft.Extensions.DependencyInjection;
-using NetMediate.Benchmarks.DependencyInjection;
 
 namespace NetMediate.Benchmarks;
 
@@ -38,7 +37,7 @@ public class CoreDispatchBenchmarks
     {
         var services = new ServiceCollection();
         services.AddLogging();
-        services.AddGenDIServices();
+        services.AddNetMediate();
 
         _provider = services.BuildServiceProvider();
         _mediator = _provider.GetRequiredService<IMediator>();

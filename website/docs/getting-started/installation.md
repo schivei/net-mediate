@@ -106,25 +106,10 @@ dotnet add package NetMediate.Quartz
 
 ### Diagnostics Package
 
-OpenTelemetry integration (included automatically with DataDog packages):
+OpenTelemetry integration:
 
 ```bash
 dotnet add package NetMediate.Diagnostics
-```
-
-### DataDog Integrations
-
-For DataDog observability:
-
-```bash
-# OpenTelemetry exporter
-dotnet add package NetMediate.DataDog.OpenTelemetry
-
-# Serilog sink
-dotnet add package NetMediate.DataDog.Serilog
-
-# ILogger integration
-dotnet add package NetMediate.DataDog.ILogger
 ```
 
 ## Version Compatibility

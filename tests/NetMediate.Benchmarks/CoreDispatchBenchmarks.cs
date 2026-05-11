@@ -45,8 +45,8 @@ public class CoreDispatchBenchmarks
 
         _mediator.Send(s_command).GetAwaiter().GetResult();
         _mediator.Notify(s_notification).GetAwaiter().GetResult();
-        _mediator.Request<BenchRequest, BenchResponse>(s_request).GetAwaiter().GetResult();
-        DrainStream(_mediator.RequestStream<BenchStreamRequest, BenchStreamItem>(s_streamRequest))
+        _mediator.RequestBenchRequestAsync(s_request).GetAwaiter().GetResult();
+        DrainStream(_mediator.StreamBenchStreamRequestAsync(s_streamRequest))
             .GetAwaiter()
             .GetResult();
     }
@@ -78,7 +78,7 @@ public class CoreDispatchBenchmarks
     public async Task Request()
     {
         for (int i = 0; i < OpsPerInvoke; i++)
-            await _mediator.Request<BenchRequest, BenchResponse>(s_request);
+            await _mediator.RequestBenchRequestAsync(s_request);
     }
 
     /// <summary>
@@ -93,7 +93,7 @@ public class CoreDispatchBenchmarks
     {
         for (int i = 0; i < OpsPerInvoke; i++)
             await DrainStream(
-                _mediator.RequestStream<BenchStreamRequest, BenchStreamItem>(s_streamRequest)
+                _mediator.StreamBenchStreamRequestAsync(s_streamRequest)
             );
     }
 

@@ -5,11 +5,21 @@
 [![NuGet NetMediate](https://img.shields.io/nuget/v/NetMediate?style=flat&label=NetMediate&logo=nuget)](https://www.nuget.org/packages/NetMediate/)
 [![NuGet NetMediate.Core](https://img.shields.io/nuget/v/NetMediate.Core?style=flat&label=NetMediate.Core&logo=nuget)](https://www.nuget.org/packages/NetMediate.Core/)
 [![NuGet NetMediate.SourceGeneration](https://img.shields.io/nuget/v/NetMediate.SourceGeneration?style=flat&label=NetMediate.SourceGeneration&logo=nuget)](https://www.nuget.org/packages/NetMediate.SourceGeneration/)
-[![Quality Gate](https://img.shields.io/sonar/quality_gate/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Quality%20Gate)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
-[![Bugs](https://img.shields.io/sonar/bugs/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Bugs)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
-[![Code Smells](https://img.shields.io/sonar/code_smells/schivei_net-mediate?server=https%3A%2F%2Fsonarcloud.io&label=Sonar%20Code%20Smells)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
-[![Coverage Lines](docs/badges/coverage-lines.svg)](https://sonarcloud.io/component_measures?id=schivei_net-mediate&metric=new_coverage&view=list)
-[![Coverage Branches](docs/badges/coverage-branches.svg)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+
+
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=bugs)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=coverage)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Lines of Code](https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=ncloc)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Technical Debt](https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=sqale_index)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=schivei_net-mediate&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=schivei_net-mediate)
+
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/schivei/net-mediate/blob/main/LICENSE)
 [![Documentation](https://img.shields.io/badge/Documentation-Website-blue)](https://elton.schivei.nom.br/net-mediate)
 
@@ -57,7 +67,6 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Pipeline Behaviors**: Interceptors with pre/post flow for every message kind
 - **Optional resilience package**: Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience`
 - **OpenTelemetry-ready diagnostics**: Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream
-- **Optional DataDog integrations**: OpenTelemetry, Serilog, and ILogger support packages
 - **Keyed handler routing**: Register handlers under named keys and dispatch to specific subsets at runtime — **fully NativeAOT + Trimming compatible** via source-generated `KeyedHandlerRegistry<T>`
 - **Streaming fan-out**: Multiple `IStreamHandler` registrations supported — their items are merged sequentially
 - **Cancellation Support**: Full cancellation token support across all operations
@@ -132,17 +141,11 @@ With GenDI the consumer chooses the `ServiceLifetime`, `Group`, `Order`, and `Ke
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
 <PackageReference Include="NetMediate.Resilience" Version="x.x.x" />
 <PackageReference Include="NetMediate.Quartz" Version="x.x.x" />
-<PackageReference Include="NetMediate.DataDog.OpenTelemetry" Version="x.x.x" />
-<PackageReference Include="NetMediate.DataDog.Serilog" Version="x.x.x" />
-<PackageReference Include="NetMediate.DataDog.ILogger" Version="x.x.x" />
 ```
 
 - **NetMediate.Moq**: lightweight Moq helpers for unit and integration tests (`Mocking.Create`, `AddMockSingleton`, async setup extensions).
 - **NetMediate.Resilience**: optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
 - **NetMediate.Quartz**: persists notifications as Quartz.NET jobs, enabling crash recovery and cluster-distributed notification execution.
-- **NetMediate.DataDog.OpenTelemetry**: wires NetMediate traces/metrics to DataDog through OpenTelemetry OTLP exporters.
-- **NetMediate.DataDog.Serilog**: attaches the DataDog Serilog sink and enriches logs with NetMediate activity fields.
-- **NetMediate.DataDog.ILogger**: `ILogger` scope helpers with DataDog-compatible fields and NetMediate correlation values.
 
 ## Companion Guides
 
@@ -155,7 +158,6 @@ With GenDI the consumer chooses the `ServiceLifetime`, `Group`, `Order`, and `Ke
 - [Quartz persistent notifications](docs/QUARTZ.md)
 - [Source generation guide](docs/SOURCE_GENERATION.md)
 - [AOT / NativeAOT and trimming guide](docs/AOT.md)
-- [DataDog integrations guide](docs/DATADOG.md)
 - [Wiki index](docs/WIKI.md)
 - [Validation behavior sample](docs/VALIDATION_BEHAVIOR_SAMPLE.md)
 

@@ -269,15 +269,3 @@ var clockMock = services.AddMockSingleton<IClock>();
 ```
 
 See [NETMEDIATE_MOQ_RECIPES.md](NETMEDIATE_MOQ_RECIPES.md) for full details.
-
-## 8) DataDog integrations
-
-### Installation
-
-```bash
-dotnet add package NetMediate.DataDog.OpenTelemetry
-dotnet add package NetMediate.DataDog.Serilog
-dotnet add package NetMediate.DataDog.ILogger
-```
-
-See [DATADOG.md](DATADOG.md) for full details.

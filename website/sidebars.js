@@ -31,7 +31,6 @@ const sidebars = {
         'advanced/resilience',
         'advanced/diagnostics',
         'advanced/quartz',
-        'advanced/datadog',
       ]],
       ['Testing', [
         'testing/moq-recipes',

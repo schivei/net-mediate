@@ -33,6 +33,7 @@ jobs:
   version-calculation:
     name: Version Calculation
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       version: ${{ steps.create-variable.outputs.version }}
 

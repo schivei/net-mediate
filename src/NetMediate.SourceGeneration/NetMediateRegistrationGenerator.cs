@@ -163,15 +163,14 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     {
         const string indent = "        ";
         var sb = new StringBuilder();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var (ifce, handlerName) in types.SelectMany(t => t.AllInterfaces.Select(i => (ifce: i, handlerName: t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))))
-                .Where(t => t.ifce.ContainingNamespace.ToDisplayString().Replace(GlobalNamespace, "") != PackName && (
+        foreach (var (ifce, _) in types.SelectMany(t => t.AllInterfaces.Select(i => (ifce: i, handlerName: t.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat))))
+                .Where(t => t.ifce.ContainingNamespace.ToDisplayString().Replace(GlobalNamespace, "") == PackName && (
                     (t.ifce.OriginalDefinition.Name is RequestHandlerIfce or StreamHandlerIfce && t.ifce.Arity == 2 && t.ifce.TypeArguments.Length == 2) ||
                     (t.ifce.OriginalDefinition.Name is CommandHandlerIfce or NotificationHandlerIfce && t.ifce.Arity == 1 && t.ifce.TypeArguments.Length == 1))))
         {
             var definition = ifce.OriginalDefinition;
-            if (definition.ContainingNamespace.ToDisplayString().Replace(GlobalNamespace, "") != PackName)
-                continue;
             var name = definition.Name;
             var arity = definition.Arity;
             var args = ifce.TypeArguments;
@@ -188,15 +187,17 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
             if (isTwoArgHandler)
             {
-                sb.AppendLine(
-                    $"{indent}services.TryAddSingleton<{executorPrefix}PipelineExecutor<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>>();"
-                );
+                var line =
+                    $"{indent}services.TryAddSingleton<{executorPrefix}PipelineExecutor<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>>();";
+                if (seen.Add(line))
+                    sb.AppendLine(line);
             }
             else if (isOneArgHandler)
             {
-                sb.AppendLine(
-                    $"{indent}services.TryAddSingleton<{executorPrefix}PipelineExecutor<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}, {handlerName}>>();"
-                );
+                var line =
+                    $"{indent}services.TryAddSingleton<{executorPrefix}PipelineExecutor<{args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}>>();";
+                if (seen.Add(line))
+                    sb.AppendLine(line);
             }
         }
 

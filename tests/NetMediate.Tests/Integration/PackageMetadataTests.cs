@@ -72,19 +72,41 @@ public class PackageMetadataTests
 
     private static string GetPackagePath()
     {
-        var projectDir = Path.GetDirectoryName(typeof(PackageMetadataTests).Assembly.Location);
-        var solutionDir = Path.GetFullPath(Path.Combine(projectDir!, "..", "..", "..", "..", ".."));
+        var solutionDir = FindSolutionRoot();
         var packagesDir = Path.Combine(solutionDir, "src", "NetMediate", "bin", "Release");
 
         if (Directory.Exists(packagesDir))
         {
-            var packageFiles = Directory.GetFiles(packagesDir, "NetMediate.*.nupkg");
-            if (packageFiles.Length > 0)
+            var packageFile = new DirectoryInfo(packagesDir)
+                .GetFiles("NetMediate.*.nupkg")
+                .OrderByDescending(file => file.LastWriteTimeUtc)
+                .FirstOrDefault();
+
+            if (packageFile is not null)
             {
-                return packageFiles[0];
+                return packageFile.FullName;
             }
         }
 
         return string.Empty;
+    }
+
+    private static string FindSolutionRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "net-mediate.slnx")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException(
+            "Could not locate the repository root from the test output directory."
+        );
     }
 }

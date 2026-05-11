@@ -178,7 +178,7 @@ public sealed class AuditMyRequestBehavior
 ```
 
 :::tip Validation
-There is no built-in validation in NetMediate. Implement your own validation as a pipeline behavior. See the [Validation guide](validation) for an example.
+There is no built-in validation in NetMediate. Implement your own validation as a pipeline behavior. See the [Validation guide](../guides/validation) for an example.
 :::
 
 ## Resilience package (`NetMediate.Resilience`)

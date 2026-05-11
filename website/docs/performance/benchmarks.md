@@ -40,7 +40,7 @@ The `vs timing` column compares dispatch time against the same-run base-branch m
 available, or against stored target-branch values otherwise (±10% = no change on shared CI hardware;
 ✅ = improved, ⚠️ = degraded).
 
-> Improvement plan for current regressions is tracked in [PERFORMANCE_IMPROVEMENTS.md](PERFORMANCE_IMPROVEMENTS.md).
+> Improvement plan for current regressions is tracked in [Improvements Roadmap](improvements-roadmap).
 
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Allocated | Alloc Δ | Throughput | vs timing |

@@ -1288,10 +1288,13 @@ public sealed class GeneratorIntegrationTests
             }
             """;
 
-        var (generatedSource, _) = RunGenerator("MyApp.GenericHandler", userSource);
+        var files = RunGeneratorAllFiles(assemblyName: "MyApp.GenericHandler", userSource: userSource);
+        var diSrc = files["NetMediateGeneratedDI.g.cs"];
+        var typedExtensionsSrc = files["NetMediateTypedExtensions.g.cs"];
 
-        Assert.Contains("AddNetMediate", generatedSource);
-        Assert.DoesNotContain("GenericHandler<", generatedSource);
+        Assert.Contains("AddNetMediate", diSrc);
+        Assert.Contains("SendPongCommandAsync", typedExtensionsSrc);
+        Assert.DoesNotContain("GenericHandler<", diSrc);
     }
 
     /// <summary>

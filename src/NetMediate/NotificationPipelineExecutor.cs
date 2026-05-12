@@ -80,7 +80,11 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
                     {
                         var t = h.Handle(msg, ct);
                         if (!t.IsCompletedSuccessfully)
+                        {
+#pragma warning disable CS4014 // intentional fire-and-forget: faults are logged inside AwaitHandlerFault
                             AwaitHandlerFault(t);
+#pragma warning restore CS4014
+                        }
                     }
                     return Task.CompletedTask;
                 };
@@ -136,8 +140,7 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
     // async completion produces no additional work. ExecuteSynchronously runs the callback inline
     // when the antecedent is already completed (e.g. Task.FromException), making fault logging
     // synchronous and deterministic in the common error path.
-    private void AwaitHandlerFault(Task t)
-    {
+    private Task AwaitHandlerFault(Task t) =>
         t.ContinueWith(
             completed =>
             {
@@ -153,5 +156,4 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
             TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default
         );
-    }
 }

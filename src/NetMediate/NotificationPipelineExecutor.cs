@@ -80,7 +80,7 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
                     {
                         var t = h.Handle(msg, ct);
                         if (!t.IsCompletedSuccessfully)
-                            AwaitHandlerFault(t);
+                            _ = AwaitHandlerFault(t);
                     }
                     return Task.CompletedTask;
                 };

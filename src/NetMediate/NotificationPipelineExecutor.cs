@@ -138,12 +138,16 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
     // synchronous and deterministic in the common error path.
     private Task AwaitHandlerFault(Task t) =>
         t.ContinueWith(
-            completed => logger.LogError(
-                completed.Exception!.GetBaseException(),
-                "Error executing notification pipeline for message of type {MessageType}: {Message}",
-                typeof(TMessage).FullName,
-                completed.Exception.GetBaseException().Message
-            ),
+            completed =>
+            {
+                var ex = completed.Exception!.GetBaseException();
+                logger.LogError(
+                    ex,
+                    "Error executing notification pipeline for message of type {MessageType}: {Message}",
+                    typeof(TMessage).FullName,
+                    ex.Message
+                );
+            },
             CancellationToken.None,
             TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default

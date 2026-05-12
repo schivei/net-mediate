@@ -184,13 +184,14 @@ public sealed class PipelineExecutorCoverageTests
 
     private sealed class CapturingLogger<T> : ILogger<T>
     {
-        public List<Exception> Errors { get; } = [];
+        private readonly System.Collections.Concurrent.ConcurrentBag<Exception> _errors = [];
+        public IReadOnlyCollection<Exception> Errors => [.. _errors];
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(LogLevel logLevel) => true;
+        public bool IsEnabled(LogLevel logLevel) => logLevel >= LogLevel.Error;
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
         {
             if (logLevel >= LogLevel.Error && exception is not null)
-                Errors.Add(exception);
+                _errors.Add(exception);
         }
     }
 
@@ -465,7 +466,7 @@ public sealed class PipelineExecutorCoverageTests
         await ex.Handle(null, new Notif(), TestCancellationToken);
 
         Assert.Single(capLog.Errors);
-        Assert.IsType<InvalidOperationException>(capLog.Errors[0]);
+        Assert.IsType<InvalidOperationException>(capLog.Errors.First());
     }
 
     // Multi-handler: async faulting handler → AwaitHandlerFault catches, logs, does not rethrow.
@@ -489,7 +490,7 @@ public sealed class PipelineExecutorCoverageTests
 
         Assert.True(sync.Handled);
         Assert.Single(capLog.Errors);
-        Assert.IsType<InvalidOperationException>(capLog.Errors[0]);
+        Assert.IsType<InvalidOperationException>(capLog.Errors.First());
     }
 
     // Multi-handler: async handler succeeds → AwaitHandlerFault ContinueWith is set up but its

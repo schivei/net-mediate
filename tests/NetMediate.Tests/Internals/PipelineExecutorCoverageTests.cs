@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace NetMediate.Tests.Internals;
@@ -179,8 +180,19 @@ public sealed class PipelineExecutorCoverageTests
     private static HandlerExecutionDelegate<ICommandHandler<Cmd>, Cmd, Task> CmdExec()
         => (_, msg, handlers, ct) => Task.WhenAll(handlers.Select(h => h.Handle(msg, ct)));
 
-    private static HandlerExecutionDelegate<INotificationHandler<Notif>, Notif, Task> NotifExec()
-        => (_, msg, handlers, ct) => Task.WhenAll(handlers.Select(h => h.Handle(msg, ct)));
+    // ─── capturing logger ─────────────────────────────────────────────────────
+
+    private sealed class CapturingLogger<T> : ILogger<T>
+    {
+        public List<Exception> Errors { get; } = [];
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public bool IsEnabled(LogLevel logLevel) => true;
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+        {
+            if (logLevel >= LogLevel.Error && exception is not null)
+                Errors.Add(exception);
+        }
+    }
 
     // =========================================================================
     // CommandPipelineExecutor
@@ -331,7 +343,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => s.AddSingleton<INotificationHandler<Notif>>(h));
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await ex.Handle("k", new Notif(), NotifExec(), TestCancellationToken);
+        await ex.Handle("k", new Notif(), TestCancellationToken);
 
         Assert.True(h.Handled);
     }
@@ -344,7 +356,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => { s.AddSingleton(reg); s.AddSingleton<INotificationHandler<Notif>>(h); });
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await ex.Handle("k", new Notif(), NotifExec(), TestCancellationToken);
+        await ex.Handle("k", new Notif(), TestCancellationToken);
 
         Assert.True(h.Handled);
     }
@@ -358,7 +370,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => { s.AddSingleton(reg); s.AddSingleton<INotificationHandler<Notif>>(h); });
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await ex.Handle("k", new Notif(), NotifExec(), TestCancellationToken);
+        await ex.Handle("k", new Notif(), TestCancellationToken);
 
         Assert.True(h.Handled);
     }
@@ -372,33 +384,28 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => { s.AddSingleton(reg); s.AddSingleton<INotificationHandler<Notif>>(fallback); });
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await ex.Handle("k", new Notif(), NotifExec(), TestCancellationToken);
+        await ex.Handle("k", new Notif(), TestCancellationToken);
 
         Assert.True(keyed.Handled);
         Assert.False(fallback.Handled);
     }
 
-    // handlers.Length == 1 → direct dispatch (not via exec) ──────────────────
+    // handlers.Length == 1 → direct dispatch (exec delegate no longer accepted) ─
     [Fact]
-    public async Task Notif_SingleHandler_DirectCall_ExecNotInvoked()
+    public async Task Notif_SingleHandler_HandlerInvoked()
     {
         var h = new NotifHandler();
         var sp = BuildProvider(s => s.AddSingleton<INotificationHandler<Notif>>(h));
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        var execCalled = false;
-        HandlerExecutionDelegate<INotificationHandler<Notif>, Notif, Task> exec =
-            (_, _, _, _) => { execCalled = true; return Task.CompletedTask; };
-
-        await ex.Handle(null, new Notif(), exec, TestCancellationToken);
+        await ex.Handle(null, new Notif(), TestCancellationToken);
 
         Assert.True(h.Handled);
-        Assert.False(execCalled);
     }
 
-    // handlers.Length > 1 → exec delegate used ────────────────────────────────
+    // handlers.Length > 1 → all handlers invoked via internal fire-and-forget dispatch ──
     [Fact]
-    public async Task Notif_MultipleHandlers_ExecDelegateUsed()
+    public async Task Notif_MultipleHandlers_AllHandlersInvoked()
     {
         var h1 = new NotifHandler();
         var h2 = new NotifHandler();
@@ -409,7 +416,7 @@ public sealed class PipelineExecutorCoverageTests
         });
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await ex.Handle(null, new Notif(), NotifExec(), TestCancellationToken);
+        await ex.Handle(null, new Notif(), TestCancellationToken);
 
         Assert.True(h1.Handled);
         Assert.True(h2.Handled);
@@ -423,7 +430,7 @@ public sealed class PipelineExecutorCoverageTests
         var sp = BuildProvider(s => s.AddSingleton<INotificationHandler<Notif>>(h));
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await ex.Handle(null, new Notif(), NotifExec(), TestCancellationToken);
+        await ex.Handle(null, new Notif(), TestCancellationToken);
 
         Assert.True(h.Handled);
     }
@@ -440,22 +447,75 @@ public sealed class PipelineExecutorCoverageTests
         });
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        await ex.Handle(null, new Notif(), NotifExec(), TestCancellationToken);
+        await ex.Handle(null, new Notif(), TestCancellationToken);
 
         Assert.True(h.Handled);
     }
 
-    // faulting handler → ErrorReporting continuation fires ────────────────────
+    // faulting single handler → exception is logged, NOT rethrown (fire-and-forget semantics)
     [Fact]
-    public async Task Notif_FaultingHandler_ExceptionPropagates()
+    public async Task Notif_FaultingHandler_ExceptionLoggedNotThrown()
     {
+        var capLog = new CapturingLogger<NotificationPipelineExecutor<Notif>>();
         var sp = BuildProvider(s =>
             s.AddSingleton<INotificationHandler<Notif>>(_ => new FaultingNotifHandler()));
-        var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
+        var ex = new NotificationPipelineExecutor<Notif>(sp, capLog);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            ex.Handle(null, new Notif(), NotifExec(), TestCancellationToken)
-        );
+        // Must NOT throw; ErrorReporting absorbs the exception for fire-and-forget notifications.
+        await ex.Handle(null, new Notif(), TestCancellationToken);
+
+        Assert.Single(capLog.Errors);
+        Assert.IsType<InvalidOperationException>(capLog.Errors[0]);
+    }
+
+    // Multi-handler: async faulting handler → AwaitHandlerFault catches, logs, does not rethrow.
+    // Uses Task.FromException so the fault is synchronous and the test is deterministic.
+    [Fact]
+    public async Task Notif_MultipleHandlers_FaultingHandler_ExceptionLoggedNotThrown()
+    {
+        var capLog = new CapturingLogger<NotificationPipelineExecutor<Notif>>();
+        var sync = new NotifHandler();
+        var sp = BuildProvider(s =>
+        {
+            s.AddSingleton<INotificationHandler<Notif>>(sync);
+            s.AddSingleton<INotificationHandler<Notif>>(_ => new FaultingNotifHandler());
+        });
+        var ex = new NotificationPipelineExecutor<Notif>(sp, capLog);
+
+        // Handle returns immediately (multi-handler fire-and-forget). FaultingNotifHandler
+        // returns Task.FromException (already faulted), so AwaitHandlerFault completes
+        // synchronously: the catch block runs before Handle() returns to the caller.
+        await ex.Handle(null, new Notif(), TestCancellationToken);
+
+        Assert.True(sync.Handled);
+        Assert.Single(capLog.Errors);
+        Assert.IsType<InvalidOperationException>(capLog.Errors[0]);
+    }
+
+    // Multi-handler: async handler succeeds → AwaitHandlerFault ContinueWith is set up but its
+    // callback never fires (OnlyOnFaulted). Verifies that no error is logged on the success path.
+    [Fact]
+    public async Task Notif_MultipleHandlers_AsyncHandlerSucceeds_NoErrorsLogged()
+    {
+        var capLog = new CapturingLogger<NotificationPipelineExecutor<Notif>>();
+        var marker = new Marker();
+        var sync = new NotifHandler();
+        var sp = BuildProvider(s =>
+        {
+            s.AddSingleton<INotificationHandler<Notif>>(sync);
+            s.AddSingleton<INotificationHandler<Notif>>(_ => new AsyncNotifHandler(marker));
+        });
+        var ex = new NotificationPipelineExecutor<Notif>(sp, capLog);
+
+        // Handle() returns immediately (multi-handler fast path). AsyncNotifHandler sets marker.Hit
+        // before Task.Yield(), so it is already true when Handle() returns. The ContinueWith
+        // registered by AwaitHandlerFault uses OnlyOnFaulted: it never invokes the logging
+        // callback because the async handler eventually succeeds.
+        await ex.Handle(null, new Notif(), TestCancellationToken);
+
+        Assert.True(sync.Handled);
+        Assert.True(marker.Hit);
+        Assert.Empty(capLog.Errors);
     }
 
     // ErrorReporting – async handler completes successfully (covers AwaitAndCatch
@@ -469,7 +529,7 @@ public sealed class PipelineExecutorCoverageTests
 
         // AsyncNotifHandler uses Task.Yield(), so pipeline returns a non-completed
         // task → ErrorReporting calls AwaitAndCatch → task completes successfully.
-        await ex.Handle(null, new Notif(), NotifExec(), TestCancellationToken);
+        await ex.Handle(null, new Notif(), TestCancellationToken);
 
         Assert.True(marker.Hit);
     }

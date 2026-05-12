@@ -161,6 +161,8 @@ public class MyHandler : ICommandHandler<MyCommand>
 
 With GenDI you choose the lifetime per implementation: `Transient`, `Scoped`, or `Singleton`. You can also control `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path.
 
+NetMediate currently documents the released GenDI registration model only: `[ServiceInjection]` for contract discovery, additive `[Injectable<TService>]`, per-implementation `ServiceLifetime` / `Group` / `Order` / `Key` on `[Injectable]`, and keyed property injection via `[Inject(Key = ...)]`. Roadmap items such as `[InjectOptional]`, `[ConditionalInjectable]`, `[DecoratorFor<TService>]`, lifetime overrides on `[ServiceInjection]` / `[Inject]`, factories, and modules are not available in the current NetMediate integration yet.
+
 ## Multiple Handlers
 
 ### Commands and Notifications

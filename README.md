@@ -136,6 +136,8 @@ public sealed class UserFacade
 
 With GenDI the consumer chooses the `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path. `AddNetMediate()` already calls `AddGenDIServices()` for you.
 
+Today the supported registration model in the NetMediate ecosystem is the current GenDI release model: contract discovery via `[ServiceInjection]`, additive explicit contract mapping via `[Injectable<TService>]`, per-implementation `ServiceLifetime`/`Group`/`Order`/`Key` on `[Injectable]`, and keyed dependency resolution via `[Inject(Key = ...)]`. Broader GenDI roadmap items such as `[InjectOptional]`, `[ConditionalInjectable]`, `[DecoratorFor<TService>]`, lifetime overrides on `[ServiceInjection]` / `[Inject]`, factories, and modules are still future work and should not be assumed by NetMediate consumers yet.
+
 ### Optional companion packages
 ```xml
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />

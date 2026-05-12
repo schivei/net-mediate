@@ -115,5 +115,5 @@ A `null` key (the default when no key is passed) flows through the pipeline unch
 :::
 
 :::note NativeAOT
-Keyed registration uses `IKeyedServiceProvider` internally and is **not NativeAOT-compatible**. Use it only when NativeAOT is not required.
+Both keyed and non-keyed dispatch are NativeAOT-compatible in the current NetMediate generator path. Keyed routing uses a source-generated `KeyedHandlerRegistry<T>` instead of `IKeyedServiceProvider`.
 :::

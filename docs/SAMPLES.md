@@ -106,4 +106,4 @@ public sealed class PriorityOrderHandler : ICommandHandler<ProcessOrder>
 
 > **Keyless dispatch:** A `null` key (the default when no key is passed) flows through the pipeline unchanged and targets the non-keyed handlers registered in the container.
 
-> **NativeAOT:** Keyed registration uses `IKeyedServiceProvider` internally and is **not NativeAOT-compatible**.
+> **NativeAOT:** Both keyed and non-keyed dispatch are NativeAOT-compatible in the current NetMediate generator path. Keyed routing uses a source-generated `KeyedHandlerRegistry<T>` instead of `IKeyedServiceProvider`.

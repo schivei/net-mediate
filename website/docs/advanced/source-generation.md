@@ -95,6 +95,18 @@ Use GenDI metadata to control `ServiceLifetime`, `Group`, `Order`, and `Key`. Us
 >
 > The keyed routing table is emitted as a `KeyedHandlerRegistry<T>` at compile time — **no reflection, no `IKeyedServiceProvider`** — making keyed dispatch fully NativeAOT + Trimming compatible.
 
+## Supported registration model in NetMediate today
+
+NetMediate currently relies on the shipped GenDI registration model below:
+
+- `[ServiceInjection]` drives contract discovery across implemented interfaces and base types.
+- `[Injectable<TService>]` adds an explicit non-generic contract when discovery alone is not enough.
+- `[Injectable(...)]` controls `ServiceLifetime`, `Group`, `Order`, and optional handler/service `Key`.
+- `[Inject(Key = ...)]` resolves keyed dependencies on injected properties.
+- Generic/open implementations still require manual `builder.Services` registration.
+
+GenDI roadmap items from the broader "Registration model" track — for example `[InjectOptional]`, `[ConditionalInjectable]`, `[DecoratorFor<TService>]`, lifetime overrides on `[ServiceInjection]` / `[Inject]`, indirect scanning/factory/module registration, and related advanced policies — are not part of the released NetMediate integration yet. Examples in this documentation intentionally stay within the supported set above.
+
 ## AOT / NativeAOT
 
 The source-generator path is fully AOT-safe — no reflection, no `MakeGenericType`, no assembly scanning. See [Native AOT Support](./aot-support) for the complete compatibility guide.

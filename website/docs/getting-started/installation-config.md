@@ -45,6 +45,8 @@ builder.Services.AddNetMediate();
 
 > **GenDI-first style**: `AddNetMediate()` also triggers `AddGenDIServices()`. Prefer `[Injectable]` + `[Inject]` so the consumer can choose `ServiceLifetime`, `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path.
 
+> **Registration model scope today**: NetMediate documents the currently released GenDI model only: `[ServiceInjection]` contract discovery, additive `[Injectable<TService>]`, per-implementation `ServiceLifetime` / `Group` / `Order` / `Key` on `[Injectable]`, and keyed property injection via `[Inject(Key = ...)]`. Roadmap items such as `[InjectOptional]`, `[ConditionalInjectable]`, `[DecoratorFor<TService>]`, lifetime overrides on `[ServiceInjection]` / `[Inject]`, factory registration, and modules are still future GenDI work and are not assumed by the NetMediate guides yet.
+
 ### Usage
 
 ```csharp
@@ -118,7 +120,7 @@ A `null` key flows through the pipeline unchanged. This means `mediator.SendMyCo
 :::
 
 :::caution NativeAOT
-Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed registration uses `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**; use it only when NativeAOT is not required.
+Both keyed and non-keyed registration/dispatch remain fully NativeAOT-compatible in the current NetMediate generator path. Keyed routing uses a source-generated `KeyedHandlerRegistry<T>` instead of `IKeyedServiceProvider`.
 :::
 
 ### Optional base class

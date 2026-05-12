@@ -80,11 +80,7 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
                     {
                         var t = h.Handle(msg, ct);
                         if (!t.IsCompletedSuccessfully)
-                        {
-#pragma warning disable CS4014 // intentional fire-and-forget: faults are logged inside AwaitHandlerFault
-                            AwaitHandlerFault(t);
-#pragma warning restore CS4014
-                        }
+                            _ = AwaitHandlerFault(t); // NOSONAR: intentional fire-and-forget; faults are logged inside AwaitHandlerFault
                     }
                     return Task.CompletedTask;
                 };

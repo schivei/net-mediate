@@ -129,18 +129,15 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     }
 
     private static bool Search(SyntaxNode node) =>
-        (node is TypeDeclarationSyntax declaration && declaration.BaseList is not null) ||
-        (node is ClassDeclarationSyntax cds && cds.BaseList is not null);
+        node is TypeDeclarationSyntax declaration && declaration.BaseList is not null;
 
     private static INamedTypeSymbol? Transform(GeneratorSyntaxContext ctx)
     {
-        if (ctx.Node is not TypeDeclarationSyntax typeDec || ctx.SemanticModel.GetDeclaredSymbol(typeDec) is not INamedTypeSymbol typeSymbol1)
+        if (ctx.Node is not TypeDeclarationSyntax declaration)
             return null;
 
-        if (ctx.Node is not ClassDeclarationSyntax classDec || ctx.SemanticModel.GetDeclaredSymbol(classDec) is not INamedTypeSymbol typeSymbol2)
+        if (ctx.SemanticModel.GetDeclaredSymbol(declaration) is not INamedTypeSymbol typeSymbol)
             return null;
-
-        var typeSymbol = typeSymbol1 ?? typeSymbol2;
 
         if (typeSymbol.IsAbstract || typeSymbol.IsGenericType)
             return null;

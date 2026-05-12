@@ -6,6 +6,6 @@ internal readonly record struct BehaviorRegistration(
     string? ResponseFqn,
     bool HasDiagnostics,
     bool HasResilience,
-    System.Collections.Generic.Dictionary<string, bool> DiagnosticsBehaviors,
-    System.Collections.Generic.Dictionary<string, bool> ResilienceBehaviors
+    Dictionary<string, bool> DiagnosticsBehaviors,
+    Dictionary<string, bool> ResilienceBehaviors
 );

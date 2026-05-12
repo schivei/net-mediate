@@ -31,15 +31,12 @@
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
-	  <PackageReference Include="GenDI.SourceGenerator" Version="26.5.11.21">
+	  <PackageReference Include="GenDI.SourceGenerator" Version="26.5.12.1224">
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		  <PrivateAssets>all</PrivateAssets>
 	  </PackageReference>
     <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
-    <PackageReference
-      Include="Microsoft.Extensions.DependencyInjection.Abstractions"
-      Version="10.*"
-    />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
     <PackageReference Include="Quartz" Version="3.*" />
     <PackageReference Include="Quartz.Extensions.DependencyInjection" Version="3.*" />
   </ItemGroup>

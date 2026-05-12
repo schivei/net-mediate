@@ -1230,6 +1230,74 @@ public sealed class GeneratorIntegrationTests
     }
 
     /// <summary>
+    /// Record handlers with a base list must be discovered the same way as class handlers.
+    /// </summary>
+    [Fact]
+    public void Generator_WhenHandlerIsRecord_EmitsRegistrationsAndTypedExtensions()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record PingCommand;
+
+            public sealed record PingHandler() : ICommandHandler<PingCommand>
+            {
+                public Task Handle(PingCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(assemblyName: "MyApp.RecordHandler", userSource: userSource);
+        var diSrc = files["NetMediateGeneratedDI.g.cs"];
+        var typedExtensionsSrc = files["NetMediateTypedExtensions.g.cs"];
+
+        Assert.Contains("AddNetMediate", diSrc);
+        Assert.Contains("SendPingCommandAsync", typedExtensionsSrc);
+    }
+
+    /// <summary>
+    /// Generic handler types are type definitions and must be ignored by discovery.
+    /// </summary>
+    [Fact]
+    public void Generator_WhenHandlerTypeIsGeneric_DoesNotRegisterGenericTypeDefinition()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record PingCommand;
+            public sealed record PongCommand;
+
+            public sealed class GenericHandler<T> : ICommandHandler<T>
+            {
+                public Task Handle(T command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+
+            public sealed class PongHandler : ICommandHandler<PongCommand>
+            {
+                public Task Handle(PongCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var files = RunGeneratorAllFiles(assemblyName: "MyApp.GenericHandler", userSource: userSource);
+        var diSrc = files["NetMediateGeneratedDI.g.cs"];
+        var typedExtensionsSrc = files["NetMediateTypedExtensions.g.cs"];
+
+        Assert.Contains("AddNetMediate", diSrc);
+        Assert.Contains("SendPongCommandAsync", typedExtensionsSrc);
+        Assert.DoesNotContain("GenericHandler<", diSrc);
+    }
+
+    /// <summary>
     /// The typed extensions class must be placed in the same generated namespace as
     /// <c>NetMediateGeneratedDI</c> and must NOT be in the <c>NetMediate</c> core namespace.
     /// </summary>

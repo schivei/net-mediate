@@ -128,12 +128,16 @@ KEY_TO_LABEL: dict[str, str] = {v[0]: v[1] for v in BENCHMARKS.values()}
 
 # Parse Throughput-job rows from a BenchmarkDotNet GitHub markdown report.
 # Column order: Method | Job | IterCount | LaunchCount | RunStrategy | WarmupCount
-#               | Mean  | Error | StdDev | Gen0 | Allocated
+#               | Mean  | Error | StdDev | Gen0 [| Gen1 [| Gen2]] | Allocated
 # Only rows with RunStrategy="Throughput" (Job-XXXXXX jobs) are matched.
 # Single quotes in method names are HTML-encoded as &#39; or &#x27;.
+# Gen columns (Gen0/Gen1/Gen2) may be '-' when there are no GC collections.
+# Gen1 and Gen2 columns only appear in the report when at least one benchmark
+# triggers that GC generation; when absent the column is simply not emitted.
+# Allocated always has a unit suffix (e.g. '32 B', '1.23 KB') or is '-'.
 # Capture groups:
 #   1 = Method description (between surrounding quotes)
-#   2 = Mean (ns)   3 = Error (ns)   4 = Gen0   5 = Allocated
+#   2 = Mean (ns)   3 = Error (ns)   4 = Gen0 (numeric or '-')   5 = Allocated (e.g. '32 B' or '-')
 row_re = re.compile(
     # Method name wrapped in HTML-encoded or literal single quotes
     r"(?:&#39;|'|&#x27;)(.*?)(?:&#39;|'|&#x27;)"
@@ -141,8 +145,13 @@ row_re = re.compile(
     r"\s*\|\s*Job-\w+\s*\|[^|]*\|[^|]*\|\s*Throughput\s*\|"
     # WarmupCount (skip)  |  Mean (group 2, ns)  |  Error (group 3, ns)
     r"[^|]*\|\s*([\d.]+)\s*ns\s*\|\s*([\d.]+)\s*ns\s*\|"
-    # StdDev (skip)  |  Gen0 (group 4)  |  Allocated (group 5)
-    r"[^|]*\|\s*([\d.]+)\s*\|\s*([\d.]+\s*[BKM]*)\s*\|"
+    # StdDev (skip)  |  Gen0 (group 4, numeric or '-')
+    r"[^|]*\|\s*([\d.]+|-)\s*"
+    # Optionally skip Gen1 and Gen2 columns (pure numeric or '-', no unit suffix)
+    r"(?:\|\s*(?:[\d.]+|-)\s*)?"  # Gen1 (optional)
+    r"(?:\|\s*(?:[\d.]+|-)\s*)?"  # Gen2 (optional)
+    # | Allocated (group 5): always has a unit suffix (e.g. '32 B') or is '-'
+    r"\|\s*([\d.]+\s*[BKMG]+|-)\s*\|"
 )
 
 
@@ -156,7 +165,9 @@ def parse_report_metrics(text: str) -> dict:
                 result[key] = {
                     'mean':  float(m.group(2)),
                     'error': float(m.group(3)),
-                    'gen0':  float(m.group(4)),
+                    # gen0 is kept as the raw string from the report ('-' for no GC collections,
+                    # or a numeric string like '0.0018' when GC did occur).
+                    'gen0':  m.group(4).strip(),
                     'alloc': m.group(5).strip(),
                 }
                 break
@@ -391,7 +402,7 @@ for key in ORDERED_KEYS:
         m = metrics[key]
         tput_rows.append(
             f"| {KEY_TO_LABEL[key]} | {m['mean']:.2f} ns | ±{m['error']:.3f} ns"
-            f" | {m['gen0']:.4f} | {m['alloc']}"
+            f" | {m['gen0']} | {m['alloc']}"
             f" | {compare_alloc_str(key, m['alloc'])}"
             f" | {throughput_str(m['mean'])} | {compare_str(key, m['mean'])} |"
         )

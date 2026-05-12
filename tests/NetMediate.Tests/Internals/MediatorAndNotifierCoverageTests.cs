@@ -307,6 +307,30 @@ public sealed class MediatorAndNotifierCoverageTests
     }
 
     [Fact]
+    public async Task Notifier_DispatchNotifications_AsyncFaultingHandler_ExceptionSwallowed()
+    {
+        // Covers the inline ContinueWith observe path in DispatchNotifications:
+        // handler returns Task.FromException (already faulted, !IsCompletedSuccessfully),
+        // triggering the ContinueWith observe that prevents an UnobservedTaskException.
+        // The exception is intentionally swallowed — DispatchNotifications must not throw.
+        var notifier = new Notifier(new ServiceCollection().BuildServiceProvider());
+
+        var exception = await Record.ExceptionAsync(() =>
+            notifier.DispatchNotifications(
+                null,
+                new NotificationMessage("value"),
+                [
+                    new LambdaNotificationHandler<NotificationMessage>((_, _) =>
+                        Task.FromException(new InvalidOperationException("handler fault")))
+                ],
+                TestContext.Current.CancellationToken
+            ));
+
+        // Exception must NOT propagate out of DispatchNotifications.
+        Assert.Null(exception);
+    }
+
+    [Fact]
     public async Task Notifier_Notify_UsesPipelineForSingleAndBatchMessages()
     {
         var singleCount = 0;

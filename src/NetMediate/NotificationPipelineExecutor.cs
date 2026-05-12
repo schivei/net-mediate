@@ -80,7 +80,7 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
                     {
                         var t = h.Handle(msg, ct);
                         if (!t.IsCompletedSuccessfully)
-                            _ = AwaitHandlerFault(t);
+                            AwaitHandlerFault(t);
                     }
                     return Task.CompletedTask;
                 };
@@ -136,7 +136,8 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
     // async completion produces no additional work. ExecuteSynchronously runs the callback inline
     // when the antecedent is already completed (e.g. Task.FromException), making fault logging
     // synchronous and deterministic in the common error path.
-    private Task AwaitHandlerFault(Task t) =>
+    private void AwaitHandlerFault(Task t)
+    {
         t.ContinueWith(
             completed =>
             {
@@ -152,4 +153,5 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
             TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default
         );
+    }
 }

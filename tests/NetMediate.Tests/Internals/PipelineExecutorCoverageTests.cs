@@ -464,11 +464,18 @@ public sealed class PipelineExecutorCoverageTests
     public async Task Notif_AsyncHandler_AwaitAndCatch_SuccessPath()
     {
         var marker = new Marker();
-        var sp = BuildProvider(s => s.AddSingleton<INotificationHandler<Notif>>(_ => new AsyncNotifHandler(marker)));
+        // Two handlers → exec/Task.WhenAll path, so the returned task is a WhenAll
+        // wrapper (not the raw state-machine task). This matches the pattern used by
+        // Cmd_AsyncHandler_AwaitAndCatch_SuccessPath and is reliably detected as
+        // non-completed by IsCompletedSuccessfully, ensuring AwaitAndCatch is entered
+        // and its closing braces (success path) are instrumented by the coverage tool.
+        var sp = BuildProvider(s =>
+        {
+            s.AddSingleton<INotificationHandler<Notif>>(_ => new AsyncNotifHandler(marker));
+            s.AddSingleton<INotificationHandler<Notif>>(_ => new NotifHandler());
+        });
         var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
 
-        // AsyncNotifHandler uses Task.Yield(), so pipeline returns a non-completed
-        // task → ErrorReporting calls AwaitAndCatch → task completes successfully.
         await ex.Handle(null, new Notif(), NotifExec(), TestCancellationToken);
 
         Assert.True(marker.Hit);

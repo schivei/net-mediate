@@ -128,10 +128,13 @@ KEY_TO_LABEL: dict[str, str] = {v[0]: v[1] for v in BENCHMARKS.values()}
 
 # Parse Throughput-job rows from a BenchmarkDotNet GitHub markdown report.
 # Column order: Method | Job | IterCount | LaunchCount | RunStrategy | WarmupCount
-#               | Mean  | Error | StdDev | Gen0 | Allocated
+#               | Mean  | Error | StdDev | Gen0 [| Gen1 [| Gen2]] | Allocated
 # Only rows with RunStrategy="Throughput" (Job-XXXXXX jobs) are matched.
 # Single quotes in method names are HTML-encoded as &#39; or &#x27;.
-# Gen0 (and Allocated) may be '-' when there are no GC collections / zero allocations.
+# Gen columns (Gen0/Gen1/Gen2) may be '-' when there are no GC collections.
+# Gen1 and Gen2 columns only appear in the report when at least one benchmark
+# triggers that GC generation; when absent the column is simply not emitted.
+# Allocated always has a unit suffix (e.g. '32 B', '1.23 KB') or is '-'.
 # Capture groups:
 #   1 = Method description (between surrounding quotes)
 #   2 = Mean (ns)   3 = Error (ns)   4 = Gen0 (numeric or '-')   5 = Allocated (e.g. '32 B' or '-')
@@ -142,8 +145,13 @@ row_re = re.compile(
     r"\s*\|\s*Job-\w+\s*\|[^|]*\|[^|]*\|\s*Throughput\s*\|"
     # WarmupCount (skip)  |  Mean (group 2, ns)  |  Error (group 3, ns)
     r"[^|]*\|\s*([\d.]+)\s*ns\s*\|\s*([\d.]+)\s*ns\s*\|"
-    # StdDev (skip)  |  Gen0 (group 4, numeric or '-')  |  Allocated (group 5)
-    r"[^|]*\|\s*([\d.]+|-)\s*\|\s*([\d.]+\s*[BKM]*|-)\s*\|"
+    # StdDev (skip)  |  Gen0 (group 4, numeric or '-')
+    r"[^|]*\|\s*([\d.]+|-)\s*"
+    # Optionally skip Gen1 and Gen2 columns (pure numeric or '-', no unit suffix)
+    r"(?:\|\s*(?:[\d.]+|-)\s*)?"  # Gen1 (optional)
+    r"(?:\|\s*(?:[\d.]+|-)\s*)?"  # Gen2 (optional)
+    # | Allocated (group 5): always has a unit suffix (e.g. '32 B') or is '-'
+    r"\|\s*([\d.]+\s*[BKMG]+|-)\s*\|"
 )
 
 

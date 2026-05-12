@@ -43,10 +43,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         );
     }
 
-    // Removed: _names static field, ExtractNames, FindMostCommonBaseNamespace, Compute,
-    // CalculateName. The namespace is now derived per-compilation from the assembly name
-    // directly, matching GenDI's per-project resolution strategy.
-
     private static void Accumulate(
         SourceProductionContext sourceProductionContext,
         (
@@ -133,15 +129,18 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     }
 
     private static bool Search(SyntaxNode node) =>
-        node is ClassDeclarationSyntax cds && cds.BaseList is not null;
+        (node is TypeDeclarationSyntax declaration && declaration.BaseList is not null) ||
+        (node is ClassDeclarationSyntax cds && cds.BaseList is not null);
 
     private static INamedTypeSymbol? Transform(GeneratorSyntaxContext ctx)
     {
-        if (ctx.Node is not ClassDeclarationSyntax declaration)
+        if (ctx.Node is not TypeDeclarationSyntax typeDec || ctx.SemanticModel.GetDeclaredSymbol(typeDec) is not INamedTypeSymbol typeSymbol1)
             return null;
 
-        if (ctx.SemanticModel.GetDeclaredSymbol(declaration) is not INamedTypeSymbol typeSymbol)
+        if (ctx.Node is not ClassDeclarationSyntax classDec || ctx.SemanticModel.GetDeclaredSymbol(classDec) is not INamedTypeSymbol typeSymbol2)
             return null;
+
+        var typeSymbol = typeSymbol1 ?? typeSymbol2;
 
         if (typeSymbol.IsAbstract || typeSymbol.IsGenericType)
             return null;

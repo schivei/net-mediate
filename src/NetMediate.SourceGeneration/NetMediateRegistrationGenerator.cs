@@ -133,16 +133,14 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
     private static INamedTypeSymbol? Transform(GeneratorSyntaxContext ctx)
     {
-        if (ctx.Node is not TypeDeclarationSyntax declaration)
-            return null;
+        var declaration = (TypeDeclarationSyntax)ctx.Node;
 
-        if (ctx.SemanticModel.GetDeclaredSymbol(declaration) is not INamedTypeSymbol typeSymbol)
-            return null;
-
-        if (typeSymbol.IsAbstract || typeSymbol.IsGenericType)
-            return null;
-
-        if (!IsAccessible(typeSymbol))
+        if (
+            ctx.SemanticModel.GetDeclaredSymbol(declaration) is not INamedTypeSymbol typeSymbol
+            || typeSymbol.IsAbstract
+            || typeSymbol.IsGenericType
+            || !IsAccessible(typeSymbol)
+        )
             return null;
 
         return typeSymbol;

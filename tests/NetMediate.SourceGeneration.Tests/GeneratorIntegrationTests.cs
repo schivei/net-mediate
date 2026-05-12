@@ -1260,6 +1260,41 @@ public sealed class GeneratorIntegrationTests
     }
 
     /// <summary>
+    /// Generic handler types are type definitions and must be ignored by discovery.
+    /// </summary>
+    [Fact]
+    public void Generator_WhenHandlerTypeIsGeneric_DoesNotRegisterGenericTypeDefinition()
+    {
+        const string userSource = """
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record PingCommand;
+            public sealed record PongCommand;
+
+            public sealed class GenericHandler<T> : ICommandHandler<T>
+            {
+                public Task Handle(T command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+
+            public sealed class PongHandler : ICommandHandler<PongCommand>
+            {
+                public Task Handle(PongCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var (generatedSource, _) = RunGenerator("MyApp.GenericHandler", userSource);
+
+        Assert.Contains("AddNetMediate", generatedSource);
+        Assert.DoesNotContain("GenericHandler<", generatedSource);
+    }
+
+    /// <summary>
     /// The typed extensions class must be placed in the same generated namespace as
     /// <c>NetMediateGeneratedDI</c> and must NOT be in the <c>NetMediate</c> core namespace.
     /// </summary>

@@ -48,7 +48,6 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
     /// Compatibility overload preserved for source compatibility. The <paramref name="exec"/> parameter
     /// is ignored; handler dispatch is now owned by the executor. Use the three-parameter overload instead.
     /// </summary>
-    [Obsolete("Use Handle(object?, TMessage, CancellationToken) instead. The exec parameter is ignored and will be removed in a future version.")]
     public Task Handle(
         object? key,
         TMessage message,
@@ -86,34 +85,12 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
         //   With behaviors: use Task.WhenAll so that behaviors (retry, timeout, circuit-breaker,
         //   telemetry, etc.) can await `next` and properly observe handler failures.
         PipelineBehaviorDelegate<TMessage, Task> app;
-
         if (handlers.Length == 1)
-        {
             app = (_, msg, ct) => handlers[0].Handle(msg, ct);
-        }
         else if (behaviors.Length == 0)
-        {
-            app = (_, msg, ct) =>
-            {
-                foreach (var h in handlers)
-                {
-                    var t = h.Handle(msg, ct);
-                    if (!t.IsCompletedSuccessfully)
-                        AwaitHandlerFault(t);
-                }
-                return Task.CompletedTask;
-            };
-        }
+            app = CreateFireAndForgetApp(handlers);
         else
-        {
-            app = (_, msg, ct) =>
-            {
-                var tasks = new Task[handlers.Length];
-                for (var i = 0; i < handlers.Length; i++)
-                    tasks[i] = handlers[i].Handle(msg, ct);
-                return Task.WhenAll(tasks);
-            };
-        }
+            app = CreateWhenAllApp(handlers);
 
         // Wrap app with the registered behaviors. Behaviors are resolved once here and cached
         // with the pipeline — DI resolution happens only on the first Handle() call per key.
@@ -159,6 +136,31 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
             );
         }
     }
+
+    // Multi-handler fire-and-forget app: each handler is individually observed via AwaitHandlerFault;
+    // Task.CompletedTask is returned immediately so the caller is not blocked.
+    private PipelineBehaviorDelegate<TMessage, Task> CreateFireAndForgetApp(INotificationHandler<TMessage>[] handlers) =>
+        (_, msg, ct) =>
+        {
+            foreach (var h in handlers)
+            {
+                var t = h.Handle(msg, ct);
+                if (!t.IsCompletedSuccessfully)
+                    AwaitHandlerFault(t);
+            }
+            return Task.CompletedTask;
+        };
+
+    // Multi-handler with-behaviors app: Task.WhenAll is used so behaviors (retry, timeout,
+    // circuit-breaker, telemetry) can await `next` and properly observe handler failures.
+    private static PipelineBehaviorDelegate<TMessage, Task> CreateWhenAllApp(INotificationHandler<TMessage>[] handlers) =>
+        (_, msg, ct) =>
+        {
+            var tasks = new Task[handlers.Length];
+            for (var i = 0; i < handlers.Length; i++)
+                tasks[i] = handlers[i].Handle(msg, ct);
+            return Task.WhenAll(tasks);
+        };
 
     // Observes an individual handler task for the multi-handler fire-and-forget path.
     // Called only when the handler task is not already completed, avoiding allocation on the hot path.

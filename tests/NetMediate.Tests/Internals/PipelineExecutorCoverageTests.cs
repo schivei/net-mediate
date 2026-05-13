@@ -581,7 +581,6 @@ public sealed class PipelineExecutorCoverageTests
 
     // Compatibility overload (exec parameter ignored) ─────────────────────────
     [Fact]
-#pragma warning disable CS0618
     public async Task Notif_CompatibilityOverload_ExecIgnored_HandlerInvoked()
     {
         var h = new NotifHandler();
@@ -596,7 +595,6 @@ public sealed class PipelineExecutorCoverageTests
         // Handler was invoked via the internal dispatch; exec was NOT called.
         Assert.True(h.Handled);
     }
-#pragma warning restore CS0618
 
     // =========================================================================
     // RequestPipelineExecutor

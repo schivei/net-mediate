@@ -22,6 +22,10 @@
     <InternalsVisibleTo Include="NetMediate.Compat" />
     <InternalsVisibleTo Include="NetMediate.Moq" />
     <InternalsVisibleTo Include="NetMediate.Quartz" />
+    <InternalsVisibleTo Include="NetMediate.Resilience" />
+    <InternalsVisibleTo Include="NetMediate.Diagnostics" />
+    <InternalsVisibleTo Include="NetMediate.Resilience.Tests" />
+    <InternalsVisibleTo Include="NetMediate.Diagnostics.Tests" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     <InternalsVisibleTo Include="SharedParity.NetMediate.Tests" />
     <InternalsVisibleTo Include="SharedParity.MediatRCompat.Tests" />

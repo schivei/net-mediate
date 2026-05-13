@@ -49,7 +49,23 @@ public static class NetMediateQuartzDI
         if (configureOptions is not null)
             services.Configure(configureOptions);
 
+        // Capture any IScheduler descriptors already registered by the caller so we can restore them
+        // after GenDI runs. GenDI 26.5.13+ scans transitive assemblies and auto-registers
+        // Quartz.Impl.RemoteScheduler as IScheduler via a factory that resolves 'string' from DI,
+        // which always fails at runtime. We remove those auto-generated registrations and keep only
+        // the caller-provided ones.
+        var preExisting = new HashSet<ServiceDescriptor>(
+            services.Where(d => d.ServiceType == typeof(IScheduler))
+        );
+
         services.AddGenDIServices();
+
+        // Remove any IScheduler registrations that were added by GenDI (not present before the call).
+        var genDISchedulerDescriptors = services
+            .Where(d => d.ServiceType == typeof(IScheduler) && !preExisting.Contains(d))
+            .ToList();
+        foreach (var d in genDISchedulerDescriptors)
+            services.Remove(d);
 
         return services;
     }

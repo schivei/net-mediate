@@ -1,10 +1,9 @@
 using System.Diagnostics;
-using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
 
-[Injectable<IMediator>(ServiceLifetime.Singleton)]
+[Injectable<IMediator>]
 internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable notifier) : IMediator
 {
     /// <inheritdoc/>

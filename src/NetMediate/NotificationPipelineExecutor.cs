@@ -15,7 +15,6 @@ namespace NetMediate;
 public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serviceProvider, ILogger<NotificationPipelineExecutor<TMessage>> logger)
     where TMessage : notnull
 {
-    // Cached pipeline for the common key-less path; built once on the first call.
     private PipelineBehaviorDelegate<TMessage, Task>? _noKeyPipeline;
 
     /// <summary>
@@ -36,7 +35,6 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
     {
         if (key is null)
         {
-            // Fast path: reuse the cached pipeline for the key-less case.
             var pipeline = _noKeyPipeline ?? InitNoKeyPipeline();
             return pipeline(null, message, cancellationToken);
         }
@@ -45,13 +43,18 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
     }
 
     /// <summary>
-    /// Compatibility overload preserved for source compatibility. The <paramref name="exec"/> parameter
-    /// is ignored; handler dispatch is now owned by the executor. Use the three-parameter overload instead.
+    /// Handles the specified notification message using the provided execution delegate.
     /// </summary>
+    /// <param name="key">An optional key that identifies the notification context. May be null if no key is required.</param>
+    /// <param name="message">The notification message to handle. Must not be null.</param>
+    /// <param name="_">The delegate representing the next handler in the execution pipeline. This parameter is required for pipeline
+    /// execution.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>A task that represents the asynchronous handling operation.</returns>
     public Task Handle(
         object? key,
         TMessage message,
-        HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> exec,
+        HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> _,
         CancellationToken cancellationToken
     ) => Handle(key, message, cancellationToken);
 
@@ -78,12 +81,6 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
 
         var behaviors = serviceProvider.GetServices<IPipelineNotificationBehavior<TMessage>>().ToArray();
 
-        // Single-handler fast path: call the handler directly without any indirection.
-        // Multi-handler paths:
-        //   No behaviors: fire-and-forget per handler — each handler is individually observed
-        //   via AwaitHandlerFault; the caller returns Task.CompletedTask immediately.
-        //   With behaviors: use Task.WhenAll so that behaviors (retry, timeout, circuit-breaker,
-        //   telemetry, etc.) can await `next` and properly observe handler failures.
         PipelineBehaviorDelegate<TMessage, Task> app;
         if (handlers.Length == 1)
             app = (_, msg, ct) => handlers[0].Handle(msg, ct);
@@ -92,8 +89,6 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
         else
             app = CreateWhenAllApp(handlers);
 
-        // Wrap app with the registered behaviors. Behaviors are resolved once here and cached
-        // with the pipeline — DI resolution happens only on the first Handle() call per key.
         var pipeline = behaviors.Length == 0
             ? app
             : behaviors.AsEnumerable().Reverse()
@@ -104,13 +99,9 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
 
         return ErrorReporting;
 
-        // Outer error-reporting shell. For notifications this is fire-and-forget: exceptions
-        // are logged and silently absorbed so the returned Task is never faulted. This ensures
-        // callers never need to observe the Task for error-handling purposes.
         Task ErrorReporting(object? routingKey, TMessage msg, CancellationToken ct)
         {
             var task = pipeline(routingKey, msg, ct);
-            // Avoid async state-machine allocation on the hot success path.
             return task.IsCompletedSuccessfully ? task : AwaitAndCatch(task);
 
             async Task AwaitAndCatch(Task t)
@@ -125,20 +116,18 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
                 }
             }
         }
-
-        void LogFailure(Exception ex)
-        {
-            logger.LogError(
-                ex,
-                "Error executing notification pipeline for message of type {MessageType}: {Message}",
-                typeof(TMessage).FullName,
-                ex.Message
-            );
-        }
     }
 
-    // Multi-handler fire-and-forget app: each handler is individually observed via AwaitHandlerFault;
-    // Task.CompletedTask is returned immediately so the caller is not blocked.
+    private void LogFailure(Exception ex)
+    {
+        logger.LogError(
+            ex,
+            "Error executing notification pipeline for message of type {MessageType}: {Message}",
+            typeof(TMessage).FullName,
+            ex.Message
+        );
+    }
+
     private PipelineBehaviorDelegate<TMessage, Task> CreateFireAndForgetApp(INotificationHandler<TMessage>[] handlers) =>
         (_, msg, ct) =>
         {
@@ -151,8 +140,6 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
             return Task.CompletedTask;
         };
 
-    // Multi-handler with-behaviors app: Task.WhenAll is used so behaviors (retry, timeout,
-    // circuit-breaker, telemetry) can await `next` and properly observe handler failures.
     private static PipelineBehaviorDelegate<TMessage, Task> CreateWhenAllApp(INotificationHandler<TMessage>[] handlers) =>
         (_, msg, ct) =>
         {
@@ -162,12 +149,6 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
             return Task.WhenAll(tasks);
         };
 
-    // Observes an individual handler task for the multi-handler fire-and-forget path.
-    // Called only when the handler task is not already completed, avoiding allocation on the hot path.
-    // Uses OnlyOnFaulted so the logging callback is only invoked when the task faults; a successful
-    // async completion produces no additional work. ExecuteSynchronously runs the callback inline
-    // when the antecedent is already completed (e.g. Task.FromException), making fault logging
-    // synchronous and deterministic in the common error path.
     private void AwaitHandlerFault(Task t) =>
         t.ContinueWith(
             completed =>

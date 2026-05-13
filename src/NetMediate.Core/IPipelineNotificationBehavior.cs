@@ -1,4 +1,5 @@
 ﻿using GenDI;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate;
 
@@ -14,6 +15,6 @@ namespace NetMediate;
 /// without registering against the more general <c>IPipelineCommandBehavior&lt;TMessage, Task&gt;</c>.
 /// </remarks>
 /// <typeparam name="TMessage">The notification message type. Cannot be null.</typeparam>
-[ServiceInjection]
+[ServiceInjection(ServiceLifetime.Transient, ThreadIsolation = ThreadIsolationPolicy.Transient)]
 public interface IPipelineNotificationBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
     where TMessage : notnull;

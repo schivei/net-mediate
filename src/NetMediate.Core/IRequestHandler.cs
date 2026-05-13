@@ -1,4 +1,5 @@
 ﻿using GenDI;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate;
 
@@ -10,6 +11,6 @@ namespace NetMediate;
 /// requests.</remarks>
 /// <typeparam name="TMessage">The type of the request message to handle. Must not be null.</typeparam>
 /// <typeparam name="TResponse">The type of the response returned by the handler.</typeparam>
-[ServiceInjection]
+[ServiceInjection(ServiceLifetime.Scoped, ThreadIsolation = ThreadIsolationPolicy.Transient)]
 public interface IRequestHandler<in TMessage, TResponse> : IHandler<TMessage, Task<TResponse>>
     where TMessage : notnull;

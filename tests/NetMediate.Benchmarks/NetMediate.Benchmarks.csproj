@@ -11,7 +11,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
-	<PackageReference Include="GenDI.SourceGenerator" Version="26.5.12.1224">
+	<PackageReference Include="GenDI.SourceGenerator" Version="26.5.13.1053">
 		<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		<PrivateAssets>all</PrivateAssets>
 	</PackageReference>

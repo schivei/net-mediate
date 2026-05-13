@@ -89,14 +89,16 @@ public sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvide
 
             async Task<TResponse> AwaitAndCatch(Task<TResponse> t)
             {
+                TResponse result;
                 try
                 {
-                    return await t.ConfigureAwait(false);
+                    result = await t.ConfigureAwait(false);
                 }
                 catch (Exception ex) when (LogFailure(ex))
                 {
                     throw;
                 }
+                return result;
             }
         }
 

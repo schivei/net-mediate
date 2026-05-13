@@ -535,6 +535,69 @@ public sealed class PipelineExecutorCoverageTests
         Assert.True(marker.Hit);
     }
 
+    // Multi-handler + behaviors → Task.WhenAll path; all handlers invoked ───────
+    [Fact]
+    public async Task Notif_MultipleHandlers_WithBehaviors_AllHandlersInvoked()
+    {
+        var h1 = new NotifHandler();
+        var h2 = new NotifHandler();
+        var sp = BuildProvider(s =>
+        {
+            s.AddSingleton<INotificationHandler<Notif>>(h1);
+            s.AddSingleton<INotificationHandler<Notif>>(h2);
+            s.AddSingleton<IPipelineNotificationBehavior<Notif>, PassThroughNotifBehavior>();
+        });
+        var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
+
+        // With behaviors registered, multi-handler path uses Task.WhenAll so the behavior
+        // can observe all handler completions.
+        await ex.Handle(null, new Notif(), TestCancellationToken);
+
+        Assert.True(h1.Handled);
+        Assert.True(h2.Handled);
+    }
+
+    // Multi-handler + behaviors + faulting handler → exception logged, not rethrown ─
+    [Fact]
+    public async Task Notif_MultipleHandlers_WithBehaviors_FaultingHandler_ExceptionLoggedNotThrown()
+    {
+        var capLog = new CapturingLogger<NotificationPipelineExecutor<Notif>>();
+        var sync = new NotifHandler();
+        var sp = BuildProvider(s =>
+        {
+            s.AddSingleton<INotificationHandler<Notif>>(sync);
+            s.AddSingleton<INotificationHandler<Notif>>(_ => new FaultingNotifHandler());
+            s.AddSingleton<IPipelineNotificationBehavior<Notif>, PassThroughNotifBehavior>();
+        });
+        var ex = new NotificationPipelineExecutor<Notif>(sp, capLog);
+
+        // ErrorReporting absorbs the exception; must NOT throw.
+        await ex.Handle(null, new Notif(), TestCancellationToken);
+
+        Assert.True(sync.Handled);
+        Assert.Single(capLog.Errors);
+        Assert.IsType<InvalidOperationException>(capLog.Errors.First());
+    }
+
+    // Compatibility overload (exec parameter ignored) ─────────────────────────
+    [Fact]
+#pragma warning disable CS0618
+    public async Task Notif_CompatibilityOverload_ExecIgnored_HandlerInvoked()
+    {
+        var h = new NotifHandler();
+        var sp = BuildProvider(s => s.AddSingleton<INotificationHandler<Notif>>(h));
+        var ex = new NotificationPipelineExecutor<Notif>(sp, NullLogger<NotificationPipelineExecutor<Notif>>.Instance);
+
+        HandlerExecutionDelegate<INotificationHandler<Notif>, Notif, Task> unusedExec =
+            (_, _, _, _) => throw new InvalidOperationException("exec should not be called");
+
+        await ex.Handle(null, new Notif(), unusedExec, TestCancellationToken);
+
+        // Handler was invoked via the internal dispatch; exec was NOT called.
+        Assert.True(h.Handled);
+    }
+#pragma warning restore CS0618
+
     // =========================================================================
     // RequestPipelineExecutor
     // =========================================================================

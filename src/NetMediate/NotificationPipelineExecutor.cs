@@ -44,6 +44,18 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
         return BuildPipeline(key)(key, message, cancellationToken);
     }
 
+    /// <summary>
+    /// Compatibility overload preserved for source compatibility. The <paramref name="exec"/> parameter
+    /// is ignored; handler dispatch is now owned by the executor. Use the three-parameter overload instead.
+    /// </summary>
+    [Obsolete("Use Handle(object?, TMessage, CancellationToken) instead. The exec parameter is ignored and will be removed in a future version.")]
+    public Task Handle(
+        object? key,
+        TMessage message,
+        HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> exec,
+        CancellationToken cancellationToken
+    ) => Handle(key, message, cancellationToken);
+
     private PipelineBehaviorDelegate<TMessage, Task> InitNoKeyPipeline()
     {
         var built = BuildPipeline(null);
@@ -68,22 +80,40 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
         var behaviors = serviceProvider.GetServices<IPipelineNotificationBehavior<TMessage>>().ToArray();
 
         // Single-handler fast path: call the handler directly without any indirection.
-        // Multi-handler path: fire each handler individually so the caller returns immediately
-        // (true fire-and-forget per handler). Async handlers whose tasks are not yet completed
-        // are individually observed via AwaitHandlerFault to ensure errors are always logged.
-        PipelineBehaviorDelegate<TMessage, Task> app =
-            handlers.Length == 1
-                ? (_, msg, ct) => handlers[0].Handle(msg, ct)
-                : (_, msg, ct) =>
+        // Multi-handler paths:
+        //   No behaviors: fire-and-forget per handler — each handler is individually observed
+        //   via AwaitHandlerFault; the caller returns Task.CompletedTask immediately.
+        //   With behaviors: use Task.WhenAll so that behaviors (retry, timeout, circuit-breaker,
+        //   telemetry, etc.) can await `next` and properly observe handler failures.
+        PipelineBehaviorDelegate<TMessage, Task> app;
+
+        if (handlers.Length == 1)
+        {
+            app = (_, msg, ct) => handlers[0].Handle(msg, ct);
+        }
+        else if (behaviors.Length == 0)
+        {
+            app = (_, msg, ct) =>
+            {
+                foreach (var h in handlers)
                 {
-                    foreach (var h in handlers)
-                    {
-                        var t = h.Handle(msg, ct);
-                        if (!t.IsCompletedSuccessfully)
-                            AwaitHandlerFault(t);
-                    }
-                    return Task.CompletedTask;
-                };
+                    var t = h.Handle(msg, ct);
+                    if (!t.IsCompletedSuccessfully)
+                        AwaitHandlerFault(t);
+                }
+                return Task.CompletedTask;
+            };
+        }
+        else
+        {
+            app = (_, msg, ct) =>
+            {
+                var tasks = new Task[handlers.Length];
+                for (var i = 0; i < handlers.Length; i++)
+                    tasks[i] = handlers[i].Handle(msg, ct);
+                return Task.WhenAll(tasks);
+            };
+        }
 
         // Wrap app with the registered behaviors. Behaviors are resolved once here and cached
         // with the pipeline — DI resolution happens only on the first Handle() call per key.

@@ -136,7 +136,7 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
     // async completion produces no additional work. ExecuteSynchronously runs the callback inline
     // when the antecedent is already completed (e.g. Task.FromException), making fault logging
     // synchronous and deterministic in the common error path.
-    private Task AwaitHandlerFault(Task t) =>
+    private void AwaitHandlerFault(Task t) =>
         t.ContinueWith(
             completed =>
             {

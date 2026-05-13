@@ -1,11 +1,12 @@
 ﻿using GenDI;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate;
 
 /// <summary>
 /// Defines a mediator for sending messages, notifications, and requests between components.
 /// </summary>
-[ServiceInjection]
+[ServiceInjection(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
 public interface IMediator
 {
     /// <summary>

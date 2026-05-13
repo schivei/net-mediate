@@ -21,6 +21,11 @@
     <InternalsVisibleTo Include="NetMediate.Tests" />
     <InternalsVisibleTo Include="NetMediate.Compat" />
     <InternalsVisibleTo Include="NetMediate.Moq" />
+    <InternalsVisibleTo Include="NetMediate.Quartz" />
+    <InternalsVisibleTo Include="NetMediate.Resilience" />
+    <InternalsVisibleTo Include="NetMediate.Diagnostics" />
+    <InternalsVisibleTo Include="NetMediate.Resilience.Tests" />
+    <InternalsVisibleTo Include="NetMediate.Diagnostics.Tests" />
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     <InternalsVisibleTo Include="SharedParity.NetMediate.Tests" />
     <InternalsVisibleTo Include="SharedParity.MediatRCompat.Tests" />
@@ -31,7 +36,7 @@
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
-	  <PackageReference Include="GenDI.SourceGenerator" Version="26.5.12.1224">
+	  <PackageReference Include="GenDI.SourceGenerator" Version="26.5.13.1053">
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		  <PrivateAssets>all</PrivateAssets>
 	  </PackageReference>

@@ -1,4 +1,5 @@
 ﻿using GenDI;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate;
 
@@ -9,7 +10,7 @@ namespace NetMediate;
 /// messages. The order in which handlers are invoked is not guaranteed unless explicitly documented by the
 /// implementation. All notification operations are asynchronous and support cancellation via a cancellation
 /// token.</remarks>
-[ServiceInjection]
+[ServiceInjection(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
 public interface INotifiable
 {
     /// <summary>

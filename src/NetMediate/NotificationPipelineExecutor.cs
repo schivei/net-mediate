@@ -15,7 +15,6 @@ namespace NetMediate;
 public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serviceProvider, ILogger<NotificationPipelineExecutor<TMessage>> logger)
     where TMessage : notnull
 {
-    // Cached pipeline for the common key-less path; built once on the first call.
     private PipelineBehaviorDelegate<TMessage, Task>? _noKeyPipeline;
 
     /// <summary>
@@ -26,30 +25,42 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
     /// <param name="key">An optional key used to identify or differentiate the handler pipeline instance. May be null if no key is
     /// required.</param>
     /// <param name="message">The notification message to be processed by the handler pipeline.</param>
-    /// <param name="exec">A delegate representing the next handler or pipeline stage to execute for the notification message.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
     /// <returns>A task that represents the asynchronous operation of handling the notification message.</returns>
     public Task Handle(
         object? key,
         TMessage message,
-        HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> exec,
         CancellationToken cancellationToken
     )
     {
         if (key is null)
         {
-            // Fast path: reuse the cached pipeline for the key-less case.
-            var pipeline = _noKeyPipeline ?? InitNoKeyPipeline(exec);
+            var pipeline = _noKeyPipeline ?? InitNoKeyPipeline();
             return pipeline(null, message, cancellationToken);
         }
 
-        return BuildPipeline(key, exec)(key, message, cancellationToken);
+        return BuildPipeline(key)(key, message, cancellationToken);
     }
 
-    private PipelineBehaviorDelegate<TMessage, Task> InitNoKeyPipeline(
-        HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> exec)
+    /// <summary>
+    /// Handles the specified notification message using the provided execution delegate.
+    /// </summary>
+    /// <param name="key">An optional key that identifies the notification context. May be null if no key is required.</param>
+    /// <param name="message">The notification message to handle. Must not be null.</param>
+    /// <param name="_">The delegate representing the next handler in the execution pipeline. This parameter is required for pipeline
+    /// execution.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
+    /// <returns>A task that represents the asynchronous handling operation.</returns>
+    public Task Handle(
+        object? key,
+        TMessage message,
+        HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> _,
+        CancellationToken cancellationToken
+    ) => Handle(key, message, cancellationToken);
+
+    private PipelineBehaviorDelegate<TMessage, Task> InitNoKeyPipeline()
     {
-        var built = BuildPipeline(null, exec);
+        var built = BuildPipeline(null);
         Interlocked.CompareExchange(ref _noKeyPipeline, built, null);
         return _noKeyPipeline!;
     }
@@ -62,10 +73,7 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
         return [.. serviceProvider.GetServices<INotificationHandler<TMessage>>()];
     }
 
-    private PipelineBehaviorDelegate<TMessage, Task> BuildPipeline(
-        object? key,
-        HandlerExecutionDelegate<INotificationHandler<TMessage>, TMessage, Task> exec
-    )
+    private PipelineBehaviorDelegate<TMessage, Task> BuildPipeline(object? key)
     {
         var handlers = key is null
             ? [.. serviceProvider.GetServices<INotificationHandler<TMessage>>()]
@@ -73,10 +81,13 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
 
         var behaviors = serviceProvider.GetServices<IPipelineNotificationBehavior<TMessage>>().ToArray();
 
-        PipelineBehaviorDelegate<TMessage, Task> app =
-            handlers.Length == 1
-                ? (_, msg, ct) => handlers[0].Handle(msg, ct)
-                : (routingKey, msg, ct) => exec(routingKey, msg, handlers, ct);
+        PipelineBehaviorDelegate<TMessage, Task> app;
+        if (handlers.Length == 1)
+            app = (_, msg, ct) => handlers[0].Handle(msg, ct);
+        else if (behaviors.Length == 0)
+            app = CreateFireAndForgetApp(handlers);
+        else
+            app = CreateWhenAllApp(handlers);
 
         var pipeline = behaviors.Length == 0
             ? app
@@ -91,7 +102,6 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
         Task ErrorReporting(object? routingKey, TMessage msg, CancellationToken ct)
         {
             var task = pipeline(routingKey, msg, ct);
-            // Avoid async state-machine allocation on the hot success path.
             return task.IsCompletedSuccessfully ? task : AwaitAndCatch(task);
 
             async Task AwaitAndCatch(Task t)
@@ -100,22 +110,59 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
                 {
                     await t.ConfigureAwait(false);
                 }
-                catch (Exception ex) when (LogFailure(ex))
+                catch (Exception ex)
                 {
-                    throw;
+                    LogFailure(ex);
                 }
             }
         }
-
-        bool LogFailure(Exception ex)
-        {
-            logger.LogError(
-                ex,
-                "Error executing notification pipeline for message of type {MessageType}: {Message}",
-                typeof(TMessage).FullName,
-                ex.Message
-            );
-            return true;
-        }
     }
+
+    private void LogFailure(Exception ex)
+    {
+        logger.LogError(
+            ex,
+            "Error executing notification pipeline for message of type {MessageType}: {Message}",
+            typeof(TMessage).FullName,
+            ex.Message
+        );
+    }
+
+    private PipelineBehaviorDelegate<TMessage, Task> CreateFireAndForgetApp(INotificationHandler<TMessage>[] handlers) =>
+        (_, msg, ct) =>
+        {
+            foreach (var h in handlers)
+            {
+                var t = h.Handle(msg, ct);
+                if (!t.IsCompletedSuccessfully)
+                    AwaitHandlerFault(t);
+            }
+            return Task.CompletedTask;
+        };
+
+    private static PipelineBehaviorDelegate<TMessage, Task> CreateWhenAllApp(INotificationHandler<TMessage>[] handlers) =>
+        (_, msg, ct) =>
+        {
+            var tasks = new Task[handlers.Length];
+            for (var i = 0; i < handlers.Length; i++)
+                tasks[i] = handlers[i].Handle(msg, ct);
+            return Task.WhenAll(tasks);
+        };
+
+    private void AwaitHandlerFault(Task t) =>
+        t.ContinueWith(
+            completed =>
+            {
+                var ex = completed.Exception!.GetBaseException();
+                logger.LogError(
+                    ex,
+                    "Error executing notification pipeline for message of type {MessageType}: {Message}",
+                    typeof(TMessage).FullName,
+                    ex.Message
+                );
+            },
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default
+        );
 }

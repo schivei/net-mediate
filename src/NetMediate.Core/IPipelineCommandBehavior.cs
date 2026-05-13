@@ -1,4 +1,5 @@
 ﻿using GenDI;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate;
 
@@ -10,6 +11,6 @@ namespace NetMediate;
 /// validation, or exception handling, to the message processing pipeline. The behavior can invoke the next delegate to
 /// continue processing or short-circuit the pipeline as needed.</remarks>
 /// <typeparam name="TMessage">The type of the message being processed. Must implement the IMessage interface and cannot be null.</typeparam>
-[ServiceInjection]
+[ServiceInjection(ServiceLifetime.Transient, ThreadIsolation = ThreadIsolationPolicy.Transient)]
 public interface IPipelineCommandBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
     where TMessage : notnull;

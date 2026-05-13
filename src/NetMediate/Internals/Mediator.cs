@@ -1,10 +1,9 @@
 using System.Diagnostics;
-using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
 
-[Injectable<IMediator>(ServiceLifetime.Singleton)]
+[Injectable<IMediator>]
 internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable notifier) : IMediator
 {
     /// <inheritdoc/>
@@ -12,16 +11,11 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
         Notify(null, message, cancellationToken);
 
     /// <inheritdoc/>
-    public async Task Notify<TMessage>(
+    public Task Notify<TMessage>(
         object? key,
         TMessage message,
         CancellationToken cancellationToken = default
-    )
-    {
-        await notifier
-            .Notify(key, message, cancellationToken)
-            .ConfigureAwait(false);
-    }
+    ) => notifier.Notify(key, message, cancellationToken);
 
     /// <inheritdoc/>
     public Task Notify<TMessage>(
@@ -32,17 +26,13 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
         Notify(null, messages, cancellationToken);
 
     /// <inheritdoc/>
-    public async Task Notify<TMessage>(
+    public Task Notify<TMessage>(
         object? key,
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
     )
-        where TMessage : notnull
-    {
-        await notifier
-            .Notify(key, messages, cancellationToken)
-            .ConfigureAwait(false);
-    }
+        where TMessage : notnull =>
+        notifier.Notify(key, messages, cancellationToken);
 
     /// <inheritdoc/>
     public Task Send<TMessage>(TMessage message, CancellationToken cancellationToken = default)

@@ -80,7 +80,7 @@ public sealed class NotificationPipelineExecutor<TMessage>(IServiceProvider serv
                     {
                         var t = h.Handle(msg, ct);
                         if (!t.IsCompletedSuccessfully)
-                            _ = AwaitHandlerFault(t); // NOSONAR: intentional fire-and-forget; faults are logged inside AwaitHandlerFault
+                            AwaitHandlerFault(t);
                     }
                     return Task.CompletedTask;
                 };

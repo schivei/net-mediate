@@ -89,18 +89,30 @@ public sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvide
 
             // ContinueWith avoids async state-machine coverage gaps in newer SDK versions
             // (sequence points for method-close braces of async Task<T> methods are unreliable).
+            // Unwrap() is required because the lambda returns Task<TResponse> to handle all
+            // three terminal states: Canceled → TCS-based canceled task; Faulted → original
+            // faulted task (after logging); Success → original completed task.
             Task<TResponse> AwaitAndCatch(Task<TResponse> t) =>
                 t.ContinueWith(
                     completed =>
                     {
+                        if (completed.IsCanceled)
+                        {
+                            var tcs = new TaskCompletionSource<TResponse>();
+                            tcs.TrySetCanceled(ct);
+                            return tcs.Task;
+                        }
                         if (completed.IsFaulted)
-                            LogFailure(completed.Exception!.GetBaseException());
-                        return completed.GetAwaiter().GetResult();
+                        {
+                            var ex = completed.Exception!.InnerException ?? completed.Exception;
+                            LogFailure(ex);
+                        }
+                        return completed;
                     },
                     CancellationToken.None,
                     TaskContinuationOptions.None,
                     TaskScheduler.Default
-                );
+                ).Unwrap();
         }
 
         void LogFailure(Exception ex) =>

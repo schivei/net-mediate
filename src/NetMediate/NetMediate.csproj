@@ -29,6 +29,7 @@
     <InternalsVisibleTo Include="DynamicProxyGenAssembly2" />
     <InternalsVisibleTo Include="SharedParity.NetMediate.Tests" />
     <InternalsVisibleTo Include="SharedParity.MediatRCompat.Tests" />
+    <InternalsVisibleTo Include="NetMediate.Benchmarks" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\assets\logo.png" Pack="true" PackagePath="\" />

@@ -95,6 +95,12 @@ public sealed class PipelineExecutorCoverageTests
         }
     }
 
+    private sealed class CancellingReqHandler(CancellationToken cancelledToken) : IRequestHandler<Req, Rsp>
+    {
+        public Task<Rsp> Handle(Req request, CancellationToken cancellationToken = default)
+            => Task.FromCanceled<Rsp>(cancelledToken);
+    }
+
     private sealed class StrHandler : IStreamHandler<Str, int>
     {
         public async IAsyncEnumerable<int> Handle(
@@ -711,6 +717,23 @@ public sealed class PipelineExecutorCoverageTests
         var response = await ex.Handle(null, new Req(), TestCancellationToken);
         Assert.True(marker.Hit);
         Assert.Equal(99, response.Value);
+    }
+
+    // ErrorReporting – handler returns a canceled task → AwaitAndCatch propagates
+    // cancellation semantics (IsCanceled, not IsFaulted) via TaskCompletionSource.
+    [Fact]
+    public async Task Req_CancelledTask_TaskIsCanceled()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        var sp = BuildProvider(s => s.AddSingleton<IRequestHandler<Req, Rsp>>(_ => new CancellingReqHandler(cts.Token)));
+        var ex = new RequestPipelineExecutor<Req, Rsp>(sp, NullLogger<RequestPipelineExecutor<Req, Rsp>>.Instance);
+
+        // CancellingReqHandler returns Task.FromCanceled, so AwaitAndCatch sees
+        // completed.IsCanceled == true and returns a properly canceled task.
+        var task = ex.Handle(null, new Req(), cts.Token);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await task);
+        Assert.True(task.IsCanceled);
     }
 
     // =========================================================================

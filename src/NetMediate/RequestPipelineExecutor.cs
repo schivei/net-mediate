@@ -87,30 +87,40 @@ public sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvide
             // Avoid async state-machine allocation on the hot success path.
             return task.IsCompletedSuccessfully ? task : AwaitAndCatch(task);
 
-            async Task<TResponse> AwaitAndCatch(Task<TResponse> t)
-            {
-                TResponse result;
-                try
-                {
-                    result = await t.ConfigureAwait(false);
-                }
-                catch (Exception ex) when (LogFailure(ex))
-                {
-                    throw;
-                }
-                return result;
-            }
+            // ContinueWith avoids async state-machine coverage gaps in newer SDK versions
+            // (sequence points for method-close braces of async Task<T> methods are unreliable).
+            // Unwrap() is required because the lambda returns Task<TResponse> to handle all
+            // three terminal states: Canceled → TCS-based canceled task; Faulted → original
+            // faulted task (after logging); Success → original completed task.
+            Task<TResponse> AwaitAndCatch(Task<TResponse> t) =>
+                t.ContinueWith(
+                    completed =>
+                    {
+                        if (completed.IsCanceled)
+                        {
+                            var tcs = new TaskCompletionSource<TResponse>();
+                            tcs.TrySetCanceled(ct);
+                            return tcs.Task;
+                        }
+                        if (completed.IsFaulted)
+                        {
+                            var ex = completed.Exception!.InnerException ?? completed.Exception;
+                            LogFailure(ex);
+                        }
+                        return completed;
+                    },
+                    CancellationToken.None,
+                    TaskContinuationOptions.None,
+                    TaskScheduler.Default
+                ).Unwrap();
         }
 
-        bool LogFailure(Exception ex)
-        {
+        void LogFailure(Exception ex) =>
             logger.LogError(
                 ex,
                 "Error executing request pipeline for message of type {MessageType}: {Message}",
                 typeof(TMessage).FullName,
                 ex.Message
             );
-            return true;
-        }
     }
 }

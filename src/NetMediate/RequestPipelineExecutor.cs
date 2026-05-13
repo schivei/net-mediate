@@ -87,30 +87,28 @@ public sealed class RequestPipelineExecutor<TMessage, TResponse>(IServiceProvide
             // Avoid async state-machine allocation on the hot success path.
             return task.IsCompletedSuccessfully ? task : AwaitAndCatch(task);
 
-            async Task<TResponse> AwaitAndCatch(Task<TResponse> t)
-            {
-                TResponse result;
-                try
-                {
-                    result = await t.ConfigureAwait(false);
-                }
-                catch (Exception ex) when (LogFailure(ex))
-                {
-                    throw;
-                }
-                return result;
-            }
+            // ContinueWith avoids async state-machine coverage gaps in newer SDK versions
+            // (sequence points for method-close braces of async Task<T> methods are unreliable).
+            Task<TResponse> AwaitAndCatch(Task<TResponse> t) =>
+                t.ContinueWith(
+                    completed =>
+                    {
+                        if (completed.IsFaulted)
+                            LogFailure(completed.Exception!.GetBaseException());
+                        return completed.GetAwaiter().GetResult();
+                    },
+                    CancellationToken.None,
+                    TaskContinuationOptions.None,
+                    TaskScheduler.Default
+                );
         }
 
-        bool LogFailure(Exception ex)
-        {
+        void LogFailure(Exception ex) =>
             logger.LogError(
                 ex,
                 "Error executing request pipeline for message of type {MessageType}: {Message}",
                 typeof(TMessage).FullName,
                 ex.Message
             );
-            return true;
-        }
     }
 }

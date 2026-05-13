@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
 
@@ -15,7 +15,16 @@ internal class Notifier(IServiceProvider serviceProvider) : INotifiable
         if (handlers.Length == 0)
             return Task.CompletedTask;
 
-        _ = Task.WhenAll(handlers.Select(h => h.Handle(message, cancellationToken))).ContinueWith(_ => { }, cancellationToken);
+        // Fire each handler individually (true fire-and-forget). Async handlers whose tasks are
+        // not yet completed are observed via ContinueWith to prevent UnobservedTaskException.
+        // Exceptions are intentionally swallowed here; the caller is responsible for fault handling
+        // when using DispatchNotifications directly. The pipeline path (via Handle) logs faults.
+        foreach (var h in handlers)
+        {
+            var t = h.Handle(message, cancellationToken);
+            if (!t.IsCompletedSuccessfully)
+                _ = t.ContinueWith(static _ => { }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+        }
 
         return Task.CompletedTask;
     }
@@ -32,12 +41,10 @@ internal class Notifier(IServiceProvider serviceProvider) : INotifiable
         if (pipeline is null)
             return Task.CompletedTask;
 
-        _ = pipeline.Handle(
-            key,
-            message,
-            DispatchNotifications,
-            cancellationToken
-        ).ContinueWith(static _ => { }, cancellationToken);
+        // Fire-and-forget: discard the Task returned by the pipeline. ErrorReporting inside the
+        // executor logs any handler exceptions and ensures the Task is never faulted, so the
+        // discard here is safe.
+        _ = pipeline.Handle(key, message, cancellationToken);
 
         return Task.CompletedTask;
     }
@@ -49,9 +56,10 @@ internal class Notifier(IServiceProvider serviceProvider) : INotifiable
     )
         where TMessage : notnull
     {
-        _ = Task.WhenAll(
-            messages.Select(m => Notify(key, m, cancellationToken))
-        ).ContinueWith(static _ => { }, cancellationToken);
+        // Each single-message Notify returns Task.CompletedTask immediately, so iterating
+        // synchronously is equivalent to Task.WhenAll with zero async overhead.
+        foreach (var m in messages)
+            Notify(key, m, cancellationToken);
 
         return Task.CompletedTask;
     }

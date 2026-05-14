@@ -202,8 +202,7 @@ function QuickExample() {
                         </Heading>
                         <div className="margin-bottom--lg">
                             <pre>
-                                <code className="language-csharp">{`// 1. Install the packages
-dotnet add package NetMediate
+                                <code className="language-csharp">{`// 1. Install the package
 dotnet add package NetMediate.SourceGeneration
 
 // 2. Define a notification

@@ -17,10 +17,6 @@ namespace {{AssemblyNamespace}};
         // Application-local GenDI registrations must run before NetMediate's own GenDI registrations.
         {{AssemblyNamespace}}.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
 
-        // Register the default in-process notifier unless the application already provided one
-        // (e.g. the Quartz integration registers its own INotifiable before this point).
-        global::NetMediate.DependencyInjection.NotifierServiceCollectionExtensions.TryAddDefaultNetMediateNotifier(services);
-
 {{FrameworkBehaviors}}
 {{Registrations}}
         // NetMediate's own GenDI registrations must be applied last.

@@ -67,7 +67,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Pipeline Behaviors**: Interceptors with pre/post flow for every message kind
 - **Optional resilience package**: Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience`
 - **OpenTelemetry-ready diagnostics**: Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream
-- **Keyed handler routing**: Register handlers under named keys and dispatch to specific subsets at runtime — **fully NativeAOT + Trimming compatible** via source-generated `KeyedHandlerRegistry<T>`
+- **Keyed handler routing**: Register handlers under named keys and dispatch to specific subsets at runtime — **fully NativeAOT + Trimming compatible** via GenDI keyed-service resolution
 - **Streaming fan-out**: Multiple `IStreamHandler` registrations supported — their items are merged sequentially
 - **Cancellation Support**: Full cancellation token support across all operations
 - **Broad runtime compatibility**: Multi-targeted for `net10.0`, `netstandard2.0`, and `netstandard2.1`
@@ -457,7 +457,7 @@ The `key` is propagated through the entire pipeline — behaviors receive it in 
 
 > **Keyless dispatch:** A `null` key (the default when no key is passed) flows through the pipeline unchanged. `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are exactly equivalent and target the non-keyed handlers registered in the container.
 
-> **NativeAOT:** Keyed dispatch is fully NativeAOT + Trimming compatible. The source generator emits a `KeyedHandlerRegistry<T>` at compile time — no reflection, no `IKeyedServiceProvider` is used at runtime. Both keyed and non-keyed dispatch are safe for NativeAOT and trimmed deployments.
+> **NativeAOT:** Keyed dispatch is fully NativeAOT + Trimming compatible. GenDI resolves keyed services; NetMediate dispatch uses `GetKeyedServices`/`GetRequiredKeyedService` at runtime. Both keyed and non-keyed dispatch are safe for NativeAOT and trimmed deployments.
 
 ### Pipeline Behaviors / Interceptors
 

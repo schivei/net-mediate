@@ -93,7 +93,7 @@ Use GenDI metadata to control `ServiceLifetime`, `Group`, `Order`, and `Key`. Us
 > - Handler decorated with `[Injectable(..., Key = "mykey")]` → registered with the explicit key `"mykey"`.
 > - Handler with no `Key` → registered as a regular non-keyed service in the container. `mediator.SendMyCmdAsync(command, ct)` and `mediator.SendMyCmdAsync(null, command, ct)` are equivalent and target those non-keyed handlers.
 >
-> The keyed routing table is emitted as a `KeyedHandlerRegistry<T>` at compile time — **no reflection, no `IKeyedServiceProvider`** — making keyed dispatch fully NativeAOT + Trimming compatible.
+> Keyed routing is handled by GenDI keyed service registrations; NetMediate only performs keyed dispatch resolution at runtime.
 
 ## AOT / NativeAOT
 

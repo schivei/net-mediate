@@ -43,11 +43,7 @@ internal class Notifier(IServiceProvider serviceProvider) : INotifiable
 
         if (key is not null)
         {
-            var keyedServices = serviceProvider.GetRequiredService<KeyedHandlerRegistry<INotificationHandler<TMessage>>>();
-            if (!keyedServices.TryGetAll(key, serviceProvider, out var keyedHandlers))
-                keyedHandlers = [];
-
-            handlers = [.. keyedHandlers];
+            handlers = [.. serviceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)];
         }
 
         // Fire-and-forget: discard the Task returned by the pipeline. ErrorReporting inside the

@@ -1,0 +1,13 @@
+<Project>
+	<Target Name="UnlockTransitiveAnalyser" BeforeTargets="_GenerateProjectLintProperties;GetCopyOutputDirectoryItems">
+		<ItemGroup>
+			<PackageReference Update="NetMediate.SourceGeneration">
+				<PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
+			</PackageReference>
+
+			<PackageReference Update="GenDI.SourceGenerator">
+				<PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
+			</PackageReference>
+		</ItemGroup>
+	</Target>
+</Project>

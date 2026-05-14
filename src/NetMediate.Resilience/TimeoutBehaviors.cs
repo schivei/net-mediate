@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using System.Runtime.CompilerServices;
 
 namespace NetMediate.Resilience;
 
@@ -10,9 +11,8 @@ internal static class TimeoutBehaviorRunner
         TimeSpan timeout,
         bool disabled,
         string operationName,
-        object? key,
         TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        Func<TMessage, CancellationToken, Task<TResponse>> next,
         CancellationToken cancellationToken
     )
         where TMessage : notnull =>
@@ -21,8 +21,8 @@ internal static class TimeoutBehaviorRunner
             disabled,
             operationName,
             static async (state, ct) =>
-                await state.Next(state.Key, state.Message, ct).ConfigureAwait(false),
-            (Key: key, Message: message, Next: next),
+                await state.Next(state.Message, ct).ConfigureAwait(false),
+            (Message: message, Next: next),
             cancellationToken
         );
 
@@ -30,9 +30,8 @@ internal static class TimeoutBehaviorRunner
         TimeSpan timeout,
         bool disabled,
         string operationName,
-        object? key,
         TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task> next,
+        Func<TMessage, CancellationToken, Task> next,
         CancellationToken cancellationToken
     )
         where TMessage : notnull
@@ -43,14 +42,31 @@ internal static class TimeoutBehaviorRunner
                 operationName,
                 static async (state, ct) =>
                 {
-                    await state.Next(state.Key, state.Message, ct).ConfigureAwait(false);
+                    await state.Next(state.Message, ct).ConfigureAwait(false);
                     return CompletedResult;
                 },
-                (Key: key, Message: message, Next: next),
+                (Message: message, Next: next),
                 cancellationToken
             )
             .ConfigureAwait(false);
     }
+
+    public static IAsyncEnumerable<TResponse> ExecuteAsync<TMessage, TResponse>(
+        TimeSpan timeout,
+        bool disabled,
+        string operationName,
+        TMessage message,
+        Func<TMessage, CancellationToken, IAsyncEnumerable<TResponse>> next,
+        CancellationToken cancellationToken
+        ) where TMessage : notnull =>
+        ExecuteCoreAsync(
+            timeout,
+            disabled,
+            operationName,
+            static (state, ct) => state.Next(state.Message, ct),
+            (Message: message, Next: next),
+            cancellationToken
+        );
 
     private static async Task<TResult> ExecuteCoreAsync<TState, TResult>(
         TimeSpan timeout,
@@ -79,89 +95,151 @@ internal static class TimeoutBehaviorRunner
             throw new TimeoutException($"{operationName} exceeded timeout '{timeout}'.", ex);
         }
     }
+
+    private static async IAsyncEnumerable<TResult> ExecuteCoreAsync<TState, TResult>(
+        TimeSpan timeout,
+        bool disabled,
+        string operationName,
+        Func<TState, CancellationToken, IAsyncEnumerable<TResult>> operation,
+        TState state,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        if (disabled || timeout <= TimeSpan.Zero || timeout == Timeout.InfiniteTimeSpan)
+        {
+            await foreach (var item in operation(state, cancellationToken).ConfigureAwait(false))
+            {
+                yield return item;
+            }
+
+            yield break;
+        }
+
+        using var timeoutTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
+            cancellationToken
+        );
+        timeoutTokenSource.CancelAfter(timeout);
+
+        List<TResult> results = [];
+        try
+        {
+            await foreach (var item in operation(state, timeoutTokenSource.Token).ConfigureAwait(false))
+            {
+                results.Add(item);
+            }
+        }
+        catch (OperationCanceledException ex)
+            when (timeoutTokenSource.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+        {
+            throw new TimeoutException($"{operationName} exceeded timeout '{timeout}'.", ex);
+        }
+
+        foreach (var item in results)
+        {
+            yield return item;
+        }
+    }
 }
 
-public abstract class TimeoutRequestBehaviorBase<TMessage, TResponse>(
+/// <summary>
+/// Provides a base implementation of an asynchronous request handler that enforces a configurable timeout policy for
+/// request processing.
+/// </summary>
+/// <remarks>This abstract class wraps an existing request handler and applies a timeout to its execution based on
+/// the provided options. If the timeout is reached before the handler completes, the operation may be canceled or fail
+/// according to the configured behavior. Use this class to ensure that request processing does not exceed a specified
+/// duration.</remarks>
+/// <typeparam name="TMessage">The type of the request message to handle. Must not be null.</typeparam>
+/// <typeparam name="TResponse">The type of the response returned by the handler.</typeparam>
+/// <param name="handler">The underlying request handler that processes the message.</param>
+/// <param name="optionsAccessor">The options accessor that provides timeout configuration for request processing.</param>
+public abstract class TimeoutRequestBehavior<TMessage, TResponse>(
+    IRequestHandler<TMessage, TResponse> handler,
     IOptions<TimeoutBehaviorOptions> optionsAccessor
-) where TMessage : notnull
+) : IRequestHandler<TMessage, TResponse>
+    where TMessage : notnull
 {
-    public Task<TResponse> Handle(
-        object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
-        CancellationToken cancellationToken
-    ) =>
+    /// <inheritdoc/>
+    public Task<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
         TimeoutBehaviorRunner.ExecuteAsync(
-            optionsAccessor.Value.RequestTimeout,
+            optionsAccessor.Value.StreamTimeout,
             optionsAccessor.Value.Disabled,
             "Request",
-            key,
             message,
-            next,
+            handler.Handle,
             cancellationToken
         );
 }
 
-public abstract class TimeoutTaskBehaviorBase<TMessage>(
-    IOptions<TimeoutBehaviorOptions> optionsAccessor,
-    Func<TimeoutBehaviorOptions, TimeSpan> timeoutSelector,
-    string operationName
-) where TMessage : notnull
+/// <summary>
+/// Provides a base notification handler that applies a configurable timeout policy to the handling of notification
+/// messages.
+/// </summary>
+/// <remarks>This abstract class enables derived notification handlers to enforce a timeout policy when processing
+/// messages. The timeout duration and whether the timeout behavior is enabled are determined by the provided options.
+/// Use this class to ensure that notification handling does not exceed a specified execution time.</remarks>
+/// <typeparam name="TMessage">The type of notification message to handle. Must not be null.</typeparam>
+/// <param name="handler">The underlying notification handler that processes the message.</param>
+/// <param name="optionsAccessor">The options accessor that provides timeout configuration for the notification handler.</param>
+public abstract class TimeoutNotificationBehavior<TMessage>(
+    INotificationHandler<TMessage> handler,
+    IOptions<TimeoutBehaviorOptions> optionsAccessor
+) : INotificationHandler<TMessage>
+    where TMessage : notnull
 {
-    public Task Handle(
-        object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task> next,
-        CancellationToken cancellationToken
-    ) =>
+    /// <inheritdoc/>
+    public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
         TimeoutBehaviorRunner.ExecuteAsync(
-            timeoutSelector(optionsAccessor.Value),
+            optionsAccessor.Value.CommandTimeout,
             optionsAccessor.Value.Disabled,
-            operationName,
-            key,
+            "Notification",
             message,
-            next,
+            handler.Handle,
             cancellationToken
         );
 }
 
 /// <summary>
-/// Request pipeline behavior that applies a timeout.
-/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
+/// Provides a base command handler that enforces a configurable timeout for command execution.
 /// </summary>
-public sealed class TimeoutRequestBehavior<TMessage, TResponse>(
+/// <remarks>This class wraps an existing command handler and applies a timeout policy to its execution. If the
+/// timeout is disabled in the options, the command executes without a timeout. Use this class to ensure that command
+/// handling does not exceed a specified duration.</remarks>
+/// <typeparam name="TMessage">The type of the command message to be handled. Must not be null.</typeparam>
+/// <param name="handler">The underlying command handler that processes the command message.</param>
+/// <param name="optionsAccessor">The options accessor that supplies timeout configuration for command execution.</param>
+public abstract class TimeoutCommandBehavior<TMessage>(
+    ICommandHandler<TMessage> handler,
     IOptions<TimeoutBehaviorOptions> optionsAccessor
-) : TimeoutRequestBehaviorBase<TMessage, TResponse>(optionsAccessor),
-    IPipelineRequestBehavior<TMessage, TResponse>
+) : ICommandHandler<TMessage>
     where TMessage : notnull
-{ }
+{
+    /// <inheritdoc/>
+    public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+        TimeoutBehaviorRunner.ExecuteAsync(
+            optionsAccessor.Value.CommandTimeout,
+            optionsAccessor.Value.Disabled,
+            "Command",
+            message,
+            handler.Handle,
+            cancellationToken
+        );
+}
 
-/// <summary>
-/// Notification pipeline behavior that applies a timeout.
-/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
-/// </summary>
-public sealed class TimeoutNotificationBehavior<TMessage>(
+public abstract class TimeoutStreamBehavior<TMessage, TResponse>(
+    IStreamHandler<TMessage, TResponse> handler,
     IOptions<TimeoutBehaviorOptions> optionsAccessor
-) : TimeoutTaskBehaviorBase<TMessage>(
-        optionsAccessor,
-        static options => options.NotificationTimeout,
-        "Notification"
-    ),
-    IPipelineNotificationBehavior<TMessage>
+) : IStreamHandler<TMessage, TResponse>
     where TMessage : notnull
-{ }
-
-/// <summary>
-/// Notification pipeline behavior that applies a timeout.
-/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
-/// </summary>
-public sealed class TimeoutCommandBehavior<TMessage>(
-    IOptions<TimeoutBehaviorOptions> optionsAccessor
-) : TimeoutTaskBehaviorBase<TMessage>(
-        optionsAccessor,
-        static options => options.NotificationTimeout,
-        "Command"
-    ),
-    IPipelineCommandBehavior<TMessage>
-    where TMessage : notnull
-{ }
+{
+    /// <inheritdoc/>
+    public IAsyncEnumerable<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
+        TimeoutBehaviorRunner.ExecuteAsync(
+            optionsAccessor.Value.StreamTimeout,
+            optionsAccessor.Value.Disabled,
+            "Stream",
+            message,
+            handler.Handle,
+            cancellationToken
+        );
+}

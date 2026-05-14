@@ -9,6 +9,7 @@
 /// continue processing or short-circuit the pipeline as needed.</remarks>
 /// <typeparam name="TMessage">The type of the message being processed. Must implement the IMessage interface and cannot be null.</typeparam>
 /// <typeparam name="TResult">The type of the result returned by the pipeline after processing the message.</typeparam>
+[Obsolete("This delegate is deprecated. Use DecoratorForAttribute instead.", true)]
 public interface IPipelineBehavior<TMessage, TResult>
     where TMessage : notnull
     where TResult : notnull

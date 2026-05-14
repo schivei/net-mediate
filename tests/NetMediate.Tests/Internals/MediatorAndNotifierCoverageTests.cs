@@ -566,13 +566,14 @@ public sealed class MediatorAndNotifierCoverageTests
         }
     }
 
-    private sealed class ThrowingCommandBehavior : IPipelineCommandBehavior<CommandMessage>
+    [DecoratorFor<ICommandHandler<CommandMessage>>]
+    private sealed class ThrowingCommandBehavior : ICommandHandler<CommandMessage>
     {
+        [Inject] internal required ICommandHandler<CommandMessage> Handler { get; init; }
+
         public Task Handle(
-            object? key,
             CommandMessage message,
-            PipelineBehaviorDelegate<CommandMessage, Task> next,
-            CancellationToken cancellationToken
+            CancellationToken cancellationToken = default
         ) => throw new InvalidOperationException("boom");
     }
 

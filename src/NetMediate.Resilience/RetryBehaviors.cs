@@ -1,5 +1,5 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Options;
+using System.Runtime.CompilerServices;
 
 namespace NetMediate.Resilience;
 
@@ -9,49 +9,56 @@ internal static class RetryBehaviorRunner
 
     public static Task<TResponse> ExecuteAsync<TMessage, TResponse>(
         IOptions<RetryBehaviorOptions> optionsAccessor,
-        object? key,
         TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
+        Func<TMessage, CancellationToken, Task<TResponse>> next,
         CancellationToken cancellationToken
     )
         where TMessage : notnull =>
         ExecuteCoreAsync(
             optionsAccessor.Value,
             static async (state, ct) =>
-                await state.Next(state.Key, state.Message, ct).ConfigureAwait(false),
-            (Key: key, Message: message, Next: next),
+                await state.Next(state.Message, ct).ConfigureAwait(false),
+            (Message: message, Next: next),
+            cancellationToken
+        );
+
+    public static IAsyncEnumerable<TResponse> ExecuteAsync<TMessage, TResponse>(
+        IOptions<RetryBehaviorOptions> optionsAccessor,
+        TMessage message,
+        Func<TMessage, CancellationToken, IAsyncEnumerable<TResponse>> next,
+        CancellationToken cancellationToken
+        ) where TMessage : notnull =>
+        ExecuteCoreAsync(
+            optionsAccessor.Value,
+            static (state, ct) => state.Next(state.Message, ct),
+            (Message: message, Next: next),
             cancellationToken
         );
 
     public static async Task ExecuteAsync<TMessage>(
         IOptions<RetryBehaviorOptions> optionsAccessor,
-        object? key,
         TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task> next,
+        Func<TMessage, CancellationToken, Task> next,
         CancellationToken cancellationToken
-    )
-        where TMessage : notnull
+    ) where TMessage : notnull
     {
         _ = await ExecuteCoreAsync(
                 optionsAccessor.Value,
                 static async (state, ct) =>
                 {
-                    await state.Next(state.Key, state.Message, ct).ConfigureAwait(false);
+                    await state.Next(state.Message, ct).ConfigureAwait(false);
                     return CompletedResult;
                 },
-                (Key: key, Message: message, Next: next),
+                (Message: message, Next: next),
                 cancellationToken
             )
             .ConfigureAwait(false);
     }
 
-    // Compiler-required guard after the retry loop; logically unreachable because the last
-    // attempt always propagates its exception rather than completing the loop normally.
-    [ExcludeFromCodeCoverage]
-    private static async Task<TResult> ExecuteCoreAsync<TState, TResult>(
+    private static async Task<TResult> ExecuteCoreAsync<TMessage, TResult>(
         RetryBehaviorOptions options,
-        Func<TState, CancellationToken, Task<TResult>> operation,
-        TState state,
+        Func<TMessage, CancellationToken, Task<TResult>> operation,
+        TMessage message,
         CancellationToken cancellationToken
     )
     {
@@ -59,7 +66,7 @@ internal static class RetryBehaviorRunner
         var delay = options.Delay < TimeSpan.Zero ? TimeSpan.Zero : options.Delay;
 
         if (options.Disabled)
-            return await operation(state, cancellationToken).ConfigureAwait(false);
+            return await operation(message, cancellationToken).ConfigureAwait(false);
 
         for (var attempt = 0; attempt <= maxRetryCount; attempt++)
         {
@@ -67,7 +74,7 @@ internal static class RetryBehaviorRunner
 
             try
             {
-                return await operation(state, cancellationToken).ConfigureAwait(false);
+                return await operation(message, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (
                 !cancellationToken.IsCancellationRequested && attempt < maxRetryCount
@@ -84,67 +91,146 @@ internal static class RetryBehaviorRunner
         throw new InvalidOperationException("Retry execution ended without completing or throwing.");
     }
 
+    private static async IAsyncEnumerable<TResult> ExecuteCoreAsync<TMessage, TResult>(
+        RetryBehaviorOptions options,
+        Func<TMessage, CancellationToken, IAsyncEnumerable<TResult>> operation,
+        TMessage message,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        var maxRetryCount = Math.Max(0, options.MaxRetryCount);
+        var delay = options.Delay < TimeSpan.Zero ? TimeSpan.Zero : options.Delay;
+
+        if (options.Disabled)
+        {
+            await foreach (var item in operation(message, cancellationToken).ConfigureAwait(false))
+            {
+                yield return item;
+            }
+
+            yield break;
+        }
+
+        List<TResult>? results = null;
+
+        for (var attempt = 0; attempt <= maxRetryCount; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            results = [];
+
+            try
+            {
+                await foreach (var item in operation(message, cancellationToken).ConfigureAwait(false))
+                {
+                    results.Add(item);
+                }
+
+                break;
+            }
+            catch (OperationCanceledException) when (
+                !cancellationToken.IsCancellationRequested && attempt < maxRetryCount
+            )
+            {
+                await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception) when (attempt < maxRetryCount)
+            {
+                await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        if (results == null)
+        {
+            throw new InvalidOperationException("Retry execution ended without completing or throwing.");
+        }
+
+        foreach (var item in results)
+        {
+            yield return item;
+        }
+    }
+
     private static Task DelayIfNeededAsync(TimeSpan delay, CancellationToken cancellationToken) =>
         delay > TimeSpan.Zero
             ? Task.Delay(delay, cancellationToken)
             : Task.CompletedTask;
 }
 
-public abstract class RetryRequestBehaviorBase<TMessage, TResponse>(
+/// <summary>
+/// Provides a base implementation for stream handlers that adds retry behavior to the handling of streaming messages.
+/// </summary>
+/// <remarks>This abstract class decorates an existing stream handler to automatically apply retry logic when
+/// handling streaming messages. The retry behavior is configured via the provided options. Derived classes can extend
+/// or customize the retry strategy as needed.</remarks>
+/// <typeparam name="TMessage">The type of the message received by the stream handler. Must not be null.</typeparam>
+/// <typeparam name="TResponse">The type of the response produced by the stream handler.</typeparam>
+/// <param name="handler">The underlying stream handler that processes messages and produces responses.</param>
+/// <param name="optionsAccessor">The options accessor that provides configuration for the retry behavior.</param>
+public abstract class RetryStreamBehavior<TMessage, TResponse>(
+    IStreamHandler<TMessage, TResponse> handler,
     IOptions<RetryBehaviorOptions> optionsAccessor
-) where TMessage : notnull
+) : IStreamHandler<TMessage, TResponse> where TMessage : notnull
 {
-    public Task<TResponse> Handle(
-        object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task<TResponse>> next,
-        CancellationToken cancellationToken
-    ) =>
-        RetryBehaviorRunner.ExecuteAsync(optionsAccessor, key, message, next, cancellationToken);
-}
-
-public abstract class RetryTaskBehaviorBase<TMessage>(
-    IOptions<RetryBehaviorOptions> optionsAccessor
-) where TMessage : notnull
-{
-    public Task Handle(
-        object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, Task> next,
-        CancellationToken cancellationToken
-    ) =>
-        RetryBehaviorRunner.ExecuteAsync(optionsAccessor, key, message, next, cancellationToken);
+    public IAsyncEnumerable<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
+        RetryBehaviorRunner.ExecuteAsync(optionsAccessor, message, handler.Handle, cancellationToken);
 }
 
 /// <summary>
-/// Request pipeline behavior that applies retry logic.
-/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
+/// Provides a base implementation of a request handler that applies retry logic to the handling of requests.
 /// </summary>
-public sealed class RetryRequestBehavior<TMessage, TResponse>(
+/// <remarks>This class enables automatic retry of failed requests according to the specified retry options. It
+/// can be used as a base for implementing resilient request handling in scenarios where transient failures are
+/// expected.</remarks>
+/// <typeparam name="TMessage">The type of the request message to be handled. Must not be null.</typeparam>
+/// <typeparam name="TResponse">The type of the response returned by the handler.</typeparam>
+/// <param name="handler">The underlying request handler that processes the message and produces a response.</param>
+/// <param name="optionsAccessor">The options accessor that supplies configuration settings for the retry behavior.</param>
+public abstract class RetryRequestBehavior<TMessage, TResponse>(
+    IRequestHandler<TMessage, TResponse> handler,
     IOptions<RetryBehaviorOptions> optionsAccessor
-) : RetryRequestBehaviorBase<TMessage, TResponse>(optionsAccessor),
-    IPipelineRequestBehavior<TMessage, TResponse>
-    where TMessage : notnull
-{ }
+) : IRequestHandler<TMessage, TResponse> where TMessage : notnull
+{
+    /// <inheritdoc/>
+    public Task<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
+        RetryBehaviorRunner.ExecuteAsync(optionsAccessor, message, handler.Handle, cancellationToken);
+}
 
 /// <summary>
-/// Notification pipeline behavior that applies retry logic.
-/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
+/// Provides a base notification handler that applies retry logic to the handling of notification messages.
 /// </summary>
-public sealed class RetryNotificationBehavior<TMessage>(
+/// <remarks>This abstract class enables retry policies for notification handlers by wrapping the execution of the
+/// handler with retry logic. Use this as a base class to add retry capabilities to implementations of
+/// INotificationHandler<TMessage>.</remarks>
+/// <typeparam name="TMessage">The type of notification message to handle. Must not be null.</typeparam>
+/// <param name="handler">The underlying notification handler that processes the message.</param>
+/// <param name="optionsAccessor">The options accessor that provides configuration for retry behavior.</param>
+public abstract class RetryNotificationBehavior<TMessage>(
+    INotificationHandler<TMessage> handler,
     IOptions<RetryBehaviorOptions> optionsAccessor
-) : RetryTaskBehaviorBase<TMessage>(optionsAccessor),
-    IPipelineNotificationBehavior<TMessage>
+) : INotificationHandler<TMessage>
     where TMessage : notnull
-{ }
+{
+    /// <inheritdoc/>
+    public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+        RetryBehaviorRunner.ExecuteAsync(optionsAccessor, message, handler.Handle, cancellationToken);
+}
 
 /// <summary>
-/// Command pipeline behavior that applies retry logic.
-/// Registered per-handler by the source generator when <c>NetMediate.Resilience</c> is referenced.
+/// Provides a command handler decorator that adds retry logic to command execution based on configurable options.
 /// </summary>
-public sealed class RetryCommandBehavior<TMessage>(
+/// <remarks>This class enables automatic retry of command handling operations according to the specified retry
+/// policy. It can be used to improve resilience when handling transient failures in command processing.</remarks>
+/// <typeparam name="TMessage">The type of the command message to be handled. Must not be null.</typeparam>
+/// <param name="handler">The underlying command handler to which retry behavior will be applied.</param>
+/// <param name="optionsAccessor">The options accessor that supplies configuration settings for retry behavior.</param>
+public abstract class RetryCommandBehavior<TMessage>(
+    ICommandHandler<TMessage> handler,
     IOptions<RetryBehaviorOptions> optionsAccessor
-) : RetryTaskBehaviorBase<TMessage>(optionsAccessor),
-    IPipelineCommandBehavior<TMessage>
+) : ICommandHandler<TMessage>
     where TMessage : notnull
-{ }
+{
+    /// <inheritdoc/>
+    public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+        RetryBehaviorRunner.ExecuteAsync(optionsAccessor, message, handler.Handle, cancellationToken);
+}

@@ -31,9 +31,9 @@
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
-	  <PackageReference Include="GenDI.SourceGenerator" Version="26.5.13.1053">
+	  <PackageReference Include="GenDI.SourceGenerator" Version="26.5.14.661">
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		  <PrivateAssets>all</PrivateAssets>
+		  <PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
 	  </PackageReference>
     <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />

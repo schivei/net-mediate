@@ -232,6 +232,22 @@ public sealed class MediatorAndNotifierCoverageTests
     }
 
     [Fact]
+    public async Task Mediator_RequestStream_WithoutHandlers_ReturnsEmptyStream()
+    {
+        using var provider = BuildProvider(_ => { });
+
+        var mediator = new Mediator(provider, new SpyNotifiable());
+        var items = await ToList(
+            mediator.RequestStream<StreamMessage, int>(
+                new StreamMessage(3),
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Empty(items);
+    }
+
+    [Fact]
     public async Task Notifier_DispatchNotifications_InvokesAllHandlers()
     {
         var notifier = new Notifier(new ServiceCollection().BuildServiceProvider());

@@ -21,6 +21,6 @@
   </ItemGroup>
   <ItemGroup>
 	<ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
-	  <ProjectReference Include="../../src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj" PrivateAssets="contentfile; compile; runtime" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+	  <ProjectReference Include="../../src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj" PrivateAssets="contentfiles; compile; runtime" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>

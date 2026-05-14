@@ -37,14 +37,9 @@ internal class Notifier(IServiceProvider serviceProvider) : INotifiable
     )
         where TMessage : notnull
     {
-        INotificationHandler<TMessage>[] handlers = key is null ?
-                [.. serviceProvider.GetServices<INotificationHandler<TMessage>>()] :
-                [];
-
-        if (key is not null)
-        {
-            handlers = [.. serviceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)];
-        }
+        INotificationHandler<TMessage>[] handlers = key is null
+            ? [.. serviceProvider.GetServices<INotificationHandler<TMessage>>()]
+            : [.. serviceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)];
 
         // Fire-and-forget: discard the Task returned by the pipeline. ErrorReporting inside the
         // executor logs any handler exceptions and ensures the Task is never faulted, so the

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
@@ -49,14 +50,9 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     {
         try
         {
-            ICommandHandler<TMessage>[] handlers = key is null ?
-                [.. serviceProvider.GetServices<ICommandHandler<TMessage>>()] :
-                [];
-
-            if (key is not null)
-            {
-                handlers = [.. serviceProvider.GetKeyedServices<ICommandHandler<TMessage>>(key)];
-            }
+            ICommandHandler<TMessage>[] handlers = key is null
+                ? [.. serviceProvider.GetServices<ICommandHandler<TMessage>>()]
+                : [.. serviceProvider.GetKeyedServices<ICommandHandler<TMessage>>(key)];
 
             foreach (var handler in handlers)
                 await handler.Handle(message, cancellationToken).ConfigureAwait(false);
@@ -116,12 +112,9 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     {
         try
         {
-            var handler = key is null ? serviceProvider.GetRequiredService<IRequestHandler<TMessage, TResponse>>() : default!;
-
-            if (key is not null)
-            {
-                handler = serviceProvider.GetRequiredKeyedService<IRequestHandler<TMessage, TResponse>>(key);
-            }
+            var handler = key is null
+                ? serviceProvider.GetRequiredService<IRequestHandler<TMessage, TResponse>>()
+                : serviceProvider.GetRequiredKeyedService<IRequestHandler<TMessage, TResponse>>(key);
 
             return await handler.Handle(message, cancellationToken).ConfigureAwait(false);
         }
@@ -160,14 +153,12 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     )
         where TMessage : notnull
     {
-        IStreamHandler<TMessage, TResponse>[] handlers = key is null ?
-                [.. serviceProvider.GetServices<IStreamHandler<TMessage, TResponse>>()] :
-                [];
+        IStreamHandler<TMessage, TResponse>[] handlers = key is null
+            ? [.. serviceProvider.GetServices<IStreamHandler<TMessage, TResponse>>()]
+            : [.. serviceProvider.GetKeyedServices<IStreamHandler<TMessage, TResponse>>(key)];
 
-        if (key is not null)
-        {
-            handlers = [.. serviceProvider.GetKeyedServices<IStreamHandler<TMessage, TResponse>>(key)];
-        }
+        if (handlers.Length == 0)
+            return AsyncEnumerable.Empty<TResponse>();
 
         return handlers.Select(x => x.Handle(message, cancellationToken))
             .Aggregate((prev, next) => prev.Concat(next));

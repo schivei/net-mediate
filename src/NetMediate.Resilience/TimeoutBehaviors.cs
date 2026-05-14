@@ -162,7 +162,7 @@ public abstract class TimeoutRequestBehavior<TMessage, TResponse>(
     /// <inheritdoc/>
     public Task<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
         TimeoutBehaviorRunner.ExecuteAsync(
-            optionsAccessor.Value.StreamTimeout,
+            optionsAccessor.Value.RequestTimeout,
             optionsAccessor.Value.Disabled,
             "Request",
             message,
@@ -190,7 +190,7 @@ public abstract class TimeoutNotificationBehavior<TMessage>(
     /// <inheritdoc/>
     public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
         TimeoutBehaviorRunner.ExecuteAsync(
-            optionsAccessor.Value.CommandTimeout,
+            optionsAccessor.Value.NotificationTimeout,
             optionsAccessor.Value.Disabled,
             "Notification",
             message,

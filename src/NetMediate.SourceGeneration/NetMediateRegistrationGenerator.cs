@@ -90,7 +90,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             return;
         }
 
-        var behaviorTemplate = LoadBeahviorTemplate().Replace(CoverageToken, coverage);
+        var behaviorTemplate = LoadBehaviorTemplate().Replace(CoverageToken, coverage);
         var registrations = BuildRegistrations(types, hasDiagnostics, hasResilience, assemblyName, behaviorTemplate, out var frameworkBehaviors);
 
         foreach (var behavior in frameworkBehaviors)
@@ -637,7 +637,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             .Replace(AssemblyNamespaceToken, assemblyName);
     }
 
-    private static string LoadBeahviorTemplate()
+    private static string LoadBehaviorTemplate()
     {
         var stream =
             typeof(NetMediateRegistrationGenerator).Assembly.GetManifestResourceStream(

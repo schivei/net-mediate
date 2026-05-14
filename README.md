@@ -103,7 +103,7 @@ dotnet add package NetMediate.SourceGeneration
 </PackageReference>
 ```
 
-> **Note:** `NetMediate.SourceGeneration` should be referenced with `IncludeAssets` + `PrivateAssets="all"`. It adds `NetMediate` and `GenDI.SourceGenerator` indirectly via `buildTransitive`.
+> **Note:** `NetMediate.SourceGeneration` should be referenced with `IncludeAssets` + `PrivateAssets="contentfiles; compile; runtime"` so analyzers/source generators continue flowing transitively where needed.
 
 ### GenDI-first activation pattern
 

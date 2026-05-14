@@ -55,9 +55,42 @@ internal static class Constants
 
     private static string RandomNameFrom(string interfaceName, string behaviorName, out string name)
     {
-        name = interfaceName.Replace('<', '_').Replace('>', '_').Replace(',', '_').Replace(" ", "") + behaviorName;
-
+        var raw = interfaceName + behaviorName;
+        var safe = ToSafeIdentifier(raw);
+        name = $"{safe}_{ComputeStableHash(raw)}";
         return name;
+    }
+
+    private static string ToSafeIdentifier(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "_Decorator";
+
+        var chars = new char[value.Length];
+        var index = 0;
+
+        foreach (var c in value)
+        {
+            chars[index++] = char.IsLetterOrDigit(c) || c == '_' ? c : '_';
+        }
+
+        var sanitized = new string(chars, 0, index);
+        return char.IsDigit(sanitized[0]) ? $"_{sanitized}" : sanitized;
+    }
+
+    private static string ComputeStableHash(string value)
+    {
+        unchecked
+        {
+            uint hash = 2166136261;
+            foreach (var c in value)
+            {
+                hash ^= c;
+                hash *= 16777619;
+            }
+
+            return hash.ToString("X8", CultureInfo.InvariantCulture);
+        }
     }
 
     private static string GetBehaviorConcretClass(BehaviorRegistration registration, int order, string behaviorName, string behaviorAbstration, out string randomName) =>
@@ -178,7 +211,7 @@ internal static class Constants
     private static string GetTimeoutCommandClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
-            int.MinValue + 2,
+            int.MinValue + 3,
             TimeoutCommandBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{TimeoutCommandBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
@@ -187,7 +220,7 @@ internal static class Constants
     private static string GetTimeoutNotificationClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
-            int.MinValue + 2,
+            int.MinValue + 3,
             TimeoutNotificationBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{TimeoutNotificationBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
@@ -196,7 +229,7 @@ internal static class Constants
     private static string GetTimeoutRequestClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
-            int.MinValue + 2,
+            int.MinValue + 3,
             TimeoutRequestBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{TimeoutRequestBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
@@ -205,7 +238,7 @@ internal static class Constants
     private static string GetTimeoutStreamClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
-            int.MinValue + 2,
+            int.MinValue + 3,
             TimeoutStreamBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{TimeoutStreamBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName

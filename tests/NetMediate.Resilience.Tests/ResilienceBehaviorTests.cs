@@ -21,21 +21,20 @@ public sealed class ResilienceBehaviorTests
     [Fact]
     public async Task RetryRequestBehavior_RetriesUntilSuccess()
     {
-        var behavior = new RetryRequestBehavior<RetryRequestMessage, Response>(
-            Options.Create(new RetryBehaviorOptions { MaxRetryCount = 2 })
-        );
         var attempts = 0;
-
-        var response = await behavior.Handle(
-            null,
-            new RetryRequestMessage(),
-            (_, _, _) =>
+        var behavior = new TestRetryRequestBehavior<RetryRequestMessage, Response>(
+            new LambdaRequestHandler<RetryRequestMessage, Response>((_, _) =>
             {
                 attempts++;
                 return attempts < 3
                     ? Task.FromException<Response>(new InvalidOperationException("fail"))
                     : Task.FromResult(new Response(42));
-            },
+            }),
+            Options.Create(new RetryBehaviorOptions { MaxRetryCount = 2 })
+        );
+
+        var response = await behavior.Handle(
+            new RetryRequestMessage(),
             TestContext.Current.CancellationToken
         );
 
@@ -46,7 +45,13 @@ public sealed class ResilienceBehaviorTests
     [Fact]
     public async Task RetryRequestBehavior_WhenDisabled_DoesNotRetry()
     {
-        var behavior = new RetryRequestBehavior<RetryDisabledMessage, Response>(
+        var attempts = 0;
+        var behavior = new TestRetryRequestBehavior<RetryDisabledMessage, Response>(
+            new LambdaRequestHandler<RetryDisabledMessage, Response>((_, _) =>
+            {
+                attempts++;
+                return Task.FromException<Response>(new InvalidOperationException("fail"));
+            }),
             Options.Create(
                 new RetryBehaviorOptions
                 {
@@ -55,19 +60,9 @@ public sealed class ResilienceBehaviorTests
                 }
             )
         );
-        var attempts = 0;
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(
-                null,
-                new RetryDisabledMessage(),
-                (_, _, _) =>
-                {
-                    attempts++;
-                    return Task.FromException<Response>(new InvalidOperationException("fail"));
-                },
-                TestContext.Current.CancellationToken
-            )
+            behavior.Handle(new RetryDisabledMessage(), TestContext.Current.CancellationToken)
         );
 
         Assert.Equal(1, attempts);
@@ -76,55 +71,50 @@ public sealed class ResilienceBehaviorTests
     [Fact]
     public async Task RetryCommandBehavior_RetriesOperationCanceledException()
     {
-        var behavior = new RetryCommandBehavior<RetryCommandMessage>(
-            Options.Create(new RetryBehaviorOptions { MaxRetryCount = 1 })
-        );
         var attempts = 0;
-
-        await behavior.Handle(
-            null,
-            new RetryCommandMessage(),
-            (_, _, _) =>
+        var behavior = new TestRetryCommandBehavior<RetryCommandMessage>(
+            new LambdaCommandHandler<RetryCommandMessage>((_, _) =>
             {
                 attempts++;
                 return attempts == 1
                     ? Task.FromCanceled(new CancellationToken(canceled: true))
                     : Task.CompletedTask;
-            },
-            TestContext.Current.CancellationToken
+            }),
+            Options.Create(new RetryBehaviorOptions { MaxRetryCount = 1 })
         );
 
+        await behavior.Handle(new RetryCommandMessage(), TestContext.Current.CancellationToken);
         Assert.Equal(2, attempts);
     }
 
     [Fact]
     public async Task RetryNotificationBehavior_RetriesUntilSuccess()
     {
-        var behavior = new RetryNotificationBehavior<RetryNotificationMessage>(
-            Options.Create(new RetryBehaviorOptions { MaxRetryCount = 2 })
-        );
         var attempts = 0;
-
-        await behavior.Handle(
-            null,
-            new RetryNotificationMessage(),
-            (_, _, _) =>
+        var behavior = new TestRetryNotificationBehavior<RetryNotificationMessage>(
+            new LambdaNotificationHandler<RetryNotificationMessage>((_, _) =>
             {
                 attempts++;
                 return attempts < 3
                     ? Task.FromException(new InvalidOperationException("fail"))
                     : Task.CompletedTask;
-            },
-            TestContext.Current.CancellationToken
+            }),
+            Options.Create(new RetryBehaviorOptions { MaxRetryCount = 2 })
         );
 
+        await behavior.Handle(new RetryNotificationMessage(), TestContext.Current.CancellationToken);
         Assert.Equal(3, attempts);
     }
 
     [Fact]
     public async Task TimeoutRequestBehavior_ThrowsTimeoutException_WhenElapsed()
     {
-        var behavior = new TimeoutRequestBehavior<TimeoutRequestMessage, Response>(
+        var behavior = new TestTimeoutRequestBehavior<TimeoutRequestMessage, Response>(
+            new LambdaRequestHandler<TimeoutRequestMessage, Response>(async (_, cancellationToken) =>
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+                return new Response(1);
+            }),
             Options.Create(
                 new TimeoutBehaviorOptions
                 {
@@ -134,16 +124,7 @@ public sealed class ResilienceBehaviorTests
         );
 
         var exception = await Assert.ThrowsAsync<TimeoutException>(() =>
-            behavior.Handle(
-                null,
-                new TimeoutRequestMessage(),
-                async (_, _, cancellationToken) =>
-                {
-                    await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
-                    return new Response(1);
-                },
-                TestContext.Current.CancellationToken
-            )
+            behavior.Handle(new TimeoutRequestMessage(), TestContext.Current.CancellationToken)
         );
 
         Assert.Contains("Request exceeded timeout", exception.Message);
@@ -152,35 +133,34 @@ public sealed class ResilienceBehaviorTests
     [Fact]
     public async Task TimeoutCommandBehavior_WhenDisabled_BypassesTimeout()
     {
-        var behavior = new TimeoutCommandBehavior<TimeoutCommandMessage>(
+        var called = false;
+        var behavior = new TestTimeoutCommandBehavior<TimeoutCommandMessage>(
+            new LambdaCommandHandler<TimeoutCommandMessage>((_, _) =>
+            {
+                called = true;
+                return Task.CompletedTask;
+            }),
             Options.Create(
                 new TimeoutBehaviorOptions
                 {
                     Disabled = true,
-                    NotificationTimeout = TimeSpan.FromMilliseconds(1),
+                    CommandTimeout = TimeSpan.FromMilliseconds(1),
                 }
             )
         );
-        var called = false;
 
-        await behavior.Handle(
-            null,
-            new TimeoutCommandMessage(),
-            (_, _, _) =>
-            {
-                called = true;
-                return Task.CompletedTask;
-            },
-            TestContext.Current.CancellationToken
-        );
-
+        await behavior.Handle(new TimeoutCommandMessage(), TestContext.Current.CancellationToken);
         Assert.True(called);
     }
 
     [Fact]
     public async Task TimeoutNotificationBehavior_ThrowsTimeoutException_WhenElapsed()
     {
-        var behavior = new TimeoutNotificationBehavior<TimeoutNotificationMessage>(
+        var behavior = new TestTimeoutNotificationBehavior<TimeoutNotificationMessage>(
+            new LambdaNotificationHandler<TimeoutNotificationMessage>(async (_, cancellationToken) =>
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
+            }),
             Options.Create(
                 new TimeoutBehaviorOptions
                 {
@@ -190,15 +170,7 @@ public sealed class ResilienceBehaviorTests
         );
 
         var exception = await Assert.ThrowsAsync<TimeoutException>(() =>
-            behavior.Handle(
-                null,
-                new TimeoutNotificationMessage(),
-                async (_, _, cancellationToken) =>
-                {
-                    await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
-                },
-                TestContext.Current.CancellationToken
-            )
+            behavior.Handle(new TimeoutNotificationMessage(), TestContext.Current.CancellationToken)
         );
 
         Assert.Contains("Notification exceeded timeout", exception.Message);
@@ -207,7 +179,15 @@ public sealed class ResilienceBehaviorTests
     [Fact]
     public async Task CircuitBreakerRequestBehavior_OpensAndResetsCircuit()
     {
+        var attempts = 0;
         var behavior = new CircuitBreakerRequestBehavior<CircuitRequestMessage, Response>(
+            new LambdaRequestHandler<CircuitRequestMessage, Response>((_, _) =>
+            {
+                attempts++;
+                return attempts == 1
+                    ? Task.FromException<Response>(new InvalidOperationException("boom"))
+                    : Task.FromResult(new Response(7));
+            }),
             Options.Create(
                 new CircuitBreakerBehaviorOptions
                 {
@@ -218,35 +198,18 @@ public sealed class ResilienceBehaviorTests
         );
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(
-                null,
-                new CircuitRequestMessage(),
-                (_, _, _) => Task.FromException<Response>(new InvalidOperationException("boom")),
-                TestContext.Current.CancellationToken
-            )
+            behavior.Handle(new CircuitRequestMessage(), TestContext.Current.CancellationToken)
         );
 
         var openException = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(
-                null,
-                new CircuitRequestMessage(),
-                (_, _, _) => Task.FromResult(new Response(1)),
-                TestContext.Current.CancellationToken
-            )
+            behavior.Handle(new CircuitRequestMessage(), TestContext.Current.CancellationToken)
         );
 
         Assert.Contains("Circuit open for request", openException.Message);
 
-        var response = await WaitUntilSucceedsAsync(
-            async () =>
-                await behavior.Handle(
-                    null,
-                    new CircuitRequestMessage(),
-                    (_, _, _) => Task.FromResult(new Response(7)),
-                    TestContext.Current.CancellationToken
-                )
+        var response = await WaitUntilSucceedsAsync(() =>
+            behavior.Handle(new CircuitRequestMessage(), TestContext.Current.CancellationToken)
         );
-
         Assert.Equal(7, response.Value);
     }
 
@@ -254,6 +217,7 @@ public sealed class ResilienceBehaviorTests
     public async Task CircuitBreakerRequestBehavior_WhenDisabled_BypassesCircuit()
     {
         var behavior = new CircuitBreakerRequestBehavior<CircuitRequestMessage, Response>(
+            new LambdaRequestHandler<CircuitRequestMessage, Response>((_, _) => Task.FromResult(new Response(5))),
             Options.Create(
                 new CircuitBreakerBehaviorOptions
                 {
@@ -264,41 +228,41 @@ public sealed class ResilienceBehaviorTests
         );
 
         var response = await behavior.Handle(
-            null,
             new CircuitRequestMessage(),
-            (_, _, _) => Task.FromResult(new Response(5)),
             TestContext.Current.CancellationToken
         );
-
         Assert.Equal(5, response.Value);
     }
 
     [Fact]
     public async Task CircuitBreakerCommandBehavior_CompletesOnSuccess()
     {
-        var behavior = new CircuitBreakerCommandBehavior<CircuitCommandMessage>(
-            Options.Create(new CircuitBreakerBehaviorOptions())
-        );
         var called = false;
-
-        await behavior.Handle(
-            null,
-            new CircuitCommandMessage(),
-            (_, _, _) =>
+        var behavior = new CircuitBreakerCommandBehavior<CircuitCommandMessage>(
+            new LambdaCommandHandler<CircuitCommandMessage>((_, _) =>
             {
                 called = true;
                 return Task.CompletedTask;
-            },
-            TestContext.Current.CancellationToken
+            }),
+            Options.Create(new CircuitBreakerBehaviorOptions())
         );
 
+        await behavior.Handle(new CircuitCommandMessage(), TestContext.Current.CancellationToken);
         Assert.True(called);
     }
 
     [Fact]
     public async Task CircuitBreakerCommandBehavior_WhenThresholdReached_OpensCircuit()
     {
+        var attempts = 0;
         var behavior = new CircuitBreakerCommandBehavior<CircuitCommandMessage>(
+            new LambdaCommandHandler<CircuitCommandMessage>((_, _) =>
+            {
+                attempts++;
+                return attempts == 1
+                    ? Task.FromException(new InvalidOperationException("boom"))
+                    : Task.CompletedTask;
+            }),
             Options.Create(
                 new CircuitBreakerBehaviorOptions
                 {
@@ -309,21 +273,11 @@ public sealed class ResilienceBehaviorTests
         );
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(
-                null,
-                new CircuitCommandMessage(),
-                (_, _, _) => Task.FromException(new InvalidOperationException("boom")),
-                TestContext.Current.CancellationToken
-            )
+            behavior.Handle(new CircuitCommandMessage(), TestContext.Current.CancellationToken)
         );
 
         var openException = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(
-                null,
-                new CircuitCommandMessage(),
-                (_, _, _) => Task.CompletedTask,
-                TestContext.Current.CancellationToken
-            )
+            behavior.Handle(new CircuitCommandMessage(), TestContext.Current.CancellationToken)
         );
 
         Assert.Contains("Circuit open for command", openException.Message);
@@ -332,7 +286,13 @@ public sealed class ResilienceBehaviorTests
     [Fact]
     public async Task CircuitBreakerCommandBehavior_WhenDisabled_BypassesCircuit()
     {
+        var called = false;
         var behavior = new CircuitBreakerCommandBehavior<CircuitCommandMessage>(
+            new LambdaCommandHandler<CircuitCommandMessage>((_, _) =>
+            {
+                called = true;
+                return Task.CompletedTask;
+            }),
             Options.Create(
                 new CircuitBreakerBehaviorOptions
                 {
@@ -341,19 +301,8 @@ public sealed class ResilienceBehaviorTests
                 }
             )
         );
-        var called = false;
 
-        await behavior.Handle(
-            null,
-            new CircuitCommandMessage(),
-            (_, _, _) =>
-            {
-                called = true;
-                return Task.CompletedTask;
-            },
-            TestContext.Current.CancellationToken
-        );
-
+        await behavior.Handle(new CircuitCommandMessage(), TestContext.Current.CancellationToken);
         Assert.True(called);
     }
 
@@ -361,45 +310,45 @@ public sealed class ResilienceBehaviorTests
     public async Task CircuitBreakerNotificationBehavior_RethrowsFailures()
     {
         var behavior = new CircuitBreakerNotificationBehavior<CircuitNotificationMessage>(
+            new LambdaNotificationHandler<CircuitNotificationMessage>((_, _) =>
+                Task.FromException(new InvalidOperationException("boom"))),
             Options.Create(new CircuitBreakerBehaviorOptions())
         );
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(
-                null,
-                new CircuitNotificationMessage(),
-                (_, _, _) => Task.FromException(new InvalidOperationException("boom")),
-                TestContext.Current.CancellationToken
-            )
+            behavior.Handle(new CircuitNotificationMessage(), TestContext.Current.CancellationToken)
         );
     }
 
     [Fact]
     public async Task CircuitBreakerNotificationBehavior_CompletesOnSuccess()
     {
-        var behavior = new CircuitBreakerNotificationBehavior<CircuitNotificationMessage>(
-            Options.Create(new CircuitBreakerBehaviorOptions())
-        );
         var called = false;
-
-        await behavior.Handle(
-            null,
-            new CircuitNotificationMessage(),
-            (_, _, _) =>
+        var behavior = new CircuitBreakerNotificationBehavior<CircuitNotificationMessage>(
+            new LambdaNotificationHandler<CircuitNotificationMessage>((_, _) =>
             {
                 called = true;
                 return Task.CompletedTask;
-            },
-            TestContext.Current.CancellationToken
+            }),
+            Options.Create(new CircuitBreakerBehaviorOptions())
         );
 
+        await behavior.Handle(new CircuitNotificationMessage(), TestContext.Current.CancellationToken);
         Assert.True(called);
     }
 
     [Fact]
     public async Task CircuitBreakerNotificationBehavior_WhenThresholdReached_OpensCircuit()
     {
+        var attempts = 0;
         var behavior = new CircuitBreakerNotificationBehavior<CircuitNotificationMessage>(
+            new LambdaNotificationHandler<CircuitNotificationMessage>((_, _) =>
+            {
+                attempts++;
+                return attempts == 1
+                    ? Task.FromException(new InvalidOperationException("boom"))
+                    : Task.CompletedTask;
+            }),
             Options.Create(
                 new CircuitBreakerBehaviorOptions
                 {
@@ -410,21 +359,11 @@ public sealed class ResilienceBehaviorTests
         );
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(
-                null,
-                new CircuitNotificationMessage(),
-                (_, _, _) => Task.FromException(new InvalidOperationException("boom")),
-                TestContext.Current.CancellationToken
-            )
+            behavior.Handle(new CircuitNotificationMessage(), TestContext.Current.CancellationToken)
         );
 
         var openException = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(
-                null,
-                new CircuitNotificationMessage(),
-                (_, _, _) => Task.CompletedTask,
-                TestContext.Current.CancellationToken
-            )
+            behavior.Handle(new CircuitNotificationMessage(), TestContext.Current.CancellationToken)
         );
 
         Assert.Contains("Circuit open for notification", openException.Message);
@@ -433,7 +372,16 @@ public sealed class ResilienceBehaviorTests
     [Fact]
     public async Task RetryRequestBehavior_WhenDelayIsConfigured_WaitsBeforeRetrying()
     {
-        var behavior = new RetryRequestBehavior<RetryRequestMessage, Response>(
+        var attempts = 0;
+        var startedAt = DateTimeOffset.UtcNow;
+        var behavior = new TestRetryRequestBehavior<RetryRequestMessage, Response>(
+            new LambdaRequestHandler<RetryRequestMessage, Response>((_, _) =>
+            {
+                attempts++;
+                return attempts == 1
+                    ? Task.FromException<Response>(new InvalidOperationException("fail"))
+                    : Task.FromResult(new Response(9));
+            }),
             Options.Create(
                 new RetryBehaviorOptions
                 {
@@ -442,19 +390,9 @@ public sealed class ResilienceBehaviorTests
                 }
             )
         );
-        var attempts = 0;
-        var startedAt = DateTimeOffset.UtcNow;
 
         var response = await behavior.Handle(
-            null,
             new RetryRequestMessage(),
-            (_, _, _) =>
-            {
-                attempts++;
-                return attempts == 1
-                    ? Task.FromException<Response>(new InvalidOperationException("fail"))
-                    : Task.FromResult(new Response(9));
-            },
             TestContext.Current.CancellationToken
         );
 
@@ -484,4 +422,67 @@ public sealed class ResilienceBehaviorTests
             $"Expected circuit to close within the retry window, but it stayed open. Last error: {lastException?.Message}"
         );
     }
+
+    private sealed class LambdaRequestHandler<TMessage, TResponse>(
+        Func<TMessage, CancellationToken, Task<TResponse>> callback
+    ) : IRequestHandler<TMessage, TResponse>
+        where TMessage : notnull
+    {
+        public Task<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
+            callback(message, cancellationToken);
+    }
+
+    private sealed class LambdaCommandHandler<TMessage>(
+        Func<TMessage, CancellationToken, Task> callback
+    ) : ICommandHandler<TMessage>
+        where TMessage : notnull
+    {
+        public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+            callback(message, cancellationToken);
+    }
+
+    private sealed class LambdaNotificationHandler<TMessage>(
+        Func<TMessage, CancellationToken, Task> callback
+    ) : INotificationHandler<TMessage>
+        where TMessage : notnull
+    {
+        public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+            callback(message, cancellationToken);
+    }
+
+    private sealed class TestRetryRequestBehavior<TMessage, TResponse>(
+        IRequestHandler<TMessage, TResponse> handler,
+        IOptions<RetryBehaviorOptions> optionsAccessor
+    ) : RetryRequestBehavior<TMessage, TResponse>(handler, optionsAccessor)
+        where TMessage : notnull;
+
+    private sealed class TestRetryCommandBehavior<TMessage>(
+        ICommandHandler<TMessage> handler,
+        IOptions<RetryBehaviorOptions> optionsAccessor
+    ) : RetryCommandBehavior<TMessage>(handler, optionsAccessor)
+        where TMessage : notnull;
+
+    private sealed class TestRetryNotificationBehavior<TMessage>(
+        INotificationHandler<TMessage> handler,
+        IOptions<RetryBehaviorOptions> optionsAccessor
+    ) : RetryNotificationBehavior<TMessage>(handler, optionsAccessor)
+        where TMessage : notnull;
+
+    private sealed class TestTimeoutRequestBehavior<TMessage, TResponse>(
+        IRequestHandler<TMessage, TResponse> handler,
+        IOptions<TimeoutBehaviorOptions> optionsAccessor
+    ) : TimeoutRequestBehavior<TMessage, TResponse>(handler, optionsAccessor)
+        where TMessage : notnull;
+
+    private sealed class TestTimeoutCommandBehavior<TMessage>(
+        ICommandHandler<TMessage> handler,
+        IOptions<TimeoutBehaviorOptions> optionsAccessor
+    ) : TimeoutCommandBehavior<TMessage>(handler, optionsAccessor)
+        where TMessage : notnull;
+
+    private sealed class TestTimeoutNotificationBehavior<TMessage>(
+        INotificationHandler<TMessage> handler,
+        IOptions<TimeoutBehaviorOptions> optionsAccessor
+    ) : TimeoutNotificationBehavior<TMessage>(handler, optionsAccessor)
+        where TMessage : notnull;
 }

@@ -12,11 +12,75 @@ Commands are dispatched to **all** registered handlers **sequentially** in regis
 
 For the complete commands documentation, see the main [README](https://github.com/schivei/net-mediate#commands).
 
-## Basic Usage
+## Complete Example
+
+The following example models an e-commerce order placement flow. Two command handlers are chained: the first persists the order, the second publishes a domain event to an external message bus.
 
 ```csharp
-await mediator.SendCreateUserCommandAsync(new CreateUserCommand("john@example.com", "John Doe"));
+using GenDI;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using NetMediate;
+
+// ----- Messages -----
+public record PlaceOrderCommand(
+    string CustomerId,
+    IReadOnlyList<OrderItem> Items,
+    string ShippingAddress);
+
+public record OrderItem(string ProductId, int Quantity, decimal UnitPrice);
+
+// ----- Shared services -----
+[ServiceInjection]
+public interface IOrderRepository
+{
+    Task<string> SaveAsync(PlaceOrderCommand command, CancellationToken ct);
+}
+
+[ServiceInjection]
+public interface IEventBus
+{
+    Task PublishAsync<T>(T @event, CancellationToken ct) where T : notnull;
+}
+
+// ----- Handler 1: persist the order -----
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+public class PersistOrderHandler : ICommandHandler<PlaceOrderCommand>
+{
+    [Inject] public required IOrderRepository Repository { get; init; }
+    [Inject] public required ILogger<PersistOrderHandler> Logger { get; init; }
+
+    public async Task Handle(PlaceOrderCommand command, CancellationToken ct)
+    {
+        var orderId = await Repository.SaveAsync(command, ct);
+        Logger.LogInformation("Order {OrderId} persisted for customer {CustomerId}",
+            orderId, command.CustomerId);
+    }
+}
+
+// ----- Handler 2: publish domain event -----
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 2)]
+public class PublishOrderPlacedEventHandler : ICommandHandler<PlaceOrderCommand>
+{
+    [Inject] public required IEventBus EventBus { get; init; }
+
+    public async Task Handle(PlaceOrderCommand command, CancellationToken ct) =>
+        await EventBus.PublishAsync(new OrderPlacedEvent(command.CustomerId), ct);
+}
+
+public record OrderPlacedEvent(string CustomerId);
+
+// ----- Usage (e.g. from a Minimal API endpoint) -----
+app.MapPost("/orders", async (PlaceOrderCommand cmd, IMediator mediator, CancellationToken ct) =>
+{
+    await mediator.SendPlaceOrderCommandAsync(cmd, ct);
+    return Results.Accepted();
+});
 ```
+
+Handler 1 runs first (lower `Order` value), then handler 2. If handler 1 throws, handler 2 is not reached and the exception propagates to the caller.
+
+
 
 ## Keyed Dispatch
 

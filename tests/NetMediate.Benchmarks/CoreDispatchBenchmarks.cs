@@ -1,5 +1,4 @@
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Engines;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Benchmarks;
@@ -20,7 +19,6 @@ namespace NetMediate.Benchmarks;
 /// </code>
 /// </remarks>
 [MemoryDiagnoser]
-[SimpleJob(RunStrategy.Throughput)]
 public class CoreDispatchBenchmarks
 {
     private IMediator _mediator = null!;

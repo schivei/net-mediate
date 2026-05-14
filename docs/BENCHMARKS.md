@@ -16,12 +16,12 @@ The table below is updated automatically by CI on every PR benchmark run. System
 | Key | Value |
 |---|---|
 | OS | Linux Ubuntu 24.04.4 LTS (Noble Numbat) |
-| CPU | AMD EPYC 7763 2.45GHz, 1 CPU, 4 logical and 2 physical cores |
+| CPU | AMD EPYC 9V74 2.60GHz, 1 CPU, 4 logical and 2 physical cores |
 | .NET SDK | 10.0.300 |
 | Runtime | .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3 |
-| Last CI run | 2026-05-14 00:12 UTC |
+| Last CI run | 2026-05-14 00:23 UTC |
 | Branch | `copilot/update-documentation-discrepancies` |
-| Commit | `f628502` |
+| Commit | `1263cfd` |
 <!-- ci-environment-end -->
 
 ---
@@ -41,10 +41,10 @@ available, or against stored target-branch values otherwise (±10% = no change o
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|
-| Command `Send` | 73.81 ns | ±0.311 ns | 0.0018 | 32 B | ✅ -16 B | ~13.5M msg/s | ✅ improved (-18.5%) |
-| Notification `Notify` | 32.42 ns | ±0.035 ns | - | - | ✅ -288 B | ~30.8M msg/s | ✅ improved (-74.8%) |
-| Request `Request` | 55.43 ns | ±0.609 ns | 0.0062 | 104 B | ✅ same | ~18.0M msg/s | ✅ improved (-38.3%) |
-| Stream `RequestStream` | 135.11 ns | ±0.457 ns | 0.0076 | 128 B | ✅ -88 B | ~7.4M msg/s | ✅ improved (-31.1%) |
+| Command `Send` | 66.23 ns | ±0.271 ns | 0.0018 | 32 B | ✅ -16 B | ~15.1M msg/s | ✅ improved (-26.9%) |
+| Notification `Notify` | 30.77 ns | ±0.036 ns | - | - | ✅ -288 B | ~32.5M msg/s | ✅ improved (-76.1%) |
+| Request `Request` | 54.43 ns | ±0.118 ns | 0.0062 | 104 B | ✅ same | ~18.4M msg/s | ✅ improved (-39.5%) |
+| Stream `RequestStream` | 130.07 ns | ±0.335 ns | 0.0076 | 128 B | ✅ -88 B | ~7.7M msg/s | ✅ improved (-33.7%) |
 <!-- ci-throughput-end -->
 
 > ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.
@@ -268,7 +268,7 @@ Thresholds are deliberately lenient to remain green on any CI hardware. Local de
 
 ## Latest CI Benchmark Run
 
-Run: 2026-05-14 00:12 UTC | Branch: `copilot/update-documentation-discrepancies` | Commit: `f628502`
+Run: 2026-05-14 00:23 UTC | Branch: `copilot/update-documentation-discrepancies` | Commit: `1263cfd`
 
 > ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).
 
@@ -276,7 +276,7 @@ Run: 2026-05-14 00:12 UTC | Branch: `copilot/update-documentation-discrepancies`
 
 ```
 Linux Ubuntu 24.04.4 LTS (Noble Numbat)
-AMD EPYC 7763 2.45GHz, 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 9V74 2.60GHz, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.300
 Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 ```
@@ -285,10 +285,10 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 
 | Benchmark | Mean | Error | Gen0 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|
-| Command `Send` | 73.81 ns | ±0.311 ns | 0.0018 | 32 B | ✅ -16 B | ~13.5M msg/s | ✅ improved (-18.5%) |
-| Notification `Notify` | 32.42 ns | ±0.035 ns | - | - | ✅ -288 B | ~30.8M msg/s | ✅ improved (-74.8%) |
-| Request `Request` | 55.43 ns | ±0.609 ns | 0.0062 | 104 B | ✅ same | ~18.0M msg/s | ✅ improved (-38.3%) |
-| Stream `RequestStream` | 135.11 ns | ±0.457 ns | 0.0076 | 128 B | ✅ -88 B | ~7.4M msg/s | ✅ improved (-31.1%) |
+| Command `Send` | 66.23 ns | ±0.271 ns | 0.0018 | 32 B | ✅ -16 B | ~15.1M msg/s | ✅ improved (-26.9%) |
+| Notification `Notify` | 30.77 ns | ±0.036 ns | - | - | ✅ -288 B | ~32.5M msg/s | ✅ improved (-76.1%) |
+| Request `Request` | 54.43 ns | ±0.118 ns | 0.0062 | 104 B | ✅ same | ~18.4M msg/s | ✅ improved (-39.5%) |
+| Stream `RequestStream` | 130.07 ns | ±0.335 ns | 0.0076 | 128 B | ✅ -88 B | ~7.7M msg/s | ✅ improved (-33.7%) |
 
 ### Comparison vs baseline (`main`, median of ≤3 runs)
 
@@ -297,7 +297,7 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 
 | Benchmark | Baseline (`main`, median of ≤3 runs) | Current | Δ timing | Alloc Δ |
 |---|---|---|---|---|
-| Command `Send` | 90.55 ns | 73.81 ns | ✅ -18.5% | ✅ -16 B |
-| Notification `Notify` | 128.85 ns | 32.42 ns | ✅ -74.8% | ✅ -288 B |
-| Request `Request` | 89.91 ns | 55.43 ns | ✅ -38.3% | ✅ same |
-| Stream `RequestStream` | 196.07 ns | 135.11 ns | ✅ -31.1% | ✅ -88 B |
+| Command `Send` | 90.55 ns | 66.23 ns | ✅ -26.9% | ✅ -16 B |
+| Notification `Notify` | 128.85 ns | 30.77 ns | ✅ -76.1% | ✅ -288 B |
+| Request `Request` | 89.91 ns | 54.43 ns | ✅ -39.5% | ✅ same |
+| Stream `RequestStream` | 196.07 ns | 130.07 ns | ✅ -33.7% | ✅ -88 B |

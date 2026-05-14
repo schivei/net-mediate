@@ -43,11 +43,16 @@ internal class Notifier(IServiceProvider serviceProvider) : INotifiable
 
         if (key is not null)
         {
-            var keyedServices = serviceProvider.GetRequiredService<KeyedHandlerRegistry<INotificationHandler<TMessage>>>();
+            var keyedServices = serviceProvider.GetService<KeyedHandlerRegistry<INotificationHandler<TMessage>>>();
 
-            if (!keyedServices.TryGetAll(key, serviceProvider, out var keyedHandlers))
+            if (keyedServices is null || !keyedServices.TryGetAll(key, serviceProvider, out var keyedHandlers))
             {
                 keyedHandlers = [.. serviceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)];
+            }
+
+            if (keyedHandlers.Length == 0)
+            {
+                keyedHandlers = [.. serviceProvider.GetServices<INotificationHandler<TMessage>>()];
             }
 
             handlers = [.. keyedHandlers];

@@ -40,4 +40,7 @@
     <PackageReference Include="Quartz" Version="3.*" />
     <PackageReference Include="Quartz.Extensions.DependencyInjection" Version="3.*" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="NetMediate.Tests" />
+  </ItemGroup>
 </Project>

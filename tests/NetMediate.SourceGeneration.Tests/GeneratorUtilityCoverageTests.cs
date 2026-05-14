@@ -15,18 +15,18 @@ public sealed class GeneratorUtilityCoverageTests
     public void BuildRegistrationArguments_ImplicitOperators_RoundTrip()
     {
         var type = s_generatorAssembly.GetType("NetMediate.SourceGeneration.BuildRegistrationArguments")!;
-        var diag = new Dictionary<string, bool> { ["diag"] = true };
-        var resilience = new Dictionary<string, bool> { ["retry"] = true };
+        const string template = "template";
+        const string assemblyName = "My.Assembly";
         var handlerType = CreateCompilation().GetTypeByMetadataName("System.String")!;
 
         var fromTuple = type.GetMethods(BindingFlags.Public | BindingFlags.Static)
             .Single(m => m.Name == "op_Implicit" && m.ReturnType == type);
         var tupleArgument = Activator.CreateInstance(
             fromTuple.GetParameters()[0].ParameterType,
+            template,
+            assemblyName,
             true,
             false,
-            diag,
-            resilience,
             handlerType
         )!;
 
@@ -39,10 +39,10 @@ public sealed class GeneratorUtilityCoverageTests
         Assert.True(roundTripObject is System.Runtime.CompilerServices.ITuple);
         var roundTrip = (System.Runtime.CompilerServices.ITuple)roundTripObject;
 
-        Assert.True((bool)roundTrip[0]!);
-        Assert.False((bool)roundTrip[1]!);
-        Assert.Same(diag, roundTrip[2]);
-        Assert.Same(resilience, roundTrip[3]);
+        Assert.Equal(template, roundTrip[0]);
+        Assert.Equal(assemblyName, roundTrip[1]);
+        Assert.True((bool)roundTrip[2]!);
+        Assert.False((bool)roundTrip[3]!);
         Assert.Same(handlerType, roundTrip[4]);
     }
 
@@ -55,20 +55,20 @@ public sealed class GeneratorUtilityCoverageTests
             compilation.GetTypeByMetadataName("System.String")!,
             compilation.GetTypeByMetadataName("System.Int32")!
         );
-        var diag = new Dictionary<string, bool> { ["diag"] = true };
-        var resilience = new Dictionary<string, bool> { ["retry"] = true };
+        const string template = "template";
+        const string assemblyName = "My.Assembly";
 
         var fromTuple = type.GetMethods(BindingFlags.Public | BindingFlags.Static)
             .Single(m => m.Name == "op_Implicit" && m.ReturnType == type);
         var tupleArgument = Activator.CreateInstance(
             fromTuple.GetParameters()[0].ParameterType,
+            template,
+            assemblyName,
             "IRequestHandler",
             2,
             args,
             true,
-            true,
-            diag,
-            resilience
+            true
         )!;
 
         var value = fromTuple.Invoke(null, [tupleArgument])!;
@@ -80,13 +80,13 @@ public sealed class GeneratorUtilityCoverageTests
         Assert.True(roundTripObject is System.Runtime.CompilerServices.ITuple);
         var roundTrip = (System.Runtime.CompilerServices.ITuple)roundTripObject;
 
-        Assert.Equal("IRequestHandler", roundTrip[0]);
-        Assert.Equal(2, roundTrip[1]);
-        Assert.Equal(args, roundTrip[2]);
-        Assert.True((bool)roundTrip[3]!);
-        Assert.True((bool)roundTrip[4]!);
-        Assert.Same(diag, roundTrip[5]);
-        Assert.Same(resilience, roundTrip[6]);
+        Assert.Equal(template, roundTrip[0]);
+        Assert.Equal(assemblyName, roundTrip[1]);
+        Assert.Equal("IRequestHandler", roundTrip[2]);
+        Assert.Equal(2, roundTrip[3]);
+        Assert.Equal(args, roundTrip[4]);
+        Assert.True((bool)roundTrip[5]!);
+        Assert.True((bool)roundTrip[6]!);
     }
 
     [Fact]

@@ -159,7 +159,43 @@ public class MyHandler : ICommandHandler<MyCommand>
 
 ## Handler Lifetime
 
-With GenDI you choose the lifetime per implementation: `Transient`, `Scoped`, or `Singleton`. You can also control `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path.
+Each handler and behavior interface declares a default `ServiceLifetime` via `[ServiceInjection]`. When you annotate your implementing class with `[Injectable]` without specifying a lifetime, these defaults apply:
+
+| Interface | Default Lifetime | ThreadIsolationPolicy |
+|-----------|-----------------|----------------------|
+| `ICommandHandler<TMessage>` | `Singleton` | `Transient` |
+| `INotificationHandler<TMessage>` | `Singleton` | `None` |
+| `IRequestHandler<TMessage, TResponse>` | `Scoped` | `Transient` |
+| `IStreamHandler<TMessage, TResponse>` | `Scoped` | `Scoped` |
+| `IPipelineCommandBehavior<TMessage>` | `Transient` | `Transient` |
+| `IPipelineNotificationBehavior<TMessage>` | `Transient` | `Transient` |
+| `IPipelineRequestBehavior<TMessage, TResponse>` | `Transient` | `Transient` |
+| `IPipelineStreamBehavior<TMessage, TResponse>` | `Transient` | `Transient` |
+
+**ThreadIsolationPolicy** controls how GenDI resolves scoped dependencies for non-transient registrations:
+
+- `None` — no scope isolation; all dependencies come from the ambient (root or request) scope. Suitable for handlers that only inject `Singleton` services.
+- `Transient` — a fresh DI scope is created per message dispatch. Use this when your `Singleton` or `Scoped` handler needs to resolve `Scoped` services (e.g. `DbContext`, `HttpClient`) without lifetime violations.
+- `Scoped` — the existing ambient scope is reused per operation. Appropriate for stream handlers where all items are consumed within a single request scope.
+
+Override the lifetime on your implementation whenever the defaults don't fit:
+
+```csharp
+// Use Scoped so a DbContext can be injected directly without thread-isolation overhead
+[Injectable(ServiceLifetime.Scoped, Group = 100, Order = 1)]
+public class MyCommandHandler : ICommandHandler<MyCommand>
+{
+    [Inject] public required AppDbContext Db { get; init; }
+
+    public async Task Handle(MyCommand command, CancellationToken ct)
+    {
+        Db.Orders.Add(new Order(command.OrderId));
+        await Db.SaveChangesAsync(ct);
+    }
+}
+```
+
+With GenDI you can also control `Group`, `Order`, and `Key`. Use `[Injectable<TService>]` only when you need to force a specific **non-generic** contract and contract discovery does not already find `[ServiceInjection]`. Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`. Only generic/open service implementations (for example `AuditBehavior<TMessage, TResponse>`) should be registered manually in `builder.Services` for the AOT-oriented path.
 
 ## Multiple Handlers
 

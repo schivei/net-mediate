@@ -10,12 +10,12 @@ NetMediate supports four different message types, each designed for specific com
 
 ## Overview
 
-| Message Type | Use Case | Handler Count | Return Value |
-|--------------|----------|---------------|--------------|
-| **Command** | Side-effects, multi-handler actions | Multiple (sequential) | `Task` |
-| **Request** | Query/response pattern | Single | `Task<TResponse>` |
-| **Notification** | Fire-and-forget events | Multiple (parallel, fire-and-forget) | `Task` |
-| **Stream** | Async data streams | Multiple (merged) | `IAsyncEnumerable<T>` |
+| Message Type | Use Case | Handler Count | Return Value | Default Handler Lifetime |
+|--------------|----------|---------------|--------------|--------------------------|
+| **Command** | Side-effects, multi-handler actions | Multiple (sequential) | `Task` | `Singleton` |
+| **Request** | Query/response pattern | Single | `Task<TResponse>` | `Scoped` |
+| **Notification** | Fire-and-forget events | Multiple (concurrent, fire-and-forget) | `Task` | `Singleton` |
+| **Stream** | Async data streams | Multiple (merged sequentially) | `IAsyncEnumerable<T>` | `Scoped` |
 
 ## Commands
 
@@ -133,7 +133,7 @@ public class InventoryUpdater : INotificationHandler<OrderShipped>
 
 ### Batch Notifications
 
-Send multiple notifications at once. Each message's pipeline is dispatched in parallel (`Task.WhenAll` across messages). Within each message, all handlers are also started in parallel (fire-and-forget):
+Send multiple notifications at once. Each message is dispatched sequentially in a loop. Within each message, all handlers are started concurrently (fire-and-forget):
 
 ```csharp
 var notifications = new[]

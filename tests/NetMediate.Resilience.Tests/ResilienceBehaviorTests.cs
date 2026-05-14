@@ -465,6 +465,60 @@ public sealed class ResilienceBehaviorTests
     }
 
     [Fact]
+    public async Task RetryStreamBehavior_WhenDisabled_ForwardsStreamItems()
+    {
+        var behavior = new TestRetryStreamBehavior<RetryStreamDisabledMessage, Response>(
+            new LambdaStreamHandler<RetryStreamDisabledMessage, Response>((_, cancellationToken) =>
+                ValuesStream([new Response(10), new Response(11)], cancellationToken)),
+            Options.Create(
+                new RetryBehaviorOptions
+                {
+                    Disabled = true,
+                    MaxRetryCount = 5,
+                }
+            )
+        );
+
+        var items = await ToListAsync(
+            behavior.Handle(new RetryStreamDisabledMessage(), TestContext.Current.CancellationToken)
+        );
+
+        Assert.Equal([10, 11], items.Select(static x => x.Value).ToArray());
+    }
+
+    [Fact]
+    public async Task RetryStreamBehavior_RetriesOperationCanceledException()
+    {
+        var attempts = 0;
+        var behavior = new TestRetryStreamBehavior<RetryStreamMessage, Response>(
+            new LambdaStreamHandler<RetryStreamMessage, Response>((_, cancellationToken) =>
+            {
+                attempts++;
+                return attempts == 1
+                    ? ThrowingStream<Response>(
+                        new OperationCanceledException("canceled", innerException: null, CancellationToken.None),
+                        cancellationToken
+                    )
+                    : ValuesStream([new Response(12)], cancellationToken);
+            }),
+            Options.Create(
+                new RetryBehaviorOptions
+                {
+                    MaxRetryCount = 1,
+                    Delay = TimeSpan.FromMilliseconds(1),
+                }
+            )
+        );
+
+        var items = await ToListAsync(
+            behavior.Handle(new RetryStreamMessage(), TestContext.Current.CancellationToken)
+        );
+
+        Assert.Equal(2, attempts);
+        Assert.Equal([12], items.Select(static x => x.Value).ToArray());
+    }
+
+    [Fact]
     public async Task TimeoutStreamBehavior_ThrowsTimeoutException_WhenElapsed()
     {
         var behavior = new TestTimeoutStreamBehavior<TimeoutStreamMessage, Response>(
@@ -507,6 +561,27 @@ public sealed class ResilienceBehaviorTests
         );
 
         Assert.Equal([3, 4], items.Select(static x => x.Value).ToArray());
+    }
+
+    [Fact]
+    public async Task TimeoutStreamBehavior_ReturnsItems_WhenWithinTimeout()
+    {
+        var behavior = new TestTimeoutStreamBehavior<TimeoutStreamMessage, Response>(
+            new LambdaStreamHandler<TimeoutStreamMessage, Response>((_, cancellationToken) =>
+                ValuesStream([new Response(13), new Response(14)], cancellationToken)),
+            Options.Create(
+                new TimeoutBehaviorOptions
+                {
+                    StreamTimeout = TimeSpan.FromSeconds(1),
+                }
+            )
+        );
+
+        var items = await ToListAsync(
+            behavior.Handle(new TimeoutStreamMessage(), TestContext.Current.CancellationToken)
+        );
+
+        Assert.Equal([13, 14], items.Select(static x => x.Value).ToArray());
     }
 
     [Fact]
@@ -568,6 +643,22 @@ public sealed class ResilienceBehaviorTests
         );
 
         Assert.Equal([6, 7], items.Select(static x => x.Value).ToArray());
+    }
+
+    [Fact]
+    public async Task CircuitBreakerStreamBehavior_CompletesOnSuccess()
+    {
+        var behavior = new CircuitBreakerStreamBehavior<CircuitStreamMessage, Response>(
+            new LambdaStreamHandler<CircuitStreamMessage, Response>((_, cancellationToken) =>
+                ValuesStream([new Response(15)], cancellationToken)),
+            Options.Create(new CircuitBreakerBehaviorOptions())
+        );
+
+        var items = await WaitUntilSucceedsAsync(() =>
+            ToListAsync(behavior.Handle(new CircuitStreamMessage(), TestContext.Current.CancellationToken))
+        );
+
+        Assert.Equal([15], items.Select(static x => x.Value).ToArray());
     }
 
     private static async Task<T> WaitUntilSucceedsAsync<T>(Func<Task<T>> action)
@@ -715,16 +806,35 @@ public sealed class ResilienceBehaviorTests
         }
     }
 
-    private static async IAsyncEnumerable<T> ThrowingStream<T>(
+    private static IAsyncEnumerable<T> ThrowingStream<T>(
         Exception exception,
-        [EnumeratorCancellation] CancellationToken cancellationToken
-    )
+        CancellationToken cancellationToken
+    ) => new ThrowingAsyncEnumerable<T>(exception, cancellationToken);
+
+    private sealed class ThrowingAsyncEnumerable<T>(
+        Exception exception,
+        CancellationToken cancellationToken
+    ) : IAsyncEnumerable<T>, IAsyncEnumerator<T>
     {
-        await Task.Yield();
-        cancellationToken.ThrowIfCancellationRequested();
-        throw exception;
-#pragma warning disable CS0162
-        yield break;
-#pragma warning restore CS0162
+        private bool thrown;
+        public T Current => default!;
+
+        public IAsyncEnumerator<T> GetAsyncEnumerator(
+            CancellationToken cancellationToken = default
+        ) => this;
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+
+        public ValueTask<bool> MoveNextAsync()
+        {
+            if (thrown)
+            {
+                return ValueTask.FromResult(false);
+            }
+
+            thrown = true;
+            cancellationToken.ThrowIfCancellationRequested();
+            throw exception;
+        }
     }
 }

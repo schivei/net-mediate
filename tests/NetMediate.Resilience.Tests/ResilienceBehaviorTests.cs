@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using System.Runtime.CompilerServices;
 
 [assembly: GenDI.GenDICoveration(false)]
 
@@ -16,6 +17,11 @@ public sealed class ResilienceBehaviorTests
     private sealed record CircuitRequestMessage;
     private sealed record CircuitCommandMessage;
     private sealed record CircuitNotificationMessage;
+    private sealed record CircuitStreamMessage;
+    private sealed record RetryStreamMessage;
+    private sealed record RetryStreamDisabledMessage;
+    private sealed record TimeoutStreamMessage;
+    private sealed record TimeoutStreamDisabledMessage;
     private sealed record Response(int Value);
 
     [Fact]
@@ -401,6 +407,169 @@ public sealed class ResilienceBehaviorTests
         Assert.True(DateTimeOffset.UtcNow - startedAt >= TimeSpan.FromMilliseconds(20));
     }
 
+    [Fact]
+    public async Task RetryStreamBehavior_RetriesUntilSuccess()
+    {
+        var attempts = 0;
+        var behavior = new TestRetryStreamBehavior<RetryStreamMessage, Response>(
+            new LambdaStreamHandler<RetryStreamMessage, Response>((_, cancellationToken) =>
+            {
+                attempts++;
+                return attempts == 1
+                    ? ThrowingStream<Response>(
+                        new InvalidOperationException("fail"),
+                        cancellationToken
+                    )
+                    : ValuesStream([new Response(1), new Response(2)], cancellationToken);
+            }),
+            Options.Create(new RetryBehaviorOptions { MaxRetryCount = 1 })
+        );
+
+        var items = await ToListAsync(
+            behavior.Handle(new RetryStreamMessage(), TestContext.Current.CancellationToken)
+        );
+
+        Assert.Equal(2, attempts);
+        Assert.Equal([1, 2], items.Select(static x => x.Value).ToArray());
+    }
+
+    [Fact]
+    public async Task RetryStreamBehavior_WhenDisabled_DoesNotRetry()
+    {
+        var attempts = 0;
+        var behavior = new TestRetryStreamBehavior<RetryStreamDisabledMessage, Response>(
+            new LambdaStreamHandler<RetryStreamDisabledMessage, Response>((_, cancellationToken) =>
+            {
+                attempts++;
+                return ThrowingStream<Response>(
+                    new InvalidOperationException("fail"),
+                    cancellationToken
+                );
+            }),
+            Options.Create(
+                new RetryBehaviorOptions
+                {
+                    Disabled = true,
+                    MaxRetryCount = 5,
+                }
+            )
+        );
+
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await ToListAsync(
+                behavior.Handle(new RetryStreamDisabledMessage(), TestContext.Current.CancellationToken)
+            )
+        );
+
+        Assert.Equal(1, attempts);
+    }
+
+    [Fact]
+    public async Task TimeoutStreamBehavior_ThrowsTimeoutException_WhenElapsed()
+    {
+        var behavior = new TestTimeoutStreamBehavior<TimeoutStreamMessage, Response>(
+            new LambdaStreamHandler<TimeoutStreamMessage, Response>(static (_, cancellationToken) =>
+                DelayedValuesStream([new Response(1)], TimeSpan.FromMilliseconds(100), cancellationToken)),
+            Options.Create(
+                new TimeoutBehaviorOptions
+                {
+                    StreamTimeout = TimeSpan.FromMilliseconds(10),
+                }
+            )
+        );
+
+        var exception = await Assert.ThrowsAsync<TimeoutException>(async () =>
+            await ToListAsync(
+                behavior.Handle(new TimeoutStreamMessage(), TestContext.Current.CancellationToken)
+            )
+        );
+
+        Assert.Contains("Stream exceeded timeout", exception.Message);
+    }
+
+    [Fact]
+    public async Task TimeoutStreamBehavior_WhenDisabled_BypassesTimeout()
+    {
+        var behavior = new TestTimeoutStreamBehavior<TimeoutStreamDisabledMessage, Response>(
+            new LambdaStreamHandler<TimeoutStreamDisabledMessage, Response>((_, cancellationToken) =>
+                ValuesStream([new Response(3), new Response(4)], cancellationToken)),
+            Options.Create(
+                new TimeoutBehaviorOptions
+                {
+                    Disabled = true,
+                    StreamTimeout = TimeSpan.FromMilliseconds(1),
+                }
+            )
+        );
+
+        var items = await ToListAsync(
+            behavior.Handle(new TimeoutStreamDisabledMessage(), TestContext.Current.CancellationToken)
+        );
+
+        Assert.Equal([3, 4], items.Select(static x => x.Value).ToArray());
+    }
+
+    [Fact]
+    public async Task CircuitBreakerStreamBehavior_WhenThresholdReached_OpensCircuit()
+    {
+        var attempts = 0;
+        var behavior = new CircuitBreakerStreamBehavior<CircuitStreamMessage, Response>(
+            new LambdaStreamHandler<CircuitStreamMessage, Response>((_, cancellationToken) =>
+            {
+                attempts++;
+                return attempts == 1
+                    ? ThrowingStream<Response>(
+                        new InvalidOperationException("boom"),
+                        cancellationToken
+                    )
+                    : ValuesStream([new Response(8)], cancellationToken);
+            }),
+            Options.Create(
+                new CircuitBreakerBehaviorOptions
+                {
+                    FailureThreshold = 1,
+                    OpenDuration = TimeSpan.FromMilliseconds(100),
+                }
+            )
+        );
+
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await ToListAsync(
+                behavior.Handle(new CircuitStreamMessage(), TestContext.Current.CancellationToken)
+            )
+        );
+
+        var openException = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await ToListAsync(
+                behavior.Handle(new CircuitStreamMessage(), TestContext.Current.CancellationToken)
+            )
+        );
+
+        Assert.Contains("Circuit open for stream", openException.Message);
+    }
+
+    [Fact]
+    public async Task CircuitBreakerStreamBehavior_WhenDisabled_BypassesCircuit()
+    {
+        var behavior = new CircuitBreakerStreamBehavior<CircuitStreamMessage, Response>(
+            new LambdaStreamHandler<CircuitStreamMessage, Response>((_, cancellationToken) =>
+                ValuesStream([new Response(6), new Response(7)], cancellationToken)),
+            Options.Create(
+                new CircuitBreakerBehaviorOptions
+                {
+                    Disabled = true,
+                    FailureThreshold = 1,
+                }
+            )
+        );
+
+        var items = await ToListAsync(
+            behavior.Handle(new CircuitStreamMessage(), TestContext.Current.CancellationToken)
+        );
+
+        Assert.Equal([6, 7], items.Select(static x => x.Value).ToArray());
+    }
+
     private static async Task<T> WaitUntilSucceedsAsync<T>(Func<Task<T>> action)
     {
         Exception? lastException = null;
@@ -450,6 +619,17 @@ public sealed class ResilienceBehaviorTests
             callback(message, cancellationToken);
     }
 
+    private sealed class LambdaStreamHandler<TMessage, TResponse>(
+        Func<TMessage, CancellationToken, IAsyncEnumerable<TResponse>> callback
+    ) : IStreamHandler<TMessage, TResponse>
+        where TMessage : notnull
+    {
+        public IAsyncEnumerable<TResponse> Handle(
+            TMessage message,
+            CancellationToken cancellationToken = default
+        ) => callback(message, cancellationToken);
+    }
+
     private sealed class TestRetryRequestBehavior<TMessage, TResponse>(
         IRequestHandler<TMessage, TResponse> handler,
         IOptions<RetryBehaviorOptions> optionsAccessor
@@ -485,4 +665,66 @@ public sealed class ResilienceBehaviorTests
         IOptions<TimeoutBehaviorOptions> optionsAccessor
     ) : TimeoutNotificationBehavior<TMessage>(handler, optionsAccessor)
         where TMessage : notnull;
+
+    private sealed class TestRetryStreamBehavior<TMessage, TResponse>(
+        IStreamHandler<TMessage, TResponse> handler,
+        IOptions<RetryBehaviorOptions> optionsAccessor
+    ) : RetryStreamBehavior<TMessage, TResponse>(handler, optionsAccessor)
+        where TMessage : notnull;
+
+    private sealed class TestTimeoutStreamBehavior<TMessage, TResponse>(
+        IStreamHandler<TMessage, TResponse> handler,
+        IOptions<TimeoutBehaviorOptions> optionsAccessor
+    ) : TimeoutStreamBehavior<TMessage, TResponse>(handler, optionsAccessor)
+        where TMessage : notnull;
+
+    private static async Task<List<T>> ToListAsync<T>(IAsyncEnumerable<T> source)
+    {
+        var result = new List<T>();
+        await foreach (var item in source.WithCancellation(TestContext.Current.CancellationToken))
+        {
+            result.Add(item);
+        }
+
+        return result;
+    }
+
+    private static async IAsyncEnumerable<T> ValuesStream<T>(
+        IEnumerable<T> values,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        foreach (var item in values)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            await Task.Yield();
+            yield return item;
+        }
+    }
+
+    private static async IAsyncEnumerable<T> DelayedValuesStream<T>(
+        IEnumerable<T> values,
+        TimeSpan delay,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        foreach (var item in values)
+        {
+            await Task.Delay(delay, cancellationToken);
+            yield return item;
+        }
+    }
+
+    private static async IAsyncEnumerable<T> ThrowingStream<T>(
+        Exception exception,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        await Task.Yield();
+        cancellationToken.ThrowIfCancellationRequested();
+        throw exception;
+#pragma warning disable CS0162
+        yield break;
+#pragma warning restore CS0162
+    }
 }

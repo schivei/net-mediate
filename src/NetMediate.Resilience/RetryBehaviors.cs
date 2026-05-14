@@ -68,7 +68,7 @@ internal static class RetryBehaviorRunner
         if (options.Disabled)
             return await operation(message, cancellationToken).ConfigureAwait(false);
 
-        for (var attempt = 0; attempt <= maxRetryCount; attempt++)
+        for (var attempt = 0; ; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -88,7 +88,6 @@ internal static class RetryBehaviorRunner
             }
         }
 
-        throw new InvalidOperationException("Retry execution ended without completing or throwing.");
     }
 
     private static async IAsyncEnumerable<TResult> ExecuteCoreAsync<TMessage, TResult>(
@@ -111,13 +110,12 @@ internal static class RetryBehaviorRunner
             yield break;
         }
 
-        List<TResult>? results = null;
+        List<TResult> results = [];
 
-        for (var attempt = 0; attempt <= maxRetryCount; attempt++)
+        for (var attempt = 0; ; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-
-            results = [];
+            results.Clear();
 
             try
             {
@@ -138,11 +136,6 @@ internal static class RetryBehaviorRunner
             {
                 await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
             }
-        }
-
-        if (results == null)
-        {
-            throw new InvalidOperationException("Retry execution ended without completing or throwing.");
         }
 
         foreach (var item in results)

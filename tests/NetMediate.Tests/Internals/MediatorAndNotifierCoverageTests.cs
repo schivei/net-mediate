@@ -315,7 +315,7 @@ public sealed class MediatorAndNotifierCoverageTests
 
         await notifier.Notify(null, new NotificationMessage("one"), TestContext.Current.CancellationToken);
         await notifier.Notify(
-            "key",
+            null,
             [new NotificationMessage("two"), new NotificationMessage("three")],
             TestContext.Current.CancellationToken
         );

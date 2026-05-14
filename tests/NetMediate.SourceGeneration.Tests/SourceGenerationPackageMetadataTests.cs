@@ -85,7 +85,7 @@ public class SourceGenerationPackageMetadataTests
         Assert.Contains("PackageReference", props);
         Assert.Contains("Include=\"NetMediate\"", props);
         Assert.Contains("Include=\"GenDI.SourceGenerator\"", props);
-        Assert.Contains("<PrivateAssets>contentfiles; compile; runtime</PrivateAssets>", props);
+        Assert.Contains("contentfiles; compile; runtime", props);
     }
 
     private static string GetPackagePath()

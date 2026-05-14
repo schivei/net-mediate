@@ -52,6 +52,10 @@ internal static class Constants
     public const string CircuitBreakerStreamBehaviorClassName = "CircuitBreakerStreamBehavior";
     public const string RetryStreamBehaviorClassName = "RetryStreamBehavior";
     public const string TimeoutStreamBehaviorClassName = "TimeoutStreamBehavior";
+    private const int TelemetryBehaviorOrder = int.MinValue;
+    private const int CircuitBreakerBehaviorOrder = int.MinValue + 1;
+    private const int RetryBehaviorOrder = int.MinValue + 2;
+    private const int TimeoutBehaviorOrder = int.MinValue + 3;
 
     private static string RandomNameFrom(string interfaceName, string behaviorName, out string name)
     {
@@ -74,7 +78,7 @@ internal static class Constants
             chars[index++] = char.IsLetterOrDigit(c) || c == '_' ? c : '_';
         }
 
-        var sanitized = new string(chars, 0, index);
+        var sanitized = new string(chars, 0, value.Length);
         return char.IsDigit(sanitized[0]) ? $"_{sanitized}" : sanitized;
     }
 
@@ -103,7 +107,7 @@ internal static class Constants
     private static string GetTelemetryCommandClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
-            int.MinValue,
+            TelemetryBehaviorOrder,
             TelemetryCommandBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{TelemetryCommandBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
@@ -112,7 +116,7 @@ internal static class Constants
     private static string GetTelemetryNotificationClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
-            int.MinValue,
+            TelemetryBehaviorOrder,
             TelemetryNotificationBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{TelemetryNotificationBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
@@ -121,7 +125,7 @@ internal static class Constants
     private static string GetTelemetryRequestClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
-            int.MinValue,
+            TelemetryBehaviorOrder,
             TelemetryRequestBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{TelemetryRequestBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
@@ -130,7 +134,7 @@ internal static class Constants
     private static string GetTelemetryStreamClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
-            int.MinValue,
+            TelemetryBehaviorOrder,
             TelemetryStreamBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{TelemetryStreamBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
@@ -139,7 +143,7 @@ internal static class Constants
     private static string GetCircuitBreakerCommandClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
-            int.MinValue + 1,
+            CircuitBreakerBehaviorOrder,
             CircuitBreakerCommandBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{CircuitBreakerCommandBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
@@ -148,7 +152,7 @@ internal static class Constants
     private static string GetCircuitBreakerNotificationClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
-            int.MinValue + 1,
+            CircuitBreakerBehaviorOrder,
             CircuitBreakerNotificationBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{CircuitBreakerNotificationBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
@@ -157,7 +161,7 @@ internal static class Constants
     private static string GetCircuitBreakerRequestClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
-            int.MinValue + 1,
+            CircuitBreakerBehaviorOrder,
             CircuitBreakerRequestBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{CircuitBreakerRequestBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
@@ -166,7 +170,7 @@ internal static class Constants
     private static string GetCircuitBreakerStreamClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
-            int.MinValue + 1,
+            CircuitBreakerBehaviorOrder,
             CircuitBreakerStreamBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{CircuitBreakerStreamBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
@@ -175,7 +179,7 @@ internal static class Constants
     private static string GetRetryCommandClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
-            int.MinValue + 2,
+            RetryBehaviorOrder,
             RetryCommandBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{RetryCommandBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
@@ -184,7 +188,7 @@ internal static class Constants
     private static string GetRetryNotificationClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
-            int.MinValue + 2,
+            RetryBehaviorOrder,
             RetryNotificationBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{RetryNotificationBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
@@ -193,7 +197,7 @@ internal static class Constants
     private static string GetRetryRequestClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
-            int.MinValue + 2,
+            RetryBehaviorOrder,
             RetryRequestBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{RetryRequestBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
@@ -202,7 +206,7 @@ internal static class Constants
     private static string GetRetryStreamClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
-            int.MinValue + 2,
+            RetryBehaviorOrder,
             RetryStreamBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{RetryStreamBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
@@ -211,7 +215,7 @@ internal static class Constants
     private static string GetTimeoutCommandClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
-            int.MinValue + 3,
+            TimeoutBehaviorOrder,
             TimeoutCommandBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{TimeoutCommandBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
@@ -220,7 +224,7 @@ internal static class Constants
     private static string GetTimeoutNotificationClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
-            int.MinValue + 3,
+            TimeoutBehaviorOrder,
             TimeoutNotificationBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{TimeoutNotificationBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
@@ -229,7 +233,7 @@ internal static class Constants
     private static string GetTimeoutRequestClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
-            int.MinValue + 3,
+            TimeoutBehaviorOrder,
             TimeoutRequestBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{TimeoutRequestBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
@@ -238,7 +242,7 @@ internal static class Constants
     private static string GetTimeoutStreamClass(BehaviorRegistration registration, out string randomName) =>
         GetBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
-            int.MinValue + 3,
+            TimeoutBehaviorOrder,
             TimeoutStreamBehaviorClassName,
             $"{GlobalNamespace}{PackName}.{TimeoutStreamBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName

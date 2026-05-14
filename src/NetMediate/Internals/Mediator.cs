@@ -55,17 +55,9 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
 
             if (key is not null)
             {
-                var keyedServices = serviceProvider.GetService<KeyedHandlerRegistry<ICommandHandler<TMessage>>>();
-
-                if (keyedServices is null || !keyedServices.TryGetAll(key, serviceProvider, out var keyedHandlers))
-                {
-                    keyedHandlers = [.. serviceProvider.GetKeyedServices<ICommandHandler<TMessage>>(key)];
-                }
-
-                if (keyedHandlers.Length == 0)
-                {
-                    keyedHandlers = [.. serviceProvider.GetServices<ICommandHandler<TMessage>>()];
-                }
+                var keyedServices = serviceProvider.GetRequiredService<KeyedHandlerRegistry<ICommandHandler<TMessage>>>();
+                if (!keyedServices.TryGetAll(key, serviceProvider, out var keyedHandlers))
+                    keyedHandlers = [];
 
                 handlers = [.. keyedHandlers];
             }
@@ -132,14 +124,10 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
 
             if (key is not null)
             {
-                var keyedServices = serviceProvider.GetService<KeyedHandlerRegistry<IRequestHandler<TMessage, TResponse>>>();
-
-                if (keyedServices is null || !keyedServices.TryGetAll(key, serviceProvider, out var keyedHandlers))
-                {
-                    keyedHandlers = [serviceProvider.GetKeyedService<IRequestHandler<TMessage, TResponse>>(key)];
-                }
-
-                handler = keyedHandlers.FirstOrDefault() ?? serviceProvider.GetRequiredService<IRequestHandler<TMessage, TResponse>>();
+                var keyedServices = serviceProvider.GetRequiredService<KeyedHandlerRegistry<IRequestHandler<TMessage, TResponse>>>();
+                if (!keyedServices.TryGetAll(key, serviceProvider, out var keyedHandlers))
+                    keyedHandlers = [];
+                handler = keyedHandlers.Single();
             }
 
             return await handler.Handle(message, cancellationToken).ConfigureAwait(false);
@@ -185,17 +173,9 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
 
         if (key is not null)
         {
-            var keyedServices = serviceProvider.GetService<KeyedHandlerRegistry<IStreamHandler<TMessage, TResponse>>>();
-
-            if (keyedServices is null || !keyedServices.TryGetAll(key, serviceProvider, out var keyedHandlers))
-            {
-                keyedHandlers = [.. serviceProvider.GetKeyedServices<IStreamHandler<TMessage, TResponse>>(key)];
-            }
-
-            if (keyedHandlers.Length == 0)
-            {
-                keyedHandlers = [.. serviceProvider.GetServices<IStreamHandler<TMessage, TResponse>>()];
-            }
+            var keyedServices = serviceProvider.GetRequiredService<KeyedHandlerRegistry<IStreamHandler<TMessage, TResponse>>>();
+            if (!keyedServices.TryGetAll(key, serviceProvider, out var keyedHandlers))
+                keyedHandlers = [];
 
             handlers = [.. keyedHandlers];
         }

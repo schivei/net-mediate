@@ -80,12 +80,10 @@ All handler `Handle` methods return `Task` or `Task<TResponse>`:
 |---|---|---|
 | `ICommandHandler<TMessage>` | `Task` | All registered handlers, **sequential** in registration order |
 | `IRequestHandler<TMessage, TResponse>` | `Task<TResponse>` | Single handler (first registered) |
-| `INotificationHandler<TMessage>` | `Task` | All handlers started in parallel (`Task.WhenAll`), fire-and-forget; handler exceptions logged |
+| `INotificationHandler<TMessage>` | `Task` | All handlers started concurrently (fire-and-forget); handler and behavior exceptions logged, do not propagate |
 | `IStreamHandler<TMessage, TResponse>` | `IAsyncEnumerable<TResponse>` | All registered handlers, items merged **sequentially** (handler A items first, then handler B) |
 
 > **Unhandled messages**: `Send` and `Notify` are silent no-ops when no handler is registered. `Request` and `RequestStream` throw `InvalidOperationException`.
-
-
 
 ### Keyed handler registration
 

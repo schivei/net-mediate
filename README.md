@@ -231,7 +231,7 @@ var mediator = host.Services.GetRequiredService<IMediator>();
 
 ### Notifications
 
-`Notify` runs the notification pipeline (behaviors are fully awaited and their exceptions propagate to the caller). When the pipeline reaches the handler dispatch step, all registered handlers are started simultaneously and their results are not awaited — handlers are fire-and-forget. Handler exceptions are logged by the executor but do not propagate to the caller. When sending a batch of notifications (`IEnumerable`), each message's pipeline is dispatched in parallel (`Task.WhenAll` across messages).
+`Notify` is fire-and-forget — the pipeline task is discarded and `Task.CompletedTask` is returned immediately to the caller. All registered handlers are started concurrently; handler and behavior exceptions are all logged by the executor but do not propagate to the caller. When sending a batch of notifications (`IEnumerable`), each message's pipeline is dispatched sequentially in a loop.
 
 #### Define a Notification Message
 ```csharp

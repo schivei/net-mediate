@@ -57,7 +57,7 @@ Each option is independent — override only the ones you need.
 
 All resilience behaviors follow the standard `IPipelineBehavior<TMessage, TResult>` contract, which means their `Handle` signature accepts `object? key` as the first parameter. The `key` is forwarded transparently so that keyed dispatch (e.g. `mediator.SendMyCommandAsync("audit", command, ct)`) passes the routing key through the full resilience pipeline.
 
-> **Note:** Notification handler dispatch is fire-and-forget by design — the `NotificationPipelineExecutor` starts all handlers simultaneously via `Task.WhenAll` and logs handler exceptions without propagating them. Handler exceptions and completion timing have no effect on the pipeline or the caller. Pipeline behaviors, however, run fully and their exceptions do propagate, so retry/timeout/circuit-breaker behaviors at the pipeline level protect the pipeline itself (e.g., adapter calls, pre-processing logic), not the individual handler execution.
+> **Note:** Notification handler dispatch is fire-and-forget by design — the `NotificationPipelineExecutor` starts handlers concurrently and logs all exceptions (handler and behavior alike) without propagating them to the caller. Handler exceptions and completion timing have no effect on the caller. Retry/timeout/circuit-breaker behaviors at the pipeline level protect the pipeline itself (e.g., adapter calls, pre-processing logic), not the individual handler execution.
 
 ## Retry
 

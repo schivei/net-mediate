@@ -91,11 +91,11 @@ public class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserDto>
 
 ## Notifications
 
-Notifications are events dispatched to multiple handlers simultaneously. All handlers are started in parallel (`Task.WhenAll`) and are fire-and-forget — handler exceptions are logged by the executor but do not propagate to the caller.
+Notifications are events dispatched to multiple handlers simultaneously. Handlers are started concurrently (fire-and-forget) — handler exceptions are logged by the executor but do not propagate to the caller.
 
 ### Characteristics
 - ✅ Multiple handlers allowed
-- ✅ All handlers started in parallel (`Task.WhenAll`), fire-and-forget
+- ✅ All handlers started concurrently (fire-and-forget)
 - ✅ Handler exceptions are logged by the executor (do not propagate to caller)
 - ✅ No return value
 - ✅ Best for event-driven architectures
@@ -103,7 +103,7 @@ Notifications are events dispatched to multiple handlers simultaneously. All han
 ### Example
 
 ```csharp
-// Usage - all handlers started in parallel (fire-and-forget)
+// Usage - all handlers started concurrently (fire-and-forget)
 await mediator.NotifyOrderShippedAsync(new OrderShipped("ORD-456", "TRACK-789", DateTime.UtcNow));
 
 // Define a notification

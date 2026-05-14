@@ -161,7 +161,7 @@ No `MakeGenericType`, no `typeof(TResult) switch`, no assembly scanning — full
 | `Send` | `IMediator.Send<TMsg>` | All `ICommandHandler<TMsg>` instances iterated sequentially |
 | `Request` | `IMediator.Request<TMsg, TResp>` | Single `IRequestHandler<TMsg, TResp>` (first registered) |
 | `Notify` | `IMediator.Notify<TMsg>` | Fire-and-forget per handler; all `INotificationHandler<TMsg>` instances started individually; exceptions logged |
-| `RequestStream` | `IMediator.RequestStream<TMsg, TResp>` | Single `IStreamHandler<TMsg, TResp>`; yields items lazily |
+| `RequestStream` | `IMediator.RequestStream<TMsg, TResp>` | All registered `IStreamHandler<TMsg, TResp>` instances, items merged sequentially |
 
 ---
 

@@ -190,7 +190,7 @@ public class Handler2 : ICommandHandler<MyCommand>
 ```
 
 **Commands**: Handlers execute sequentially in registration order.
-**Notifications**: All handlers started in parallel (`Task.WhenAll`), fire-and-forget — handler results and exceptions are discarded by the executor.
+**Notifications**: All handlers started in parallel (`Task.WhenAll`), fire-and-forget — handler exceptions are logged by the executor but do not propagate to the caller.
 
 ### Requests and Streams
 

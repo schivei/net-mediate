@@ -61,7 +61,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 ### Key Features
 
 - **Commands**: Send one-way messages to all registered handlers sequentially
-- **Notifications**: Publish messages to multiple handlers — all handlers started in parallel (`Task.WhenAll`); handler results and exceptions are discarded (fire-and-forget). Batch notifications (`IEnumerable`) are also dispatched in parallel.
+- **Notifications**: Publish messages to multiple handlers — all handlers started in parallel (`Task.WhenAll`); handler exceptions are logged but do not propagate to the caller (fire-and-forget). Batch notifications (`IEnumerable`) are also dispatched in parallel.
 - **Requests**: Send a message to a single handler and receive a typed response
 - **Streaming**: Handle requests that return multiple responses over time via `IAsyncEnumerable`
 - **Pipeline Behaviors**: Interceptors with pre/post flow for every message kind
@@ -231,7 +231,7 @@ var mediator = host.Services.GetRequiredService<IMediator>();
 
 ### Notifications
 
-`Notify` runs the notification pipeline (behaviors are fully awaited and their exceptions propagate to the caller). When the pipeline reaches the handler dispatch step, all registered handlers are started simultaneously via `Task.WhenAll` and the result is discarded — handlers are fire-and-forget. Handler exceptions and completion timing have no effect on the pipeline or the caller. When sending a batch of notifications (`IEnumerable`), each message's pipeline is dispatched in parallel (`Task.WhenAll` across messages).
+`Notify` runs the notification pipeline (behaviors are fully awaited and their exceptions propagate to the caller). When the pipeline reaches the handler dispatch step, all registered handlers are started simultaneously and their results are not awaited — handlers are fire-and-forget. Handler exceptions are logged by the executor but do not propagate to the caller. When sending a batch of notifications (`IEnumerable`), each message's pipeline is dispatched in parallel (`Task.WhenAll` across messages).
 
 #### Define a Notification Message
 ```csharp
@@ -408,7 +408,7 @@ NetMediate messages are plain records or classes — **no marker interfaces are 
 |---|---|---|
 | Command | `ICommandHandler<TMessage>` | All registered handlers, sequential in registration order |
 | Request | `IRequestHandler<TMessage, TResponse>` | First registered handler only; returns `TResponse` |
-| Notification | `INotificationHandler<TMessage>` | All handlers started in parallel (fire-and-forget via `Task.WhenAll`); handler exceptions unobserved |
+| Notification | `INotificationHandler<TMessage>` | All handlers started in parallel (fire-and-forget); handler exceptions are logged |
 | Stream | `IStreamHandler<TMessage, TResponse>` | All registered handlers, items merged sequentially (handler A items first, then handler B) |
 
 ```csharp

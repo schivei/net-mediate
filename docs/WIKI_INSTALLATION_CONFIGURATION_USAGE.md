@@ -54,7 +54,7 @@ await mediator.NotifyUserCreatedNotificationAsync(new UserCreatedNotification("u
 // Notification (batch): each message's pipeline dispatched in parallel (Task.WhenAll across messages)
 await mediator.NotifyUserCreatedNotificationAsync(new[] { n1, n2, n3 }, cancellationToken);
 
-// Stream: single handler; yields items asynchronously
+// Stream: all registered handlers, items merged sequentially; yields items asynchronously
 await foreach (var item in mediator.StreamGetEventsQueryAsync(new GetEventsQuery(), cancellationToken))
     Console.WriteLine(item);
 ```
@@ -80,10 +80,12 @@ All handler `Handle` methods return `Task` or `Task<TResponse>`:
 |---|---|---|
 | `ICommandHandler<TMessage>` | `Task` | All registered handlers, **sequential** in registration order |
 | `IRequestHandler<TMessage, TResponse>` | `Task<TResponse>` | Single handler (first registered) |
-| `INotificationHandler<TMessage>` | `Task` | All handlers started in parallel (`Task.WhenAll`), fire-and-forget; handler exceptions discarded |
+| `INotificationHandler<TMessage>` | `Task` | All handlers started in parallel (`Task.WhenAll`), fire-and-forget; handler exceptions logged |
 | `IStreamHandler<TMessage, TResponse>` | `IAsyncEnumerable<TResponse>` | All registered handlers, items merged **sequentially** (handler A items first, then handler B) |
 
 > **Unhandled messages**: `Send` and `Notify` are silent no-ops when no handler is registered. `Request` and `RequestStream` throw `InvalidOperationException`.
+
+
 
 ### Keyed handler registration
 

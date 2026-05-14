@@ -2,10 +2,12 @@
 	<Target Name="UnlockTransitiveAnalyser" BeforeTargets="_GenerateProjectLintProperties;GetCopyOutputDirectoryItems">
 		<ItemGroup>
 			<PackageReference Update="NetMediate.SourceGeneration">
+				<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 				<PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
 			</PackageReference>
 
 			<PackageReference Update="GenDI.SourceGenerator">
+				<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 				<PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
 			</PackageReference>
 		</ItemGroup>

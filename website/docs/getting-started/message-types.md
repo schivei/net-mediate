@@ -10,12 +10,12 @@ NetMediate supports four different message types, each designed for specific com
 
 ## Overview
 
-| Message Type | Use Case | Handler Count | Return Value |
-|--------------|----------|---------------|--------------|
-| **Command** | Side-effects, multi-handler actions | Multiple (sequential) | `Task` |
-| **Request** | Query/response pattern | Single | `Task<TResponse>` |
-| **Notification** | Fire-and-forget events | Multiple (parallel, fire-and-forget) | `Task` |
-| **Stream** | Async data streams | Multiple (merged) | `IAsyncEnumerable<T>` |
+| Message Type | Use Case | Handler Count | Return Value | Default Handler Lifetime |
+|--------------|----------|---------------|--------------|--------------------------|
+| **Command** | Side-effects, multi-handler actions | Multiple (sequential) | `Task` | `Singleton` |
+| **Request** | Query/response pattern | Single | `Task<TResponse>` | `Scoped` |
+| **Notification** | Fire-and-forget events | Multiple (concurrent, fire-and-forget) | `Task` | `Singleton` |
+| **Stream** | Async data streams | Multiple (merged sequentially) | `IAsyncEnumerable<T>` | `Scoped` |
 
 ## Commands
 
@@ -91,19 +91,19 @@ public class GetUserQueryHandler : IRequestHandler<GetUserQuery, UserDto>
 
 ## Notifications
 
-Notifications are events dispatched to multiple handlers simultaneously. All handlers are started in parallel (`Task.WhenAll`) and are fire-and-forget — handler results and exceptions have no effect on the caller or the pipeline.
+Notifications are events dispatched to multiple handlers simultaneously. Handlers are started concurrently (fire-and-forget) — handler exceptions are logged by the executor but do not propagate to the caller.
 
 ### Characteristics
 - ✅ Multiple handlers allowed
-- ✅ All handlers started in parallel (`Task.WhenAll`), fire-and-forget
-- ✅ Handler exceptions are discarded by the executor (do not propagate to caller)
+- ✅ All handlers started concurrently (fire-and-forget)
+- ✅ Handler exceptions are logged by the executor (do not propagate to caller)
 - ✅ No return value
 - ✅ Best for event-driven architectures
 
 ### Example
 
 ```csharp
-// Usage - all handlers started in parallel (fire-and-forget)
+// Usage - all handlers started concurrently (fire-and-forget)
 await mediator.NotifyOrderShippedAsync(new OrderShipped("ORD-456", "TRACK-789", DateTime.UtcNow));
 
 // Define a notification
@@ -133,7 +133,7 @@ public class InventoryUpdater : INotificationHandler<OrderShipped>
 
 ### Batch Notifications
 
-Send multiple notifications at once. Each message's pipeline is dispatched in parallel (`Task.WhenAll` across messages). Within each message, all handlers are also started in parallel (fire-and-forget):
+Send multiple notifications at once. Each message is dispatched sequentially in a loop. Within each message, all handlers are started concurrently (fire-and-forget):
 
 ```csharp
 var notifications = new[]
@@ -151,7 +151,7 @@ await mediator.NotifyOrderShippedAsync(notifications);
 Streams handle requests that return multiple values over time using `IAsyncEnumerable<T>`.
 
 ### Characteristics
-- ✅ Single handler only
+- ✅ Multiple handlers supported (items merged sequentially)
 - ✅ Returns `IAsyncEnumerable<TResponse>`
 - ✅ Supports backpressure
 - ✅ Cancellation-aware

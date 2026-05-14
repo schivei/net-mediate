@@ -113,41 +113,56 @@ internal static class RetryBehaviorRunner
         for (var attempt = 0; attempt < maxRetryCount; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            List<TResult>? results = null;
+            var results = await TryCollectWithRetryAsync(
+                operation,
+                message,
+                delay,
+                cancellationToken
+            ).ConfigureAwait(false);
+            if (results is null)
+                continue;
 
-            try
+            foreach (var item in results)
             {
-                List<TResult> buffer = [];
-                await foreach (var item in operation(message, cancellationToken).ConfigureAwait(false))
-                {
-                    buffer.Add(item);
-                }
-                results = buffer;
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception)
-            {
-                await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
+                yield return item;
             }
 
-            if (results is not null)
-            {
-                foreach (var item in results)
-                {
-                    yield return item;
-                }
-
-                yield break;
-            }
+            yield break;
         }
 
         cancellationToken.ThrowIfCancellationRequested();
         await foreach (var item in operation(message, cancellationToken).ConfigureAwait(false))
         {
             yield return item;
+        }
+    }
+
+    private static async Task<List<TResult>?> TryCollectWithRetryAsync<TMessage, TResult>(
+        Func<TMessage, CancellationToken, IAsyncEnumerable<TResult>> operation,
+        TMessage message,
+        TimeSpan delay,
+        CancellationToken cancellationToken
+    )
+    {
+        try
+        {
+            List<TResult> buffer = [];
+            await foreach (var item in operation(message, cancellationToken).ConfigureAwait(false))
+            {
+                buffer.Add(item);
+            }
+
+            return buffer;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
+            return null;
+        }
+        catch (Exception)
+        {
+            await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
+            return null;
         }
     }
 

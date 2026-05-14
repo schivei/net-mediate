@@ -68,7 +68,7 @@ internal static class RetryBehaviorRunner
         if (options.Disabled)
             return await operation(message, cancellationToken).ConfigureAwait(false);
 
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = 0; attempt < maxRetryCount; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -76,18 +76,18 @@ internal static class RetryBehaviorRunner
             {
                 return await operation(message, cancellationToken).ConfigureAwait(false);
             }
-            catch (OperationCanceledException) when (
-                !cancellationToken.IsCancellationRequested && attempt < maxRetryCount
-            )
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
             {
                 await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception) when (attempt < maxRetryCount)
+            catch (Exception)
             {
                 await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
             }
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
+        return await operation(message, cancellationToken).ConfigureAwait(false);
     }
 
     private static async IAsyncEnumerable<TResult> ExecuteCoreAsync<TMessage, TResult>(
@@ -110,35 +110,42 @@ internal static class RetryBehaviorRunner
             yield break;
         }
 
-        List<TResult> results = [];
-
-        for (var attempt = 0; ; attempt++)
+        for (var attempt = 0; attempt < maxRetryCount; attempt++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            results.Clear();
+            List<TResult>? results = null;
 
             try
             {
+                List<TResult> buffer = [];
                 await foreach (var item in operation(message, cancellationToken).ConfigureAwait(false))
                 {
-                    results.Add(item);
+                    buffer.Add(item);
+                }
+                results = buffer;
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (results is not null)
+            {
+                foreach (var item in results)
+                {
+                    yield return item;
                 }
 
-                break;
-            }
-            catch (OperationCanceledException) when (
-                !cancellationToken.IsCancellationRequested && attempt < maxRetryCount
-            )
-            {
-                await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
-            }
-            catch (Exception) when (attempt < maxRetryCount)
-            {
-                await DelayIfNeededAsync(delay, cancellationToken).ConfigureAwait(false);
+                yield break;
             }
         }
 
-        foreach (var item in results)
+        cancellationToken.ThrowIfCancellationRequested();
+        await foreach (var item in operation(message, cancellationToken).ConfigureAwait(false))
         {
             yield return item;
         }

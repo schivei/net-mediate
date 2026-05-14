@@ -434,6 +434,27 @@ public sealed class ResilienceBehaviorTests
     }
 
     [Fact]
+    public async Task RetryStreamBehavior_WhenFirstAttemptSucceeds_UsesImmediateResult()
+    {
+        var attempts = 0;
+        var behavior = new TestRetryStreamBehavior<RetryStreamMessage, Response>(
+            new LambdaStreamHandler<RetryStreamMessage, Response>((_, cancellationToken) =>
+            {
+                attempts++;
+                return ValuesStream([new Response(16), new Response(17)], cancellationToken);
+            }),
+            Options.Create(new RetryBehaviorOptions { MaxRetryCount = 2 })
+        );
+
+        var items = await ToListAsync(
+            behavior.Handle(new RetryStreamMessage(), TestContext.Current.CancellationToken)
+        );
+
+        Assert.Equal(1, attempts);
+        Assert.Equal([16, 17], items.Select(static x => x.Value).ToArray());
+    }
+
+    [Fact]
     public async Task RetryStreamBehavior_WhenDisabled_DoesNotRetry()
     {
         var attempts = 0;

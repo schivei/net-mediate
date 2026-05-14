@@ -11,6 +11,7 @@
 /// <param name="message">The notification message to process.</param>
 /// <param name="cancellationToken">A cancellation token that can be used to cancel the operation.</param>
 /// <returns>A TResult that represents the asynchronous handling operation.</returns>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1133:Deprecated code should be removed", Justification = "Legacy API kept for binary compatibility.")]
 [Obsolete("This delegate is deprecated. Use DecoratorForAttribute instead.", true)]
 public delegate TResult PipelineBehaviorDelegate<in TMessage, out TResult>(
     object? key,
@@ -31,6 +32,7 @@ public delegate TResult PipelineBehaviorDelegate<in TMessage, out TResult>(
 /// <param name="handlers">An array of handlers to execute for the given message.</param>
 /// <param name="cancellationToken">A cancellation token that can be used to cancel the execution.</param>
 /// <returns>The result produced by executing the handlers for the specified message.</returns>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1133:Deprecated code should be removed", Justification = "Legacy API kept for binary compatibility.")]
 [Obsolete("This delegate is deprecated. Use DecoratorForAttribute instead.", true)]
 public delegate TResult HandlerExecutionDelegate<in THandler, in TMessage, out TResult>(
     object? key,

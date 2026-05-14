@@ -9,6 +9,7 @@
 /// continue processing or short-circuit the pipeline as needed.</remarks>
 /// <typeparam name="TMessage">The type of the message being processed. Must implement the IMessage interface and cannot be null.</typeparam>
 /// <typeparam name="TResponse">The type of the response returned by the pipeline after processing the message.</typeparam>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1133:Deprecated code should be removed", Justification = "Legacy API kept for binary compatibility.")]
 [Obsolete("This delegate is deprecated. Use DecoratorForAttribute instead.", true)]
 public interface IPipelineRequestBehavior<TMessage, TResponse>
     : IPipelineBehavior<TMessage, Task<TResponse>>

@@ -7,7 +7,7 @@ using Microsoft.CodeAnalysis.CSharp;
 
 namespace NetMediate.SourceGeneration.Tests;
 
-public sealed class GeneratorUtilityCoverageTests
+public sealed partial class GeneratorUtilityCoverageTests
 {
     private static readonly System.Reflection.Assembly s_generatorAssembly = GeneratorAssemblyLoader.Load();
 
@@ -145,7 +145,7 @@ public sealed class GeneratorUtilityCoverageTests
         var outName = (string)args[2]!;
 
         Assert.Equal(generated, outName);
-        Assert.Matches(new Regex(@"^[_A-Za-z][_A-Za-z0-9]*$"), generated);
+        Assert.Matches(ValidIdentifierRegex(), generated);
         Assert.DoesNotContain(":", generated);
         Assert.DoesNotContain(".", generated);
         Assert.DoesNotContain("<", generated);
@@ -227,7 +227,7 @@ public sealed class GeneratorUtilityCoverageTests
 
         Assert.NotEmpty(generated);
         Assert.Equal(generated.Length, generated.Select(x => x.className).Distinct(StringComparer.Ordinal).Count());
-        Assert.All(generated, x => Assert.Matches(new Regex(@"^[_A-Za-z][_A-Za-z0-9]*$"), x.className));
+        Assert.All(generated, x => Assert.Matches(ValidIdentifierRegex(), x.className));
 
         var generatedAgain = ((System.Collections.IEnumerable)method.Invoke(null, [registration])!)
             .Cast<object>()
@@ -245,4 +245,7 @@ public sealed class GeneratorUtilityCoverageTests
                 MetadataReference.CreateFromFile(typeof(IIncrementalGenerator).Assembly.Location),
             ]
         );
+
+    [GeneratedRegex("^[_A-Za-z][_A-Za-z0-9]*$")]
+    private static partial Regex ValidIdentifierRegex();
 }

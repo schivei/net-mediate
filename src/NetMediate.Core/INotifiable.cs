@@ -9,7 +9,9 @@ namespace NetMediate;
 /// <remarks>Implementations of this interface provide mechanisms for notifying multiple handlers about events or
 /// messages. The order in which handlers are invoked is not guaranteed unless explicitly documented by the
 /// implementation. All notification operations are asynchronous and support cancellation via a cancellation
-/// token.</remarks>
+/// token.
+/// If you must implement your own, uses [<c>DecoratorFor&lt;INotifiable&gt;</c>] to intercept and do your own implementation.
+/// </remarks>
 [ServiceInjection(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
 public interface INotifiable
 {

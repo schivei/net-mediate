@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
 
+[Injectable]
 internal class Notifier(IServiceProvider serviceProvider) : INotifiable
 {
     public Task DispatchNotifications<TMessage>(
@@ -36,15 +37,14 @@ internal class Notifier(IServiceProvider serviceProvider) : INotifiable
     )
         where TMessage : notnull
     {
-        var pipeline = serviceProvider.GetService<NotificationPipelineExecutor<TMessage>>();
-
-        if (pipeline is null)
-            return Task.CompletedTask;
+        INotificationHandler<TMessage>[] handlers = key is null
+            ? [.. serviceProvider.GetServices<INotificationHandler<TMessage>>()]
+            : [.. serviceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)];
 
         // Fire-and-forget: discard the Task returned by the pipeline. ErrorReporting inside the
         // executor logs any handler exceptions and ensures the Task is never faulted, so the
         // discard here is safe.
-        _ = pipeline.Handle(key, message, cancellationToken);
+        _ = DispatchNotifications(key, message, handlers, cancellationToken);
 
         return Task.CompletedTask;
     }

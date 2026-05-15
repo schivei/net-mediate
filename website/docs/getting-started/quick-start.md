@@ -25,7 +25,7 @@ Then open your `.csproj` and add the `PackageReference`:
 <PackageReference Include="NetMediate.Core" Version="*" />
 <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
   <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-  <PrivateAssets>all</PrivateAssets>
+  <PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
 </PackageReference>
 ```
 
@@ -35,7 +35,7 @@ Use the generator package with the explicit analyzer-style metadata:
 ```xml
 <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
   <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-  <PrivateAssets>all</PrivateAssets>
+  <PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
 </PackageReference>
 ```
 :::

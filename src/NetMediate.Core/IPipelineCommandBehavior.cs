@@ -1,7 +1,4 @@
-﻿using GenDI;
-using Microsoft.Extensions.DependencyInjection;
-
-namespace NetMediate;
+﻿namespace NetMediate;
 
 /// <summary>
 /// Defines a behavior that can be added to the processing pipeline for a message, allowing custom logic to be executed
@@ -11,6 +8,7 @@ namespace NetMediate;
 /// validation, or exception handling, to the message processing pipeline. The behavior can invoke the next delegate to
 /// continue processing or short-circuit the pipeline as needed.</remarks>
 /// <typeparam name="TMessage">The type of the message being processed. Must implement the IMessage interface and cannot be null.</typeparam>
-[ServiceInjection(ServiceLifetime.Transient, ThreadIsolation = ThreadIsolationPolicy.Transient)]
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1133:Deprecated code should be removed", Justification = "Legacy API kept for binary compatibility.")]
+[Obsolete("This delegate is deprecated. Use DecoratorForAttribute instead.", true)]
 public interface IPipelineCommandBehavior<TMessage> : IPipelineBehavior<TMessage, Task>
     where TMessage : notnull;

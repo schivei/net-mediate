@@ -47,21 +47,14 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     )
         where TMessage : notnull
     {
-        var pipeline = serviceProvider.GetService<CommandPipelineExecutor<TMessage>>();
-
-        if (pipeline is null)
-            return;
-
         try
         {
-            await pipeline
-                .Handle(
-                    key,
-                    message,
-                    CommandHandlers,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
+            ICommandHandler<TMessage>[] handlers = key is null
+                ? [.. serviceProvider.GetServices<ICommandHandler<TMessage>>()]
+                : [.. serviceProvider.GetKeyedServices<ICommandHandler<TMessage>>(key)];
+
+            foreach (var handler in handlers)
+                await handler.Handle(message, cancellationToken).ConfigureAwait(false);
         }
         catch (MediatorException)
         {
@@ -100,18 +93,6 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
         }
     }
 
-    private static async Task CommandHandlers<TMessage>(
-        object? _,
-        TMessage message,
-        IEnumerable<ICommandHandler<TMessage>> handlers,
-        CancellationToken ct
-    )
-        where TMessage : notnull
-    {
-        foreach (var handler in handlers)
-            await handler.Handle(message, ct).ConfigureAwait(false);
-    }
-
     /// <inheritdoc/>
     public Task<TResponse> Request<TMessage, TResponse>(
         TMessage message,
@@ -128,17 +109,13 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     )
         where TMessage : notnull
     {
-        var pipeline = serviceProvider.GetRequiredService<RequestPipelineExecutor<TMessage, TResponse>>();
-
         try
         {
-            return await pipeline
-                .Handle(
-                    key,
-                    message,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
+            var handler = key is null
+                ? serviceProvider.GetRequiredService<IRequestHandler<TMessage, TResponse>>()
+                : serviceProvider.GetRequiredKeyedService<IRequestHandler<TMessage, TResponse>>(key);
+
+            return await handler.Handle(message, cancellationToken).ConfigureAwait(false);
         }
         catch (MediatorException)
         {
@@ -175,26 +152,13 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     )
         where TMessage : notnull
     {
-        var pipeline = serviceProvider.GetRequiredService<
-            StreamPipelineExecutor<TMessage, TResponse>
-        >();
+        IStreamHandler<TMessage, TResponse>[] handlers = key is null
+            ? [.. serviceProvider.GetServices<IStreamHandler<TMessage, TResponse>>()]
+            : [.. serviceProvider.GetKeyedServices<IStreamHandler<TMessage, TResponse>>(key)];
 
-        return pipeline.Handle(
-            key,
-            message,
-            StreamHandlers,
-            cancellationToken
-        );
-    }
+        if (handlers.Length == 0)
+            return AsyncEnumerable.Empty<TResponse>();
 
-    private static IAsyncEnumerable<TResponse> StreamHandlers<TMessage, TResponse>(
-        object? _,
-        TMessage message,
-        IStreamHandler<TMessage, TResponse>[] handlers,
-        CancellationToken cancellationToken
-    )
-        where TMessage : notnull
-    {
         return handlers.Select(x => x.Handle(message, cancellationToken))
             .Aggregate((prev, next) => prev.Concat(next));
     }

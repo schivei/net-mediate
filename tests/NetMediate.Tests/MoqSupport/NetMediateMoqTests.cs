@@ -137,14 +137,6 @@ public class NetMediateMoqTests
                 return Task.CompletedTask;
             })
         );
-        services.AddSingleton(sp =>
-            new NotificationPipelineExecutor<NotifierTestMessage>(
-                sp,
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<
-                    NotificationPipelineExecutor<NotifierTestMessage>
-                >.Instance
-            )
-        );
 
         using var provider = services.BuildServiceProvider();
         var notifier = new NotifierMock(provider);
@@ -169,14 +161,6 @@ public class NetMediateMoqTests
 
                 return Task.CompletedTask;
             })
-        );
-        services.AddSingleton(sp =>
-            new NotificationPipelineExecutor<NotifierTestMessage>(
-                sp,
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<
-                    NotificationPipelineExecutor<NotifierTestMessage>
-                >.Instance
-            )
         );
 
         using var provider = services.BuildServiceProvider();
@@ -226,7 +210,7 @@ public class NetMediateMoqTests
         Task<string> GetTask();
     }
 
-    private sealed class LambdaNotificationHandler<TMessage>(
+    internal sealed class LambdaNotificationHandler<TMessage>(
         Func<TMessage, CancellationToken, Task> fn
     ) : INotificationHandler<TMessage>
         where TMessage : notnull

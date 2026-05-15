@@ -87,6 +87,8 @@ BenchmarkDotNet output columns: `Method`, `Mean`, `Error`, `StdDev`, `Gen0`, `Ge
 
 Once warm, **JIT and NativeAOT produce identical throughput** for the same registration model. In the benchmark profile, handlers are registered as **singleton/global** via GenDI (`ThreadIsolation = ThreadIsolationPolicy.None`), preserving stable handler lifetime while keeping the runtime dispatch architecture unchanged.
 
+> Decision note: benchmark data is being used first; any runtime cache reintroduction remains deferred until analysis is completed.
+
 | Aspect | JIT (CoreCLR) | NativeAOT |
 |---|---|---|
 | Warm throughput | Baseline | Same ¹ |
@@ -182,6 +184,14 @@ This enforces a global singleton registration profile in benchmark runs, aligned
 ```
 Singleton/global registrations in benchmark profile stabilize handler lifetime across runs. Note: dispatch still resolves handler collections per call in the current runtime design.
 ```
+
+## 🧠 Cache strategy constraints (next step)
+
+Any future cache strategy must:
+
+- respect handler interface contracts and the developer-defined `ServiceLifetime` / `ThreadIsolation`
+- avoid a generic runtime cache that can violate container/thread boundaries
+- prefer **static source-generated** implementations to preserve AOT and trimming compatibility
 
 ---
 

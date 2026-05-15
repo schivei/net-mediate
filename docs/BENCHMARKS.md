@@ -16,12 +16,12 @@ The table below is updated automatically by CI on every PR benchmark run. System
 | Key | Value |
 |---|---|
 | OS | Linux Ubuntu 24.04.4 LTS (Noble Numbat) |
-| CPU | AMD EPYC 9V74 2.87GHz, 1 CPU, 4 logical and 2 physical cores |
-| .NET SDK | 10.0.201 |
-| Runtime | .NET 10.0.5 (10.0.5, 10.0.526.15411), X64 RyuJIT x86-64-v3 |
-| Last CI run | 2026-05-15 01:28 UTC |
-| Branch | `test` |
-| Commit | `deadbee` |
+| CPU | AMD EPYC 7763 2.45GHz, 1 CPU, 4 logical and 2 physical cores |
+| .NET SDK | 10.0.300 |
+| Runtime | .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3 |
+| Last CI run | 2026-05-15 01:40 UTC |
+| Branch | `copilot/update-generator-decorator-approach` |
+| Commit | `a67ea23` |
 <!-- ci-environment-end -->
 
 ---
@@ -40,10 +40,10 @@ The `vs timing` column compares dispatch time against stored target-branch value
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 911.36 ns | ±356.347 ns | 0.0127 | 0.0117 | 0 | 552 B | ⚠️ +504 B | ~1.1M msg/s | ⚠️ degraded (+906.5%) |
-| Notification `Notify` | 72.89 ns | ±4.091 ns | 0.0018 | 0 | 0 | 32 B | ✅ -256 B | ~13.7M msg/s | ✅ improved (-43.4%) |
-| Request `Request` | 939.89 ns | ±324.941 ns | 0.0137 | 0.0127 | 0 | 560 B | ⚠️ +448 B | ~1.1M msg/s | ⚠️ degraded (+945.4%) |
-| Stream `RequestStream` | 414.07 ns | ±22.433 ns | 0.0200 | 0 | 0 | 336 B | ⚠️ +120 B | ~2.4M msg/s | ⚠️ degraded (+111.2%) |
+| Command `Send` | 805.34 ns | ±224.859 ns | 0.0127 | 0.0117 | 0 | 552 B | ⚠️ +504 B | ~1.2M msg/s | ⚠️ degraded (+789.4%) |
+| Notification `Notify` | 76.38 ns | ±4.222 ns | 0.0018 | 0 | 0 | 32 B | ✅ -256 B | ~13.1M msg/s | ✅ improved (-40.7%) |
+| Request `Request` | 792.64 ns | ±181.302 ns | 0.0137 | 0.0127 | 0 | 560 B | ⚠️ +448 B | ~1.3M msg/s | ⚠️ degraded (+781.6%) |
+| Stream `RequestStream` | 394.57 ns | ±36.334 ns | 0.0200 | 0 | 0 | 336 B | ⚠️ +120 B | ~2.5M msg/s | ⚠️ degraded (+101.2%) |
 <!-- ci-throughput-end -->
 
 > ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.
@@ -216,7 +216,7 @@ Thresholds are deliberately lenient to remain green on any CI hardware. The Benc
 
 ## Latest CI Benchmark Run
 
-Run: 2026-05-15 01:28 UTC | Branch: `test` | Commit: `deadbee`
+Run: 2026-05-15 01:40 UTC | Branch: `copilot/update-generator-decorator-approach` | Commit: `a67ea23`
 
 ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).
 
@@ -224,19 +224,19 @@ Run: 2026-05-15 01:28 UTC | Branch: `test` | Commit: `deadbee`
 
 ```
 Linux Ubuntu 24.04.4 LTS (Noble Numbat)
-AMD EPYC 9V74 2.87GHz, 1 CPU, 4 logical and 2 physical cores
-.NET SDK 10.0.201
-Runtime: .NET 10.0.5 (10.0.5, 10.0.526.15411), X64 RyuJIT x86-64-v3
+AMD EPYC 7763 2.45GHz, 1 CPU, 4 logical and 2 physical cores
+.NET SDK 10.0.300
+Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 ```
 
 ### Performance summary (BenchmarkDotNet — ShortRun job)
 
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 911.36 ns | ±356.347 ns | 0.0127 | 0.0117 | 0 | 552 B | ⚠️ +504 B | ~1.1M msg/s | ⚠️ degraded (+906.5%) |
-| Notification `Notify` | 72.89 ns | ±4.091 ns | 0.0018 | 0 | 0 | 32 B | ✅ -256 B | ~13.7M msg/s | ✅ improved (-43.4%) |
-| Request `Request` | 939.89 ns | ±324.941 ns | 0.0137 | 0.0127 | 0 | 560 B | ⚠️ +448 B | ~1.1M msg/s | ⚠️ degraded (+945.4%) |
-| Stream `RequestStream` | 414.07 ns | ±22.433 ns | 0.0200 | 0 | 0 | 336 B | ⚠️ +120 B | ~2.4M msg/s | ⚠️ degraded (+111.2%) |
+| Command `Send` | 805.34 ns | ±224.859 ns | 0.0127 | 0.0117 | 0 | 552 B | ⚠️ +504 B | ~1.2M msg/s | ⚠️ degraded (+789.4%) |
+| Notification `Notify` | 76.38 ns | ±4.222 ns | 0.0018 | 0 | 0 | 32 B | ✅ -256 B | ~13.1M msg/s | ✅ improved (-40.7%) |
+| Request `Request` | 792.64 ns | ±181.302 ns | 0.0137 | 0.0127 | 0 | 560 B | ⚠️ +448 B | ~1.3M msg/s | ⚠️ degraded (+781.6%) |
+| Stream `RequestStream` | 394.57 ns | ±36.334 ns | 0.0200 | 0 | 0 | 336 B | ⚠️ +120 B | ~2.5M msg/s | ⚠️ degraded (+101.2%) |
 
 ### Comparison vs baseline (`main`, median of ≤3 runs)
 
@@ -245,7 +245,7 @@ Runtime: .NET 10.0.5 (10.0.5, 10.0.526.15411), X64 RyuJIT x86-64-v3
 
 | Benchmark | Baseline (`main`, median of ≤3 runs) | Current | Δ timing | Alloc Δ |
 |---|---|---|---|---|
-| Command `Send` | 90.55 ns | 911.36 ns | ⚠️ +906.5% | ⚠️ +504 B |
-| Notification `Notify` | 128.85 ns | 72.89 ns | ✅ -43.4% | ✅ -256 B |
-| Request `Request` | 89.91 ns | 939.89 ns | ⚠️ +945.4% | ⚠️ +448 B |
-| Stream `RequestStream` | 196.07 ns | 414.07 ns | ⚠️ +111.2% | ⚠️ +120 B |
+| Command `Send` | 90.55 ns | 805.34 ns | ⚠️ +789.4% | ⚠️ +504 B |
+| Notification `Notify` | 128.85 ns | 76.38 ns | ✅ -40.7% | ✅ -256 B |
+| Request `Request` | 89.91 ns | 792.64 ns | ⚠️ +781.6% | ⚠️ +448 B |
+| Stream `RequestStream` | 196.07 ns | 394.57 ns | ⚠️ +101.2% | ⚠️ +120 B |

@@ -1,9 +1,20 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Internals;
 
+[Injectable]
 internal class Notifier(IServiceProvider serviceProvider) : INotifiable
 {
+    // Handler cache — populated once per notification type, on first dispatch.
+    private readonly ConcurrentDictionary<Type, object> _cache = new();
+
+    private INotificationHandler<TMessage>[] GetHandlers<TMessage>()
+        where TMessage : notnull =>
+        (INotificationHandler<TMessage>[])_cache.GetOrAdd(
+            typeof(TMessage),
+            _ => (object)serviceProvider.GetServices<INotificationHandler<TMessage>>().ToArray());
+
     public Task DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
@@ -36,15 +47,14 @@ internal class Notifier(IServiceProvider serviceProvider) : INotifiable
     )
         where TMessage : notnull
     {
-        var pipeline = serviceProvider.GetService<NotificationPipelineExecutor<TMessage>>();
-
-        if (pipeline is null)
-            return Task.CompletedTask;
+        INotificationHandler<TMessage>[] handlers = key is null
+            ? GetHandlers<TMessage>()
+            : [.. serviceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)];
 
         // Fire-and-forget: discard the Task returned by the pipeline. ErrorReporting inside the
         // executor logs any handler exceptions and ensures the Task is never faulted, so the
         // discard here is safe.
-        _ = pipeline.Handle(key, message, cancellationToken);
+        _ = DispatchNotifications(key, message, handlers, cancellationToken);
 
         return Task.CompletedTask;
     }

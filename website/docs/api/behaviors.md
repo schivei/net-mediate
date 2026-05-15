@@ -4,31 +4,27 @@ sidebar_position: 3
 
 # Behavior Interfaces
 
-## IPipelineBehavior&lt;TMessage, TResult&gt;
+## Status
 
-Generic pipeline behavior interface.
+`IPipeline*Behavior` interfaces and pipeline delegates are obsolete and no longer supported for new implementations.
+Use GenDI decorators with `DecoratorForAttribute`.
 
 ```csharp
-public interface IPipelineBehavior<in TMessage, TResult>
-    where TMessage : notnull
-    where TResult : notnull
+[DecoratorFor<IRequestHandler<MyRequest, MyResponse>>(Order = 1)]
+public sealed class MyRequestDecorator(IRequestHandler<MyRequest, MyResponse> inner)
+    : IRequestHandler<MyRequest, MyResponse>
 {
-    TResult Handle(
-        object? key,
-        TMessage message,
-        PipelineBehaviorDelegate<TMessage, TResult> next,
-        CancellationToken cancellationToken);
+    public Task<MyResponse> Handle(MyRequest message, CancellationToken cancellationToken = default)
+        => inner.Handle(message, cancellationToken);
 }
 ```
 
-## IPipelineRequestBehavior&lt;TMessage, TResponse&gt;
+## Obsolete contracts
 
-Behavior for request pipeline.
-
-## IPipelineNotificationBehavior&lt;TMessage&gt;
-
-Behavior for notification pipeline.
-
-## IPipelineStreamBehavior&lt;TMessage, TResponse&gt;
-
-Behavior for stream pipeline.
+- `IPipelineBehavior<TMessage, TResult>`
+- `IPipelineCommandBehavior<TMessage>`
+- `IPipelineRequestBehavior<TMessage, TResponse>`
+- `IPipelineNotificationBehavior<TMessage>`
+- `IPipelineStreamBehavior<TMessage, TResponse>`
+- `PipelineBehaviorDelegate<TMessage, TResult>`
+- `HandlerExecutionDelegate<THandler, TMessage, TResult>`

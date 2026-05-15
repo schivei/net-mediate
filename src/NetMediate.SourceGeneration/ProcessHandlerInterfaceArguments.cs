@@ -4,56 +4,56 @@ using Microsoft.CodeAnalysis;
 namespace NetMediate.SourceGeneration;
 
 internal readonly record struct ProcessHandlerInterfaceArguments(
+    string BehaviorTemplate,
+    string AssemblyName,
     string InterfaceName,
     int Arity,
     ImmutableArray<ITypeSymbol> Args,
     bool HasDiagnostics,
-    bool HasResilience,
-    Dictionary<string, bool> DiagnosticsBehaviors,
-    Dictionary<string, bool> ResilienceBehaviors
+    bool HasResilience
 )
 {
     public static implicit operator (
+        string behaviorTemplate,
+        string assemblyName,
         string interfaceName,
         int arity,
         ImmutableArray<ITypeSymbol> args,
         bool hasDiagnostics,
-        bool hasResilience,
-        Dictionary<string, bool> diagnosticsBehaviors,
-        Dictionary<string, bool> resilienceBehaviors
+        bool hasResilience
     )(ProcessHandlerInterfaceArguments args)
     {
         return (
+            args.BehaviorTemplate,
+            args.AssemblyName,
             args.InterfaceName,
             args.Arity,
             args.Args,
             args.HasDiagnostics,
-            args.HasResilience,
-            args.DiagnosticsBehaviors,
-            args.ResilienceBehaviors
+            args.HasResilience
         );
     }
 
     public static implicit operator ProcessHandlerInterfaceArguments(
         (
+            string behaviorTemplate,
+            string assemblyName,
             string interfaceName,
             int arity,
             ImmutableArray<ITypeSymbol> args,
             bool hasDiagnostics,
-            bool hasResilience,
-            Dictionary<string, bool> diagnosticsBehaviors,
-            Dictionary<string, bool> resilienceBehaviors
+            bool hasResilience
         ) arguments
     )
     {
         return new(
+            arguments.behaviorTemplate,
+            arguments.assemblyName,
             arguments.interfaceName,
             arguments.arity,
             arguments.args,
             arguments.hasDiagnostics,
-            arguments.hasResilience,
-            arguments.diagnosticsBehaviors,
-            arguments.resilienceBehaviors
+            arguments.hasResilience
         );
     }
 }

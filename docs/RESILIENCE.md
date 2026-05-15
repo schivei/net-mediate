@@ -1,6 +1,6 @@
 # NetMediate.Resilience
 
-Adds retry, timeout and circuit-breaker pipeline behaviors to your NetMediate message pipeline.
+Adds retry, timeout and circuit-breaker decorators to your NetMediate message pipeline.
 
 ## Installation
 
@@ -44,14 +44,14 @@ Each option is independent — override only the ones you need.
 
 | Behavior | Registration service type | Applies to |
 |---|---|---|
-| `RetryRequestBehavior<TMessage, TResponse>` | `IPipelineRequestBehavior<,>` | Request pipeline |
-| `RetryNotificationBehavior<TMessage>` | `IPipelineBehavior<>` | Notification pipeline |
-| `TimeoutRequestBehavior<TMessage, TResponse>` | `IPipelineRequestBehavior<,>` | Request pipeline |
-| `TimeoutNotificationBehavior<TMessage>` | `IPipelineBehavior<>` | Notification pipeline |
-| `CircuitBreakerRequestBehavior<TMessage, TResponse>` | `IPipelineRequestBehavior<,>` | Request pipeline |
-| `CircuitBreakerNotificationBehavior<TMessage>` | `IPipelineBehavior<>` | Notification pipeline |
+| `RetryRequestBehavior<TMessage, TResponse>` | `IRequestHandler<TMessage, TResponse>` decorator | Request pipeline |
+| `RetryNotificationBehavior<TMessage>` | `INotificationHandler<TMessage>` decorator | Notification pipeline |
+| `TimeoutRequestBehavior<TMessage, TResponse>` | `IRequestHandler<TMessage, TResponse>` decorator | Request pipeline |
+| `TimeoutNotificationBehavior<TMessage>` | `INotificationHandler<TMessage>` decorator | Notification pipeline |
+| `CircuitBreakerRequestBehavior<TMessage, TResponse>` | `IRequestHandler<TMessage, TResponse>` decorator | Request pipeline |
+| `CircuitBreakerNotificationBehavior<TMessage>` | `INotificationHandler<TMessage>` decorator | Notification pipeline |
 
-All resilience behaviors follow the standard `IPipelineBehavior<TMessage, TResult>` contract, which means their `Handle` signature accepts `object? key` as the first parameter. The `key` is forwarded transparently so that keyed dispatch (e.g. `mediator.SendMyCommandAsync("audit", command, ct)`) passes the routing key through the full resilience pipeline.
+Resilience decorators are generated statically with `DecoratorForAttribute`. Legacy `IPipeline*Behavior` contracts are obsolete.
 
 > **Note:** Notification dispatch is fire-and-forget by design. Handler exceptions do **not** propagate back through the notification pipeline, so retry/timeout/circuit-breaker behaviors at the pipeline level do not observe handler failures for notifications. Use these behaviors to protect the pipeline itself (e.g., adapter calls, pre-processing logic).
 

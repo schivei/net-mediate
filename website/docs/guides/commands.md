@@ -114,7 +114,7 @@ The `key` is propagated through the entire pipeline — behaviors receive it in 
 
 > **Keyless dispatch:** A `null` key flows through the pipeline unchanged. `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are equivalent and target the non-keyed handlers registered in the container.
 
-> **NativeAOT:** Keyed dispatch is fully NativeAOT + Trimming compatible. The source generator emits a `KeyedHandlerRegistry<T>` at compile time — no reflection, no `IKeyedServiceProvider` is used at runtime. Both keyed and non-keyed dispatch are safe for NativeAOT and trimmed deployments.
+> **NativeAOT:** Keyed dispatch is fully NativeAOT + Trimming compatible. GenDI resolves keyed services; NetMediate dispatch uses `GetKeyedServices`/`GetRequiredKeyedService` at runtime. Both keyed and non-keyed dispatch are safe for NativeAOT and trimmed deployments.
 
 ## See Also
 

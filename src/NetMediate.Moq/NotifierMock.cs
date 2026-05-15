@@ -1,9 +1,7 @@
 ﻿namespace NetMediate.Moq;
 
-public class NotifierMock(IServiceProvider serviceProvider) : INotifiable
+public class NotifierMock : INotifiable
 {
-    private readonly Internals.Notifier _notifier = new(serviceProvider);
-
     public Task DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
@@ -17,20 +15,4 @@ public class NotifierMock(IServiceProvider serviceProvider) : INotifiable
 
         return Task.WhenAll(handlers.Select(h => h.Handle(message, cancellationToken)));
     }
-
-    /// <inheritdoc />
-    public Task Notify<TMessage>(
-        object? key,
-        TMessage message,
-        CancellationToken cancellationToken = default
-    )
-        where TMessage : notnull => _notifier.Notify(key, message, cancellationToken);
-
-    /// <inheritdoc />
-    public Task Notify<TMessage>(
-        object? key,
-        IEnumerable<TMessage> messages,
-        CancellationToken cancellationToken = default
-    )
-        where TMessage : notnull => _notifier.Notify(key, messages, cancellationToken);
 }

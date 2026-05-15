@@ -61,28 +61,10 @@ public sealed class QuartzCoverageTests
             INotificationHandler<TMessage>[] handlers,
             CancellationToken cancellationToken = default
         )
-            where TMessage : notnull => Task.CompletedTask;
-
-        public Task Notify<TMessage>(
-            object? key,
-            TMessage message,
-            CancellationToken cancellationToken = default
-        )
             where TMessage : notnull
         {
-            _notificationSource.TrySetResult((key, message!));
+            _notificationSource.TrySetResult((key, message));
             return Task.CompletedTask;
-        }
-
-        public async Task Notify<TMessage>(
-            object? key,
-            IEnumerable<TMessage> messages,
-            CancellationToken cancellationToken = default
-        )
-            where TMessage : notnull
-        {
-            foreach (var message in messages)
-                await Notify(key, message, cancellationToken);
         }
 
         public async Task<(object? Key, TMessage Message)> WaitAsync<TMessage>()
@@ -160,7 +142,7 @@ public sealed class QuartzCoverageTests
 
         using var provider = services.BuildServiceProvider();
 
-        var notifier = Assert.IsType<QuartzNotifier>(provider.GetRequiredService<INotifiable>());
+        var notifier = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
         var serializer = provider.GetRequiredService<INotificationSerializer>();
 
         await notifier.Notify("orders", new QuartzMessage("created"), TestContext.Current.CancellationToken);
@@ -296,7 +278,7 @@ public sealed class QuartzCoverageTests
         services.AddNetMediateQuartz(options => options.GroupName = "batch-tests");
 
         using var provider = services.BuildServiceProvider();
-        var notifier = Assert.IsType<QuartzNotifier>(provider.GetRequiredService<INotifiable>());
+        var notifier = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
 
         await notifier.Notify(
             null,
@@ -324,13 +306,13 @@ public sealed class QuartzCoverageTests
         services.AddNetMediateQuartz(options => options.GroupName = "empty-batch-tests");
 
         using var provider = services.BuildServiceProvider();
-        var notifier = Assert.IsType<QuartzNotifier>(provider.GetRequiredService<INotifiable>());
+        var notifier = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
 
         await scheduler.Clear(TestContext.Current.CancellationToken);
 
         await notifier.Notify(
             null,
-            (IEnumerable<QuartzMessage>)Array.Empty<QuartzMessage>(),
+            (IEnumerable<QuartzMessage>)[],
             TestContext.Current.CancellationToken
         );
 
@@ -358,7 +340,7 @@ public sealed class QuartzCoverageTests
         services.AddNetMediateQuartz(options => options.GroupName = "log-tests");
 
         using var provider = services.BuildServiceProvider();
-        var notifier = Assert.IsType<QuartzNotifier>(provider.GetRequiredService<INotifiable>());
+        var notifier = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
 
         await notifier.Notify(null, new QuartzMessage("logged"), TestContext.Current.CancellationToken);
 
@@ -472,6 +454,6 @@ public sealed class QuartzCoverageTests
         public string Serialize<TMessage>(TMessage message)
             where TMessage : notnull => "{}";
 
-        public object? Deserialize(string payload, Type messageType) => null;
+        public object? Deserialize(string data, Type messageType) => null;
     }
 }

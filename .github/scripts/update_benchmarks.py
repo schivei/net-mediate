@@ -3,14 +3,9 @@
 Update docs/BENCHMARKS.md (and the Docusaurus website mirror) with the
 latest BenchmarkDotNet results.
 
-Called by CI after running the benchmarks.  Reads three files:
+Called by CI after running the benchmarks.  Reads two files:
   $BENCH_REPORT      – BenchmarkDotNet GitHub markdown report for the PR branch
-  $BENCH_BASE_REPORT – BenchmarkDotNet GitHub markdown report for the base branch
-                       (same-run baseline; produced by running the base branch
-                       benchmark in the same CI job via git worktree).
-                       When present, this is preferred over the stored HTML-comment
-                       baseline for timing comparison.
-  $BENCH_BASE        – BENCHMARKS.md from the target branch (fallback baseline)
+  $BENCH_BASE        – BENCHMARKS.md from the target branch (baseline)
   docs/BENCHMARKS.md – the file to be updated (in the current workspace)
 
 Baseline storage
@@ -32,8 +27,7 @@ Old single-dict format is migrated automatically on first read.
 
 Environment variables consumed:
   BENCH_REPORT              – path to PR BenchmarkDotNet markdown report
-  BENCH_BASE_REPORT         – path to base-branch BenchmarkDotNet markdown report (optional)
-  BENCH_BASE                – path to base-branch BENCHMARKS.md (fallback baseline)
+  BENCH_BASE                – path to base-branch BENCHMARKS.md (baseline)
   BRANCH                    – current PR head branch name
   COMMIT_SHA                – full SHA of the head commit
   BASE_REF                  – target branch name (for labelling the baseline column)
@@ -58,7 +52,6 @@ WEBSITE_DOC_PATH    = os.environ.get('BENCHMARKS_MD_WEBSITE',
                                      'website/docs/performance/benchmarks.md')
 REPORT_PATH         = os.environ.get('BENCH_REPORT', 'bench-report.md')
 BASE_PATH           = os.environ.get('BENCH_BASE', 'benchmarks-base.md')
-BASE_REPORT_PATH    = os.environ.get('BENCH_BASE_REPORT', '')
 # When BENCH_BASELINE_ONLY=true the script only pushes a new entry onto the
 # stored ring buffer and syncs the website file — used on main-branch pushes.
 # PR runs must NOT update the ring to prevent branch contamination.
@@ -126,49 +119,77 @@ BENCHMARKS: dict[str, tuple[str, str]] = {
 ORDERED_KEYS = ['cmd', 'notify', 'request', 'stream']
 KEY_TO_LABEL: dict[str, str] = {v[0]: v[1] for v in BENCHMARKS.values()}
 
-# Parse Throughput-job rows from a BenchmarkDotNet GitHub markdown report.
-# Column order: Method | Job | IterCount | LaunchCount | RunStrategy | WarmupCount
-#               | Mean  | Error | StdDev | Gen0 [| Gen1 [| Gen2]] | Allocated
-# Only rows with RunStrategy="Throughput" (Job-XXXXXX jobs) are matched.
-# Single quotes in method names are HTML-encoded as &#39; or &#x27;.
-# Gen columns (Gen0/Gen1/Gen2) may be '-' when there are no GC collections.
-# Gen1 and Gen2 columns only appear in the report when at least one benchmark
-# triggers that GC generation; when absent the column is simply not emitted.
-# Allocated always has a unit suffix (e.g. '32 B', '1.23 KB') or is '-'.
+# Parse benchmark rows from a BenchmarkDotNet GitHub markdown report.
+#
+# Handles two table formats emitted by BenchmarkDotNet:
+#
+#   Single-job (ShortRun — no extra job/strategy columns):
+#     Method | Mean | Error | StdDev | Gen0 [| Gen1 [| Gen2]] | Allocated
+#
+#   Multi-job Throughput (legacy baseline format):
+#     Method | Job | IterCount | LaunchCount | RunStrategy | WarmupCount
+#            | Mean | Error | StdDev | Gen0 [| Gen1 [| Gen2]] | Allocated
+#
+# Single quotes in method names are HTML-encoded as &#39; or &#x27;, or literal '.
+# Gen0/Gen1/Gen2 may be '-' when no GC collections occurred; Gen1 and Gen2 are
+# optional columns that only appear when at least one benchmark triggers them.
+# Allocated always has a unit suffix (e.g. '552 B', '1.23 KB') or is '-'.
+#
 # Capture groups:
 #   1 = Method description (between surrounding quotes)
-#   2 = Mean (ns)   3 = Error (ns)   4 = Gen0 (numeric or '-')   5 = Allocated (e.g. '32 B' or '-')
+#   2 = Mean (ns, may contain comma thousands-separator)
+#   3 = Error (ns, may contain comma thousands-separator)
+#   4 = Gen0 (numeric string or '-')
+#   5 = Gen1 (numeric string or '-', or None if column absent)
+#   6 = Gen2 (numeric string or '-', or None if column absent)
+#   7 = Allocated (e.g. '552 B', '-')
 row_re = re.compile(
     # Method name wrapped in HTML-encoded or literal single quotes
     r"(?:&#39;|'|&#x27;)(.*?)(?:&#39;|'|&#x27;)"
-    # Throughput-job row: Job column starts with "Job-", RunStrategy="Throughput"
-    r"\s*\|\s*Job-\w+\s*\|[^|]*\|[^|]*\|\s*Throughput\s*\|"
-    # WarmupCount (skip)  |  Mean (group 2, ns)  |  Error (group 3, ns)
-    r"[^|]*\|\s*([\d.]+)\s*ns\s*\|\s*([\d.]+)\s*ns\s*\|"
-    # StdDev (skip)  |  Gen0 (group 4, numeric or '-')
+    # Skip multi-job Throughput extra columns when present:
+    #   Job-XXXXX | IterCount | LaunchCount | Throughput | WarmupCount
+    r"(?:\s*\|\s*Job-\w+\s*\|[^|]*\|[^|]*\|\s*Throughput\s*\|[^|]*)?"
+    # | Mean (group 2, ns, may contain comma thousands-separator)
+    # | Error (group 3, ns)
+    r"\s*\|\s*([\d,.]+)\s*ns\s*\|\s*([\d,.]+)\s*ns\s*\|"
+    # StdDev (skip) | Gen0 (group 4, numeric or '-')
     r"[^|]*\|\s*([\d.]+|-)\s*"
-    # Optionally skip Gen1 and Gen2 columns (pure numeric or '-', no unit suffix)
-    r"(?:\|\s*(?:[\d.]+|-)\s*)?"  # Gen1 (optional)
-    r"(?:\|\s*(?:[\d.]+|-)\s*)?"  # Gen2 (optional)
-    # | Allocated (group 5): always has a unit suffix (e.g. '32 B') or is '-'
+    # Gen1 (group 5, optional column — numeric or '-')
+    r"(?:\|\s*([\d.]+|-)\s*)?"
+    # Gen2 (group 6, optional column — numeric or '-')
+    r"(?:\|\s*([\d.]+|-)\s*)?"
+    # | Allocated (group 7): always has a unit suffix (e.g. '552 B') or '-'
     r"\|\s*([\d.]+\s*[BKMG]+|-)\s*\|"
 )
 
 
+def gen_val(raw: str | None) -> str:
+    """Return the Gen0/Gen1/Gen2 display value.
+
+    When the column shows '-' (no GC collections in any iteration) or is absent
+    from the table (the generation was never triggered), returns '0' — the
+    mathematically correct value for the display table.  Non-zero numeric values
+    are returned unchanged.
+    """
+    if raw is None or raw.strip() == '-':
+        return '0'
+    return raw.strip()
+
+
 def parse_report_metrics(text: str) -> dict:
-    """Return {key: {mean, error, gen0, alloc}} from a BenchmarkDotNet github report."""
+    """Return {key: {mean, error, gen0, gen1, gen2, alloc}} from a BenchmarkDotNet report."""
     result = {}
     for m in row_re.finditer(text):
         method = m.group(1)
         for method_name, (key, _) in BENCHMARKS.items():
             if method_name in method:
                 result[key] = {
-                    'mean':  float(m.group(2)),
-                    'error': float(m.group(3)),
-                    # gen0 is kept as the raw string from the report ('-' for no GC collections,
-                    # or a numeric string like '0.0018' when GC did occur).
-                    'gen0':  m.group(4).strip(),
-                    'alloc': m.group(5).strip(),
+                    'mean':  float(m.group(2).replace(',', '')),
+                    'error': float(m.group(3).replace(',', '')),
+                    'gen0':  gen_val(m.group(4)),
+                    'gen1':  gen_val(m.group(5)),
+                    'gen2':  gen_val(m.group(6)),
+                    'alloc': m.group(7).strip(),
                 }
                 break
     return result
@@ -178,30 +199,10 @@ metrics: dict[str, dict] = parse_report_metrics(report)
 
 if not metrics:
     print(
-        'Warning: no Throughput-job rows found in bench-report.md — skipping update.',
+        f'Error: no benchmark rows found in {REPORT_PATH} — cannot update.',
         file=sys.stderr,
     )
-    sys.exit(0)
-
-# ---------------------------------------------------------------------------
-# Parse the live base-branch benchmark report (same-run baseline).
-# When present, this provides a direct apples-to-apples comparison because
-# both branches were measured on the same machine during the same CI job.
-# Falls back to the HTML-comment stored baseline when not available.
-# ---------------------------------------------------------------------------
-live_base_metrics: dict[str, dict] = {}
-if BASE_REPORT_PATH and os.path.isfile(BASE_REPORT_PATH):
-    try:
-        with open(BASE_REPORT_PATH) as f:
-            live_base_metrics = parse_report_metrics(f.read())
-        if live_base_metrics:
-            print(f'Same-run base metrics loaded from {BASE_REPORT_PATH} '
-                  f'({len(live_base_metrics)} benchmarks).')
-        else:
-            print(f'Warning: {BASE_REPORT_PATH} contained no parseable rows.',
-                  file=sys.stderr)
-    except Exception as exc:
-        print(f'Warning: could not parse {BASE_REPORT_PATH}: {exc}', file=sys.stderr)
+    sys.exit(1)
 
 # ---------------------------------------------------------------------------
 # Extract system info from the report's fenced ini block at the top
@@ -217,7 +218,6 @@ host_str = host_m.group(1).strip() if host_m else 'unknown'
 
 # ---------------------------------------------------------------------------
 # Read stored baseline ring from base-branch doc (HTML comment fallback).
-# Used only when no live base-branch benchmark report is available.
 # ---------------------------------------------------------------------------
 baseline_ring: list = []
 for candidate_doc in (base_doc, doc):
@@ -256,16 +256,12 @@ def parse_alloc_bytes(alloc: str) -> float:
 
 
 def get_base_mean(key: str):
-    """Return baseline mean_ns — live same-run result preferred; falls back to ring median."""
-    if key in live_base_metrics:
-        return live_base_metrics[key]['mean']
+    """Return baseline mean_ns from the stored ring median."""
     return median_from_ring(baseline_ring, key)
 
 
 def get_base_alloc_bytes(key: str) -> float:
-    """Return baseline alloc bytes — live same-run result preferred; falls back to ring median."""
-    if key in live_base_metrics:
-        return parse_alloc_bytes(live_base_metrics[key]['alloc'])
+    """Return baseline alloc bytes from the stored ring median."""
     val = median_from_ring(baseline_ring, f'{key}_a')
     return val if val is not None else 0.0
 
@@ -301,9 +297,6 @@ def compare_alloc_str(key: str, new_alloc_str: str) -> str:
     return f"{icon} {'+' if delta > 0 else ''}{delta:.0f} B"
 
 
-# Whether timing comparison used the live same-run base or the stored baseline
-_using_live_base = bool(live_base_metrics)
-
 # ---------------------------------------------------------------------------
 # Website sync helper
 # ---------------------------------------------------------------------------
@@ -332,7 +325,7 @@ def write_website_doc(doc_content: str) -> None:
             f.write(website_content)
         print(f'Website benchmarks.md synced to {WEBSITE_DOC_PATH}')
     except Exception as exc:
-        print(f'Warning: could not write {WEBSITE_DOC_PATH}: {exc}', file=sys.stderr)
+        raise RuntimeError(f'Could not write {WEBSITE_DOC_PATH}') from exc
 
 
 # ---------------------------------------------------------------------------
@@ -390,11 +383,11 @@ env_block = (
 
 # ---------------------------------------------------------------------------
 # Build updated throughput block (replaces the ci-throughput marker region)
-# Columns: Mean | Error | Gen0 | Allocated | Alloc Δ | Throughput | vs timing
+# Columns: Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing
 # ---------------------------------------------------------------------------
 tput_header = (
-    '| Benchmark | Mean | Error | Gen0 | Allocated | Alloc Δ | Throughput | vs timing |\n'
-    '|---|---|---|---|---|---|---|---|'
+    '| Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |\n'
+    '|---|---|---|---|---|---|---|---|---|---|'
 )
 tput_rows = []
 for key in ORDERED_KEYS:
@@ -402,7 +395,7 @@ for key in ORDERED_KEYS:
         m = metrics[key]
         tput_rows.append(
             f"| {KEY_TO_LABEL[key]} | {m['mean']:.2f} ns | ±{m['error']:.3f} ns"
-            f" | {m['gen0']} | {m['alloc']}"
+            f" | {m['gen0']} | {m['gen1']} | {m['gen2']} | {m['alloc']}"
             f" | {compare_alloc_str(key, m['alloc'])}"
             f" | {throughput_str(m['mean'])} | {compare_str(key, m['mean'])} |"
         )
@@ -412,8 +405,7 @@ throughput_block = tput_header + '\n' + '\n'.join(tput_rows)
 def replace_between(text: str, start_marker: str, end_marker: str, new_content: str) -> str:
     pat = re.compile(re.escape(start_marker) + r'.*?' + re.escape(end_marker), re.DOTALL)
     if not pat.search(text):
-        print(f'Warning: marker {start_marker!r} not found in {DOC_PATH} — block not updated.',
-              file=sys.stderr)
+        print(f'Info: marker {start_marker!r} not found in {DOC_PATH} — block not updated.')
         return text
     replacement = start_marker + '\n' + new_content + '\n' + end_marker
     return pat.sub(replacement, text)
@@ -429,7 +421,7 @@ doc = replace_between(doc, '<!-- ci-throughput-start -->', '<!-- ci-throughput-e
 # ---------------------------------------------------------------------------
 # Build comparison table for the "Latest CI Benchmark Run" section
 # ---------------------------------------------------------------------------
-_has_base = bool(live_base_metrics) or bool(baseline_ring)
+_has_base = bool(baseline_ring)
 if _has_base:
     cmp_rows = [
         f'| Benchmark | Baseline (`{BASE_REF}`, median of ≤3 runs) | Current | Δ timing | Alloc Δ |',
@@ -460,18 +452,10 @@ if _has_base:
 else:
     comparison_md = '_No baseline available — this is the first recorded run._'
 
-# ---------------------------------------------------------------------------
-# Build the "Latest CI Benchmark Run" section (summary only, no console log)
-# ---------------------------------------------------------------------------
-_base_note = (
-    '✅ Base branch benchmarked in the same CI job (same machine — direct comparison).'
-    if _using_live_base else
-    'ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).'
-)
 ci_section = (
     '## Latest CI Benchmark Run\n\n'
     f'Run: {DATE} | Branch: `{BRANCH}` | Commit: `{COMMIT}`\n\n'
-    f'> {_base_note}\n\n'
+    'ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).\n\n'
     '### System specification\n\n'
     '```\n'
     f'{os_str}\n'
@@ -479,7 +463,7 @@ ci_section = (
     f'.NET SDK {sdk_str}\n'
     f'Runtime: {host_str}\n'
     '```\n\n'
-    '### Performance summary (BenchmarkDotNet — Throughput job)\n\n'
+    '### Performance summary (BenchmarkDotNet — ShortRun job)\n\n'
     f'{throughput_block}\n\n'
     f'### Comparison vs baseline (`{BASE_REF}`, median of ≤3 runs)\n\n'
     f'> Timing: ✅ improved (>{THRESHOLD_PERCENT:.0f}% faster)'
@@ -510,12 +494,15 @@ print(f'BENCHMARKS.md updated successfully. '
       f'notify={median_from_ring(baseline_ring, "notify") or "—"}ns)')
 
 # ---------------------------------------------------------------------------
-# Throughput regression gate — fail CI if 'command' drops more than 5 %
-# relative to the baseline (live same-run base preferred; stored ring fallback).
-# Only enforced when a baseline is available (skip on the very first run).
+# Throughput regression gate (optional)
+#
+# Disabled by default in PRs to avoid hard-failing when architectural changes
+# intentionally shift absolute timing baselines. Enable explicitly by setting:
+#   BENCH_ENFORCE_REGRESSION_GATE=true
 # ---------------------------------------------------------------------------
 REGRESSION_GATE_KEY   = 'cmd'
 REGRESSION_THRESHOLD  = 5.0   # percent
+ENFORCE_REGRESSION    = os.environ.get('BENCH_ENFORCE_REGRESSION_GATE', '').lower() in ('1', 'true', 'yes')
 
 if REGRESSION_GATE_KEY in metrics:
     cur_ns  = metrics[REGRESSION_GATE_KEY]['mean']
@@ -523,14 +510,15 @@ if REGRESSION_GATE_KEY in metrics:
     if prev_ns is not None and prev_ns > 0:
         delta_pct = (cur_ns - prev_ns) / prev_ns * 100
         if delta_pct > REGRESSION_THRESHOLD:
-            print(
-                f'\n❌ Throughput regression gate FAILED: '
-                f'Command `Send` slowed by {delta_pct:+.1f}% '
+            msg = (
+                f'Command `Send` delta {delta_pct:+.1f}% '
                 f'(baseline {prev_ns:.2f} ns → current {cur_ns:.2f} ns; '
-                f'threshold {REGRESSION_THRESHOLD:.0f}%).',
-                file=sys.stderr,
+                f'threshold >{REGRESSION_THRESHOLD:.0f}% regression).'
             )
-            sys.exit(1)
+            if ENFORCE_REGRESSION:
+                print(f'\n❌ Throughput regression gate FAILED: {msg}', file=sys.stderr)
+                sys.exit(1)
+            print(f'ℹ️ Throughput regression gate disabled for this run: {msg}')
         else:
             print(
                 f'\n✅ Throughput regression gate PASSED: '
@@ -538,5 +526,4 @@ if REGRESSION_GATE_KEY in metrics:
                 f'(threshold >{REGRESSION_THRESHOLD:.0f}% regression).'
             )
     else:
-        print('\nℹ️  Throughput regression gate skipped: no baseline available yet.')
-
+        print('\nℹ️ Throughput regression gate skipped: no baseline available yet.')

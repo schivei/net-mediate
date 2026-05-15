@@ -3,45 +3,45 @@ using Microsoft.CodeAnalysis;
 namespace NetMediate.SourceGeneration;
 
 internal readonly record struct BuildRegistrationArguments(
+    string BehaviorTemplate,
+    string AssemblyName,
     bool HasDiagnostics,
     bool HasResilience,
-    Dictionary<string, bool> DiagnosticsBehaviors,
-    Dictionary<string, bool> ResilienceBehaviors,
     INamedTypeSymbol HandlerType
 )
 {
     public static implicit operator (
+        string behaviorTemplate,
+        string assemblyName,
         bool hasDiagnostics,
         bool hasResilience,
-        Dictionary<string, bool> diagnosticsBehaviors,
-        Dictionary<string, bool> resilienceBehaviors,
         INamedTypeSymbol handlerType
     )(BuildRegistrationArguments args)
     {
         return (
+            args.BehaviorTemplate,
+            args.AssemblyName,
             args.HasDiagnostics,
             args.HasResilience,
-            args.DiagnosticsBehaviors,
-            args.ResilienceBehaviors,
             args.HandlerType
         );
     }
 
     public static implicit operator BuildRegistrationArguments(
         (
+            string behaviorTemplate,
+            string assemblyName,
             bool hasDiagnostics,
             bool hasResilience,
-            Dictionary<string, bool> diagnosticsBehaviors,
-            Dictionary<string, bool> resilienceBehaviors,
             INamedTypeSymbol handlerType
         ) arguments
     )
     {
         return new(
+            arguments.behaviorTemplate,
+            arguments.assemblyName,
             arguments.hasDiagnostics,
             arguments.hasResilience,
-            arguments.diagnosticsBehaviors,
-            arguments.resilienceBehaviors,
             arguments.handlerType
         );
     }

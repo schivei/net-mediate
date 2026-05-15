@@ -67,7 +67,7 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Pipeline Behaviors**: Interceptors with pre/post flow for every message kind
 - **Optional resilience package**: Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience`
 - **OpenTelemetry-ready diagnostics**: Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream
-- **Keyed handler routing**: Register handlers under named keys and dispatch to specific subsets at runtime — **fully NativeAOT + Trimming compatible** via source-generated `KeyedHandlerRegistry<T>`
+- **Keyed handler routing**: Register handlers under named keys and dispatch to specific subsets at runtime — **fully NativeAOT + Trimming compatible** via GenDI keyed-service resolution
 - **Streaming fan-out**: Multiple `IStreamHandler` registrations supported — their items are merged sequentially
 - **Cancellation Support**: Full cancellation token support across all operations
 - **Broad runtime compatibility**: Multi-targeted for `net10.0`, `netstandard2.0`, and `netstandard2.1`
@@ -99,11 +99,11 @@ dotnet add package NetMediate.SourceGeneration
 <PackageReference Include="NetMediate.Core" Version="x.x.x" />
 <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
   <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-  <PrivateAssets>all</PrivateAssets>
+  <PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
 </PackageReference>
 ```
 
-> **Note:** `NetMediate.SourceGeneration` should be referenced with `IncludeAssets` + `PrivateAssets="all"`. It adds `NetMediate` and `GenDI.SourceGenerator` indirectly via `buildTransitive`.
+> **Note:** `NetMediate.SourceGeneration` should be referenced with `IncludeAssets` + `PrivateAssets="contentfiles; compile; runtime"` so analyzers/source generators continue flowing transitively where needed.
 
 ### GenDI-first activation pattern
 
@@ -457,88 +457,59 @@ The `key` is propagated through the entire pipeline — behaviors receive it in 
 
 > **Keyless dispatch:** A `null` key (the default when no key is passed) flows through the pipeline unchanged. `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are exactly equivalent and target the non-keyed handlers registered in the container.
 
-> **NativeAOT:** Keyed dispatch is fully NativeAOT + Trimming compatible. The source generator emits a `KeyedHandlerRegistry<T>` at compile time — no reflection, no `IKeyedServiceProvider` is used at runtime. Both keyed and non-keyed dispatch are safe for NativeAOT and trimmed deployments.
+> **NativeAOT:** Keyed dispatch is fully NativeAOT + Trimming compatible. GenDI resolves keyed services; NetMediate dispatch uses `GetKeyedServices`/`GetRequiredKeyedService` at runtime. Both keyed and non-keyed dispatch are safe for NativeAOT and trimmed deployments.
 
 ### Pipeline Behaviors / Interceptors
 
-Behaviors wrap the handler pipeline and run in registration order. Concrete non-generic behavior classes can use `[Injectable]` because the closed pipeline interfaces already carry `[ServiceInjection]`. Only generic/open behavior implementations should be registered manually in `builder.Services`.
+Pipeline composition is now static and based on GenDI decorators.
+`IPipeline*Behavior` and pipeline delegates are obsolete and no longer supported.
+Use `DecoratorForAttribute` on handlers to implement cross-cutting concerns.
 
 ```csharp
-[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
-public sealed class AuditCommandBehavior : IPipelineCommandBehavior<CreateUserCommand>
+[DecoratorFor<ICommandHandler<CreateUserCommand>>(Order = 1)]
+public sealed class AuditCommandDecorator(ICommandHandler<CreateUserCommand> inner)
+    : ICommandHandler<CreateUserCommand>
 {
     public Task Handle(
-        object? key,
         CreateUserCommand message,
-        PipelineBehaviorDelegate<CreateUserCommand, Task> next,
-        CancellationToken cancellationToken) =>
-        next(key, message, cancellationToken);
+        CancellationToken cancellationToken = default)
+    {
+        // pre
+        return inner.Handle(message, cancellationToken);
+        // post (use async/await if needed)
+    }
 }
 
-[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 2)]
-public sealed class AuditRequestBehavior : IPipelineRequestBehavior<GetUserQuery, UserDto>
+[DecoratorFor<IRequestHandler<GetUserQuery, UserDto>>(Order = 2)]
+public sealed class AuditRequestDecorator(IRequestHandler<GetUserQuery, UserDto> inner)
+    : IRequestHandler<GetUserQuery, UserDto>
 {
-    public Task<UserDto> Handle(
-        object? key,
-        GetUserQuery message,
-        PipelineBehaviorDelegate<GetUserQuery, Task<UserDto>> next,
-        CancellationToken cancellationToken) =>
-        next(key, message, cancellationToken);
-}
-
-[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 3)]
-public sealed class LogNotificationBehavior : IPipelineNotificationBehavior<UserCreatedNotification>
-{
-    public Task Handle(
-        object? key,
-        UserCreatedNotification message,
-        PipelineBehaviorDelegate<UserCreatedNotification, Task> next,
-        CancellationToken cancellationToken) =>
-        next(key, message, cancellationToken);
-}
-
-builder.Services.AddNetMediate();
-```
-
-Example behavior — audit timing for requests:
-
-```csharp
-[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
-public sealed class AuditRequestBehavior : IPipelineRequestBehavior<GetUserQuery, UserDto>
-{
-    // Handle receives object? key — the same key passed to the dispatch call.
-    // Use it for routing (e.g. queue/topic selection) or contextual filtering.
     public async Task<UserDto> Handle(
-        object? key,
         GetUserQuery message,
-        PipelineBehaviorDelegate<GetUserQuery, Task<UserDto>> next,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var startedAt = DateTimeOffset.UtcNow;
-        var response = await next(key, message, cancellationToken);
+        var response = await inner.Handle(message, cancellationToken);
         Console.WriteLine($"{nameof(GetUserQuery)} handled in {DateTimeOffset.UtcNow - startedAt}");
         return response;
     }
 }
-```
 
-Example notification behavior:
-
-```csharp
-[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
-public sealed class LogNotificationBehavior : IPipelineNotificationBehavior<UserCreatedNotification>
+[DecoratorFor<INotificationHandler<UserCreatedNotification>>(Order = 3)]
+public sealed class LogNotificationDecorator(INotificationHandler<UserCreatedNotification> inner)
+    : INotificationHandler<UserCreatedNotification>
 {
     public async Task Handle(
-        object? key,
         UserCreatedNotification message,
-        PipelineBehaviorDelegate<UserCreatedNotification, Task> next,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
-        Console.WriteLine($"Dispatching {nameof(UserCreatedNotification)} (key={key})");
-        await next(key, message, cancellationToken);
+        Console.WriteLine($"Dispatching {nameof(UserCreatedNotification)}");
+        await inner.Handle(message, cancellationToken);
         Console.WriteLine($"Dispatched {nameof(UserCreatedNotification)}");
     }
 }
+
+builder.Services.AddNetMediate();
 ```
 
 > **Note on validation**: NetMediate does not include a built-in validation layer. Implement validation as a pipeline behavior. See [docs/VALIDATION_BEHAVIOR_SAMPLE.md](docs/VALIDATION_BEHAVIOR_SAMPLE.md) for an example.

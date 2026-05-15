@@ -13,14 +13,14 @@ NetMediate is compatible with NativeAOT and trimming when you stay on the source
 - Register custom pipeline behaviors as **closed types** directly in DI.
 - Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`.
 - Register only generic/open service implementations manually in `builder.Services`.
-- Keyed dispatch via `KeyedHandlerRegistry<T>` is fully NativeAOT + Trimming compatible since the registry is source-generated at compile time with no reflection.
+- Keyed dispatch uses GenDI keyed-service registrations and NetMediate keyed dispatch APIs.
 
 | Path | AOT / Trim compatible | Notes |
 |---|---|---|
 | `AddNetMediate()` | ✅ Yes | Generated at compile time — no reflection |
 | Closed-type pipeline behavior registrations | ✅ Yes | Register `IPipelineCommandBehavior<T>`, `IPipelineNotificationBehavior<T>`, or `IPipelineRequestBehavior<TMessage, TResponse>` directly |
 | Keyless `Send` / `Notify` / `Request` / `RequestStream` | ✅ Yes | Uses generated closed-type registrations |
-| Keyed dispatch (`Send(key, ...)`, `Request(key, ...)`, etc.) | ✅ Yes | Source-generated `KeyedHandlerRegistry<T>` — no reflection, fully NativeAOT + Trimming compatible |
+| Keyed dispatch (`Send(key, ...)`, `Request(key, ...)`, etc.) | ✅ Yes | GenDI keyed-service resolution (no reflection in NetMediate runtime path), fully NativeAOT + Trimming compatible |
 
 ## AOT-compatible setup
 
@@ -29,7 +29,7 @@ NetMediate is compatible with NativeAOT and trimming when you stay on the source
 ```xml
 <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
   <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-  <PrivateAssets>all</PrivateAssets>
+  <PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
 </PackageReference>
 ```
 

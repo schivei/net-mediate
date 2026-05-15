@@ -32,7 +32,7 @@ After running the command, your `.csproj` will have `PackageReference` entries f
   <PackageReference Include="NetMediate.Core" Version="*" />
   <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
     <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    <PrivateAssets>all</PrivateAssets>
+    <PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
   </PackageReference>
 
 </ItemGroup>
@@ -56,7 +56,7 @@ Add the following to your `.csproj` file:
   <PackageReference Include="NetMediate.Core" Version="*" />
   <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
     <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    <PrivateAssets>all</PrivateAssets>
+    <PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
   </PackageReference>
 </ItemGroup>
 ```
@@ -67,7 +67,7 @@ Add the following to your `.csproj` file:
 ```xml
 <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
   <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-  <PrivateAssets>all</PrivateAssets>
+  <PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
 </PackageReference>
 ```
  

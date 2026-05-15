@@ -1,6 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using GenDI;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Quartz;
@@ -14,9 +12,15 @@ namespace NetMediate.Quartz;
 [RequiresUnreferencedCode(
     "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
 )]
-[Injectable(ServiceLifetime.Singleton)]
-    public sealed class QuartzNotifier : INotifiable
+[DecoratorFor<INotifiable>(Order = int.MinValue)]
+internal sealed class QuartzNotifier : INotifiable
 {
+    /// <summary>
+    /// Gets or sets the underlying <see cref="INotifiable"/> instance that this decorator wraps.
+    /// </summary>
+    /// <remarks>This property is required to fulfill the contract of <see cref="INotifiable"/> and enables
+    /// the use of this class as a decorator. The property may not be used directly in typical scenarios.</remarks>
+    [Inject] public required INotifiable Inner { get; init; }
     [Inject] internal IScheduler Scheduler { get; init; }
     [Inject] internal INotificationSerializer Serializer { get; init; }
     [Inject] internal IOptions<QuartzNotificationOptions> Options { get; init; }

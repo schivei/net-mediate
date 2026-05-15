@@ -107,7 +107,7 @@ The same `key` parameter is available on all dispatch methods: `Send(key, ...)`,
 
 > **Keyless dispatch:** A `null` key flows through the pipeline unchanged. This means `mediator.SendMyCommandAsync(command, ct)` and `mediator.SendMyCommandAsync(null, command, ct)` are exactly equivalent and target the non-keyed handlers registered in the container.
 
-> **NativeAOT:** Keyed dispatch is fully NativeAOT + Trimming compatible. The source generator emits a `KeyedHandlerRegistry<T>` at compile time — no reflection, no `IKeyedServiceProvider` is used at runtime. Both keyed and non-keyed dispatch are safe for NativeAOT and trimmed deployments.
+> **NativeAOT:** Keyed dispatch is fully NativeAOT + Trimming compatible. GenDI resolves keyed services; NetMediate dispatch uses `GetKeyedServices`/`GetRequiredKeyedService` at runtime. Both keyed and non-keyed dispatch are safe for NativeAOT and trimmed deployments.
 
 ### Optional base class
 
@@ -117,18 +117,18 @@ The same `key` parameter is available on all dispatch methods: `Send(key, ...)`,
 
 ### Configuration
 
-Register concrete non-generic behavior implementations with `[Injectable]`. Reserve manual DI registration only for generic/open behavior implementations:
+Use static decorators with `DecoratorForAttribute`.
+`IPipeline*Behavior` contracts are obsolete and should not be used in new code.
 
 ```csharp
-[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
-public sealed class MyLoggingBehavior : IPipelineRequestBehavior<MyRequest, MyResponse>
+[DecoratorFor<IRequestHandler<MyRequest, MyResponse>>(Order = 1)]
+public sealed class MyLoggingDecorator(IRequestHandler<MyRequest, MyResponse> inner)
+    : IRequestHandler<MyRequest, MyResponse>
 {
     public Task<MyResponse> Handle(
-        object? key,
         MyRequest message,
-        PipelineBehaviorDelegate<MyRequest, Task<MyResponse>> next,
-        CancellationToken cancellationToken) =>
-        next(key, message, cancellationToken);
+        CancellationToken cancellationToken = default) =>
+        inner.Handle(message, cancellationToken);
 }
 
 builder.Services.AddNetMediate();
@@ -136,29 +136,30 @@ builder.Services.AddNetMediate();
 
 ### Behavior interfaces
 
-| Interface | Applies to |
-|---|---|
-| `IPipelineBehavior<TMessage, TResult>` | Any pipeline; `TResult` is `Task`, `Task<TResponse>`, or `IAsyncEnumerable<TResponse>` |
-| `IPipelineBehavior<TMessage>` | Notification pipeline shorthand (`TResult = Task`) |
-| `IPipelineRequestBehavior<TMessage, TResponse>` | Request pipeline shorthand (`TResult = Task<TResponse>`) |
-| `IPipelineStreamBehavior<TMessage, TResponse>` | Stream pipeline shorthand (`TResult = IAsyncEnumerable<TResponse>`) |
+Legacy behavior interfaces/delegates are obsolete:
+
+- `IPipelineBehavior<TMessage, TResult>`
+- `IPipelineCommandBehavior<TMessage>`
+- `IPipelineRequestBehavior<TMessage, TResponse>`
+- `IPipelineNotificationBehavior<TMessage>`
+- `IPipelineStreamBehavior<TMessage, TResponse>`
+- `PipelineBehaviorDelegate<TMessage, TResult>`
+- `HandlerExecutionDelegate<THandler, TMessage, TResult>`
 
 ### Usage
 
-The `next` delegate accepts `(message, cancellationToken)`. Behaviors execute in registration order (outer-to-inner for pre, inner-to-outer for post). Every `Handle` method receives an optional `key` parameter — the same key that was passed to the dispatch call, which you can use for routing or contextual filtering:
+Decorators execute according to `Order` and compose statically at compile-time:
 
 ```csharp
-public sealed class AuditMyRequestBehavior
-    : IPipelineRequestBehavior<MyRequest, MyResponse>
+public sealed class AuditMyRequestDecorator(IRequestHandler<MyRequest, MyResponse> inner)
+    : IRequestHandler<MyRequest, MyResponse>
 {
     public async Task<MyResponse> Handle(
-        object? key,
         MyRequest message,
-        PipelineBehaviorDelegate<MyRequest, Task<MyResponse>> next,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
-        // pre-processing (key is available for routing/filtering)
-        var result = await next(key, message, cancellationToken);
+        // pre-processing
+        var result = await inner.Handle(message, cancellationToken);
         // post-processing
         return result;
     }
@@ -209,7 +210,7 @@ Install `NetMediate.SourceGeneration` directly in the startup/application projec
 ```xml
 <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
   <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-  <PrivateAssets>all</PrivateAssets>
+  <PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
 </PackageReference>
 ```
 

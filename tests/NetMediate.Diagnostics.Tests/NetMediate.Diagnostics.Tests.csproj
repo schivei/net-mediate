@@ -12,8 +12,8 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="GenDI.SourceGenerator" Version="26.5.13.1053">
-      <PrivateAssets>all</PrivateAssets>
+    <PackageReference Include="GenDI.SourceGenerator" Version="26.5.14.661">
+      <PrivateAssets>runtime; compile</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />

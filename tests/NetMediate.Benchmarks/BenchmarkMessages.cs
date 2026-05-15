@@ -7,7 +7,7 @@ namespace NetMediate.Benchmarks;
 public sealed record BenchCommand : ICommand;
 
 /// <summary>No-op command handler used in benchmarks.</summary>
-[Injectable(ServiceLifetime.Singleton)]
+[Injectable(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
 public sealed class BenchCommandHandler : ICommandHandler<BenchCommand>
 {
     /// <inheritdoc/>
@@ -19,7 +19,7 @@ public sealed class BenchCommandHandler : ICommandHandler<BenchCommand>
 public sealed record BenchNotification : INotification;
 
 /// <summary>No-op notification handler used in benchmarks.</summary>
-[Injectable(ServiceLifetime.Singleton)]
+[Injectable(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
 public sealed class BenchNotificationHandler : INotificationHandler<BenchNotification>
 {
     /// <inheritdoc/>
@@ -34,7 +34,7 @@ public sealed record BenchRequest : IRequest<BenchResponse>;
 public sealed record BenchResponse(int Value);
 
 /// <summary>No-op request handler used in benchmarks.</summary>
-[Injectable(ServiceLifetime.Singleton)]
+[Injectable(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
 public sealed class BenchRequestHandler : IRequestHandler<BenchRequest, BenchResponse>
 {
     private static readonly Task<BenchResponse> s_response = Task.FromResult(new BenchResponse(42));
@@ -47,14 +47,14 @@ public sealed class BenchRequestHandler : IRequestHandler<BenchRequest, BenchRes
 }
 
 /// <summary>Benchmark stream message.</summary>
-[Injectable(ServiceLifetime.Singleton)]
+[Injectable(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
 public sealed record BenchStreamRequest : IStream<BenchStreamItem>;
 
 /// <summary>Benchmark stream item.</summary>
 public sealed record BenchStreamItem(int Index);
 
 /// <summary>No-op stream handler that yields three items, used in benchmarks.</summary>
-[Injectable(ServiceLifetime.Singleton)]
+[Injectable(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
 public sealed class BenchStreamHandler : IStreamHandler<BenchStreamRequest, BenchStreamItem>
 {
     private readonly BenchStreamItem[] _items =

@@ -5,7 +5,7 @@ Reference this package in the application's startup/main project with:
 ```xml
 <PackageReference Include="NetMediate.SourceGeneration" Version="x.x.x.x">
   <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-  <PrivateAssets>all</PrivateAssets>
+  <PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
 </PackageReference>
 ```
 

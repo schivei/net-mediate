@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -6,6 +7,31 @@ namespace NetMediate.Internals;
 [Injectable<IMediator>]
 internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable notifier) : IMediator
 {
+    // Handler caches — populated once per handler type, on first dispatch.
+    // Cache scope is per-Mediator instance/provider to avoid cross-container contamination
+    // between test suites and multi-tenant hosts.
+    private readonly ConcurrentDictionary<Type, object> _cmdCache    = new();
+    private readonly ConcurrentDictionary<(Type, Type), object> _reqCache    = new();
+    private readonly ConcurrentDictionary<(Type, Type), object> _streamCache = new();
+
+    private ICommandHandler<TMessage>[] GetCommandHandlers<TMessage>()
+        where TMessage : notnull =>
+        (ICommandHandler<TMessage>[])_cmdCache.GetOrAdd(
+            typeof(TMessage),
+            _ => (object)serviceProvider.GetServices<ICommandHandler<TMessage>>().ToArray());
+
+    private IRequestHandler<TMessage, TResponse> GetRequestHandler<TMessage, TResponse>()
+        where TMessage : notnull =>
+        (IRequestHandler<TMessage, TResponse>)_reqCache.GetOrAdd(
+            (typeof(TMessage), typeof(TResponse)),
+            _ => (object)serviceProvider.GetRequiredService<IRequestHandler<TMessage, TResponse>>());
+
+    private IStreamHandler<TMessage, TResponse>[] GetStreamHandlers<TMessage, TResponse>()
+        where TMessage : notnull =>
+        (IStreamHandler<TMessage, TResponse>[])_streamCache.GetOrAdd(
+            (typeof(TMessage), typeof(TResponse)),
+            _ => (object)serviceProvider.GetServices<IStreamHandler<TMessage, TResponse>>().ToArray());
+
     /// <inheritdoc/>
     public Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) =>
         Notify(null, message, cancellationToken);
@@ -47,21 +73,14 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     )
         where TMessage : notnull
     {
-        var pipeline = serviceProvider.GetService<CommandPipelineExecutor<TMessage>>();
-
-        if (pipeline is null)
-            return;
-
         try
         {
-            await pipeline
-                .Handle(
-                    key,
-                    message,
-                    CommandHandlers,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
+            ICommandHandler<TMessage>[] handlers = key is null
+                ? GetCommandHandlers<TMessage>()
+                : [.. serviceProvider.GetKeyedServices<ICommandHandler<TMessage>>(key)];
+
+            foreach (var handler in handlers)
+                await handler.Handle(message, cancellationToken).ConfigureAwait(false);
         }
         catch (MediatorException)
         {
@@ -100,18 +119,6 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
         }
     }
 
-    private static async Task CommandHandlers<TMessage>(
-        object? _,
-        TMessage message,
-        IEnumerable<ICommandHandler<TMessage>> handlers,
-        CancellationToken ct
-    )
-        where TMessage : notnull
-    {
-        foreach (var handler in handlers)
-            await handler.Handle(message, ct).ConfigureAwait(false);
-    }
-
     /// <inheritdoc/>
     public Task<TResponse> Request<TMessage, TResponse>(
         TMessage message,
@@ -128,17 +135,13 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     )
         where TMessage : notnull
     {
-        var pipeline = serviceProvider.GetRequiredService<RequestPipelineExecutor<TMessage, TResponse>>();
-
         try
         {
-            return await pipeline
-                .Handle(
-                    key,
-                    message,
-                    cancellationToken
-                )
-                .ConfigureAwait(false);
+            var handler = key is null
+                ? GetRequestHandler<TMessage, TResponse>()
+                : serviceProvider.GetRequiredKeyedService<IRequestHandler<TMessage, TResponse>>(key);
+
+            return await handler.Handle(message, cancellationToken).ConfigureAwait(false);
         }
         catch (MediatorException)
         {
@@ -175,27 +178,20 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
     )
         where TMessage : notnull
     {
-        var pipeline = serviceProvider.GetRequiredService<
-            StreamPipelineExecutor<TMessage, TResponse>
-        >();
+        IStreamHandler<TMessage, TResponse>[] handlers = key is null
+            ? GetStreamHandlers<TMessage, TResponse>()
+            : [.. serviceProvider.GetKeyedServices<IStreamHandler<TMessage, TResponse>>(key)];
 
-        return pipeline.Handle(
-            key,
-            message,
-            StreamHandlers,
-            cancellationToken
-        );
-    }
+        if (handlers.Length == 0)
+            return AsyncEnumerable.Empty<TResponse>();
 
-    private static IAsyncEnumerable<TResponse> StreamHandlers<TMessage, TResponse>(
-        object? _,
-        TMessage message,
-        IStreamHandler<TMessage, TResponse>[] handlers,
-        CancellationToken cancellationToken
-    )
-        where TMessage : notnull
-    {
-        return handlers.Select(x => x.Handle(message, cancellationToken))
-            .Aggregate((prev, next) => prev.Concat(next));
+        if (handlers.Length == 1)
+            return handlers[0].Handle(message, cancellationToken);
+
+        var stream = handlers[0].Handle(message, cancellationToken);
+        for (int i = 1; i < handlers.Length; i++)
+            stream = stream.Concat(handlers[i].Handle(message, cancellationToken));
+
+        return stream;
     }
 }

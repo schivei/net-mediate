@@ -37,9 +37,19 @@ public sealed class TimeoutBehaviorOptions
     public TimeSpan RequestTimeout { get; set; } = TimeSpan.FromSeconds(30);
 
     /// <summary>
+    /// Gets or sets the timeout for stream handlers.
+    /// </summary>
+    public TimeSpan StreamTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
     /// Gets or sets the timeout for notification handlers.
     /// </summary>
     public TimeSpan NotificationTimeout { get; set; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Gets or sets the timeout for command handlers.
+    /// </summary>
+    public TimeSpan CommandTimeout { get; set; } = TimeSpan.FromSeconds(30);
 }
 
 /// <summary>

@@ -11,7 +11,7 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
   <ItemGroup>
-	<PackageReference Include="GenDI.SourceGenerator" Version="26.5.13.1053">
+	<PackageReference Include="GenDI.SourceGenerator" Version="26.5.14.661">
 		<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		<PrivateAssets>all</PrivateAssets>
 	</PackageReference>
@@ -21,6 +21,6 @@
   </ItemGroup>
   <ItemGroup>
 	<ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
-	  <ProjectReference Include="../../src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj" PrivateAssets="all" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+	  <ProjectReference Include="../../src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj" PrivateAssets="contentfiles; compile; runtime" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>

@@ -164,13 +164,15 @@ row_re = re.compile(
 
 
 def gen_val(raw: str | None) -> str:
-    """Convert a Gen0/Gen1/Gen2 column value.
+    """Return the Gen0/Gen1/Gen2 display value.
 
-    Returns the raw numeric string unchanged, or '0.0001' when the column
-    shows '-' (no GC collections) or the column is absent from the table.
+    When the column shows '-' (no GC collections in any iteration) or is absent
+    from the table (the generation was never triggered), returns '0' — the
+    mathematically correct value for the display table.  Non-zero numeric values
+    are returned unchanged.
     """
     if raw is None or raw.strip() == '-':
-        return '0.0001'
+        return '0'
     return raw.strip()
 
 
@@ -197,7 +199,7 @@ metrics: dict[str, dict] = parse_report_metrics(report)
 
 if not metrics:
     print(
-        'Error: no benchmark rows found in bench-report.md — cannot update.',
+        f'Error: no benchmark rows found in {REPORT_PATH} — cannot update.',
         file=sys.stderr,
     )
     sys.exit(1)
@@ -403,7 +405,8 @@ throughput_block = tput_header + '\n' + '\n'.join(tput_rows)
 def replace_between(text: str, start_marker: str, end_marker: str, new_content: str) -> str:
     pat = re.compile(re.escape(start_marker) + r'.*?' + re.escape(end_marker), re.DOTALL)
     if not pat.search(text):
-        print(f'Note: marker {start_marker!r} not found in {DOC_PATH} — block not updated.')
+        print(f'Warning: marker {start_marker!r} not found in {DOC_PATH} — block not updated.',
+              file=sys.stderr)
         return text
     replacement = start_marker + '\n' + new_content + '\n' + end_marker
     return pat.sub(replacement, text)

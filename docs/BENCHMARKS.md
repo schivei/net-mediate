@@ -40,10 +40,10 @@ The `vs timing` column compares dispatch time against stored target-branch value
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 74.69 ns | ±0.252 ns | 0.0018 | 0.0001 | 0.0001 | 32 B | ✅ -16 B | ~13.4M msg/s | ✅ improved (-17.5%) |
-| Notification `Notify` | 32.52 ns | ±0.037 ns | 0.0001 | 0.0001 | 0.0001 | - | ✅ -288 B | ~30.8M msg/s | ✅ improved (-74.8%) |
-| Request `Request` | 58.47 ns | ±0.919 ns | 0.0062 | 0.0001 | 0.0001 | 104 B | ✅ same | ~17.1M msg/s | ✅ improved (-35.0%) |
-| Stream `RequestStream` | 136.63 ns | ±0.771 ns | 0.0076 | 0.0001 | 0.0001 | 128 B | ✅ -88 B | ~7.3M msg/s | ✅ improved (-30.3%) |
+| Command `Send` | 74.69 ns | ±0.252 ns | 0.0018 | 0 | 0 | 32 B | ✅ -16 B | ~13.4M msg/s | ✅ improved (-17.5%) |
+| Notification `Notify` | 32.52 ns | ±0.037 ns | 0 | 0 | 0 | - | ✅ -288 B | ~30.8M msg/s | ✅ improved (-74.8%) |
+| Request `Request` | 58.47 ns | ±0.919 ns | 0.0062 | 0 | 0 | 104 B | ✅ same | ~17.1M msg/s | ✅ improved (-35.0%) |
+| Stream `RequestStream` | 136.63 ns | ±0.771 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.3M msg/s | ✅ improved (-30.3%) |
 <!-- ci-throughput-end -->
 
 > ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.
@@ -284,10 +284,10 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 74.69 ns | ±0.252 ns | 0.0018 | 0.0001 | 0.0001 | 32 B | ✅ -16 B | ~13.4M msg/s | ✅ improved (-17.5%) |
-| Notification `Notify` | 32.52 ns | ±0.037 ns | 0.0001 | 0.0001 | 0.0001 | - | ✅ -288 B | ~30.8M msg/s | ✅ improved (-74.8%) |
-| Request `Request` | 58.47 ns | ±0.919 ns | 0.0062 | 0.0001 | 0.0001 | 104 B | ✅ same | ~17.1M msg/s | ✅ improved (-35.0%) |
-| Stream `RequestStream` | 136.63 ns | ±0.771 ns | 0.0076 | 0.0001 | 0.0001 | 128 B | ✅ -88 B | ~7.3M msg/s | ✅ improved (-30.3%) |
+| Command `Send` | 74.69 ns | ±0.252 ns | 0.0018 | 0 | 0 | 32 B | ✅ -16 B | ~13.4M msg/s | ✅ improved (-17.5%) |
+| Notification `Notify` | 32.52 ns | ±0.037 ns | 0 | 0 | 0 | - | ✅ -288 B | ~30.8M msg/s | ✅ improved (-74.8%) |
+| Request `Request` | 58.47 ns | ±0.919 ns | 0.0062 | 0 | 0 | 104 B | ✅ same | ~17.1M msg/s | ✅ improved (-35.0%) |
+| Stream `RequestStream` | 136.63 ns | ±0.771 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.3M msg/s | ✅ improved (-30.3%) |
 
 ### Comparison vs baseline (`main`, median of ≤3 runs)
 

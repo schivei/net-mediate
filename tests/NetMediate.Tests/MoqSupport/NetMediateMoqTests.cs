@@ -72,9 +72,6 @@ public class NetMediateMoqTests
     [Fact]
     public async Task MoqNotifier_DispatchNotifications_ShouldInvokeAllHandlers()
     {
-        var services = new ServiceCollection();
-        services.AddLogging();
-
         var notifier = new NotifierMock();
 
         var h1Called = false;

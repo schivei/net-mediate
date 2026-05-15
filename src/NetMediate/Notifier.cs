@@ -28,9 +28,28 @@ public sealed class Notifier : INotifiable
 
         foreach (var h in handlers)
         {
-            var t = h.Handle(message, cancellationToken);
-            if (!t.IsCompletedSuccessfully)
-                _ = t.ContinueWith(static _ => { }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+            try
+            {
+                var t = h.Handle(message, cancellationToken);
+                if (t.IsFaulted)
+                {
+                    _ = t.Exception;
+                    continue;
+                }
+
+                if (!t.IsCompletedSuccessfully)
+                {
+                    _ = t.ContinueWith(
+                        static task => _ = task.Exception,
+                        CancellationToken.None,
+                        TaskContinuationOptions.OnlyOnFaulted,
+                        TaskScheduler.Default
+                    );
+                }
+            }
+            catch
+            {
+            }
         }
 
         return Task.CompletedTask;

@@ -22,19 +22,19 @@ public sealed class QuartzMediator : IMediator
     /// <summary>
     /// Gets the Quartz scheduler instance.
     /// </summary>
-    [Inject] internal IScheduler Scheduler { get; init; }
+    [Inject] public required IScheduler Scheduler { get; init; }
     /// <summary>
     /// Gets the notification serializer instance.
     /// </summary>
-    [Inject] internal INotificationSerializer Serializer { get; init; }
+    [Inject] public required INotificationSerializer Serializer { get; init; }
     /// <summary>
     /// Gets the Quartz notification options.
     /// </summary>
-    [Inject] internal IOptions<QuartzNotificationOptions> Options { get; init; }
+    [Inject] public required IOptions<QuartzNotificationOptions> Options { get; init; }
     /// <summary>
     /// Gets the logger instance.
     /// </summary>
-    [Inject] internal ILogger<QuartzMediator> Logger { get; init; }
+    [Inject] public required ILogger<QuartzMediator> Logger { get; init; }
 
     /// <inheritdoc/>
     public Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
@@ -98,12 +98,11 @@ public sealed class QuartzMediator : IMediator
         Notify(null, messages, cancellationToken);
 
     /// <inheritdoc/>
-    public Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
+    public async Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
     {
         foreach (var m in messages)
-            _ = Notify(key, m, cancellationToken);
+            await Notify(key, m, cancellationToken).ConfigureAwait(false);
 
-        return Task.CompletedTask;
     }
 
     /// <inheritdoc/>

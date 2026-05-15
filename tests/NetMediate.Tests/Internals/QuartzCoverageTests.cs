@@ -61,7 +61,11 @@ public sealed class QuartzCoverageTests
             INotificationHandler<TMessage>[] handlers,
             CancellationToken cancellationToken = default
         )
-            where TMessage : notnull => Task.CompletedTask;
+            where TMessage : notnull
+        {
+            _notificationSource.TrySetResult((key, message));
+            return Task.CompletedTask;
+        }
 
         public async Task<(object? Key, TMessage Message)> WaitAsync<TMessage>()
             where TMessage : notnull

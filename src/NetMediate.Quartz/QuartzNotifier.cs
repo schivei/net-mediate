@@ -23,7 +23,7 @@ public sealed class QuartzNotifier : INotifiable
     /// <summary>
     /// Gets the logger for QuartzNotifier operations.
     /// </summary>
-    [Inject] internal ILogger<QuartzNotifier> Logger { get; init; }
+    [Inject] public required ILogger<QuartzNotifier> Logger { get; init; }
 
     /// <inheritdoc />
     public async Task DispatchNotifications<TMessage>(

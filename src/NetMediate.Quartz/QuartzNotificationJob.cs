@@ -35,9 +35,23 @@ namespace NetMediate.Quartz;
 [Injectable<IJob>]
 public sealed class QuartzNotificationJob : IJob
 {
-    [Inject] internal IServiceProvider ServiceProvider { get; init; }
-    [Inject] internal INotificationSerializer Serializer { get; init; }
-    [Inject] internal ILogger<QuartzNotificationJob> Logger { get; init; }
+    /// <summary>
+    /// Gets the service provider used to resolve the inner dispatch services.
+    /// </summary>
+    [Inject]
+    public required IServiceProvider ServiceProvider { get; init; }
+
+    /// <summary>
+    /// Gets the serializer used to deserialize persisted notification payloads.
+    /// </summary>
+    [Inject]
+    public required INotificationSerializer Serializer { get; init; }
+
+    /// <summary>
+    /// Gets the logger used by this job.
+    /// </summary>
+    [Inject]
+    public required ILogger<QuartzNotificationJob> Logger { get; init; }
 
     /// <summary>Key used to store the serialized message in the <see cref="JobDataMap"/>.</summary>
     public const string MessageDataKey = "netmediate_message";
@@ -53,7 +67,7 @@ public sealed class QuartzNotificationJob : IJob
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<
         Type,
-        Func<IMediator, object?, object, CancellationToken, Task>
+        Func<IServiceProvider, object?, object, CancellationToken, Task>
     > s_dispatcherCache = new();
 
     /// <inheritdoc />
@@ -103,23 +117,46 @@ public sealed class QuartzNotificationJob : IJob
                 routingKey = System.Text.Json.JsonSerializer.Deserialize(keyJson, keyType);
         }
 
-        var notifiable = ServiceProvider.GetRequiredService<IMediator>();
         var dispatcher = s_dispatcherCache.GetOrAdd(messageType, BuildDispatcher);
 
-        await dispatcher(notifiable, routingKey, message, context.CancellationToken)
+        await dispatcher(ServiceProvider, routingKey, message, context.CancellationToken)
             .ConfigureAwait(false);
     }
 
-    private static Func<IMediator, object?, object, CancellationToken, Task> BuildDispatcher(
+    private static Func<IServiceProvider, object?, object, CancellationToken, Task> BuildDispatcher(
         Type messageType
     )
     {
-        var method = typeof(IMediator)
-            .GetMethods()
-            .First(m => m.Name == nameof(IMediator.Notify) && m.GetParameters().Length == 3)
+        var method = typeof(QuartzNotificationJob)
+            .GetMethods(
+                System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.Static
+            )
+            .Single(m => m.Name == nameof(DispatchNotification) && m.GetParameters()[2].ParameterType == typeof(object))
             .MakeGenericMethod(messageType);
 
-        return (notifiable, key, message, cancellationToken) =>
-            (Task)method.Invoke(notifiable, [key, message, cancellationToken])!;
+        return (serviceProvider, key, message, cancellationToken) =>
+            (Task)method.Invoke(null, [serviceProvider, key, message, cancellationToken])!;
+    }
+
+    private static Task DispatchNotification<TMessage>(
+        IServiceProvider serviceProvider,
+        object? key,
+        object message,
+        CancellationToken cancellationToken
+    )
+        where TMessage : notnull
+    {
+        var notifiable = serviceProvider.GetRequiredService<INotifiable>();
+        INotificationHandler<TMessage>[] handlers = key is null
+            ? [.. serviceProvider.GetServices<INotificationHandler<TMessage>>()]
+            : [.. serviceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)];
+
+        return notifiable.DispatchNotifications(
+            key,
+            (TMessage)message,
+            handlers,
+            cancellationToken
+        );
     }
 }

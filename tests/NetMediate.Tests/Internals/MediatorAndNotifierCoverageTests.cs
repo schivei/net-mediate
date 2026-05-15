@@ -21,8 +21,11 @@ public sealed class MediatorAndNotifierCoverageTests
         await mediator.Notify(new NotificationMessage("one"), TestContext.Current.CancellationToken);
 
         var callCount = notifier.CallCount;
+        var firstCall = Assert.Single(notifier.Calls);
 
         Assert.Equal(1, callCount);
+        Assert.Null(firstCall.Key);
+        Assert.Equal("one", Assert.IsType<NotificationMessage>(firstCall.Message).Value);
 
         notifier.ClearCalls();
 
@@ -37,8 +40,32 @@ public sealed class MediatorAndNotifierCoverageTests
         );
 
         callCount = notifier.CallCount;
+        var calls = notifier.Calls;
 
         Assert.Equal(4, callCount);
+        Assert.Collection(
+            calls,
+            call =>
+            {
+                Assert.Null(call.Key);
+                Assert.Equal("batch-one", Assert.IsType<NotificationMessage>(call.Message).Value);
+            },
+            call =>
+            {
+                Assert.Null(call.Key);
+                Assert.Equal("batch-two", Assert.IsType<NotificationMessage>(call.Message).Value);
+            },
+            call =>
+            {
+                Assert.Equal("key", call.Key);
+                Assert.Equal("two", Assert.IsType<NotificationMessage>(call.Message).Value);
+            },
+            call =>
+            {
+                Assert.Equal("key", call.Key);
+                Assert.Equal("three", Assert.IsType<NotificationMessage>(call.Message).Value);
+            }
+        );
     }
 
     [Fact]
@@ -539,6 +566,7 @@ public sealed class MediatorAndNotifierCoverageTests
         private static readonly Lock s_lock = new();
 
         private int _callCount = 0;
+        private readonly List<(object? Key, object Message)> _calls = [];
 
         public int CallCount
         {
@@ -547,6 +575,17 @@ public sealed class MediatorAndNotifierCoverageTests
                 lock (s_lock)
                 {
                     return _callCount;
+                }
+            }
+        }
+
+        public IReadOnlyList<(object? Key, object Message)> Calls
+        {
+            get
+            {
+                lock (s_lock)
+                {
+                    return [.. _calls];
                 }
             }
         }
@@ -562,6 +601,7 @@ public sealed class MediatorAndNotifierCoverageTests
             lock (s_lock)
             {
                 Interlocked.Increment(ref _callCount);
+                _calls.Add((key, message));
             }
 
             return Task.CompletedTask;
@@ -572,6 +612,7 @@ public sealed class MediatorAndNotifierCoverageTests
             lock (s_lock)
             {
                 Interlocked.Exchange(ref _callCount, 0);
+                _calls.Clear();
             }
         }
     }

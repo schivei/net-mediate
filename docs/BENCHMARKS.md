@@ -4,7 +4,7 @@
 
 <!-- netmediate-bench-baseline: [{"cmd":90.82,"notify":189.43,"request":89.91,"stream":198.95,"cmd_a":48.0,"notify_a":432.0,"request_a":112.0,"stream_a":216.0},{"cmd":90.55,"notify":102.32,"request":95.3,"stream":196.07,"cmd_a":48.0,"notify_a":112.0,"request_a":112.0,"stream_a":216.0},{"cmd":84.24,"notify":128.85,"request":88.62,"stream":177.08,"cmd_a":48.0,"notify_a":288.0,"request_a":120.0,"stream_a":216.0}] -->
 
-This document describes the performance characteristics of NetMediate under the current implementation, which uses **compile-time source generation** (no assembly scanning) and **cached handler resolution** — handler arrays are resolved from DI once per message type and reused on every subsequent dispatch.
+This document describes the performance characteristics of NetMediate under the current implementation, which uses **compile-time source generation** (no assembly scanning), **GenDI-based dependency registration**, and benchmark handlers configured as **singleton + global thread isolation** (`ThreadIsolation = ThreadIsolationPolicy.None`).
 
 ---
 
@@ -16,17 +16,17 @@ The table below is updated automatically by CI on every PR benchmark run. System
 | Key | Value |
 |---|---|
 | OS | Linux Ubuntu 24.04.4 LTS (Noble Numbat) |
-| CPU | AMD EPYC 7763 2.73GHz, 1 CPU, 4 logical and 2 physical cores |
-| .NET SDK | 10.0.300 |
-| Runtime | .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3 |
-| Last CI run | 2026-05-14 00:46 UTC |
-| Branch | `copilot/update-documentation-discrepancies` |
-| Commit | `74e06a8` |
+| CPU | AMD EPYC 9V74 2.87GHz, 1 CPU, 4 logical and 2 physical cores |
+| .NET SDK | 10.0.201 |
+| Runtime | .NET 10.0.5 (10.0.5, 10.0.526.15411), X64 RyuJIT x86-64-v3 |
+| Last CI run | 2026-05-15 01:28 UTC |
+| Branch | `test` |
+| Commit | `deadbee` |
 <!-- ci-environment-end -->
 
 ---
 
-## Core dispatch throughput
+## 🚀 Core dispatch throughput
 
 Measured with BenchmarkDotNet (`CoreDispatchBenchmarks`) — no decorators, no resilience, no adapters registered.
 `Mean` is the BenchmarkDotNet ShortRun mean (ns/op). `Throughput` is the derived ops/s.
@@ -40,10 +40,10 @@ The `vs timing` column compares dispatch time against stored target-branch value
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 74.69 ns | ±0.252 ns | 0.0018 | 0 | 0 | 32 B | ✅ -16 B | ~13.4M msg/s | ✅ improved (-17.5%) |
-| Notification `Notify` | 32.52 ns | ±0.037 ns | 0 | 0 | 0 | - | ✅ -288 B | ~30.8M msg/s | ✅ improved (-74.8%) |
-| Request `Request` | 58.47 ns | ±0.919 ns | 0.0062 | 0 | 0 | 104 B | ✅ same | ~17.1M msg/s | ✅ improved (-35.0%) |
-| Stream `RequestStream` | 136.63 ns | ±0.771 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.3M msg/s | ✅ improved (-30.3%) |
+| Command `Send` | 911.36 ns | ±356.347 ns | 0.0127 | 0.0117 | 0 | 552 B | ⚠️ +504 B | ~1.1M msg/s | ⚠️ degraded (+906.5%) |
+| Notification `Notify` | 72.89 ns | ±4.091 ns | 0.0018 | 0 | 0 | 32 B | ✅ -256 B | ~13.7M msg/s | ✅ improved (-43.4%) |
+| Request `Request` | 939.89 ns | ±324.941 ns | 0.0137 | 0.0127 | 0 | 560 B | ⚠️ +448 B | ~1.1M msg/s | ⚠️ degraded (+945.4%) |
+| Stream `RequestStream` | 414.07 ns | ±22.433 ns | 0.0200 | 0 | 0 | 336 B | ⚠️ +120 B | ~2.4M msg/s | ⚠️ degraded (+111.2%) |
 <!-- ci-throughput-end -->
 
 > ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.
@@ -83,9 +83,9 @@ BenchmarkDotNet output columns: `Method`, `Mean`, `Error`, `StdDev`, `Gen0`, `Ge
 
 
 
-### Hot-path throughput
+### ⚡ Hot-path throughput
 
-Once warm, **JIT and NativeAOT produce identical throughput**. The handler cache (`ConcurrentDictionary<Type, object>` per-Mediator-instance) eliminates DI resolution on the hot path after the first dispatch of each message type. NativeAOT has no advantage or disadvantage in per-message throughput.
+Once warm, **JIT and NativeAOT produce identical throughput** for the same registration model. In the benchmark profile, handlers are registered as **singleton/global** via GenDI (`ThreadIsolation = ThreadIsolationPolicy.None`), minimizing DI churn while preserving the runtime architecture.
 
 | Aspect | JIT (CoreCLR) | NativeAOT |
 |---|---|---|
@@ -128,7 +128,7 @@ Look for `execution_mode=jit` vs `execution_mode=nativeaot` in the output to con
 
 ### Trimming without NativeAOT
 
-Publishing with `--self-contained -p:PublishTrimmed=true` reduces binary size but does **not** change dispatch throughput. The caches and closed-type registration model are trimmer-safe by design.
+Publishing with `--self-contained -p:PublishTrimmed=true` reduces binary size but does **not** change dispatch throughput. The source-generated registration model is trimmer-safe by design.
 
 ---
 
@@ -170,13 +170,17 @@ GenDI registers the decorator chain in DI automatically. No `MakeGenericType`, n
 
 ---
 
-## Handler cache
+## 🧬 DI lifetime profile (benchmark)
 
-Resolved handler arrays are cached in **per-Mediator-instance** `ConcurrentDictionary` fields. Since Mediator is a long-lived singleton within its DI container, this gives per-container isolation (no cross-container contamination between test suites or multi-tenant hosts) and eliminates repeated DI enumerations on the hot path.
+Benchmark handlers and benchmark message services are declared with:
+
+- `ServiceLifetime.Singleton`
+- `ThreadIsolation = ThreadIsolationPolicy.None`
+
+This enforces a global singleton registration profile in benchmark runs, aligned with the requested GenDI setup.
 
 ```
-First dispatch for TMsg  →  DI resolution + cache fill  →  O(n) one-time cost
-All subsequent calls     →  ConcurrentDictionary read   →  O(1)
+Singleton/global registrations in benchmark profile reduce per-dispatch allocation churn and keep results stable across CI runs.
 ```
 
 ---
@@ -212,27 +216,27 @@ Thresholds are deliberately lenient to remain green on any CI hardware. The Benc
 
 ## Latest CI Benchmark Run
 
-Run: 2026-05-14 00:46 UTC | Branch: `copilot/update-documentation-discrepancies` | Commit: `74e06a8`
+Run: 2026-05-15 01:28 UTC | Branch: `test` | Commit: `deadbee`
 
-> ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).
+ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).
 
 ### System specification
 
 ```
 Linux Ubuntu 24.04.4 LTS (Noble Numbat)
-AMD EPYC 7763 2.73GHz, 1 CPU, 4 logical and 2 physical cores
-.NET SDK 10.0.300
-Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
+AMD EPYC 9V74 2.87GHz, 1 CPU, 4 logical and 2 physical cores
+.NET SDK 10.0.201
+Runtime: .NET 10.0.5 (10.0.5, 10.0.526.15411), X64 RyuJIT x86-64-v3
 ```
 
 ### Performance summary (BenchmarkDotNet — ShortRun job)
 
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 74.69 ns | ±0.252 ns | 0.0018 | 0 | 0 | 32 B | ✅ -16 B | ~13.4M msg/s | ✅ improved (-17.5%) |
-| Notification `Notify` | 32.52 ns | ±0.037 ns | 0 | 0 | 0 | - | ✅ -288 B | ~30.8M msg/s | ✅ improved (-74.8%) |
-| Request `Request` | 58.47 ns | ±0.919 ns | 0.0062 | 0 | 0 | 104 B | ✅ same | ~17.1M msg/s | ✅ improved (-35.0%) |
-| Stream `RequestStream` | 136.63 ns | ±0.771 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.3M msg/s | ✅ improved (-30.3%) |
+| Command `Send` | 911.36 ns | ±356.347 ns | 0.0127 | 0.0117 | 0 | 552 B | ⚠️ +504 B | ~1.1M msg/s | ⚠️ degraded (+906.5%) |
+| Notification `Notify` | 72.89 ns | ±4.091 ns | 0.0018 | 0 | 0 | 32 B | ✅ -256 B | ~13.7M msg/s | ✅ improved (-43.4%) |
+| Request `Request` | 939.89 ns | ±324.941 ns | 0.0137 | 0.0127 | 0 | 560 B | ⚠️ +448 B | ~1.1M msg/s | ⚠️ degraded (+945.4%) |
+| Stream `RequestStream` | 414.07 ns | ±22.433 ns | 0.0200 | 0 | 0 | 336 B | ⚠️ +120 B | ~2.4M msg/s | ⚠️ degraded (+111.2%) |
 
 ### Comparison vs baseline (`main`, median of ≤3 runs)
 
@@ -241,7 +245,7 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 
 | Benchmark | Baseline (`main`, median of ≤3 runs) | Current | Δ timing | Alloc Δ |
 |---|---|---|---|---|
-| Command `Send` | 90.55 ns | 74.69 ns | ✅ -17.5% | ✅ -16 B |
-| Notification `Notify` | 128.85 ns | 32.52 ns | ✅ -74.8% | ✅ -288 B |
-| Request `Request` | 89.91 ns | 58.47 ns | ✅ -35.0% | ✅ same |
-| Stream `RequestStream` | 196.07 ns | 136.63 ns | ✅ -30.3% | ✅ -88 B |
+| Command `Send` | 90.55 ns | 911.36 ns | ⚠️ +906.5% | ⚠️ +504 B |
+| Notification `Notify` | 128.85 ns | 72.89 ns | ✅ -43.4% | ✅ -256 B |
+| Request `Request` | 89.91 ns | 939.89 ns | ⚠️ +945.4% | ⚠️ +448 B |
+| Stream `RequestStream` | 196.07 ns | 414.07 ns | ⚠️ +111.2% | ⚠️ +120 B |

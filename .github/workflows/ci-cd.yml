@@ -302,7 +302,8 @@ jobs:
         # ── Run current-branch benchmark ─────────────────────────────────────────
         cd tests/NetMediate.Benchmarks
         dotnet run --configuration Release -- --job Short --filter '*' \
-          2>&1 | tee "$RUNNER_TEMP/bench-console.txt" || true
+          2>&1 | grep -v "Failed to set up high priority (Permission denied)" \
+          | tee "$RUNNER_TEMP/bench-console.txt" || true
         REPORT=$(find BenchmarkDotNet.Artifacts -name '*-report-github.md' 2>/dev/null | head -1)
         if [ -n "$REPORT" ]; then
           cp "$REPORT" "$BENCH_REPORT"

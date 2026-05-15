@@ -72,11 +72,7 @@ public class NetMediateMoqTests
     [Fact]
     public async Task MoqNotifier_DispatchNotifications_ShouldInvokeAllHandlers()
     {
-        var services = new ServiceCollection();
-        services.AddLogging();
-        using var provider = services.BuildServiceProvider();
-
-        var notifier = new NotifierMock(provider);
+        var notifier = new NotifierMock();
 
         var h1Called = false;
         var h2Called = false;
@@ -110,8 +106,7 @@ public class NetMediateMoqTests
     [Fact]
     public async Task MoqNotifier_DispatchNotifications_WithNoHandlers_Completes()
     {
-        using var provider = new ServiceCollection().BuildServiceProvider();
-        var notifier = new NotifierMock(provider);
+        var notifier = new NotifierMock();
 
         var exception = await Record.ExceptionAsync(() =>
             notifier.DispatchNotifications(
@@ -139,9 +134,10 @@ public class NetMediateMoqTests
         );
 
         using var provider = services.BuildServiceProvider();
-        var notifier = new NotifierMock(provider);
+        var notifier = new NotifierMock();
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = notifier };
 
-        await notifier.Notify(null, new NotifierTestMessage(), TestContext.Current.CancellationToken);
+        await mediator.Notify(null, new NotifierTestMessage(), TestContext.Current.CancellationToken);
 
         await handled.Task.WaitAsync(TestContext.Current.CancellationToken);
         Assert.True(handled.Task.IsCompletedSuccessfully);
@@ -164,9 +160,11 @@ public class NetMediateMoqTests
         );
 
         using var provider = services.BuildServiceProvider();
-        var notifier = new NotifierMock(provider);
+        var notifier = new NotifierMock();
 
-        await notifier.Notify(
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = notifier };
+
+        await mediator.Notify(
             null,
             [new NotifierTestMessage(), new NotifierTestMessage()],
             TestContext.Current.CancellationToken

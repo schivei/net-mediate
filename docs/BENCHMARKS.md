@@ -19,9 +19,9 @@ The table below is updated automatically by CI on every PR benchmark run. System
 | CPU | AMD EPYC 7763 2.45GHz, 1 CPU, 4 logical and 2 physical cores |
 | .NET SDK | 10.0.300 |
 | Runtime | .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3 |
-| Last CI run | 2026-05-15 02:31 UTC |
-| Branch | `copilot/update-generator-decorator-approach` |
-| Commit | `c34fe18` |
+| Last CI run | 2026-05-15 21:00 UTC |
+| Branch | `chore/adjust-inheritance` |
+| Commit | `26dfe82` |
 <!-- ci-environment-end -->
 
 ---
@@ -40,10 +40,10 @@ The `vs timing` column compares dispatch time against stored target-branch value
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 33.75 ns | ±2.524 ns | 0 | 0 | 0 | - | ✅ -48 B | ~29.6M msg/s | ✅ improved (-62.7%) |
-| Notification `Notify` | 28.53 ns | ±1.045 ns | 0 | 0 | 0 | - | ✅ -288 B | ~35.1M msg/s | ✅ improved (-77.9%) |
-| Request `Request` | 63.11 ns | ±4.342 ns | 0.0043 | 0 | 0 | 72 B | ✅ -40 B | ~15.8M msg/s | ✅ improved (-29.8%) |
-| Stream `RequestStream` | 136.39 ns | ±11.438 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.3M msg/s | ✅ improved (-30.4%) |
+| Command `Send` | 33.85 ns | ±0.748 ns | 0 | 0 | 0 | - | ✅ -48 B | ~29.5M msg/s | ✅ improved (-62.6%) |
+| Notification `Notify` | 28.40 ns | ±0.780 ns | 0 | 0 | 0 | - | ✅ -288 B | ~35.2M msg/s | ✅ improved (-78.0%) |
+| Request `Request` | 64.47 ns | ±6.945 ns | 0.0043 | 0 | 0 | 72 B | ✅ -40 B | ~15.5M msg/s | ✅ improved (-28.3%) |
+| Stream `RequestStream` | 133.53 ns | ±30.903 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.5M msg/s | ✅ improved (-31.9%) |
 <!-- ci-throughput-end -->
 
 > ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.
@@ -224,7 +224,7 @@ Thresholds are deliberately lenient to remain green on any CI hardware. The Benc
 
 ## Latest CI Benchmark Run
 
-Run: 2026-05-15 02:31 UTC | Branch: `copilot/update-generator-decorator-approach` | Commit: `c34fe18`
+Run: 2026-05-15 21:00 UTC | Branch: `chore/adjust-inheritance` | Commit: `26dfe82`
 
 ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).
 
@@ -241,10 +241,10 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 33.75 ns | ±2.524 ns | 0 | 0 | 0 | - | ✅ -48 B | ~29.6M msg/s | ✅ improved (-62.7%) |
-| Notification `Notify` | 28.53 ns | ±1.045 ns | 0 | 0 | 0 | - | ✅ -288 B | ~35.1M msg/s | ✅ improved (-77.9%) |
-| Request `Request` | 63.11 ns | ±4.342 ns | 0.0043 | 0 | 0 | 72 B | ✅ -40 B | ~15.8M msg/s | ✅ improved (-29.8%) |
-| Stream `RequestStream` | 136.39 ns | ±11.438 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.3M msg/s | ✅ improved (-30.4%) |
+| Command `Send` | 33.85 ns | ±0.748 ns | 0 | 0 | 0 | - | ✅ -48 B | ~29.5M msg/s | ✅ improved (-62.6%) |
+| Notification `Notify` | 28.40 ns | ±0.780 ns | 0 | 0 | 0 | - | ✅ -288 B | ~35.2M msg/s | ✅ improved (-78.0%) |
+| Request `Request` | 64.47 ns | ±6.945 ns | 0.0043 | 0 | 0 | 72 B | ✅ -40 B | ~15.5M msg/s | ✅ improved (-28.3%) |
+| Stream `RequestStream` | 133.53 ns | ±30.903 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.5M msg/s | ✅ improved (-31.9%) |
 
 ### Comparison vs baseline (`main`, median of ≤3 runs)
 
@@ -253,25 +253,7 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 
 | Benchmark | Baseline (`main`, median of ≤3 runs) | Current | Δ timing | Alloc Δ |
 |---|---|---|---|---|
-| Command `Send` | 90.55 ns | 33.75 ns | ✅ -62.7% | ✅ -48 B |
-| Notification `Notify` | 128.85 ns | 28.53 ns | ✅ -77.9% | ✅ -288 B |
-| Request `Request` | 89.91 ns | 63.11 ns | ✅ -29.8% | ✅ -40 B |
-| Stream `RequestStream` | 196.07 ns | 136.39 ns | ✅ -30.4% | ✅ -88 B |
-
-### Historical baseline anchor (FIFO lineage)
-
-To keep the historical context explicit, we also track the **first milestone anchor** that was previously part of the FIFO baseline lineage:
-
-- **Version (benchmark commit):** `107d59e`
-- **Date (run):** `2026-05-05 22:58 UTC`
-- **PR:** [#70](https://github.com/schivei/net-mediate/pull/70)
-- **Where it entered the FIFO history:** `f9b0f3f` (`chore: update BENCHMARKS.md from CI benchmark run [skip ci]`)
-
-| Benchmark | Milestone anchor (`107d59e`) |
-|---|---|
-| Command `Send` | 67.23 ns |
-| Notification `Notify` | 100.77 ns |
-| Request `Request` | 68.72 ns |
-| Stream `RequestStream` | 136.65 ns |
-
-**Why keep this historical comparison:** this was the last version associated with the first broad improvement milestone across the four core dispatch benchmarks before later architectural cycles changed the short-term baseline ring composition. The CI regression gate remains based on the current target-branch median ring; the anchor is documentary context for long-term trend analysis.
+| Command `Send` | 90.55 ns | 33.85 ns | ✅ -62.6% | ✅ -48 B |
+| Notification `Notify` | 128.85 ns | 28.40 ns | ✅ -78.0% | ✅ -288 B |
+| Request `Request` | 89.91 ns | 64.47 ns | ✅ -28.3% | ✅ -40 B |
+| Stream `RequestStream` | 196.07 ns | 133.53 ns | ✅ -31.9% | ✅ -88 B |

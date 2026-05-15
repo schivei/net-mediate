@@ -11,14 +11,14 @@ namespace NetMediate.Quartz;
 public static class NetMediateQuartzDI
 {
     /// <summary>
-    /// Registers <see cref="QuartzNotifier"/> as the <see cref="INotifiable"/> implementation so that every
-    /// NetMediate notification is persisted as a Quartz job before being dispatched to handlers.
+    /// Registers NetMediate Quartz services so <see cref="QuartzMediator"/> decorates
+    /// <see cref="IMediator"/> notification publishing with Quartz job persistence.
     /// </summary>
     /// <remarks>
     /// <para>
-    /// This method configures NetMediate to use Quartz as the notification transport. Notifications are
-    /// serialized and stored in the Quartz job store instead of the default in-memory channel, enabling
-    /// crash recovery and cluster-distributed execution.
+    /// This method configures NetMediate to use Quartz as the notification transport for
+    /// <see cref="IMediator.Notify{TMessage}(TMessage, CancellationToken)"/> overloads. Notifications are
+    /// serialized and stored in the Quartz job store, enabling crash recovery and cluster-distributed execution.
     /// </para>
     /// <para>
     /// Quartz must be configured and its <see cref="IScheduler"/> must be registered in the service

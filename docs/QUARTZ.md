@@ -2,7 +2,7 @@
 
 > **GenDI pattern:** The examples below assume `NetMediate.SourceGeneration` in the startup project. Prefer `[Injectable]` + `[Inject]` for serializers, notifiers, and supporting services.
 
-`NetMediate.Quartz` is an optional package that swaps the default NetMediate notification transport for Quartz-backed persistence.
+`NetMediate.Quartz` is an optional package that decorates `IMediator` notification publishing with Quartz-backed persistence.
 
 ## Why Quartz for notifications?
 
@@ -27,7 +27,7 @@ using Quartz;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// 1. Configure Quartz first — AddNetMediateQuartz only swaps the notifier implementation;
+// 1. Configure Quartz first — AddNetMediateQuartz only registers Quartz decorators/jobs;
 // it does not configure Quartz itself.
 builder.Services.AddQuartz(q =>
 {
@@ -36,20 +36,20 @@ builder.Services.AddQuartz(q =>
 });
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
-// 2. Register the Quartz notifier first so AddNetMediate picks up that INotifiable implementation
+// 2. Register NetMediate Quartz extensions
 builder.Services.AddNetMediateQuartz(opts =>
 {
     opts.GroupName = "MyApp";
 });
 
-// 3. Register the generated NetMediate services after the Quartz notifier is in place
+// 3. Register the generated NetMediate services after Quartz extensions
 builder.Services.AddNetMediate();
 
 var host = builder.Build();
 await host.RunAsync();
 ```
 
-`AddNetMediateQuartz()` does **not** call `AddNetMediate()` for you. Call `AddNetMediateQuartz()` first, then `AddNetMediate()`, so the generated mediator setup uses the Quartz-backed `INotifiable` implementation.
+`AddNetMediateQuartz()` does **not** call `AddNetMediate()` for you. Call `AddNetMediateQuartz()` first, then `AddNetMediate()`, so the generated mediator setup can apply the Quartz mediator decorator.
 
 ## Configuration
 

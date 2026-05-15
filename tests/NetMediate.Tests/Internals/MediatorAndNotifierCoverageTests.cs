@@ -395,7 +395,6 @@ public sealed class MediatorAndNotifierCoverageTests
 
         handlerTask.TrySetException(new InvalidOperationException("late handler fault"));
         await Assert.ThrowsAsync<InvalidOperationException>(() => handlerTask.Task);
-        await Task.Delay(50, TestContext.Current.CancellationToken);
 
         Assert.Null(exception);
     }

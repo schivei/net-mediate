@@ -42,7 +42,8 @@ public sealed class Notifier : INotifiable
                     _ = t.ContinueWith(
                         static task => Observe(task.Exception),
                         CancellationToken.None,
-                        TaskContinuationOptions.OnlyOnFaulted,
+                        TaskContinuationOptions.OnlyOnFaulted
+                            | TaskContinuationOptions.ExecuteSynchronously,
                         TaskScheduler.Default
                     );
                 }

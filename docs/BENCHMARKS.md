@@ -85,7 +85,7 @@ BenchmarkDotNet output columns: `Method`, `Mean`, `Error`, `StdDev`, `Gen0`, `Ge
 
 ### ⚡ Hot-path throughput
 
-Once warm, **JIT and NativeAOT produce identical throughput** for the same registration model. In the benchmark profile, handlers are registered as **singleton/global** via GenDI (`ThreadIsolation = ThreadIsolationPolicy.None`), minimizing DI churn while preserving the runtime architecture.
+Once warm, **JIT and NativeAOT produce identical throughput** for the same registration model. In the benchmark profile, handlers are registered as **singleton/global** via GenDI (`ThreadIsolation = ThreadIsolationPolicy.None`), preserving stable handler lifetime while keeping the runtime dispatch architecture unchanged.
 
 | Aspect | JIT (CoreCLR) | NativeAOT |
 |---|---|---|
@@ -180,7 +180,7 @@ Benchmark handlers and benchmark message services are declared with:
 This enforces a global singleton registration profile in benchmark runs, aligned with the requested GenDI setup.
 
 ```
-Singleton/global registrations in benchmark profile reduce per-dispatch allocation churn and keep results stable across CI runs.
+Singleton/global registrations in benchmark profile stabilize handler lifetime across runs. Note: dispatch still resolves handler collections per call in the current runtime design.
 ```
 
 ---

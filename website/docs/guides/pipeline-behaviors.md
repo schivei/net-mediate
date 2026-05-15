@@ -4,57 +4,48 @@ sidebar_position: 5
 
 # Pipeline Behaviors
 
-> **GenDI pattern:** Use `[Injectable]` + `[Inject]` for regular application services. Concrete non-generic pipeline behaviors can also use `[Injectable]`. Reserve manual `builder.Services` registration for generic/open behavior implementations.
+Pipeline composition is now static and based on GenDI decorators.
+Legacy `IPipeline*Behavior` interfaces and pipeline delegates are obsolete and no longer supported.
+Use `DecoratorForAttribute` with handler interfaces.
 
-Pipeline behaviors are middleware-style interceptors that wrap handler execution. Each behavior receives the routing key, the message, the `next` delegate, and a cancellation token. Calling `next` continues the pipeline; returning without calling `next` short-circuits it.
-
-All behavior interfaces default to `ServiceLifetime.Transient` with `ThreadIsolationPolicy.Transient` (see the [Handlers lifetime table](../getting-started/handlers.md#handler-lifetime)). Override with `[Injectable]` when a different lifetime is needed.
-
-## Request Behavior (logging + timing)
-
-Wraps every request dispatch with structured log entries and elapsed-time measurement.
+## Request Decorator (logging + timing)
 
 ```csharp
 using System.Diagnostics;
-using GenDI;
-using Microsoft.Extensions.DependencyInjection;
+using GenDI.Attributes;
 using Microsoft.Extensions.Logging;
 using NetMediate;
 
 public record GetProductQuery(string ProductId);
 public record ProductDto(string Id, string Name, decimal Price);
 
-[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
-public sealed class TimingLoggingBehavior : IPipelineRequestBehavior<GetProductQuery, ProductDto>
+[DecoratorFor<IRequestHandler<GetProductQuery, ProductDto>>(Order = 1)]
+public sealed class TimingLoggingDecorator(IRequestHandler<GetProductQuery, ProductDto> inner)
+    : IRequestHandler<GetProductQuery, ProductDto>
 {
-    [Inject] public required ILogger<TimingLoggingBehavior> Logger { get; init; }
+    [Inject] public required ILogger<TimingLoggingDecorator> Logger { get; init; }
 
     public async Task<ProductDto> Handle(
-        object? key,
         GetProductQuery message,
-        PipelineBehaviorDelegate<GetProductQuery, Task<ProductDto>> next,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();
-        Logger.LogInformation("Handling {Query} (key={Key})", nameof(GetProductQuery), key);
+        Logger.LogInformation("Handling {Query}", nameof(GetProductQuery));
 
-        var result = await next(key, message, cancellationToken);
+        var result = await inner.Handle(message, cancellationToken);
 
         Logger.LogInformation("{Query} completed in {ElapsedMs} ms", nameof(GetProductQuery), sw.ElapsedMilliseconds);
         return result;
     }
 }
-
-builder.Services.AddNetMediate();
 ```
 
-## Command Behavior (audit trail)
+## Command Decorator (audit trail)
 
-Records every command dispatch to an audit log before forwarding to the handlers.
+Records every command dispatch before forwarding to the next handler.
 
 ```csharp
-using GenDI;
-using Microsoft.Extensions.DependencyInjection;
+using GenDI.Attributes;
 using NetMediate;
 
 [ServiceInjection]
@@ -63,43 +54,39 @@ public interface IAuditWriter
     Task WriteAsync(string commandName, object? key, CancellationToken ct);
 }
 
-[Injectable(ServiceLifetime.Transient, Group = 5, Order = 1)]
-public sealed class CommandAuditBehavior : IPipelineCommandBehavior<PlaceOrderCommand>
+[DecoratorFor<ICommandHandler<PlaceOrderCommand>>(Order = 1)]
+public sealed class CommandAuditDecorator(ICommandHandler<PlaceOrderCommand> inner) : ICommandHandler<PlaceOrderCommand>
 {
     [Inject] public required IAuditWriter Audit { get; init; }
 
     public async Task Handle(
-        object? key,
         PlaceOrderCommand message,
-        PipelineBehaviorDelegate<PlaceOrderCommand, Task> next,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
-        await Audit.WriteAsync(nameof(PlaceOrderCommand), key, cancellationToken);
-        await next(key, message, cancellationToken);
+        await Audit.WriteAsync(nameof(PlaceOrderCommand), null, cancellationToken);
+        await inner.Handle(message, cancellationToken);
     }
 }
 ```
 
-## Notification Behavior (error context enrichment)
+## Notification Decorator
 
-Enriches the logging scope before the handler phase so that all handler log lines carry the notification type.
+Wraps notification handling with context enrichment.
 
 ```csharp
-using GenDI;
-using Microsoft.Extensions.DependencyInjection;
+using GenDI.Attributes;
 using Microsoft.Extensions.Logging;
 using NetMediate;
 
-[Injectable(ServiceLifetime.Transient, Group = 5, Order = 1)]
-public sealed class NotificationLoggingBehavior : IPipelineNotificationBehavior<UserRegistered>
+[DecoratorFor<INotificationHandler<UserRegistered>>(Order = 1)]
+public sealed class NotificationLoggingDecorator(INotificationHandler<UserRegistered> inner)
+    : INotificationHandler<UserRegistered>
 {
-    [Inject] public required ILogger<NotificationLoggingBehavior> Logger { get; init; }
+    [Inject] public required ILogger<NotificationLoggingDecorator> Logger { get; init; }
 
     public async Task Handle(
-        object? key,
         UserRegistered message,
-        PipelineBehaviorDelegate<UserRegistered, Task> next,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken = default)
     {
         using (Logger.BeginScope(new Dictionary<string, object>
         {
@@ -107,11 +94,10 @@ public sealed class NotificationLoggingBehavior : IPipelineNotificationBehavior<
             ["NotificationType"] = nameof(UserRegistered)
         }))
         {
-            await next(key, message, cancellationToken);
+            await inner.Handle(message, cancellationToken);
         }
     }
 }
 ```
 
-> **Note:** Because `IMediator.Notify` is fire-and-forget, behavior exceptions are logged and suppressed by the `NotificationPipelineExecutor` — they do not propagate to the caller. See [Notifications](./notifications.md) for details.
-
+> Legacy `IPipelineBehavior<TMessage, TResult>`, `IPipelineRequestBehavior<,>`, `IPipelineNotificationBehavior<>`, `IPipelineStreamBehavior<,>`, `PipelineBehaviorDelegate<,>` and `HandlerExecutionDelegate<,,>` are obsolete. Use decorators with `DecoratorForAttribute`.

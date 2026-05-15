@@ -36,7 +36,7 @@ Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience` to make
 Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream operations with full distributed tracing support.
 
 ### 🔑 **Keyed Handler Routing**
-Register handlers under named keys and dispatch to specific subsets at runtime — **fully NativeAOT + Trimming compatible** via source-generated `KeyedHandlerRegistry<T>`.
+Register handlers under named keys and dispatch to specific subsets at runtime — **fully NativeAOT + Trimming compatible** via GenDI keyed-service resolution.
 
 ### 🌊 **Streaming Fan-Out**
 Multiple `IStreamHandler` registrations supported — their items are merged sequentially.

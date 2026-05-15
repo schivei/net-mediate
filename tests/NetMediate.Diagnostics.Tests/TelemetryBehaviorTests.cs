@@ -16,19 +16,16 @@ public sealed class TelemetryBehaviorTests
     public async Task TelemetryCommandBehavior_StartsAndStopsActivity()
     {
         using var listener = CreateListener(out var stoppedActivities);
-        var behavior = new TelemetryCommandBehavior<CommandMessage>();
         var called = false;
-
-        await behavior.Handle(
-            "key",
-            new CommandMessage(),
-            (_, _, _) =>
+        var behavior = new TestTelemetryCommandBehavior<CommandMessage>(
+            new LambdaCommandHandler<CommandMessage>((_, _) =>
             {
                 called = true;
                 return Task.CompletedTask;
-            },
-            TestContext.Current.CancellationToken
+            })
         );
+
+        await behavior.Handle(new CommandMessage(), TestContext.Current.CancellationToken);
 
         Assert.True(called);
         var activity = Assert.Single(stoppedActivities);
@@ -41,15 +38,13 @@ public sealed class TelemetryBehaviorTests
     public async Task TelemetryCommandBehavior_RethrowsAndSetsErrorStatus()
     {
         using var listener = CreateListener(out var stoppedActivities);
-        var behavior = new TelemetryCommandBehavior<CommandMessage>();
+        var behavior = new TestTelemetryCommandBehavior<CommandMessage>(
+            new LambdaCommandHandler<CommandMessage>((_, _) =>
+                Task.FromException(new InvalidOperationException("boom")))
+        );
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(
-                null,
-                new CommandMessage(),
-                (_, _, _) => Task.FromException(new InvalidOperationException("boom")),
-                TestContext.Current.CancellationToken
-            )
+            behavior.Handle(new CommandMessage(), TestContext.Current.CancellationToken)
         );
 
         Assert.Equal(ActivityStatusCode.Error, Assert.Single(stoppedActivities).Status);
@@ -59,15 +54,11 @@ public sealed class TelemetryBehaviorTests
     public async Task TelemetryNotificationBehavior_StartsAndStopsActivity()
     {
         using var listener = CreateListener(out var stoppedActivities);
-        var behavior = new TelemetryNotificationBehavior<NotificationMessage>();
-
-        await behavior.Handle(
-            null,
-            new NotificationMessage(),
-            (_, _, _) => Task.CompletedTask,
-            TestContext.Current.CancellationToken
+        var behavior = new TestTelemetryNotificationBehavior<NotificationMessage>(
+            new LambdaNotificationHandler<NotificationMessage>((_, _) => Task.CompletedTask)
         );
 
+        await behavior.Handle(new NotificationMessage(), TestContext.Current.CancellationToken);
         Assert.Equal("NetMediate.Notify", Assert.Single(stoppedActivities).OperationName);
     }
 
@@ -75,15 +66,13 @@ public sealed class TelemetryBehaviorTests
     public async Task TelemetryNotificationBehavior_RethrowsAndSetsErrorStatus()
     {
         using var listener = CreateListener(out var stoppedActivities);
-        var behavior = new TelemetryNotificationBehavior<NotificationMessage>();
+        var behavior = new TestTelemetryNotificationBehavior<NotificationMessage>(
+            new LambdaNotificationHandler<NotificationMessage>((_, _) =>
+                Task.FromException(new InvalidOperationException("boom")))
+        );
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(
-                null,
-                new NotificationMessage(),
-                (_, _, _) => Task.FromException(new InvalidOperationException("boom")),
-                TestContext.Current.CancellationToken
-            )
+            behavior.Handle(new NotificationMessage(), TestContext.Current.CancellationToken)
         );
 
         Assert.Equal(ActivityStatusCode.Error, Assert.Single(stoppedActivities).Status);
@@ -93,14 +82,11 @@ public sealed class TelemetryBehaviorTests
     public async Task TelemetryRequestBehavior_StartsAndStopsActivity()
     {
         using var listener = CreateListener(out var stoppedActivities);
-        var behavior = new TelemetryRequestBehavior<RequestMessage, Response>();
-
-        var response = await behavior.Handle(
-            null,
-            new RequestMessage(),
-            (_, _, _) => Task.FromResult(new Response("ok")),
-            TestContext.Current.CancellationToken
+        var behavior = new TestTelemetryRequestBehavior<RequestMessage, Response>(
+            new LambdaRequestHandler<RequestMessage, Response>((_, _) => Task.FromResult(new Response("ok")))
         );
+
+        var response = await behavior.Handle(new RequestMessage(), TestContext.Current.CancellationToken);
 
         Assert.Equal("ok", response.Value);
         Assert.Equal("NetMediate.Request", Assert.Single(stoppedActivities).OperationName);
@@ -110,15 +96,13 @@ public sealed class TelemetryBehaviorTests
     public async Task TelemetryRequestBehavior_RethrowsAndSetsErrorStatus()
     {
         using var listener = CreateListener(out var stoppedActivities);
-        var behavior = new TelemetryRequestBehavior<RequestMessage, Response>();
+        var behavior = new TestTelemetryRequestBehavior<RequestMessage, Response>(
+            new LambdaRequestHandler<RequestMessage, Response>((_, _) =>
+                Task.FromException<Response>(new InvalidOperationException("boom")))
+        );
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(
-                null,
-                new RequestMessage(),
-                (_, _, _) => Task.FromException<Response>(new InvalidOperationException("boom")),
-                TestContext.Current.CancellationToken
-            )
+            behavior.Handle(new RequestMessage(), TestContext.Current.CancellationToken)
         );
 
         Assert.Equal(ActivityStatusCode.Error, Assert.Single(stoppedActivities).Status);
@@ -188,10 +172,51 @@ public sealed class TelemetryBehaviorTests
         var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == NetMediateDiagnostics.ActivitySourceName,
-            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) =>
+                ActivitySamplingResult.AllDataAndRecorded,
             ActivityStopped = activity => activities.Add(activity),
         };
         ActivitySource.AddActivityListener(listener);
         return listener;
     }
+
+    private sealed class LambdaCommandHandler<TMessage>(
+        Func<TMessage, CancellationToken, Task> callback
+    ) : ICommandHandler<TMessage>
+        where TMessage : notnull
+    {
+        public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+            callback(message, cancellationToken);
+    }
+
+    private sealed class LambdaNotificationHandler<TMessage>(
+        Func<TMessage, CancellationToken, Task> callback
+    ) : INotificationHandler<TMessage>
+        where TMessage : notnull
+    {
+        public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+            callback(message, cancellationToken);
+    }
+
+    private sealed class LambdaRequestHandler<TMessage, TResponse>(
+        Func<TMessage, CancellationToken, Task<TResponse>> callback
+    ) : IRequestHandler<TMessage, TResponse>
+        where TMessage : notnull
+    {
+        public Task<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
+            callback(message, cancellationToken);
+    }
+
+    private sealed class TestTelemetryCommandBehavior<TMessage>(ICommandHandler<TMessage> handler)
+        : TelemetryCommandBehavior<TMessage>(handler)
+        where TMessage : notnull;
+
+    private sealed class TestTelemetryNotificationBehavior<TMessage>(INotificationHandler<TMessage> handler)
+        : TelemetryNotificationBehavior<TMessage>(handler)
+        where TMessage : notnull;
+
+    private sealed class TestTelemetryRequestBehavior<TMessage, TResponse>(
+        IRequestHandler<TMessage, TResponse> handler
+    ) : TelemetryRequestBehavior<TMessage, TResponse>(handler)
+        where TMessage : notnull;
 }

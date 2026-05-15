@@ -1,11 +1,10 @@
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Engines;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Benchmarks;
 
 /// <summary>
-/// Core dispatch throughput benchmarks — no pipeline behaviors, no resilience, no adapters.
+/// Core dispatch throughput benchmarks — no decorators, no resilience, no adapters.
 /// Measures the raw overhead of the mediator dispatch path for each message type.
 /// </summary>
 /// <remarks>
@@ -20,7 +19,6 @@ namespace NetMediate.Benchmarks;
 /// </code>
 /// </remarks>
 [MemoryDiagnoser]
-[SimpleJob(RunStrategy.Throughput)]
 public class CoreDispatchBenchmarks
 {
     private IMediator _mediator = null!;

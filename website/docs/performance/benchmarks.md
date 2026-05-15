@@ -261,3 +261,21 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 | Notification `Notify` | 128.85 ns | 28.53 ns | ✅ -77.9% | ✅ -288 B |
 | Request `Request` | 89.91 ns | 63.11 ns | ✅ -29.8% | ✅ -40 B |
 | Stream `RequestStream` | 196.07 ns | 136.39 ns | ✅ -30.4% | ✅ -88 B |
+
+### Historical baseline anchor (FIFO lineage)
+
+To keep the historical context explicit, we also track the **first milestone anchor** that was previously part of the FIFO baseline lineage:
+
+- **Version (benchmark commit):** `107d59e`
+- **Date (run):** `2026-05-05 22:58 UTC`
+- **PR:** [#70](https://github.com/schivei/net-mediate/pull/70)
+- **Where it entered the FIFO history:** `f9b0f3f` (`chore: update BENCHMARKS.md from CI benchmark run [skip ci]`)
+
+| Benchmark | Milestone anchor (`107d59e`) |
+|---|---|
+| Command `Send` | 67.23 ns |
+| Notification `Notify` | 100.77 ns |
+| Request `Request` | 68.72 ns |
+| Stream `RequestStream` | 136.65 ns |
+
+**Why keep this historical comparison:** this was the last version associated with the first broad improvement milestone across the four core dispatch benchmarks before later architectural cycles changed the short-term baseline ring composition. The CI regression gate remains based on the current target-branch median ring; the anchor is documentary context for long-term trend analysis.

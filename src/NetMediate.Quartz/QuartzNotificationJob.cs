@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
@@ -54,7 +53,7 @@ public sealed class QuartzNotificationJob : IJob
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<
         Type,
-        Func<INotifiable, object?, object, CancellationToken, Task>
+        Func<IMediator, object?, object, CancellationToken, Task>
     > s_dispatcherCache = new();
 
     /// <inheritdoc />
@@ -104,20 +103,20 @@ public sealed class QuartzNotificationJob : IJob
                 routingKey = System.Text.Json.JsonSerializer.Deserialize(keyJson, keyType);
         }
 
-        var notifiable = ServiceProvider.GetRequiredService<INotifiable>();
+        var notifiable = ServiceProvider.GetRequiredService<IMediator>();
         var dispatcher = s_dispatcherCache.GetOrAdd(messageType, BuildDispatcher);
 
         await dispatcher(notifiable, routingKey, message, context.CancellationToken)
             .ConfigureAwait(false);
     }
 
-    private static Func<INotifiable, object?, object, CancellationToken, Task> BuildDispatcher(
+    private static Func<IMediator, object?, object, CancellationToken, Task> BuildDispatcher(
         Type messageType
     )
     {
-        var method = typeof(INotifiable)
+        var method = typeof(IMediator)
             .GetMethods()
-            .First(m => m.Name == nameof(INotifiable.Notify) && m.GetParameters().Length == 3)
+            .First(m => m.Name == nameof(IMediator.Notify) && m.GetParameters().Length == 3)
             .MakeGenericMethod(messageType);
 
         return (notifiable, key, message, cancellationToken) =>

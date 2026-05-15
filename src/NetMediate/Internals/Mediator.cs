@@ -8,8 +8,7 @@ namespace NetMediate.Internals;
 internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable notifier) : IMediator
 {
     // Handler caches — populated once per handler type, on first dispatch.
-    // Handlers are registered as Singletons, so the resolved arrays are stable for the
-    // provider's lifetime.  Instance-level caches prevent cross-container contamination
+    // Cache scope is per-Mediator instance/provider to avoid cross-container contamination
     // between test suites and multi-tenant hosts.
     private readonly ConcurrentDictionary<Type, object> _cmdCache    = new();
     private readonly ConcurrentDictionary<(Type, Type), object> _reqCache    = new();
@@ -186,7 +185,13 @@ internal sealed class Mediator(IServiceProvider serviceProvider, INotifiable not
         if (handlers.Length == 0)
             return AsyncEnumerable.Empty<TResponse>();
 
-        return handlers.Select(x => x.Handle(message, cancellationToken))
-            .Aggregate((prev, next) => prev.Concat(next));
+        if (handlers.Length == 1)
+            return handlers[0].Handle(message, cancellationToken);
+
+        var stream = handlers[0].Handle(message, cancellationToken);
+        for (int i = 1; i < handlers.Length; i++)
+            stream = stream.Concat(handlers[i].Handle(message, cancellationToken));
+
+        return stream;
     }
 }

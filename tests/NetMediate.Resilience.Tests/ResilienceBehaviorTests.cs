@@ -290,6 +290,38 @@ public sealed class ResilienceBehaviorTests
     }
 
     [Fact]
+    public async Task CircuitBreakerCommandBehavior_WhenOpenDurationIsNonPositive_UsesFallbackDuration()
+    {
+        var attempts = 0;
+        var behavior = new CircuitBreakerCommandBehavior<CircuitCommandMessage>(
+            new LambdaCommandHandler<CircuitCommandMessage>((_, _) =>
+            {
+                attempts++;
+                return attempts == 1
+                    ? Task.FromException(new InvalidOperationException("boom"))
+                    : Task.CompletedTask;
+            }),
+            Options.Create(
+                new CircuitBreakerBehaviorOptions
+                {
+                    FailureThreshold = 1,
+                    OpenDuration = TimeSpan.Zero,
+                }
+            )
+        );
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            behavior.Handle(new CircuitCommandMessage(), TestContext.Current.CancellationToken)
+        );
+
+        var openException = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            behavior.Handle(new CircuitCommandMessage(), TestContext.Current.CancellationToken)
+        );
+
+        Assert.Contains("Circuit open for command", openException.Message);
+    }
+
+    [Fact]
     public async Task CircuitBreakerCommandBehavior_WhenDisabled_BypassesCircuit()
     {
         var called = false;
@@ -405,6 +437,36 @@ public sealed class ResilienceBehaviorTests
         Assert.Equal(2, attempts);
         Assert.Equal(9, response.Value);
         Assert.True(DateTimeOffset.UtcNow - startedAt >= TimeSpan.FromMilliseconds(20));
+    }
+
+    [Fact]
+    public async Task RetryRequestBehavior_WhenDelayIsNegative_TreatsDelayAsZero()
+    {
+        var attempts = 0;
+        var behavior = new TestRetryRequestBehavior<RetryRequestMessage, Response>(
+            new LambdaRequestHandler<RetryRequestMessage, Response>((_, _) =>
+            {
+                attempts++;
+                return attempts == 1
+                    ? Task.FromException<Response>(new InvalidOperationException("fail"))
+                    : Task.FromResult(new Response(18));
+            }),
+            Options.Create(
+                new RetryBehaviorOptions
+                {
+                    MaxRetryCount = 1,
+                    Delay = TimeSpan.FromMilliseconds(-5),
+                }
+            )
+        );
+
+        var response = await behavior.Handle(
+            new RetryRequestMessage(),
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(2, attempts);
+        Assert.Equal(18, response.Value);
     }
 
     [Fact]
@@ -537,6 +599,35 @@ public sealed class ResilienceBehaviorTests
 
         Assert.Equal(2, attempts);
         Assert.Equal([12], items.Select(static x => x.Value).ToArray());
+    }
+
+    [Fact]
+    public async Task RetryStreamBehavior_WhenDelayIsNegative_TreatsDelayAsZero()
+    {
+        var attempts = 0;
+        var behavior = new TestRetryStreamBehavior<RetryStreamMessage, Response>(
+            new LambdaStreamHandler<RetryStreamMessage, Response>((_, cancellationToken) =>
+            {
+                attempts++;
+                return attempts == 1
+                    ? ThrowingStream<Response>(new InvalidOperationException("retry"), cancellationToken)
+                    : ValuesStream([new Response(19)], cancellationToken);
+            }),
+            Options.Create(
+                new RetryBehaviorOptions
+                {
+                    MaxRetryCount = 1,
+                    Delay = TimeSpan.FromMilliseconds(-10),
+                }
+            )
+        );
+
+        var items = await ToListAsync(
+            behavior.Handle(new RetryStreamMessage(), TestContext.Current.CancellationToken)
+        );
+
+        Assert.Equal(2, attempts);
+        Assert.Equal([19], items.Select(static x => x.Value).ToArray());
     }
 
     [Fact]

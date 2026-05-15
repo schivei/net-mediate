@@ -71,6 +71,24 @@ public sealed class MediatorAndNotifierCoverageTests
     }
 
     [Fact]
+    public async Task Mediator_Send_WithKey_UsesKeyedHandlers()
+    {
+        using var provider = BuildProvider(services =>
+        {
+            services.AddKeyedSingleton<ICommandHandler<CommandMessage>, RecordingCommandHandler>("key-send");
+        });
+
+        var keyedHandler = Assert.IsType<RecordingCommandHandler>(
+            provider.GetRequiredKeyedService<ICommandHandler<CommandMessage>>("key-send")
+        );
+        var mediator = new Mediator(provider, new SpyNotifiable());
+
+        await mediator.Send("key-send", new CommandMessage(33), TestContext.Current.CancellationToken);
+
+        Assert.Equal([33], keyedHandler.Values);
+    }
+
+    [Fact]
     public async Task Mediator_Send_WhenPipelineThrows_WrapsException()
     {
         using var provider = BuildProvider(services =>
@@ -141,6 +159,26 @@ public sealed class MediatorAndNotifierCoverageTests
         );
 
         Assert.Equal(7, response.Value);
+    }
+
+    [Fact]
+    public async Task Mediator_Request_WithKey_UsesKeyedHandler()
+    {
+        using var provider = BuildProvider(services =>
+        {
+            services.AddKeyedSingleton<IRequestHandler<RequestMessage, Response>, RecordingRequestHandler>(
+                "key-request"
+            );
+        });
+
+        var mediator = new Mediator(provider, new SpyNotifiable());
+        var response = await mediator.Request<RequestMessage, Response>(
+            "key-request",
+            new RequestMessage(13),
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(13, response.Value);
     }
 
     [Fact]
@@ -229,6 +267,26 @@ public sealed class MediatorAndNotifierCoverageTests
         );
 
         Assert.Equal([6, 8], items);
+    }
+
+    [Fact]
+    public async Task Mediator_RequestStream_WithKey_UsesKeyedStreamHandlers()
+    {
+        using var provider = BuildProvider(services =>
+        {
+            services.AddKeyedSingleton<IStreamHandler<StreamMessage, int>, KeyedStreamHandler>("key-stream");
+        });
+
+        var mediator = new Mediator(provider, new SpyNotifiable());
+        var items = await ToList(
+            mediator.RequestStream<StreamMessage, int>(
+                "key-stream",
+                new StreamMessage(3),
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Equal([300, 400], items);
     }
 
     [Fact]
@@ -339,6 +397,41 @@ public sealed class MediatorAndNotifierCoverageTests
         await batchCompletion.Task.WaitAsync(TestContext.Current.CancellationToken);
         Assert.True(singleCount > 0);
         Assert.True(batchCount >= 3);
+    }
+
+    [Fact]
+    public async Task Notifier_Notify_WithKey_UsesKeyedHandlers()
+    {
+        var keyedCount = 0;
+        var unkeyedCount = 0;
+        using var provider = BuildProvider(services =>
+        {
+            services.AddSingleton<INotificationHandler<NotificationMessage>>(
+                new LambdaNotificationHandler<NotificationMessage>((_, _) =>
+                {
+                    Interlocked.Increment(ref unkeyedCount);
+                    return Task.CompletedTask;
+                })
+            );
+            services.AddKeyedSingleton<INotificationHandler<NotificationMessage>>(
+                "key-notify",
+                new LambdaNotificationHandler<NotificationMessage>((_, _) =>
+                {
+                    Interlocked.Increment(ref keyedCount);
+                    return Task.CompletedTask;
+                })
+            );
+        });
+
+        var notifier = new Notifier(provider);
+        await notifier.Notify(
+            "key-notify",
+            new NotificationMessage("k"),
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(1, keyedCount);
+        Assert.Equal(0, unkeyedCount);
     }
 
     [Fact]
@@ -509,6 +602,19 @@ public sealed class MediatorAndNotifierCoverageTests
         {
             yield return message.Value * multiplier;
             yield return (message.Value + 1) * multiplier;
+            await Task.CompletedTask;
+        }
+    }
+
+    internal sealed class KeyedStreamHandler : IStreamHandler<StreamMessage, int>
+    {
+        public async IAsyncEnumerable<int> Handle(
+            StreamMessage message,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default
+        )
+        {
+            yield return message.Value * 100;
+            yield return (message.Value + 1) * 100;
             await Task.CompletedTask;
         }
     }

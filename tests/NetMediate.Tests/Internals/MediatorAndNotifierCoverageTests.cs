@@ -377,6 +377,56 @@ public sealed class MediatorAndNotifierCoverageTests
     }
 
     [Fact]
+    public async Task Notifier_DispatchNotifications_IncompleteFaultingHandler_ExceptionSwallowed()
+    {
+        var notifier = new Notifier{ ServiceProvider = new ServiceCollection().BuildServiceProvider() };
+        var handlerTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var exception = await Record.ExceptionAsync(() =>
+            notifier.DispatchNotifications(
+                null,
+                new NotificationMessage("value"),
+                [
+                    new LambdaNotificationHandler<NotificationMessage>((_, _) =>
+                        handlerTask.Task)
+                ],
+                TestContext.Current.CancellationToken
+            ));
+
+        handlerTask.TrySetException(new InvalidOperationException("late handler fault"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => handlerTask.Task);
+        await Task.Delay(50, TestContext.Current.CancellationToken);
+
+        Assert.Null(exception);
+    }
+
+    [Fact]
+    public async Task Notifier_DispatchNotifications_SyncFaultingHandler_ContinuesDispatch()
+    {
+        var notifier = new Notifier{ ServiceProvider = new ServiceCollection().BuildServiceProvider() };
+        var invoked = false;
+
+        var exception = await Record.ExceptionAsync(() =>
+            notifier.DispatchNotifications(
+                null,
+                new NotificationMessage("value"),
+                [
+                    new LambdaNotificationHandler<NotificationMessage>((_, _) =>
+                        throw new InvalidOperationException("sync handler fault")),
+                    new LambdaNotificationHandler<NotificationMessage>((_, _) =>
+                    {
+                        invoked = true;
+                        return Task.CompletedTask;
+                    })
+                ],
+                TestContext.Current.CancellationToken
+            ));
+
+        Assert.Null(exception);
+        Assert.True(invoked);
+    }
+
+    [Fact]
     public async Task Notifier_Notify_UsesPipelineForSingleAndBatchMessages()
     {
         var singleCount = 0;

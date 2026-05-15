@@ -129,7 +129,6 @@ public sealed class QuartzNotificationJob : IJob
     {
         var method = typeof(QuartzNotificationJob).GetMethod(
             nameof(DispatchNotification),
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
             [
                 typeof(IServiceProvider),
                 typeof(object),
@@ -149,7 +148,16 @@ public sealed class QuartzNotificationJob : IJob
             (Task)method.Invoke(null, [serviceProvider, key, message, cancellationToken])!;
     }
 
-    private static Task DispatchNotification<TMessage>(
+    /// <summary>
+    /// Dispatches a deserialized notification message to resolved handlers through <see cref="INotifiable"/>.
+    /// </summary>
+    /// <typeparam name="TMessage">The notification message type.</typeparam>
+    /// <param name="serviceProvider">Service provider used to resolve notifier and handlers.</param>
+    /// <param name="key">Optional routing key used for keyed handler resolution.</param>
+    /// <param name="message">Deserialized message instance.</param>
+    /// <param name="cancellationToken">Cancellation token for handler dispatch.</param>
+    /// <returns>A task representing the dispatch operation.</returns>
+    public static Task DispatchNotification<TMessage>(
         IServiceProvider serviceProvider,
         object? key,
         object message,

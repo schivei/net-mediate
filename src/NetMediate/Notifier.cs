@@ -40,7 +40,7 @@ public sealed class Notifier : INotifiable
                 if (!t.IsCompletedSuccessfully)
                 {
                     _ = t.ContinueWith(
-                        static task => _ = task.Exception,
+                        static task => Observe(task.Exception),
                         CancellationToken.None,
                         TaskContinuationOptions.OnlyOnFaulted,
                         TaskScheduler.Default
@@ -56,5 +56,8 @@ public sealed class Notifier : INotifiable
         return Task.CompletedTask;
     }
 
-    private static void Observe(Exception? exception) { }
+    private static void Observe(Exception? exception)
+    {
+        GC.KeepAlive(exception);
+    }
 }

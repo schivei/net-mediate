@@ -127,12 +127,22 @@ public sealed class QuartzNotificationJob : IJob
         Type messageType
     )
     {
-        var method = typeof(QuartzNotificationJob)
-            .GetMethods(
-                System.Reflection.BindingFlags.NonPublic
-                    | System.Reflection.BindingFlags.Static
-            )
-            .Single(m => m.Name == nameof(DispatchNotification) && m.GetParameters()[2].ParameterType == typeof(object))
+        var method = typeof(QuartzNotificationJob).GetMethod(
+            nameof(DispatchNotification),
+            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static,
+            [
+                typeof(IServiceProvider),
+                typeof(object),
+                typeof(object),
+                typeof(CancellationToken)
+            ]
+        )
+            ?? throw new MissingMethodException(
+                typeof(QuartzNotificationJob).FullName,
+                nameof(DispatchNotification)
+            );
+
+        method = method
             .MakeGenericMethod(messageType);
 
         return (serviceProvider, key, message, cancellationToken) =>

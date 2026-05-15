@@ -100,8 +100,11 @@ public sealed class QuartzMediator : IMediator
     /// <inheritdoc/>
     public async Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
     {
-        foreach (var m in messages)
-            await Notify(key, m, cancellationToken).ConfigureAwait(false);
+        var tasks = new List<Task>();
+        foreach (var message in messages)
+            tasks.Add(Notify(key, message, cancellationToken));
+
+        await Task.WhenAll(tasks).ConfigureAwait(false);
 
     }
 

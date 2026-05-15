@@ -33,7 +33,7 @@ public sealed class Notifier : INotifiable
                 var t = h.Handle(message, cancellationToken);
                 if (t.IsFaulted)
                 {
-                    _ = t.Exception;
+                    Observe(t.Exception);
                     continue;
                 }
 
@@ -47,11 +47,14 @@ public sealed class Notifier : INotifiable
                     );
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                Observe(ex);
             }
         }
 
         return Task.CompletedTask;
     }
+
+    private static void Observe(Exception? exception) { }
 }

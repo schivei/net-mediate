@@ -40,7 +40,7 @@ public sealed class Notifier : INotifiable
                 if (!t.IsCompletedSuccessfully)
                 {
                     _ = t.ContinueWith(
-                        static task => Observe(task.Exception),
+                        static task => Observe(task.Exception!),
                         CancellationToken.None,
                         TaskContinuationOptions.OnlyOnFaulted
                             | TaskContinuationOptions.ExecuteSynchronously,

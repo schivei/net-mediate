@@ -380,7 +380,7 @@ public sealed class MediatorAndNotifierCoverageTests
     public async Task Notifier_DispatchNotifications_IncompleteFaultingHandler_ExceptionSwallowed()
     {
         var notifier = new Notifier{ ServiceProvider = new ServiceCollection().BuildServiceProvider() };
-        var handlerTask = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var handlerTaskSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var exception = await Record.ExceptionAsync(() =>
             notifier.DispatchNotifications(
@@ -388,13 +388,13 @@ public sealed class MediatorAndNotifierCoverageTests
                 new NotificationMessage("value"),
                 [
                     new LambdaNotificationHandler<NotificationMessage>((_, _) =>
-                        handlerTask.Task)
+                        handlerTaskSource.Task)
                 ],
                 TestContext.Current.CancellationToken
             ));
 
-        handlerTask.TrySetException(new InvalidOperationException("late handler fault"));
-        await Assert.ThrowsAsync<InvalidOperationException>(() => handlerTask.Task);
+        handlerTaskSource.TrySetException(new InvalidOperationException("late handler fault"));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => handlerTaskSource.Task);
 
         Assert.Null(exception);
     }

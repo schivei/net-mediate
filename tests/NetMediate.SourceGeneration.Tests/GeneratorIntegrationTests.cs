@@ -242,7 +242,7 @@ public sealed class GeneratorIntegrationTests
         return refs;
     }
 
-    private static MetadataReference CreateMetadataReference(
+    private static PortableExecutableReference CreateMetadataReference(
         string assemblyName,
         string source,
         IEnumerable<MetadataReference>? additionalReferences = null,

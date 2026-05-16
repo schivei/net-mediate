@@ -653,82 +653,164 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         var dependencyChains = new List<string>();
         var handlerDescriptorRemovals = new Dictionary<(string serviceType, string serviceKey), int>();
         var threadLocalDescriptorRemovals = new HashSet<(string serviceType, string serviceKey)>();
+
+        foreach (var assembly in EnumerateReferencedAssemblies(compilation))
+        {
+            if (!TryCreateDependencyChain(compilation, assembly, out var dependencyChain))
+                continue;
+
+            if (dependencyChain is not null)
+                dependencyChains.Add(dependencyChain);
+
+            CollectExternalDependencyRegistrations(
+                assembly,
+                handlerDescriptorRemovals,
+                threadLocalDescriptorRemovals
+            );
+        }
+
+        var dependencyChainsSource = BuildDependencyChainsSource(dependencyChains);
+
+        if (handlerDescriptorRemovals.Count == 0 && threadLocalDescriptorRemovals.Count == 0)
+            return (dependencyChainsSource, string.Empty, string.Empty);
+
+        return (
+            dependencyChainsSource,
+            "\n        RemoveExternalHandlerDuplicates(services, localRegistrationStart);\n",
+            BuildDuplicateCleanupMembers(handlerDescriptorRemovals, threadLocalDescriptorRemovals)
+        );
+    }
+
+    private static IEnumerable<IAssemblySymbol> EnumerateReferencedAssemblies(Compilation compilation)
+    {
         var currentAssemblyName = compilation.AssemblyName ?? string.Empty;
 
-        foreach (var assembly in compilation
+        return compilation
             .References.Select(reference => compilation.GetAssemblyOrModuleSymbol(reference))
             .OfType<IAssemblySymbol>()
             .GroupBy(assembly => assembly.Name, StringComparer.Ordinal)
-            .Select(group => group.First()))
+            .Select(group => group.First())
+            .Where(assembly => assembly.Name != PackName && assembly.Name != currentAssemblyName);
+    }
+
+    private static bool TryCreateDependencyChain(
+        Compilation compilation,
+        IAssemblySymbol assembly,
+        out string? dependencyChain
+    )
+    {
+        dependencyChain = null;
+        if (!HasAddGenDIServices(compilation, assembly.Name))
+            return false;
+
+        if (HasAddNetMediate(compilation, assembly.Name))
+            return true;
+
+        dependencyChain =
+            $"        global::{assembly.Name}.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);";
+        return true;
+    }
+
+    private static bool HasAddGenDIServices(Compilation compilation, string assemblyName) =>
+        HasRegistrationMethod(
+            compilation.GetTypeByMetadataName(
+                $"{assemblyName}.DependencyInjection.GenDIServiceCollectionExtensions"
+            ),
+            "AddGenDIServices"
+        );
+
+    private static bool HasAddNetMediate(Compilation compilation, string assemblyName) =>
+        HasRegistrationMethod(
+            compilation.GetTypeByMetadataName($"{assemblyName}.NetMediateGeneratedDI"),
+            "AddNetMediate"
+        );
+
+    private static void CollectExternalDependencyRegistrations(
+        IAssemblySymbol assembly,
+        IDictionary<(string serviceType, string serviceKey), int> handlerDescriptorRemovals,
+        ISet<(string serviceType, string serviceKey)> threadLocalDescriptorRemovals
+    )
+    {
+        foreach (var handlerType in EnumerateNamedTypes(assembly.GlobalNamespace))
         {
-            if (assembly.Name == PackName || assembly.Name == currentAssemblyName)
+            if (!TryGetInjectableHandlerAttribute(handlerType, out var injectableAttribute))
                 continue;
 
-            var addGenDIType = compilation.GetTypeByMetadataName(
-                $"{assembly.Name}.DependencyInjection.GenDIServiceCollectionExtensions"
+            CollectExternalHandlerRegistrationKeys(
+                handlerType,
+                injectableAttribute,
+                handlerDescriptorRemovals,
+                threadLocalDescriptorRemovals
             );
-            if (!HasRegistrationMethod(addGenDIType, "AddGenDIServices"))
-                continue;
-
-            var addNetMediateType = compilation.GetTypeByMetadataName(
-                $"{assembly.Name}.NetMediateGeneratedDI"
-            );
-            var hasAddNetMediate = HasRegistrationMethod(addNetMediateType, "AddNetMediate");
-
-            if (!hasAddNetMediate)
-            {
-                dependencyChains.Add(
-                    $"        global::{assembly.Name}.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);"
-                );
-            }
-
-            foreach (var handlerType in EnumerateNamedTypes(assembly.GlobalNamespace))
-            {
-                if (
-                    handlerType.IsAbstract
-                    || handlerType.IsGenericType
-                    || !IsPubliclyAccessible(handlerType)
-                    || !TryGetInjectableAttribute(handlerType, out var injectableAttribute)
-                )
-                {
-                    continue;
-                }
-
-                foreach (var @interface in handlerType.AllInterfaces)
-                {
-                    if (
-                        !TryCreateExternalHandlerRegistration(
-                            handlerType,
-                            @interface,
-                            injectableAttribute,
-                            out var serviceType,
-                            out var serviceKey,
-                            out var threadLocalServiceKey
-                        )
-                    )
-                    {
-                        continue;
-                    }
-
-                    var removalKey = (serviceType, serviceKey ?? "null");
-                    handlerDescriptorRemovals.TryGetValue(removalKey, out var currentCount);
-                    handlerDescriptorRemovals[removalKey] = currentCount + 1;
-
-                    if (threadLocalServiceKey is not null)
-                        threadLocalDescriptorRemovals.Add((serviceType, threadLocalServiceKey));
-                }
-            }
         }
+    }
 
-        var dependencyChainsSource = dependencyChains.Count == 0
+    private static bool TryGetInjectableHandlerAttribute(
+        INamedTypeSymbol handlerType,
+        out AttributeData injectableAttribute
+    )
+    {
+        injectableAttribute = null!;
+
+        if (handlerType.IsAbstract || handlerType.IsGenericType || !IsPubliclyAccessible(handlerType))
+            return false;
+
+        return TryGetInjectableAttribute(handlerType, out injectableAttribute);
+    }
+
+    private static void CollectExternalHandlerRegistrationKeys(
+        INamedTypeSymbol handlerType,
+        AttributeData injectableAttribute,
+        IDictionary<(string serviceType, string serviceKey), int> handlerDescriptorRemovals,
+        ISet<(string serviceType, string serviceKey)> threadLocalDescriptorRemovals
+    )
+    {
+        foreach (var @interface in handlerType.AllInterfaces)
+        {
+            if (
+                !TryCreateExternalHandlerRegistration(
+                    handlerType,
+                    @interface,
+                    injectableAttribute,
+                    out var serviceType,
+                    out var serviceKey,
+                    out var threadLocalServiceKey
+                )
+            )
+            {
+                continue;
+            }
+
+            IncrementRegistrationRemoval(handlerDescriptorRemovals, serviceType, serviceKey ?? "null");
+
+            if (threadLocalServiceKey is not null)
+                threadLocalDescriptorRemovals.Add((serviceType, threadLocalServiceKey));
+        }
+    }
+
+    private static void IncrementRegistrationRemoval(
+        IDictionary<(string serviceType, string serviceKey), int> handlerDescriptorRemovals,
+        string serviceType,
+        string serviceKey
+    )
+    {
+        var removalKey = (serviceType, serviceKey);
+        handlerDescriptorRemovals.TryGetValue(removalKey, out var currentCount);
+        handlerDescriptorRemovals[removalKey] = currentCount + 1;
+    }
+
+    private static string BuildDependencyChainsSource(IReadOnlyCollection<string> dependencyChains) =>
+        dependencyChains.Count == 0
             ? string.Empty
             : "        // Referenced dependencies without their own AddNetMediate() entrypoint must be chained first.\n"
                 + string.Join("\n", dependencyChains)
                 + "\n\n";
 
-        if (handlerDescriptorRemovals.Count == 0 && threadLocalDescriptorRemovals.Count == 0)
-            return (dependencyChainsSource, string.Empty, string.Empty);
-
+    private static string BuildDuplicateCleanupMembers(
+        IReadOnlyDictionary<(string serviceType, string serviceKey), int> handlerDescriptorRemovals,
+        IReadOnlyCollection<(string serviceType, string serviceKey)> threadLocalDescriptorRemovals
+    )
+    {
         var removalLines = threadLocalDescriptorRemovals
             .OrderBy(item => item.serviceType, StringComparer.Ordinal)
             .ThenBy(item => item.serviceKey, StringComparer.Ordinal)
@@ -744,7 +826,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     )
             );
 
-        var duplicateCleanupMembers = $$"""
+        return $$"""
 
             private static void RemoveExternalHandlerDuplicates(
                 global::Microsoft.Extensions.DependencyInjection.IServiceCollection services,
@@ -780,12 +862,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     services.RemoveAt(matchingIndices[index]);
             }
         """;
-
-        return (
-            dependencyChainsSource,
-            "\n        RemoveExternalHandlerDuplicates(services, localRegistrationStart);\n",
-            duplicateCleanupMembers
-        );
     }
 
     private static bool HasRegistrationMethod(INamedTypeSymbol? typeSymbol, string methodName) =>

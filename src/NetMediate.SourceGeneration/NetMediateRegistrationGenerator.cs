@@ -792,7 +792,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 && method.Parameters.Length > 0
                 && method.Parameters[0].Type.ToDisplayString().Replace(GlobalNamespace, "")
                     == "Microsoft.Extensions.DependencyInjection.IServiceCollection"
-            ) == true;
+            ) ?? false;
 
     private static IEnumerable<INamedTypeSymbol> EnumerateNamedTypes(INamespaceSymbol namespaceSymbol)
     {
@@ -832,7 +832,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             .FirstOrDefault(attribute =>
                 attribute.AttributeClass?.ContainingNamespace.ToDisplayString() == "GenDI"
                 && attribute.AttributeClass.Name == "InjectableAttribute"
-            )!;
+            );
 
         return injectableAttribute is not null;
     }

@@ -74,6 +74,59 @@ public sealed class Mediator : IMediator
             ? GetStreamHandlers<TMessage, TResponse>()
             : [.. ServiceProvider.GetKeyedServices<IStreamHandler<TMessage, TResponse>>(key)];
 
+    private static async Task DispatchCommandHandlersAsync<TMessage>(
+        ICommandHandler<TMessage>[] handlers,
+        TMessage message,
+        CancellationToken cancellationToken
+    )
+        where TMessage : notnull
+    {
+        foreach (var handler in handlers)
+            await handler.Handle(message, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static MediatorException CreateMediatorException<TMessage>(
+        Type handlerType,
+        Exception exception
+    )
+        where TMessage : notnull =>
+        new(
+            typeof(TMessage),
+            handlerType,
+            Activity.Current?.Id,
+            exception
+        );
+
+    private static IAsyncEnumerable<TResponse> BuildStreamDispatch<TMessage, TResponse>(
+        IStreamHandler<TMessage, TResponse>[] handlers,
+        TMessage message,
+        CancellationToken cancellationToken
+    )
+        where TMessage : notnull
+    {
+        if (handlers.Length == 0)
+            return AsyncEnumerable.Empty<TResponse>();
+
+        if (handlers.Length == 1)
+            return handlers[0].Handle(message, cancellationToken);
+
+        return ConcatStreams(handlers, message, cancellationToken);
+    }
+
+    private static IAsyncEnumerable<TResponse> ConcatStreams<TMessage, TResponse>(
+        IStreamHandler<TMessage, TResponse>[] handlers,
+        TMessage message,
+        CancellationToken cancellationToken
+    )
+        where TMessage : notnull
+    {
+        var stream = handlers[0].Handle(message, cancellationToken);
+        for (int i = 1; i < handlers.Length; i++)
+            stream = stream.Concat(handlers[i].Handle(message, cancellationToken));
+
+        return stream;
+    }
+
     /// <inheritdoc/>
     public Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) =>
         Notify(null, message, cancellationToken);
@@ -129,10 +182,11 @@ public sealed class Mediator : IMediator
     {
         try
         {
-            ICommandHandler<TMessage>[] handlers = ResolveCommandHandlers<TMessage>(key);
-
-            foreach (var handler in handlers)
-                await handler.Handle(message, cancellationToken).ConfigureAwait(false);
+            await DispatchCommandHandlersAsync(
+                ResolveCommandHandlers<TMessage>(key),
+                message,
+                cancellationToken
+            ).ConfigureAwait(false);
         }
         catch (MediatorException)
         {
@@ -140,12 +194,7 @@ public sealed class Mediator : IMediator
         }
         catch (Exception ex)
         {
-            throw new MediatorException(
-                typeof(TMessage),
-                typeof(ICommandHandler<TMessage>),
-                Activity.Current?.Id,
-                ex
-            );
+            throw CreateMediatorException<TMessage>(typeof(ICommandHandler<TMessage>), ex);
         }
     }
 
@@ -199,10 +248,8 @@ public sealed class Mediator : IMediator
         }
         catch (Exception ex)
         {
-            throw new MediatorException(
-                typeof(TMessage),
+            throw CreateMediatorException<TMessage>(
                 typeof(IRequestHandler<TMessage, TResponse>),
-                Activity.Current?.Id,
                 ex
             );
         }
@@ -227,19 +274,9 @@ public sealed class Mediator : IMediator
         CancellationToken cancellationToken = default
     )
         where TMessage : notnull
-    {
-        IStreamHandler<TMessage, TResponse>[] handlers = ResolveStreamHandlers<TMessage, TResponse>(key);
-
-        if (handlers.Length == 0)
-            return AsyncEnumerable.Empty<TResponse>();
-
-        if (handlers.Length == 1)
-            return handlers[0].Handle(message, cancellationToken);
-
-        var stream = handlers[0].Handle(message, cancellationToken);
-        for (int i = 1; i < handlers.Length; i++)
-            stream = stream.Concat(handlers[i].Handle(message, cancellationToken));
-
-        return stream;
-    }
+        => BuildStreamDispatch(
+            ResolveStreamHandlers<TMessage, TResponse>(key),
+            message,
+            cancellationToken
+        );
 }

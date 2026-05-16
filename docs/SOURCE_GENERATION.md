@@ -45,14 +45,13 @@ var builder = Host.CreateApplicationBuilder();
 builder.Services.AddNetMediate();
 ```
 
-That's it. The generator discovers all concrete (non-abstract, non-generic) classes that implement one of the NetMediate handler interfaces in your project and wires them up with closed-type DI registrations:
+That's it. The generator discovers all concrete (non-abstract, non-generic) classes that implement one of the NetMediate handler interfaces in your project. The generated `AddNetMediate()` entrypoint is intentionally GenDI-first: it chains your project's `AddGenDIServices()` output first, then NetMediate's own `AddGenDIServices()` output. It does **not** emit legacy `Register*Handler<>` calls anymore.
 
-| Discovered interface | Generated result |
+| Generated artifact | Current role |
 |---|---|
-| `ICommandHandler<TMessage>` | Closed-type registrations for the handler and command executor |
-| `INotificationHandler<TMessage>` | Closed-type registrations for the handler and notification executor |
-| `IRequestHandler<TMessage, TResponse>` | Closed-type registrations for the handler and request executor |
-| `IStreamHandler<TMessage, TResponse>` | Closed-type registrations for the handler and stream executor |
+| `NetMediateGeneratedDI.g.cs` | Emits `AddNetMediate()` and chains application-local and NetMediate `AddGenDIServices()` calls |
+| `NetMediateTypedExtensions.g.cs` | Emits strongly typed `Send*Async`, `Notify*Async`, `Request*Async`, and `Stream*Async` helper methods |
+| `*.g.cs` framework behavior wrappers | Emits concrete decorator wrappers when `NetMediate.Diagnostics` and/or `NetMediate.Resilience` are referenced |
 
 The generated method is decorated with `[ExcludeFromCodeCoverage]` — you do not need to test it directly.
 
@@ -91,6 +90,8 @@ Use GenDI metadata to control `ServiceLifetime`, `Group`, `Order`, and `Key`. Us
 > - Handler with no `Key` → registered as a regular non-keyed service in the container. `mediator.SendMyCmdAsync(command, ct)` and `mediator.SendMyCmdAsync(null, command, ct)` are equivalent and target those non-keyed handlers.
 >
 > Keyed routing is handled by GenDI keyed service registrations; NetMediate only performs keyed dispatch resolution at runtime.
+
+When `NetMediate.Diagnostics` or `NetMediate.Resilience` is referenced, the generator also emits framework behavior wrapper classes that decorate the discovered handlers with the corresponding telemetry and resilience behaviors.
 
 ## AOT / NativeAOT
 

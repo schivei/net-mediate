@@ -189,7 +189,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     }
 
     private static IEnumerable<(string, string)> BuildFrameworkBehaviorEntries(
-        BuildRegistrationArguments arguments
+        BuildFrameworkBehaviorArguments arguments
     )
     {
         var(

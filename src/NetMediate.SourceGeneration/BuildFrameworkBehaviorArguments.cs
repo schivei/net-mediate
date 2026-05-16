@@ -2,7 +2,7 @@ using Microsoft.CodeAnalysis;
 
 namespace NetMediate.SourceGeneration;
 
-internal readonly record struct BuildRegistrationArguments(
+internal readonly record struct BuildFrameworkBehaviorArguments(
     string BehaviorTemplate,
     string AssemblyName,
     bool HasDiagnostics,
@@ -16,7 +16,7 @@ internal readonly record struct BuildRegistrationArguments(
         bool hasDiagnostics,
         bool hasResilience,
         INamedTypeSymbol handlerType
-    )(BuildRegistrationArguments args)
+    )(BuildFrameworkBehaviorArguments args)
     {
         return (
             args.BehaviorTemplate,
@@ -27,7 +27,7 @@ internal readonly record struct BuildRegistrationArguments(
         );
     }
 
-    public static implicit operator BuildRegistrationArguments(
+    public static implicit operator BuildFrameworkBehaviorArguments(
         (
             string behaviorTemplate,
             string assemblyName,

@@ -257,7 +257,7 @@ public sealed class GeneratorIntegrationTests
     /// extension method.
     /// </summary>
     [Fact]
-    public void Generator_WhenBuildingNetMediateAssembly_ShouldEmitFallbackStubOnly()
+    public void Generator_WhenBuildingNetMediateAssembly_ShouldEmitStubWithoutAddNetMediateExtension()
     {
         var (generatedSource, _) = RunGenerator(
             assemblyName: "NetMediate",

@@ -91,14 +91,20 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         }
 
         var behaviorTemplate = LoadBehaviorTemplate().Replace(CoverageToken, coverage);
-        var registrations = BuildRegistrations(types, hasDiagnostics, hasResilience, assemblyName, behaviorTemplate, out var frameworkBehaviors);
+        var frameworkBehaviors = BuildFrameworkBehaviors(
+            types,
+            hasDiagnostics,
+            hasResilience,
+            assemblyName,
+            behaviorTemplate
+        );
 
         foreach (var behavior in frameworkBehaviors)
         {
             sourceProductionContext.AddSource($"{behavior.Key}.g.cs", behavior.Value);
         }
 
-        var source = BuildSource(registrations, assemblyName, coverage);
+        var source = BuildSource(assemblyName, coverage);
         sourceProductionContext.AddSource("NetMediateGeneratedDI.g.cs", source);
 
         var typedExtensionMethods = BuildTypedExtensionMethods(types);
@@ -151,27 +157,23 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     }
 
     /// <summary>
-    /// Builds the ordered handler + behavior registrations.
-    /// Output order per message-type: Diagnostics behaviors → Resilience behaviors → handler.
+    /// Builds the generated framework behavior classes for the discovered handler types.
     /// Uses insertion-ordered dictionaries for deduplication so the same behavior is never
     /// emitted twice even when multiple handlers share the same message type.
     /// </summary>
-    private static IEnumerable<string> BuildRegistrations(
+    private static Dictionary<string, string> BuildFrameworkBehaviors(
         ImmutableArray<INamedTypeSymbol> types,
         bool hasDiagnostics,
         bool hasResilience,
         string assemblyName,
-        string template,
-        out Dictionary<string, string> behaviorClasses
+        string template
     )
     {
-        var handlers = new Dictionary<string, bool>();
-
         List<(string name, string content)> behaviors = [];
 
         foreach (var handlerType in types)
         {
-            behaviors.AddRange(BuildRegistration(
+            behaviors.AddRange(BuildFrameworkBehaviorEntries(
                 (
                     template,
                     assemblyName,
@@ -182,18 +184,13 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             ));
         }
 
-        behaviorClasses = behaviors.GroupBy(behavior => behavior.name)
+        return behaviors.GroupBy(behavior => behavior.name)
             .ToDictionary(group => group.Key, group => group.First().content);
-
-        var allRegistrations = handlers
-            .OrderBy(kv => kv.Key, StringComparer.OrdinalIgnoreCase)
-            .Select(kv => kv.Key)
-            .Distinct(StringComparer.OrdinalIgnoreCase);
-
-        return allRegistrations;
     }
 
-    private static IEnumerable<(string, string)> BuildRegistration(BuildRegistrationArguments arguments)
+    private static IEnumerable<(string, string)> BuildFrameworkBehaviorEntries(
+        BuildRegistrationArguments arguments
+    )
     {
         var(
             behaviorTemplate,
@@ -622,18 +619,11 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             return reader.ReadToEnd();
     }
 
-    private static string BuildSource(
-        IEnumerable<string> registrations,
-        string assemblyName,
-        string coverage
-    )
+    private static string BuildSource(string assemblyName, string coverage)
     {
-        const string indent = "            ";
-        var registrationsBlock = string.Join("\n", registrations.Select(r => indent + r));
-
         return LoadTemplate()
             .Replace(CoverageToken, coverage)
-            .Replace(RegistrationsToken, registrationsBlock)
+            .Replace(RegistrationsToken, string.Empty)
             .Replace(AssemblyNamespaceToken, assemblyName);
     }
 

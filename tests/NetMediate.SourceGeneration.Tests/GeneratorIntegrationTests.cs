@@ -253,12 +253,11 @@ public sealed class GeneratorIntegrationTests
 
     /// <summary>
     /// When the generator runs on the <c>NetMediate</c> assembly itself (as happens during
-    /// package build), it must NOT emit the <c>NetMediateGeneratedDI</c> class.  Emitting the
-    /// class would bake it into <c>NetMediate.dll</c>, causing a duplicate-type compile error
-    /// in any downstream project that references the package.
+    /// package build), it should emit only the fallback stub and no <c>AddNetMediate()</c>
+    /// extension method.
     /// </summary>
-    [Fact(Skip = "Legacy skip-emission expectations are being updated for the current generator output.")]
-    public void Generator_WhenBuildingNetMediateAssembly_ShouldSkipEmission()
+    [Fact]
+    public void Generator_WhenBuildingNetMediateAssembly_ShouldEmitFallbackStubOnly()
     {
         var (generatedSource, _) = RunGenerator(
             assemblyName: "NetMediate",
@@ -266,9 +265,9 @@ public sealed class GeneratorIntegrationTests
             includeNetMediateDll: false
         );
 
-        Assert.DoesNotContain("class NetMediateGeneratedDI", generatedSource);
-        Assert.DoesNotContain("public static", generatedSource);
-        Assert.Contains("Source generation skipped", generatedSource);
+        Assert.Contains("class NetMediateGeneratedDI", generatedSource);
+        Assert.DoesNotContain("AddNetMediate(", generatedSource);
+        Assert.Contains("No handlers found", generatedSource);
     }
 
     /// <summary>
@@ -306,9 +305,9 @@ public sealed class GeneratorIntegrationTests
         Assert.Contains("AddNetMediate", generatedSource);
     }
 
-    /// <summary>Command handler registration is emitted for a user project.</summary>
-    [Fact(Skip = "Legacy registration-shape expectations are being updated for the current generator output.")]
-    public void Generator_WhenUserProjectHasCommandHandler_ShouldRegisterIt()
+    /// <summary>Command handlers use the GenDI-first entrypoint and generate typed send helpers.</summary>
+    [Fact]
+    public void Generator_WhenUserProjectHasCommandHandler_ShouldChainGenDIServicesAndEmitTypedSendHelper()
     {
         const string userSource = """
             using NetMediate;
@@ -326,16 +325,25 @@ public sealed class GeneratorIntegrationTests
             }
             """;
 
-        var (generatedSource, _) = RunGenerator("MyApp", userSource);
+        var files = RunGeneratorAllFiles("MyApp", userSource);
+        var diSrc = files["NetMediateGeneratedDI.g.cs"];
+        var typedExtensionsSrc = files["NetMediateTypedExtensions.g.cs"];
 
-        Assert.Contains("RegisterCommandHandler", generatedSource);
-        Assert.Contains("PingHandler", generatedSource);
-        Assert.Contains("PingCommand", generatedSource);
+        Assert.Contains(
+            "MyApp.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);",
+            diSrc
+        );
+        Assert.Contains(
+            "global::NetMediate.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);",
+            diSrc
+        );
+        Assert.DoesNotContain("RegisterCommandHandler", diSrc);
+        Assert.Contains("SendPingCommandAsync", typedExtensionsSrc);
     }
 
-    /// <summary>Request handler registration is emitted for a user project.</summary>
-    [Fact(Skip = "Legacy registration-shape expectations are being updated for the current generator output.")]
-    public void Generator_WhenUserProjectHasRequestHandler_ShouldRegisterIt()
+    /// <summary>Request handlers use the GenDI-first entrypoint and generate typed request helpers.</summary>
+    [Fact]
+    public void Generator_WhenUserProjectHasRequestHandler_ShouldChainGenDIServicesAndEmitTypedRequestHelper()
     {
         const string userSource = """
             using NetMediate;
@@ -353,15 +361,25 @@ public sealed class GeneratorIntegrationTests
             }
             """;
 
-        var (generatedSource, _) = RunGenerator("MyApp", userSource);
+        var files = RunGeneratorAllFiles("MyApp", userSource);
+        var diSrc = files["NetMediateGeneratedDI.g.cs"];
+        var typedExtensionsSrc = files["NetMediateTypedExtensions.g.cs"];
 
-        Assert.Contains("RegisterRequestHandler", generatedSource);
-        Assert.Contains("GetHandler", generatedSource);
+        Assert.Contains(
+            "MyApp.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);",
+            diSrc
+        );
+        Assert.Contains(
+            "global::NetMediate.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);",
+            diSrc
+        );
+        Assert.DoesNotContain("RegisterRequestHandler", diSrc);
+        Assert.Contains("RequestGetQueryAsync", typedExtensionsSrc);
     }
 
-    /// <summary>Notification handler registration is emitted for a user project.</summary>
-    [Fact(Skip = "Legacy registration-shape expectations are being updated for the current generator output.")]
-    public void Generator_WhenUserProjectHasNotificationHandler_ShouldRegisterIt()
+    /// <summary>Notification handlers use the GenDI-first entrypoint and generate typed notify helpers.</summary>
+    [Fact]
+    public void Generator_WhenUserProjectHasNotificationHandler_ShouldChainGenDIServicesAndEmitTypedNotifyHelper()
     {
         const string userSource = """
             using NetMediate;
@@ -379,10 +397,20 @@ public sealed class GeneratorIntegrationTests
             }
             """;
 
-        var (generatedSource, _) = RunGenerator("MyApp", userSource);
+        var files = RunGeneratorAllFiles("MyApp", userSource);
+        var diSrc = files["NetMediateGeneratedDI.g.cs"];
+        var typedExtensionsSrc = files["NetMediateTypedExtensions.g.cs"];
 
-        Assert.Contains("RegisterNotificationHandler", generatedSource);
-        Assert.Contains("AlertHandler", generatedSource);
+        Assert.Contains(
+            "MyApp.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);",
+            diSrc
+        );
+        Assert.Contains(
+            "global::NetMediate.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);",
+            diSrc
+        );
+        Assert.DoesNotContain("RegisterNotificationHandler", diSrc);
+        Assert.Contains("NotifyAlertNotificationAsync", typedExtensionsSrc);
     }
 
     [Fact]

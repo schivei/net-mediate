@@ -50,6 +50,30 @@ public sealed class Mediator : IMediator
             (typeof(TMessage), typeof(TResponse)),
             _ => ServiceProvider.GetServices<IStreamHandler<TMessage, TResponse>>().ToArray());
 
+    private ICommandHandler<TMessage>[] ResolveCommandHandlers<TMessage>(object? key)
+        where TMessage : notnull =>
+        key is null
+            ? GetCommandHandlers<TMessage>()
+            : [.. ServiceProvider.GetKeyedServices<ICommandHandler<TMessage>>(key)];
+
+    private INotificationHandler<TMessage>[] ResolveNotifyHandlers<TMessage>(object? key)
+        where TMessage : notnull =>
+        key is null
+            ? GetNotifyHandlers<TMessage>()
+            : [.. ServiceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)];
+
+    private IRequestHandler<TMessage, TResponse> ResolveRequestHandler<TMessage, TResponse>(object? key)
+        where TMessage : notnull =>
+        key is null
+            ? GetRequestHandler<TMessage, TResponse>()
+            : ServiceProvider.GetRequiredKeyedService<IRequestHandler<TMessage, TResponse>>(key);
+
+    private IStreamHandler<TMessage, TResponse>[] ResolveStreamHandlers<TMessage, TResponse>(object? key)
+        where TMessage : notnull =>
+        key is null
+            ? GetStreamHandlers<TMessage, TResponse>()
+            : [.. ServiceProvider.GetKeyedServices<IStreamHandler<TMessage, TResponse>>(key)];
+
     /// <inheritdoc/>
     public Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) =>
         Notify(null, message, cancellationToken);
@@ -61,9 +85,7 @@ public sealed class Mediator : IMediator
         CancellationToken cancellationToken = default
     )
     {
-        INotificationHandler<TMessage>[] handlers = key is null
-            ? GetNotifyHandlers<TMessage>()
-            : [.. ServiceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)];
+        INotificationHandler<TMessage>[] handlers = ResolveNotifyHandlers<TMessage>(key);
 
         _ = Notifier.DispatchNotifications(key, message, handlers, cancellationToken);
 
@@ -107,9 +129,7 @@ public sealed class Mediator : IMediator
     {
         try
         {
-            ICommandHandler<TMessage>[] handlers = key is null
-                ? GetCommandHandlers<TMessage>()
-                : [.. ServiceProvider.GetKeyedServices<ICommandHandler<TMessage>>(key)];
+            ICommandHandler<TMessage>[] handlers = ResolveCommandHandlers<TMessage>(key);
 
             foreach (var handler in handlers)
                 await handler.Handle(message, cancellationToken).ConfigureAwait(false);
@@ -169,9 +189,7 @@ public sealed class Mediator : IMediator
     {
         try
         {
-            var handler = key is null
-                ? GetRequestHandler<TMessage, TResponse>()
-                : ServiceProvider.GetRequiredKeyedService<IRequestHandler<TMessage, TResponse>>(key);
+            var handler = ResolveRequestHandler<TMessage, TResponse>(key);
 
             return await handler.Handle(message, cancellationToken).ConfigureAwait(false);
         }
@@ -210,9 +228,7 @@ public sealed class Mediator : IMediator
     )
         where TMessage : notnull
     {
-        IStreamHandler<TMessage, TResponse>[] handlers = key is null
-            ? GetStreamHandlers<TMessage, TResponse>()
-            : [.. ServiceProvider.GetKeyedServices<IStreamHandler<TMessage, TResponse>>(key)];
+        IStreamHandler<TMessage, TResponse>[] handlers = ResolveStreamHandlers<TMessage, TResponse>(key);
 
         if (handlers.Length == 0)
             return AsyncEnumerable.Empty<TResponse>();

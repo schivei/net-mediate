@@ -600,6 +600,79 @@ public sealed class GeneratorIntegrationTests
     }
 
     [Fact]
+    public void Generator_WhenReferencedLibraryHandlerUsesInjectableKey_ShouldTrimKeyedTransitiveDuplicates()
+    {
+        const string referencedSource = """
+            using GenDI;
+            using Microsoft.Extensions.DependencyInjection;
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace Shared
+            {
+                public sealed record SharedCommand : ICommand;
+
+                [Injectable(ServiceLifetime.Singleton, Key = "shared-key")]
+                public sealed class SharedHandler : ICommandHandler<SharedCommand>
+                {
+                    public Task Handle(SharedCommand command, CancellationToken cancellationToken = default)
+                        => Task.CompletedTask;
+                }
+            }
+
+            namespace Shared.DependencyInjection
+            {
+                public static class GenDIServiceCollectionExtensions
+                {
+                    public static IServiceCollection AddGenDIServices(this IServiceCollection services)
+                        => services;
+                }
+            }
+            """;
+
+        const string userSource = """
+            using GenDI;
+            using Microsoft.Extensions.DependencyInjection;
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record LocalCommand : ICommand;
+
+            [Injectable(ServiceLifetime.Singleton)]
+            public sealed class LocalHandler : ICommandHandler<LocalCommand>
+            {
+                public Task Handle(LocalCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var sharedReference = CreateMetadataReference("Shared", referencedSource);
+        var files = RunGeneratorAllFiles(
+            assemblyName: "MyApp",
+            userSource: userSource,
+            additionalReferences: [sharedReference]
+        );
+        var diSrc = files["NetMediateGeneratedDI.g.cs"];
+
+        Assert.Contains(
+            "global::Shared.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);",
+            diSrc
+        );
+        Assert.Contains(
+            "RemoveAppendedDescriptors(services, startIndex, typeof(global::System.Threading.ThreadLocal<global::NetMediate.ICommandHandler<global::Shared.SharedCommand>>), \"gendi:thread:global::NetMediate.ICommandHandler<global::Shared.SharedCommand>:global::Shared.SharedHandler:shared-key\", 1);",
+            diSrc
+        );
+        Assert.Contains(
+            "RemoveAppendedDescriptors(services, startIndex, typeof(global::NetMediate.ICommandHandler<global::Shared.SharedCommand>), \"shared-key\", 1);",
+            diSrc
+        );
+    }
+
+    [Fact]
     public void Generator_WhenCommandHandlerHasInjectableKeyAttribute_DoesNotEmitKeyedHandlerRegistry()
     {
         const string userSource = """

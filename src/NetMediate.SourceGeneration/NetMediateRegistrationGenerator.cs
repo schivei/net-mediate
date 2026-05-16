@@ -781,7 +781,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 continue;
             }
 
-            IncrementRegistrationRemoval(handlerDescriptorRemovals, serviceType, serviceKey ?? "null");
+            IncrementRegistrationRemoval(handlerDescriptorRemovals, serviceType, serviceKey!);
 
             if (threadLocalServiceKey is not null)
                 threadLocalDescriptorRemovals.Add((serviceType, threadLocalServiceKey));

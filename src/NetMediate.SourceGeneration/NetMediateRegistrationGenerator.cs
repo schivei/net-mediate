@@ -762,18 +762,22 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 int count
             )
             {
-                for (var removed = 0; removed < count; removed++)
+                var matchingIndices = new global::System.Collections.Generic.List<int>(count);
+                for (
+                    var index = startIndex;
+                    index < services.Count && matchingIndices.Count < count;
+                    index++
+                )
                 {
-                    for (var index = startIndex; index < services.Count; index++)
-                    {
-                        var descriptor = services[index];
-                        if (descriptor.ServiceType != serviceType || !Equals(descriptor.ServiceKey, serviceKey))
-                            continue;
+                    var descriptor = services[index];
+                    if (descriptor.ServiceType != serviceType || !Equals(descriptor.ServiceKey, serviceKey))
+                        continue;
 
-                        services.RemoveAt(index);
-                        break;
-                    }
+                    matchingIndices.Add(index);
                 }
+
+                for (var index = matchingIndices.Count - 1; index >= 0; index--)
+                    services.RemoveAt(matchingIndices[index]);
             }
         """;
 

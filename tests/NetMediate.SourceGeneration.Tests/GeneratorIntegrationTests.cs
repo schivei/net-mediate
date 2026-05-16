@@ -267,7 +267,7 @@ public sealed class GeneratorIntegrationTests
 
         Assert.Contains("class NetMediateGeneratedDI", generatedSource);
         Assert.DoesNotContain("AddNetMediate(", generatedSource);
-        Assert.Contains("No handlers found", generatedSource);
+        Assert.Contains("// No handlers found — no registrations to generate.", generatedSource);
     }
 
     /// <summary>

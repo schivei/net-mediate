@@ -623,7 +623,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     {
         return LoadTemplate()
             .Replace(CoverageToken, coverage)
-            .Replace(RegistrationsToken, string.Empty)
             .Replace(AssemblyNamespaceToken, assemblyName);
     }
 

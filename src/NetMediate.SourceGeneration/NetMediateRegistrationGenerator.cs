@@ -53,14 +53,27 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 bool isNetMediateAssembly,
                 string assemblyName,
                 bool supportsGlobalUsing,
-                string coverage
+                string coverage,
+                string dependencyChains,
+                string duplicateCleanupCall,
+                string duplicateCleanupMembers
             ) Right
         ) input
     )
     {
         var (
             types,
-            (hasDiagnostics, hasResilience, isNetMediateAssembly, assemblyName, supportsGlobalUsing, coverage)
+            (
+                hasDiagnostics,
+                hasResilience,
+                isNetMediateAssembly,
+                assemblyName,
+                supportsGlobalUsing,
+                coverage,
+                dependencyChains,
+                duplicateCleanupCall,
+                duplicateCleanupMembers
+            )
         ) = input;
 
         if (supportsGlobalUsing)
@@ -104,7 +117,13 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             sourceProductionContext.AddSource($"{behavior.Key}.g.cs", behavior.Value);
         }
 
-        var source = BuildSource(assemblyName, coverage);
+        var source = BuildSource(
+            assemblyName,
+            coverage,
+            dependencyChains,
+            duplicateCleanupCall,
+            duplicateCleanupMembers
+        );
         sourceProductionContext.AddSource("NetMediateGeneratedDI.g.cs", source);
 
         var typedExtensionMethods = BuildTypedExtensionMethods(types);
@@ -118,7 +137,10 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         bool isNetMediateAssembly,
         string assemblyName,
         bool supportsGlobalUsing,
-        string coverage
+        string coverage,
+        string dependencyChains,
+        string duplicateCleanupCall,
+        string duplicateCleanupMembers
     ) Selects(Compilation compilation)
     {
         var names = compilation.ReferencedAssemblyNames.Select(name => name.Name);
@@ -127,6 +149,8 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         bool isNetMediateAssembly = compilation.AssemblyName?.Replace(GlobalNamespace, "") == PackName;
         bool supportsGlobalUsing =
             compilation is CSharpCompilation { LanguageVersion: >= LanguageVersion.CSharp10 };
+        var (dependencyChains, duplicateCleanupCall, duplicateCleanupMembers) =
+            BuildDependencyPlan(compilation);
 
         return (
             hasDiagnostics,
@@ -134,7 +158,10 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             isNetMediateAssembly,
             compilation.AssemblyName,
             supportsGlobalUsing,
-            IsGeneratedCodeCoverageEnabled(compilation) ? CoverageTpl : string.Empty
+            IsGeneratedCodeCoverageEnabled(compilation) ? CoverageTpl : string.Empty,
+            dependencyChains,
+            duplicateCleanupCall,
+            duplicateCleanupMembers
         );
     }
 
@@ -619,11 +646,309 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             return reader.ReadToEnd();
     }
 
-    private static string BuildSource(string assemblyName, string coverage)
+    private static (string dependencyChains, string duplicateCleanupCall, string duplicateCleanupMembers) BuildDependencyPlan(
+        Compilation compilation
+    )
+    {
+        var dependencyChains = new List<string>();
+        var handlerDescriptorRemovals = new Dictionary<(string serviceType, string serviceKey), int>();
+        var threadLocalDescriptorRemovals = new HashSet<(string serviceType, string serviceKey)>();
+        var currentAssemblyName = compilation.AssemblyName ?? string.Empty;
+
+        foreach (var assembly in compilation
+            .References.Select(reference => compilation.GetAssemblyOrModuleSymbol(reference))
+            .OfType<IAssemblySymbol>()
+            .GroupBy(assembly => assembly.Name, StringComparer.Ordinal)
+            .Select(group => group.First()))
+        {
+            if (assembly.Name == PackName || assembly.Name == currentAssemblyName)
+                continue;
+
+            var addGenDIType = compilation.GetTypeByMetadataName(
+                $"{assembly.Name}.DependencyInjection.GenDIServiceCollectionExtensions"
+            );
+            if (!HasRegistrationMethod(addGenDIType, "AddGenDIServices"))
+                continue;
+
+            var addNetMediateType = compilation.GetTypeByMetadataName(
+                $"{assembly.Name}.NetMediateGeneratedDI"
+            );
+            var hasAddNetMediate = HasRegistrationMethod(addNetMediateType, "AddNetMediate");
+
+            if (!hasAddNetMediate)
+            {
+                dependencyChains.Add(
+                    $"        global::{assembly.Name}.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);"
+                );
+            }
+
+            foreach (var handlerType in EnumerateNamedTypes(assembly.GlobalNamespace))
+            {
+                if (
+                    handlerType.IsAbstract
+                    || handlerType.IsGenericType
+                    || !IsPubliclyAccessible(handlerType)
+                    || !TryGetInjectableAttribute(handlerType, out var injectableAttribute)
+                )
+                {
+                    continue;
+                }
+
+                foreach (var @interface in handlerType.AllInterfaces)
+                {
+                    if (
+                        !TryCreateExternalHandlerRegistration(
+                            handlerType,
+                            @interface,
+                            injectableAttribute,
+                            out var serviceType,
+                            out var serviceKey,
+                            out var threadLocalServiceKey
+                        )
+                    )
+                    {
+                        continue;
+                    }
+
+                    var removalKey = (serviceType, serviceKey ?? "null");
+                    handlerDescriptorRemovals.TryGetValue(removalKey, out var currentCount);
+                    handlerDescriptorRemovals[removalKey] = currentCount + 1;
+
+                    if (threadLocalServiceKey is not null)
+                        threadLocalDescriptorRemovals.Add((serviceType, threadLocalServiceKey));
+                }
+            }
+        }
+
+        var dependencyChainsSource = dependencyChains.Count == 0
+            ? string.Empty
+            : "        // Referenced dependencies without their own AddNetMediate() entrypoint must be chained first.\n"
+                + string.Join("\n", dependencyChains)
+                + "\n\n";
+
+        if (handlerDescriptorRemovals.Count == 0 && threadLocalDescriptorRemovals.Count == 0)
+            return (dependencyChainsSource, string.Empty, string.Empty);
+
+        var removalLines = threadLocalDescriptorRemovals
+            .OrderBy(item => item.serviceType, StringComparer.Ordinal)
+            .ThenBy(item => item.serviceKey, StringComparer.Ordinal)
+            .Select(item =>
+                $"        RemoveAppendedDescriptors(services, startIndex, typeof(global::System.Threading.ThreadLocal<{item.serviceType}>), {item.serviceKey}, 1);"
+            )
+            .Concat(
+                handlerDescriptorRemovals
+                    .OrderBy(item => item.Key.serviceType, StringComparer.Ordinal)
+                    .ThenBy(item => item.Key.serviceKey, StringComparer.Ordinal)
+                    .Select(item =>
+                        $"        RemoveAppendedDescriptors(services, startIndex, typeof({item.Key.serviceType}), {item.Key.serviceKey}, {item.Value});"
+                    )
+            );
+
+        var duplicateCleanupMembers = $$"""
+
+            private static void RemoveExternalHandlerDuplicates(
+                global::Microsoft.Extensions.DependencyInjection.IServiceCollection services,
+                int startIndex
+            )
+            {
+        {{string.Join("\n", removalLines)}}
+            }
+
+            private static void RemoveAppendedDescriptors(
+                global::Microsoft.Extensions.DependencyInjection.IServiceCollection services,
+                int startIndex,
+                global::System.Type serviceType,
+                object? serviceKey,
+                int count
+            )
+            {
+                for (var removed = 0; removed < count; removed++)
+                {
+                    for (var index = startIndex; index < services.Count; index++)
+                    {
+                        var descriptor = services[index];
+                        if (descriptor.ServiceType != serviceType || !Equals(descriptor.ServiceKey, serviceKey))
+                            continue;
+
+                        services.RemoveAt(index);
+                        break;
+                    }
+                }
+            }
+        """;
+
+        return (
+            dependencyChainsSource,
+            "\n        RemoveExternalHandlerDuplicates(services, localRegistrationStart);\n",
+            duplicateCleanupMembers
+        );
+    }
+
+    private static bool HasRegistrationMethod(INamedTypeSymbol? typeSymbol, string methodName) =>
+        typeSymbol?.GetMembers(methodName)
+            .OfType<IMethodSymbol>()
+            .Any(method =>
+                method.IsStatic
+                && method.Parameters.Length > 0
+                && method.Parameters[0].Type.ToDisplayString().Replace(GlobalNamespace, "")
+                    == "Microsoft.Extensions.DependencyInjection.IServiceCollection"
+            ) == true;
+
+    private static IEnumerable<INamedTypeSymbol> EnumerateNamedTypes(INamespaceSymbol namespaceSymbol)
+    {
+        foreach (var member in namespaceSymbol.GetMembers())
+        {
+            switch (member)
+            {
+                case INamespaceSymbol childNamespace:
+                    foreach (var nestedType in EnumerateNamedTypes(childNamespace))
+                        yield return nestedType;
+                    break;
+                case INamedTypeSymbol namedType:
+                    foreach (var nestedType in EnumerateNamedTypes(namedType))
+                        yield return nestedType;
+                    yield return namedType;
+                    break;
+            }
+        }
+    }
+
+    private static IEnumerable<INamedTypeSymbol> EnumerateNamedTypes(INamedTypeSymbol typeSymbol)
+    {
+        foreach (var nestedType in typeSymbol.GetTypeMembers())
+        {
+            foreach (var child in EnumerateNamedTypes(nestedType))
+                yield return child;
+            yield return nestedType;
+        }
+    }
+
+    private static bool TryGetInjectableAttribute(
+        INamedTypeSymbol typeSymbol,
+        out AttributeData injectableAttribute
+    )
+    {
+        injectableAttribute = typeSymbol.GetAttributes()
+            .FirstOrDefault(attribute =>
+                attribute.AttributeClass?.ContainingNamespace.ToDisplayString() == "GenDI"
+                && attribute.AttributeClass.Name == "InjectableAttribute"
+            )!;
+
+        return injectableAttribute is not null;
+    }
+
+    private static bool TryCreateExternalHandlerRegistration(
+        INamedTypeSymbol handlerType,
+        INamedTypeSymbol @interface,
+        AttributeData injectableAttribute,
+        out string serviceType,
+        out string? serviceKey,
+        out string? threadLocalServiceKey
+    )
+    {
+        var definition = @interface.OriginalDefinition;
+        if (definition.ContainingNamespace.ToDisplayString().Replace(GlobalNamespace, "") != PackName)
+        {
+            serviceType = string.Empty;
+            serviceKey = null;
+            threadLocalServiceKey = null;
+            return false;
+        }
+
+        if (@interface.TypeArguments.Any(argument => !IsPubliclyAccessible(argument)))
+        {
+            serviceType = string.Empty;
+            serviceKey = null;
+            threadLocalServiceKey = null;
+            return false;
+        }
+
+        switch (definition.Name)
+        {
+            case CommandHandlerIfce when @interface.TypeArguments.Length == 1:
+            case NotificationHandlerIfce when @interface.TypeArguments.Length == 1:
+            case RequestHandlerIfce when @interface.TypeArguments.Length == 2:
+            case StreamHandlerIfce when @interface.TypeArguments.Length == 2:
+                break;
+            default:
+                serviceType = string.Empty;
+                serviceKey = null;
+                threadLocalServiceKey = null;
+                return false;
+        }
+
+        serviceType = @interface.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        serviceKey = TryGetServiceKeyLiteral(injectableAttribute, out var rawServiceKey)
+            ? rawServiceKey
+            : "null";
+        threadLocalServiceKey = UsesThreadIsolation(injectableAttribute, definition.Name)
+            ? QuoteStringLiteral(
+                $"gendi:thread:{serviceType}:{handlerType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)}:{BuildThreadLocalServiceKeySegment(serviceKey)}"
+            )
+            : null;
+        return true;
+    }
+
+    private static bool UsesThreadIsolation(AttributeData injectableAttribute, string handlerInterfaceName)
+    {
+        var explicitThreadIsolation = injectableAttribute.NamedArguments
+            .FirstOrDefault(argument => argument.Key == "ThreadIsolation")
+            .Value;
+
+        if (explicitThreadIsolation.Kind != TypedConstantKind.Error && explicitThreadIsolation.Value is int value)
+            return value != 0;
+
+        return handlerInterfaceName != NotificationHandlerIfce;
+    }
+
+    private static bool TryGetServiceKeyLiteral(AttributeData injectableAttribute, out string literal)
+    {
+        var keyArgument = injectableAttribute.NamedArguments
+            .FirstOrDefault(argument => argument.Key == "Key")
+            .Value;
+
+        if (keyArgument.IsNull || keyArgument.Value is null)
+        {
+            literal = string.Empty;
+            return false;
+        }
+
+        literal = keyArgument.Value switch
+        {
+            string value => QuoteStringLiteral(value),
+            char value => $"'{(value == '\'' ? "\\'" : value.ToString())}'",
+            bool value => value ? "true" : "false",
+            sbyte or byte or short or ushort or int or uint or long or ulong or float or double or decimal =>
+                Convert.ToString(keyArgument.Value, System.Globalization.CultureInfo.InvariantCulture)
+                    ?? QuoteStringLiteral(keyArgument.Value.ToString() ?? string.Empty),
+            _ => QuoteStringLiteral(keyArgument.Value.ToString() ?? string.Empty),
+        };
+
+        return true;
+    }
+
+    private static string BuildThreadLocalServiceKeySegment(string serviceKeyLiteral) =>
+        serviceKeyLiteral == "null"
+            ? "nokey"
+            : serviceKeyLiteral.Trim('"');
+
+    private static string QuoteStringLiteral(string value) =>
+        SymbolDisplay.FormatLiteral(value, quote: true);
+
+    private static string BuildSource(
+        string assemblyName,
+        string coverage,
+        string dependencyChains,
+        string duplicateCleanupCall,
+        string duplicateCleanupMembers
+    )
     {
         return LoadTemplate()
             .Replace(CoverageToken, coverage)
-            .Replace(AssemblyNamespaceToken, assemblyName);
+            .Replace(AssemblyNamespaceToken, assemblyName)
+            .Replace(DependencyChainsToken, dependencyChains)
+            .Replace(DuplicateCleanupCallToken, duplicateCleanupCall)
+            .Replace(DuplicateCleanupMembersToken, duplicateCleanupMembers);
     }
 
     private static string LoadBehaviorTemplate()

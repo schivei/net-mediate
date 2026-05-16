@@ -10,10 +10,10 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 
 - [x] Pipeline behaviors/interceptors (pre/post processing) via `IPipelineBehavior<TMessage, TResult>`, `IPipelineBehavior<TMessage>`, `IPipelineRequestBehavior<TMessage, TResponse>`, and `IPipelineStreamBehavior<TMessage, TResponse>`.
 - [x] Retry, timeout, and circuit-breaker strategies for notification/request handlers via `NetMediate.Resilience`.
-- [x] Source generator support (`NetMediate.SourceGeneration`) — generates `AddNetMediate()` with fully AOT-safe closed-type `Register*Handler<>` calls at compile time.
+- [x] Source generator support (`NetMediate.SourceGeneration`) — generates a GenDI-first `AddNetMediate()` entrypoint plus typed dispatch extensions and framework behavior wrappers at compile time.
 - [x] OpenTelemetry traces and metrics for `Send`/`Request`/`Notify`/`RequestStream` via built-in `ActivitySource`/`Meter` (`NetMediateDiagnostics`).
 - [x] Benchmark suite with load and pipeline-variant tests covering commands, requests, notifications, and streams.
-- [x] NativeAOT and trimming compatibility — no `MakeGenericType`, no assembly scanning, no `typeof(TResult)` runtime switches; closed-type executors registered per handler at startup.
+- [x] NativeAOT and trimming compatibility — no `MakeGenericType`, no assembly scanning, no `typeof(TResult)` runtime switches; the compile-time path stays on generated entrypoints, typed dispatch, and closed-type DI resolution.
 - [x] Quartz.NET integration (`NetMediate.Quartz`) for persistent, crash-recoverable, and cluster-distributed notification execution.
 - [x] Notification adapter contracts and utilities can be implemented as user-defined pipeline behaviors that forward notifications to external queues and streams.
 - [x] `NetMediate.Moq` helper package with fluent async setup extensions and mediator mock registration.
@@ -41,5 +41,5 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 
 - [x] **`NetMediate.Diagnostics` package** — `NetMediateDiagnostics` (`ActivitySource`/`Meter`) extracted from the core assembly into `NetMediate.Diagnostics`; implemented as pipeline behaviors (`TelemetryNotificationBehavior`, `TelemetryRequestBehavior`, `TelemetryStreamBehavior`); auto-registered by the source generator when the package is referenced (first in pipeline order).
 - [x] **Streaming fan-out** — multiple `IStreamHandler<TMsg, TResp>` registrations are supported; their items are merged sequentially into a single `IAsyncEnumerable<TResp>`, analogous to how `Send` fans out to multiple command handlers.
-- [x] **Keyed handler registration** — runtime routing via GenDI keyed-service resolution. Handlers can be decorated with GenDI metadata such as `[Injectable(..., Key = "routingKey")]` and dispatched with `Send(key, message)`, `Request(key, ...)`, `Notify(key, ...)`, or `RequestStream(key, ...)`. The routing table is emitted at compile time — **no reflection, fully NativeAOT + Trimming compatible**.
+- [x] **Keyed handler registration** — runtime routing via service keys. Handlers can be annotated with GenDI metadata such as `[Injectable(..., Key = "routingKey")]` and dispatched with `Send(key, message)`, `Request(key, ...)`, `Notify(key, ...)`, or `RequestStream(key, ...)`. Non-keyed registration and dispatch (using `null` key) continues to work as before.
 - [x] **Activity-link propagation** — `NetMediateDiagnostics.StartActivity<TMessage>` now adds an `ActivityLink` to the ambient `Activity.Current` at dispatch time, ensuring distributed traces are correctly connected across async boundaries (especially important for fire-and-forget notifications).

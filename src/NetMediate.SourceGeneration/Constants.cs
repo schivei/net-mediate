@@ -8,7 +8,6 @@ internal static class Constants
     public const string CoverageTpl = "[System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]\n";
     public const char TypedExtKeySeparator = '\u001F';
     public const string CoverageToken = "{{Coverage}}";
-    public const string RegistrationsToken = "{{Registrations}}";
     public const string AssemblyNamespaceToken = "{{AssemblyNamespace}}";
     public const string TypedExtensionsToken = "{{TypedExtensions}}";
     public const string GlobalNamespace = "global::";

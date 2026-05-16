@@ -12,9 +12,9 @@ public sealed partial class GeneratorUtilityCoverageTests
     private static readonly System.Reflection.Assembly s_generatorAssembly = GeneratorAssemblyLoader.Load();
 
     [Fact]
-    public void BuildRegistrationArguments_ImplicitOperators_RoundTrip()
+    public void BuildFrameworkBehaviorArguments_ImplicitOperators_RoundTrip()
     {
-        var type = s_generatorAssembly.GetType("NetMediate.SourceGeneration.BuildRegistrationArguments")!;
+        var type = s_generatorAssembly.GetType("NetMediate.SourceGeneration.BuildFrameworkBehaviorArguments")!;
         const string template = "template";
         const string assemblyName = "My.Assembly";
         var handlerType = CreateCompilation().GetTypeByMetadataName("System.String")!;

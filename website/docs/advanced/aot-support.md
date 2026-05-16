@@ -36,8 +36,11 @@ NetMediate is compatible with NativeAOT and trimming when you stay on the source
 ### Step 2: Call the generated extension method
 
 ```csharp
+// Generated at compile time — no reflection at startup
 builder.Services.AddNetMediate();
 ```
+
+The source generator discovers all handler types in your project and emits the `AddNetMediate()` entrypoint, generated dispatch extensions, and any applicable framework behavior wrappers. The generated entrypoint is GenDI-first: it chains the consuming project's `AddGenDIServices()` output before NetMediate's own `AddGenDIServices()` output instead of emitting legacy `Register*Handler<>` calls.
 
 ### Step 3: Register custom behaviors as closed types
 

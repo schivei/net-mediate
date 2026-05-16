@@ -15,7 +15,6 @@ namespace {{AssemblyNamespace}};
         // Application-local GenDI registrations must run before NetMediate's own GenDI registrations.
         {{AssemblyNamespace}}.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
 
-{{Registrations}}
         // NetMediate's own GenDI registrations must be applied last.
         global::NetMediate.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
         return services;

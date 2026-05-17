@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Quartz;
 using NetMediate.Quartz.DependencyInjection;
 
@@ -60,6 +62,41 @@ public static class NetMediateQuartzDI
 
         services.AddGenDIServices();
 
+        // Apply QuartzMediator as the IMediator decorator.
+        // Apply QuartzNotifier as the INotifiable decorator.
+        // GenDI cross-assembly decorator support does not generate the wrapping registration when the
+        // decorated service type is defined in a referenced assembly, so we apply both decorators explicitly.
+        for (var i = services.Count - 1; i >= 0; i--)
+        {
+            var descriptor = services[i];
+
+            if (descriptor.ServiceType == typeof(IMediator))
+            {
+                services[i] = WrapWithDecorator<IMediator>(
+                    descriptor,
+                    (serviceProvider, inner) => new QuartzMediator
+                    {
+                        Inner = inner,
+                        Scheduler = serviceProvider.GetRequiredService<IScheduler>(),
+                        Serializer = serviceProvider.GetRequiredService<INotificationSerializer>(),
+                        Options = serviceProvider.GetRequiredService<IOptions<QuartzNotificationOptions>>(),
+                        Logger = serviceProvider.GetRequiredService<ILogger<QuartzMediator>>(),
+                    }
+                );
+            }
+            else if (descriptor.ServiceType == typeof(INotifiable))
+            {
+                services[i] = WrapWithDecorator<INotifiable>(
+                    descriptor,
+                    (serviceProvider, inner) => new QuartzNotifier
+                    {
+                        Inner = inner,
+                        Logger = serviceProvider.GetRequiredService<ILogger<QuartzNotifier>>(),
+                    }
+                );
+            }
+        }
+
         // Remove any IScheduler registrations that were added by GenDI (not present before the call).
         var genDISchedulerDescriptors = services
             .Where(d => d.ServiceType == typeof(IScheduler) && !preExisting.Contains(d))
@@ -68,5 +105,69 @@ public static class NetMediateQuartzDI
             services.Remove(d);
 
         return services;
+    }
+
+    private static ServiceDescriptor WrapWithDecorator<TService>(
+        ServiceDescriptor descriptor,
+        Func<IServiceProvider, TService, TService> decorate
+    )
+        where TService : class
+    {
+        if (descriptor.IsKeyedService)
+        {
+            return ServiceDescriptor.DescribeKeyed(
+                typeof(TService),
+                descriptor.ServiceKey,
+                (serviceProvider, key) => decorate(
+                    serviceProvider,
+                    CreateServiceInstance<TService>(descriptor, serviceProvider, key)
+                ),
+                descriptor.Lifetime
+            );
+        }
+
+        return ServiceDescriptor.Describe(
+            typeof(TService),
+            serviceProvider => decorate(
+                serviceProvider,
+                CreateServiceInstance<TService>(descriptor, serviceProvider, null)
+            ),
+            descriptor.Lifetime
+        );
+    }
+
+    private static TService CreateServiceInstance<TService>(
+        ServiceDescriptor descriptor,
+        IServiceProvider serviceProvider,
+        object? serviceKey
+    )
+        where TService : class
+    {
+        if (descriptor.IsKeyedService)
+        {
+            if (descriptor.KeyedImplementationFactory is not null)
+                return (TService)descriptor.KeyedImplementationFactory(serviceProvider, serviceKey);
+
+            if (descriptor.KeyedImplementationInstance is not null)
+                return (TService)descriptor.KeyedImplementationInstance;
+
+            if (descriptor.KeyedImplementationType is not null)
+                return (TService)ActivatorUtilities.CreateInstance(serviceProvider, descriptor.KeyedImplementationType);
+        }
+        else
+        {
+            if (descriptor.ImplementationFactory is not null)
+                return (TService)descriptor.ImplementationFactory(serviceProvider);
+
+            if (descriptor.ImplementationInstance is not null)
+                return (TService)descriptor.ImplementationInstance;
+
+            if (descriptor.ImplementationType is not null)
+                return (TService)ActivatorUtilities.CreateInstance(serviceProvider, descriptor.ImplementationType);
+        }
+
+        throw new InvalidOperationException(
+            $"Service descriptor for '{typeof(TService).FullName}' does not contain an implementation."
+        );
     }
 }

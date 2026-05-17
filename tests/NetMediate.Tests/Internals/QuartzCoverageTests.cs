@@ -130,6 +130,34 @@ public sealed class QuartzCoverageTests
     }
 
     [Fact]
+    public async Task AddNetMediateQuartz_PreservesKeyedServiceKeyAndImplementationInstance()
+    {
+        var scheduler = await CreateSchedulerAsync();
+        var innerMediator = global::Moq.Mock.Of<IMediator>();
+        var innerNotifiable = new CapturingNotifiable();
+        var services = new ServiceCollection();
+
+        services.AddOptions();
+        services.AddLogging();
+        services.AddSingleton(scheduler);
+        services.AddKeyedSingleton<IMediator>("mediator-key", innerMediator);
+        services.AddKeyedSingleton<INotifiable>("notifier-key", innerNotifiable);
+        services.AddNetMediateQuartz();
+
+        using var provider = services.BuildServiceProvider();
+
+        var mediator = Assert.IsType<QuartzMediator>(
+            provider.GetRequiredKeyedService<IMediator>("mediator-key")
+        );
+        var notifiable = Assert.IsType<QuartzNotifier>(
+            provider.GetRequiredKeyedService<INotifiable>("notifier-key")
+        );
+
+        Assert.Same(innerMediator, mediator.Inner);
+        Assert.Same(innerNotifiable, notifiable.Inner);
+    }
+
+    [Fact]
     public async Task QuartzNotifier_Notify_SchedulesQuartzJobWithSerializedRoutingKey()
     {
         var scheduler = await CreateSchedulerAsync();

@@ -1,5 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Quartz;
 using NetMediate.Quartz.DependencyInjection;
 
@@ -59,6 +61,47 @@ public static class NetMediateQuartzDI
         );
 
         services.AddGenDIServices();
+
+        // Apply QuartzMediator as the IMediator decorator.
+        // Apply QuartzNotifier as the INotifiable decorator.
+        // GenDI cross-assembly decorator support does not generate the wrapping registration when the
+        // decorated service type is defined in a referenced assembly, so we apply both decorators explicitly.
+        for (var i = services.Count - 1; i >= 0; i--)
+        {
+            var descriptor = services[i];
+
+            if (descriptor.ServiceType == typeof(IMediator))
+            {
+                services[i] = new ServiceDescriptor(
+                    typeof(IMediator),
+                    serviceProvider => new QuartzMediator
+                    {
+                        Inner = descriptor.ImplementationFactory is not null
+                            ? (IMediator)descriptor.ImplementationFactory(serviceProvider)
+                            : (IMediator)ActivatorUtilities.CreateInstance(serviceProvider, descriptor.ImplementationType!),
+                        Scheduler = serviceProvider.GetRequiredService<IScheduler>(),
+                        Serializer = serviceProvider.GetRequiredService<INotificationSerializer>(),
+                        Options = serviceProvider.GetRequiredService<IOptions<QuartzNotificationOptions>>(),
+                        Logger = serviceProvider.GetRequiredService<ILogger<QuartzMediator>>(),
+                    },
+                    descriptor.Lifetime
+                );
+            }
+            else if (descriptor.ServiceType == typeof(INotifiable))
+            {
+                services[i] = new ServiceDescriptor(
+                    typeof(INotifiable),
+                    serviceProvider => new QuartzNotifier
+                    {
+                        Inner = descriptor.ImplementationFactory is not null
+                            ? (INotifiable)descriptor.ImplementationFactory(serviceProvider)
+                            : (INotifiable)ActivatorUtilities.CreateInstance(serviceProvider, descriptor.ImplementationType!),
+                        Logger = serviceProvider.GetRequiredService<ILogger<QuartzNotifier>>(),
+                    },
+                    descriptor.Lifetime
+                );
+            }
+        }
 
         // Remove any IScheduler registrations that were added by GenDI (not present before the call).
         var genDISchedulerDescriptors = services

@@ -998,14 +998,29 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             string value => QuoteStringLiteral(value),
             char value => $"'{(value == '\'' ? "\\'" : value.ToString())}'",
             bool value => value ? "true" : "false",
-            sbyte or byte or short or ushort or int or uint or long or ulong or float or double or decimal =>
-                Convert.ToString(keyArgument.Value, System.Globalization.CultureInfo.InvariantCulture)
-                    ?? QuoteStringLiteral(keyArgument.Value.ToString() ?? string.Empty),
+            int value => value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            uint value => $"{value}U",
+            long value => $"{value}L",
+            ulong value => $"{value}UL",
+            float value => FormattableString.Invariant($"{value}F"),
+            double value => FormattableString.Invariant($"{value}D"),
+            sbyte or byte or short or ushort => FormatSmallIntegerKeyLiteral(keyArgument.Value),
             _ => QuoteStringLiteral(keyArgument.Value.ToString() ?? string.Empty),
         };
 
         return true;
     }
+
+    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
+    private static string FormatSmallIntegerKeyLiteral(object value) =>
+        value switch
+        {
+            sbyte v => $"(sbyte){v}",
+            byte v => $"(byte){v}",
+            short v => $"(short){v}",
+            ushort v => $"(ushort){v}",
+            _ => QuoteStringLiteral(value.ToString() ?? string.Empty),
+        };
 
     private static string BuildThreadLocalServiceKeySegment(string serviceKeyLiteral) =>
         serviceKeyLiteral == "null"
@@ -1023,10 +1038,15 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         string duplicateCleanupMembers
     )
     {
+        var localRegistrationStart = string.IsNullOrEmpty(duplicateCleanupCall)
+            ? string.Empty
+            : "        var localRegistrationStart = services.Count;\n\n";
+
         return LoadTemplate()
             .Replace(CoverageToken, coverage)
             .Replace(AssemblyNamespaceToken, assemblyName)
             .Replace(DependencyChainsToken, dependencyChains)
+            .Replace(LocalRegistrationStartToken, localRegistrationStart)
             .Replace(DuplicateCleanupCallToken, duplicateCleanupCall)
             .Replace(DuplicateCleanupMembersToken, duplicateCleanupMembers);
     }

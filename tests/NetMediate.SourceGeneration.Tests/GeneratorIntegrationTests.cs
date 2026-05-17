@@ -600,6 +600,90 @@ public sealed class GeneratorIntegrationTests
     }
 
     [Fact]
+    public void Generator_WhenReferencedHandlerHasNumericKey_EmitsTypeCorrectLiteral()
+    {
+        var cases = new (string KeyExpr, string ExpectedLiteral)[]
+        {
+            ("42", "42"),        // int
+            ("42u", "42U"),      // uint
+            ("42L", "42L"),      // long
+            ("42UL", "42UL"),    // ulong
+            ("42.0f", "42F"),    // float
+            ("42.0", "42D"),     // double
+            ("'A'", "'A'"),      // char
+            ("true", "true"),    // bool true
+            ("false", "false"),  // bool false
+        };
+
+        foreach (var (keyExpr, expectedLiteral) in cases)
+            AssertExternalHandlerCleanupKey(keyExpr, expectedLiteral);
+    }
+
+    private void AssertExternalHandlerCleanupKey(string keyExpr, string expectedLiteral)
+    {
+        var referencedSource = $$"""
+            using GenDI;
+            using Microsoft.Extensions.DependencyInjection;
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace Shared
+            {
+                public sealed record SharedCommand : ICommand;
+
+                [Injectable(ServiceLifetime.Singleton, Key = {{keyExpr}})]
+                public sealed class SharedHandler : ICommandHandler<SharedCommand>
+                {
+                    public Task Handle(SharedCommand command, CancellationToken cancellationToken = default)
+                        => Task.CompletedTask;
+                }
+            }
+
+            namespace Shared.DependencyInjection
+            {
+                public static class GenDIServiceCollectionExtensions
+                {
+                    public static IServiceCollection AddGenDIServices(this IServiceCollection services)
+                        => services;
+                }
+            }
+            """;
+
+        const string userSource = """
+            using GenDI;
+            using Microsoft.Extensions.DependencyInjection;
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record LocalCommand : ICommand;
+
+            [Injectable(ServiceLifetime.Singleton)]
+            public sealed class LocalHandler : ICommandHandler<LocalCommand>
+            {
+                public Task Handle(LocalCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var sharedReference = CreateMetadataReference("Shared", referencedSource);
+        var files = RunGeneratorAllFiles(
+            assemblyName: "MyApp",
+            userSource: userSource,
+            additionalReferences: [sharedReference]
+        );
+        var diSrc = files["NetMediateGeneratedDI.g.cs"];
+
+        Assert.Contains(
+            $"RemoveAppendedDescriptors(services, startIndex, typeof(global::NetMediate.ICommandHandler<global::Shared.SharedCommand>), {expectedLiteral}, 1);",
+            diSrc
+        );
+    }
+
+    [Fact]
     public void Generator_WhenReferencedLibraryHandlerUsesInjectableKey_ShouldTrimKeyedTransitiveDuplicates()
     {
         const string referencedSource = """

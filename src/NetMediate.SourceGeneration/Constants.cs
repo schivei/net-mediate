@@ -10,6 +10,7 @@ internal static class Constants
     public const string CoverageToken = "{{Coverage}}";
     public const string AssemblyNamespaceToken = "{{AssemblyNamespace}}";
     public const string DependencyChainsToken = "{{DependencyChains}}";
+    public const string LocalRegistrationStartToken = "{{LocalRegistrationStart}}";
     public const string DuplicateCleanupCallToken = "{{DuplicateCleanupCall}}";
     public const string DuplicateCleanupMembersToken = "{{DuplicateCleanupMembers}}";
     public const string TypedExtensionsToken = "{{TypedExtensions}}";

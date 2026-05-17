@@ -237,6 +237,69 @@ public sealed partial class GeneratorUtilityCoverageTests
     }
 
     [Fact]
+    public void Constants_GetBehaviorClasses_CoversAllHandlerKindsAndFlags()
+    {
+        var constantsType = s_generatorAssembly.GetType("NetMediate.SourceGeneration.Constants")!;
+        var registrationType = s_generatorAssembly.GetType("NetMediate.SourceGeneration.BehaviorRegistration")!;
+        var getBehaviorClasses = constantsType.GetMethod("GetBehaviorClasses", BindingFlags.Public | BindingFlags.Static)!;
+
+        const string template = """
+            namespace {{AssemblyNamespace}};
+            public sealed partial class {{RandomName}} : {{BehaviorAbstraction}} { }
+            """;
+        const string message = "global::MyApp.Message";
+        const string response = "global::MyApp.Response";
+
+        static int CountGenerated(MethodInfo method, Type registrationType, object registration) =>
+            ((System.Collections.IEnumerable)method.Invoke(null, [registration])!).Cast<object>().Count();
+
+        var commandAll = Activator.CreateInstance(registrationType, template, "MyApp", "ICommandHandler", message, null, true, true)!;
+        var notificationAll = Activator.CreateInstance(registrationType, template, "MyApp", "INotificationHandler", message, null, true, true)!;
+        var requestAll = Activator.CreateInstance(registrationType, template, "MyApp", "IRequestHandler", message, response, true, true)!;
+        var streamAll = Activator.CreateInstance(registrationType, template, "MyApp", "IStreamHandler", message, response, true, true)!;
+
+        Assert.Equal(4, CountGenerated(getBehaviorClasses, registrationType, commandAll));
+        Assert.Equal(4, CountGenerated(getBehaviorClasses, registrationType, notificationAll));
+        Assert.Equal(4, CountGenerated(getBehaviorClasses, registrationType, requestAll));
+        Assert.Equal(4, CountGenerated(getBehaviorClasses, registrationType, streamAll));
+
+        var commandOnlyResilience = Activator.CreateInstance(registrationType, template, "MyApp", "ICommandHandler", message, null, false, true)!;
+        var commandOnlyDiagnostics = Activator.CreateInstance(registrationType, template, "MyApp", "ICommandHandler", message, null, true, false)!;
+        var commandNoBehaviors = Activator.CreateInstance(registrationType, template, "MyApp", "ICommandHandler", message, null, false, false)!;
+
+        Assert.Equal(3, CountGenerated(getBehaviorClasses, registrationType, commandOnlyResilience));
+        Assert.Equal(1, CountGenerated(getBehaviorClasses, registrationType, commandOnlyDiagnostics));
+        Assert.Equal(0, CountGenerated(getBehaviorClasses, registrationType, commandNoBehaviors));
+    }
+
+    [Fact]
+    public void Constants_RandomNameFrom_HandlesBlankAndDigitPrefixedInputs()
+    {
+        var constantsType = s_generatorAssembly.GetType("NetMediate.SourceGeneration.Constants")!;
+        var randomNameFrom = constantsType.GetMethod("RandomNameFrom", BindingFlags.NonPublic | BindingFlags.Static)!;
+
+        var blankArgs = new object?[] { " ", " ", null };
+        var blankName = (string)randomNameFrom.Invoke(null, blankArgs)!;
+        Assert.StartsWith("_Decorator_", blankName, StringComparison.Ordinal);
+
+        var digitArgs = new object?[] { "1My.Type", "TelemetryRequestBehavior", null };
+        var digitName = (string)randomNameFrom.Invoke(null, digitArgs)!;
+        Assert.StartsWith("_1My_Type", digitName, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void IsExternalInit_CallerArgumentExpressionAttribute_StoresParameterName()
+    {
+        var attributeType = s_generatorAssembly.GetType("System.Runtime.CompilerServices.CallerArgumentExpressionAttribute");
+        Assert.NotNull(attributeType);
+
+        var instance = Activator.CreateInstance(attributeType!, "value")!;
+        var parameterName = attributeType!.GetProperty("ParameterName")!.GetValue(instance);
+
+        Assert.Equal("value", parameterName);
+    }
+
+    [Fact]
     public void EnumerateReferencedAssemblies_FiltersPackAndCurrentAssemblyNames()
     {
         var compilation = CSharpCompilation.Create(

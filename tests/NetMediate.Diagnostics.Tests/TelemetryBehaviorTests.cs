@@ -162,6 +162,55 @@ public sealed class TelemetryBehaviorTests
     }
 
     [Fact]
+    public void StartActivity_WhenSamplingDisablesCreation_ReturnsNull()
+    {
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == NetMediateDiagnostics.ActivitySourceName,
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.None,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var activity = NetMediateDiagnostics.StartActivity<CommandMessage>("Send");
+        Assert.Null(activity);
+    }
+
+    [Fact]
+    public async Task TelemetryBehaviors_WhenNoActivityIsCreated_StillRethrowExceptions()
+    {
+        var commandBehavior = new TestTelemetryCommandBehavior<CommandMessage>(
+            new LambdaCommandHandler<CommandMessage>((_, _) =>
+                Task.FromException(new InvalidOperationException("boom-command")))
+        );
+        var notificationBehavior = new TestTelemetryNotificationBehavior<NotificationMessage>(
+            new LambdaNotificationHandler<NotificationMessage>((_, _) =>
+                Task.FromException(new InvalidOperationException("boom-notification")))
+        );
+        var requestBehavior = new TestTelemetryRequestBehavior<RequestMessage, Response>(
+            new LambdaRequestHandler<RequestMessage, Response>((_, _) =>
+                Task.FromException<Response>(new InvalidOperationException("boom-request")))
+        );
+        var streamBehavior = new TestTelemetryStreamBehavior<StreamMessage, StreamResponse>(
+            new LambdaStreamHandler<StreamMessage, StreamResponse>((_, _) => ThrowingStream())
+        );
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            commandBehavior.Handle(new CommandMessage(), TestContext.Current.CancellationToken)
+        );
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            notificationBehavior.Handle(new NotificationMessage(), TestContext.Current.CancellationToken)
+        );
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            requestBehavior.Handle(new RequestMessage(), TestContext.Current.CancellationToken)
+        );
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
+            await foreach (var _ in streamBehavior.Handle(new StreamMessage(), TestContext.Current.CancellationToken))
+            { }
+        });
+    }
+
+    [Fact]
     public void RecordNotify_WhenMeterEnabled_EmitsCounter()
     {
         var emitted = false;

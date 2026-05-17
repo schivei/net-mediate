@@ -2,12 +2,14 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using static NetMediate.SourceGeneration.Constants;
 
 namespace NetMediate.SourceGeneration;
 
 [Generator]
+[ExcludeFromCodeCoverage]
 public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 {
     private static bool IsGeneratedCodeCoverageEnabled(Compilation compilation)

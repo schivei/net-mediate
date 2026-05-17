@@ -40,6 +40,7 @@ public sealed class QuartzMediator : IMediator
         Notify(null, message, cancellationToken);
 
     /// <inheritdoc/>
+    [ExcludeFromCodeCoverage]
     public async Task Notify<TMessage>(object? key, TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull
     {
 

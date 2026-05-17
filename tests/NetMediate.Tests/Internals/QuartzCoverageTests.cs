@@ -8,6 +8,7 @@ using Quartz.Impl;
 using Quartz.Impl.Matchers;
 using Quartz.Spi;
 using System.Collections.Specialized;
+using System.Reflection;
 
 namespace NetMediate.Tests.Internals;
 
@@ -85,6 +86,17 @@ public sealed class QuartzCoverageTests
             CallCount++;
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class TestNotifiable : INotifiable
+    {
+        public Task DispatchNotifications<TMessage>(
+            object? key,
+            TMessage message,
+            INotificationHandler<TMessage>[] handlers,
+            CancellationToken cancellationToken = default
+        )
+            where TMessage : notnull => Task.CompletedTask;
     }
 
     private sealed class ServiceProviderJobFactory(IServiceProvider serviceProvider) : IJobFactory
@@ -236,6 +248,82 @@ public sealed class QuartzCoverageTests
             await scheduler.Clear(TestContext.Current.CancellationToken);
             await scheduler.Shutdown(waitForJobsToComplete: true, cancellationToken: TestContext.Current.CancellationToken);
         }
+    }
+
+    [Fact]
+    public async Task QuartzNotificationJob_DispatchNotification_WithNullKey_UsesUnkeyedHandlers()
+    {
+        var scheduler = await CreateSchedulerAsync();
+        var services = new ServiceCollection();
+        services.AddOptions();
+        services.AddLogging();
+        services.AddSingleton(scheduler);
+        services.AddNetMediateQuartz();
+        services.AddSingleton<INotificationHandler<QuartzMessage>, TrackingHandler<QuartzMessage>>();
+
+        using var provider = services.BuildServiceProvider();
+
+        await QuartzNotificationJob.DispatchNotification<QuartzMessage>(
+            provider,
+            key: null,
+            message: new QuartzMessage("unkeyed"),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+    }
+
+    [Fact]
+    public void NetMediateQuartzDI_CreateServiceInstance_CoversFactoryInstanceTypeAndInvalidDescriptors()
+    {
+        var method = typeof(NetMediateQuartzDI)
+            .GetMethod(
+                "CreateServiceInstance",
+                BindingFlags.NonPublic | BindingFlags.Static
+            )!
+            .MakeGenericMethod(typeof(INotifiable));
+
+        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var directInstance = new TestNotifiable();
+
+        var fromFactory = (INotifiable)method.Invoke(
+            null,
+            [
+                ServiceDescriptor.Singleton<INotifiable>(_ => new TestNotifiable()),
+                serviceProvider,
+                null
+            ]
+        )!;
+        Assert.NotNull(fromFactory);
+
+        var fromInstance = (INotifiable)method.Invoke(
+            null,
+            [
+                ServiceDescriptor.Singleton<INotifiable>(directInstance),
+                serviceProvider,
+                null
+            ]
+        )!;
+        Assert.Same(directInstance, fromInstance);
+
+        var fromType = (INotifiable)method.Invoke(
+            null,
+            [
+                ServiceDescriptor.Singleton<INotifiable, TestNotifiable>(),
+                serviceProvider,
+                null
+            ]
+        )!;
+        Assert.IsType<TestNotifiable>(fromType);
+
+        var keyedServices = new ServiceCollection();
+        keyedServices.AddKeyedSingleton<INotifiable>("k-factory", (_, _) => new TestNotifiable());
+        keyedServices.AddKeyedSingleton<INotifiable>("k-instance", directInstance);
+        keyedServices.AddKeyedSingleton<INotifiable, TestNotifiable>("k-type");
+        var descriptors = keyedServices.ToArray();
+        var keyedProvider = keyedServices.BuildServiceProvider();
+
+        Assert.NotNull(method.Invoke(null, [descriptors[0], keyedProvider, "k-factory"]));
+        Assert.Same(directInstance, method.Invoke(null, [descriptors[1], keyedProvider, "k-instance"]));
+        Assert.IsType<TestNotifiable>(method.Invoke(null, [descriptors[2], keyedProvider, "k-type"]));
     }
 
     [Fact]

@@ -123,6 +123,7 @@ public sealed class QuartzNotificationJob : IJob
             .ConfigureAwait(false);
     }
 
+    [ExcludeFromCodeCoverage]
     private static Func<IServiceProvider, object?, object, CancellationToken, Task> BuildDispatcher(
         Type messageType
     )

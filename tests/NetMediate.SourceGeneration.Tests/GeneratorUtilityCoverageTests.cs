@@ -235,6 +235,130 @@ public sealed partial class GeneratorUtilityCoverageTests
             .ToArray();
         Assert.Equal(generated.Select(x => x.className), generatedAgain);
     }
+
+    [Fact]
+    public void Constants_GetBehaviorClasses_CoversAllHandlerKindsAndFlags()
+    {
+        var constantsType = s_generatorAssembly.GetType("NetMediate.SourceGeneration.Constants")!;
+        var registrationType = s_generatorAssembly.GetType("NetMediate.SourceGeneration.BehaviorRegistration")!;
+        var getBehaviorClasses = constantsType.GetMethod("GetBehaviorClasses", BindingFlags.Public | BindingFlags.Static)!;
+
+        const string template = """
+            namespace {{AssemblyNamespace}};
+            public sealed partial class {{RandomName}} : {{BehaviorAbstraction}} { }
+            """;
+        const string message = "global::MyApp.Message";
+        const string response = "global::MyApp.Response";
+
+        static int CountGenerated(MethodInfo method, Type registrationType, object registration) =>
+            ((System.Collections.IEnumerable)method.Invoke(null, [registration])!).Cast<object>().Count();
+
+        var commandAll = Activator.CreateInstance(registrationType, template, "MyApp", "ICommandHandler", message, null, true, true)!;
+        var notificationAll = Activator.CreateInstance(registrationType, template, "MyApp", "INotificationHandler", message, null, true, true)!;
+        var requestAll = Activator.CreateInstance(registrationType, template, "MyApp", "IRequestHandler", message, response, true, true)!;
+        var streamAll = Activator.CreateInstance(registrationType, template, "MyApp", "IStreamHandler", message, response, true, true)!;
+
+        Assert.Equal(4, CountGenerated(getBehaviorClasses, registrationType, commandAll));
+        Assert.Equal(4, CountGenerated(getBehaviorClasses, registrationType, notificationAll));
+        Assert.Equal(4, CountGenerated(getBehaviorClasses, registrationType, requestAll));
+        Assert.Equal(4, CountGenerated(getBehaviorClasses, registrationType, streamAll));
+
+        var commandOnlyResilience = Activator.CreateInstance(registrationType, template, "MyApp", "ICommandHandler", message, null, false, true)!;
+        var commandOnlyDiagnostics = Activator.CreateInstance(registrationType, template, "MyApp", "ICommandHandler", message, null, true, false)!;
+        var commandNoBehaviors = Activator.CreateInstance(registrationType, template, "MyApp", "ICommandHandler", message, null, false, false)!;
+
+        Assert.Equal(3, CountGenerated(getBehaviorClasses, registrationType, commandOnlyResilience));
+        Assert.Equal(1, CountGenerated(getBehaviorClasses, registrationType, commandOnlyDiagnostics));
+        Assert.Equal(0, CountGenerated(getBehaviorClasses, registrationType, commandNoBehaviors));
+    }
+
+    [Fact]
+    public void Constants_RandomNameFrom_HandlesBlankAndDigitPrefixedInputs()
+    {
+        var constantsType = s_generatorAssembly.GetType("NetMediate.SourceGeneration.Constants")!;
+        var randomNameFrom = constantsType.GetMethod("RandomNameFrom", BindingFlags.NonPublic | BindingFlags.Static)!;
+
+        var whitespaceArgs = new object?[] { " ", " ", null };
+        var blankName = (string)randomNameFrom.Invoke(null, whitespaceArgs)!;
+        Assert.StartsWith("_Decorator_", blankName, StringComparison.Ordinal);
+
+        var digitArgs = new object?[] { "1My.Type", "TelemetryRequestBehavior", null };
+        var digitName = (string)randomNameFrom.Invoke(null, digitArgs)!;
+        Assert.StartsWith("_1My_Type", digitName, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void IsExternalInit_CallerArgumentExpressionAttribute_StoresParameterName()
+    {
+        var attributeType = s_generatorAssembly.GetType("System.Runtime.CompilerServices.CallerArgumentExpressionAttribute");
+        Assert.NotNull(attributeType);
+
+        var instance = Activator.CreateInstance(attributeType!, "value")!;
+        var parameterName = attributeType!.GetProperty("ParameterName")!.GetValue(instance);
+
+        Assert.Equal("value", parameterName);
+    }
+
+    [Fact]
+    public void EnumerateReferencedAssemblies_FiltersPackAndCurrentAssemblyNames()
+    {
+        var compilation = CSharpCompilation.Create(
+            "MyApp",
+            syntaxTrees: [CSharpSyntaxTree.ParseText("namespace MyApp; public sealed class Marker;")],
+            references:
+            [
+                CreateMetadataReference("NetMediate", "namespace NetMediate; public sealed class RefType;"),
+                CreateMetadataReference("MyApp", "namespace MyApp; public sealed class RefType;"),
+                CreateMetadataReference("External", "namespace External; public sealed class RefType;"),
+                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+            ],
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+        );
+
+        var generatorType = s_generatorAssembly.GetType("NetMediate.SourceGeneration.NetMediateRegistrationGenerator")!;
+        var method = generatorType.GetMethod(
+            "EnumerateReferencedAssemblies",
+            BindingFlags.NonPublic | BindingFlags.Static
+        )!;
+
+        var referencedAssemblies = ((System.Collections.IEnumerable)method.Invoke(null, [compilation])!)
+            .Cast<IAssemblySymbol>()
+            .Select(symbol => symbol.Name)
+            .ToArray();
+
+        Assert.Contains("External", referencedAssemblies);
+        Assert.DoesNotContain("MyApp", referencedAssemblies);
+        Assert.DoesNotContain("NetMediate", referencedAssemblies);
+    }
+
+    [Fact]
+    public void EnumerateReferencedAssemblies_WhenCompilationAssemblyNameIsNull_UsesEmptyCurrentAssemblyName()
+    {
+        var compilation = CSharpCompilation.Create(
+            assemblyName: null,
+            syntaxTrees: [CSharpSyntaxTree.ParseText("namespace Sample; public sealed class Marker;")],
+            references:
+            [
+                CreateMetadataReference("External", "namespace External; public sealed class RefType;"),
+                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+            ],
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+        );
+
+        var generatorType = s_generatorAssembly.GetType("NetMediate.SourceGeneration.NetMediateRegistrationGenerator")!;
+        var method = generatorType.GetMethod(
+            "EnumerateReferencedAssemblies",
+            BindingFlags.NonPublic | BindingFlags.Static
+        )!;
+
+        var referencedAssemblies = ((System.Collections.IEnumerable)method.Invoke(null, [compilation])!)
+            .Cast<IAssemblySymbol>()
+            .Select(symbol => symbol.Name)
+            .ToArray();
+
+        Assert.Contains("External", referencedAssemblies);
+    }
+
     private static CSharpCompilation CreateCompilation() =>
         CSharpCompilation.Create(
             "GeneratorUtilityCoverageTests",
@@ -245,6 +369,23 @@ public sealed partial class GeneratorUtilityCoverageTests
                 MetadataReference.CreateFromFile(typeof(IIncrementalGenerator).Assembly.Location),
             ]
         );
+
+    private static PortableExecutableReference CreateMetadataReference(string assemblyName, string source)
+    {
+        var compilation = CSharpCompilation.Create(
+            assemblyName,
+            syntaxTrees: [CSharpSyntaxTree.ParseText(source)],
+            references: [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)],
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+        );
+
+        using var stream = new MemoryStream();
+        var emitResult = compilation.Emit(stream);
+        Assert.Empty(emitResult.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+
+        stream.Position = 0;
+        return MetadataReference.CreateFromImage(stream.ToArray());
+    }
 
     [GeneratedRegex("^[_A-Za-z][_A-Za-z0-9]*$")]
     private static partial Regex ValidIdentifierRegex();

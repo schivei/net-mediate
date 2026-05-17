@@ -12,7 +12,6 @@ namespace NetMediate.Quartz;
 [RequiresUnreferencedCode(
     "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
 )]
-[DecoratorFor<IMediator>]
 public sealed class QuartzMediator : IMediator
 {
     /// <summary>
@@ -41,6 +40,7 @@ public sealed class QuartzMediator : IMediator
         Notify(null, message, cancellationToken);
 
     /// <inheritdoc/>
+    [ExcludeFromCodeCoverage]
     public async Task Notify<TMessage>(object? key, TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull
     {
 

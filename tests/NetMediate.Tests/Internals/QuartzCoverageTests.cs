@@ -8,6 +8,7 @@ using Quartz.Impl;
 using Quartz.Impl.Matchers;
 using Quartz.Spi;
 using System.Collections.Specialized;
+using System.Reflection;
 
 namespace NetMediate.Tests.Internals;
 
@@ -87,6 +88,17 @@ public sealed class QuartzCoverageTests
         }
     }
 
+    private sealed class TestNotifiable : INotifiable
+    {
+        public Task DispatchNotifications<TMessage>(
+            object? key,
+            TMessage message,
+            INotificationHandler<TMessage>[] handlers,
+            CancellationToken cancellationToken = default
+        )
+            where TMessage : notnull => Task.CompletedTask;
+    }
+
     private sealed class ServiceProviderJobFactory(IServiceProvider serviceProvider) : IJobFactory
     {
         public IJob NewJob(TriggerFiredBundle bundle, IScheduler scheduler) =>
@@ -127,6 +139,34 @@ public sealed class QuartzCoverageTests
 
         Assert.IsType<QuartzNotifier>(notifiable);
         Assert.Equal("custom-group", options.Value.GroupName);
+    }
+
+    [Fact]
+    public async Task AddNetMediateQuartz_PreservesKeyedServiceKeyAndImplementationInstance()
+    {
+        var scheduler = await CreateSchedulerAsync();
+        var innerMediator = global::Moq.Mock.Of<IMediator>();
+        var innerNotifiable = new CapturingNotifiable();
+        var services = new ServiceCollection();
+
+        services.AddOptions();
+        services.AddLogging();
+        services.AddSingleton(scheduler);
+        services.AddKeyedSingleton<IMediator>("mediator-key", innerMediator);
+        services.AddKeyedSingleton<INotifiable>("notifier-key", innerNotifiable);
+        services.AddNetMediateQuartz();
+
+        using var provider = services.BuildServiceProvider();
+
+        var mediator = Assert.IsType<QuartzMediator>(
+            provider.GetRequiredKeyedService<IMediator>("mediator-key")
+        );
+        var notifiable = Assert.IsType<QuartzNotifier>(
+            provider.GetRequiredKeyedService<INotifiable>("notifier-key")
+        );
+
+        Assert.Same(innerMediator, mediator.Inner);
+        Assert.Same(innerNotifiable, notifiable.Inner);
     }
 
     [Fact]
@@ -208,6 +248,88 @@ public sealed class QuartzCoverageTests
             await scheduler.Clear(TestContext.Current.CancellationToken);
             await scheduler.Shutdown(waitForJobsToComplete: true, cancellationToken: TestContext.Current.CancellationToken);
         }
+    }
+
+    [Fact]
+    public async Task QuartzNotificationJob_DispatchNotification_WithNullKey_UsesUnkeyedHandlers()
+    {
+        var scheduler = await CreateSchedulerAsync();
+        var services = new ServiceCollection();
+        var unkeyedHandler = new TrackingHandler<QuartzMessage>();
+        var keyedHandler = new TrackingHandler<QuartzMessage>();
+        services.AddOptions();
+        services.AddLogging();
+        services.AddSingleton(scheduler);
+        services.AddNetMediateQuartz();
+        services.AddSingleton<INotificationHandler<QuartzMessage>>(unkeyedHandler);
+        services.AddKeyedSingleton<INotificationHandler<QuartzMessage>>("keyed", keyedHandler);
+
+        using var provider = services.BuildServiceProvider();
+
+        await QuartzNotificationJob.DispatchNotification<QuartzMessage>(
+            provider,
+            key: null,
+            message: new QuartzMessage("unkeyed"),
+            cancellationToken: TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(1, unkeyedHandler.CallCount);
+        Assert.Equal(0, keyedHandler.CallCount);
+    }
+
+    [Fact]
+    public void NetMediateQuartzDI_CreateServiceInstance_CoversFactoryInstanceAndTypeDescriptors()
+    {
+        var method = typeof(NetMediateQuartzDI)
+            .GetMethod(
+                "CreateServiceInstance",
+                BindingFlags.NonPublic | BindingFlags.Static
+            )!
+            .MakeGenericMethod(typeof(INotifiable));
+
+        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+        var directInstance = new TestNotifiable();
+
+        var fromFactory = (INotifiable)method.Invoke(
+            null,
+            [
+                ServiceDescriptor.Singleton<INotifiable>(_ => new TestNotifiable()),
+                serviceProvider,
+                null
+            ]
+        )!;
+        Assert.NotNull(fromFactory);
+
+        var fromInstance = (INotifiable)method.Invoke(
+            null,
+            [
+                ServiceDescriptor.Singleton<INotifiable>(directInstance),
+                serviceProvider,
+                null
+            ]
+        )!;
+        Assert.Same(directInstance, fromInstance);
+
+        var fromType = (INotifiable)method.Invoke(
+            null,
+            [
+                ServiceDescriptor.Singleton<INotifiable, TestNotifiable>(),
+                serviceProvider,
+                null
+            ]
+        )!;
+        Assert.IsType<TestNotifiable>(fromType);
+
+        var keyedServices = new ServiceCollection();
+        keyedServices.AddKeyedSingleton<INotifiable>("k-factory", (_, _) => new TestNotifiable());
+        keyedServices.AddKeyedSingleton<INotifiable>("k-instance", directInstance);
+        keyedServices.AddKeyedSingleton<INotifiable, TestNotifiable>("k-type");
+        var descriptors = keyedServices.ToArray();
+        var keyedProvider = keyedServices.BuildServiceProvider();
+
+        Assert.NotNull(method.Invoke(null, [descriptors[0], keyedProvider, "k-factory"]));
+        Assert.Same(directInstance, method.Invoke(null, [descriptors[1], keyedProvider, "k-instance"]));
+        Assert.IsType<TestNotifiable>(method.Invoke(null, [descriptors[2], keyedProvider, "k-type"]));
     }
 
     [Fact]
@@ -322,6 +444,130 @@ public sealed class QuartzCoverageTests
         );
 
         Assert.Empty(jobKeys);
+    }
+
+    [Fact]
+    public async Task QuartzMediator_NotifyWithoutKey_DelegatesToKeyedOverload()
+    {
+        var scheduler = await CreateSchedulerAsync();
+        var services = new ServiceCollection();
+
+        services.AddOptions();
+        services.AddLogging();
+        services.AddSingleton(scheduler);
+        services.AddNetMediateQuartz(options => options.GroupName = "notify-no-key-tests");
+
+        using var provider = services.BuildServiceProvider();
+        var mediator = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
+
+        await mediator.Notify(new QuartzMessage("single"), TestContext.Current.CancellationToken);
+
+        var jobKeys = await scheduler.GetJobKeys(
+            GroupMatcher<JobKey>.GroupEquals("notify-no-key-tests"),
+            TestContext.Current.CancellationToken
+        );
+
+        var jobKey = Assert.Single(jobKeys);
+        var job = await scheduler.GetJobDetail(jobKey, TestContext.Current.CancellationToken);
+        Assert.NotNull(job);
+        Assert.False(job.JobDataMap.ContainsKey(QuartzNotificationJob.KeyDataKey));
+    }
+
+    [Fact]
+    public async Task QuartzMediator_NotifyBatchWithoutKey_DelegatesToKeyedOverload()
+    {
+        var scheduler = await CreateSchedulerAsync();
+        var services = new ServiceCollection();
+
+        services.AddOptions();
+        services.AddLogging();
+        services.AddSingleton(scheduler);
+        services.AddNetMediateQuartz(options => options.GroupName = "batch-no-key-tests");
+
+        using var provider = services.BuildServiceProvider();
+        var mediator = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
+
+        await mediator.Notify(
+            (IEnumerable<QuartzMessage>)[new QuartzMessage("one"), new QuartzMessage("two")],
+            TestContext.Current.CancellationToken
+        );
+
+        var jobKeys = await scheduler.GetJobKeys(
+            GroupMatcher<JobKey>.GroupEquals("batch-no-key-tests"),
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(2, jobKeys.Count);
+    }
+
+    [Fact]
+    public async Task QuartzMediator_RequestSendAndStreamMembers_ForwardToInnerMediator()
+    {
+        var requestTask = Task.FromResult(7);
+        var streamResult = YieldIntegers(1, 2);
+        var inner = new global::Moq.Mock<IMediator>(global::Moq.MockBehavior.Strict);
+
+        inner.Setup(m => m.Request<QuartzMessage, int>(
+                global::Moq.It.IsAny<QuartzMessage>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(requestTask);
+        inner.Setup(m => m.Request<QuartzMessage, int>(
+                global::Moq.It.IsAny<object?>(),
+                global::Moq.It.IsAny<QuartzMessage>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(requestTask);
+        inner.Setup(m => m.RequestStream<QuartzMessage, int>(
+                global::Moq.It.IsAny<QuartzMessage>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(streamResult);
+        inner.Setup(m => m.RequestStream<QuartzMessage, int>(
+                global::Moq.It.IsAny<object?>(),
+                global::Moq.It.IsAny<QuartzMessage>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(streamResult);
+        inner.Setup(m => m.Send(
+                global::Moq.It.IsAny<QuartzMessage>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        inner.Setup(m => m.Send(
+                global::Moq.It.IsAny<object?>(),
+                global::Moq.It.IsAny<QuartzMessage>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        inner.Setup(m => m.Send(
+                global::Moq.It.IsAny<IEnumerable<QuartzMessage>>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        inner.Setup(m => m.Send(
+                global::Moq.It.IsAny<object?>(),
+                global::Moq.It.IsAny<IEnumerable<QuartzMessage>>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var mediator = new QuartzMediator
+        {
+            Inner = inner.Object,
+            Logger = NullLogger<QuartzMediator>.Instance,
+            Options = Options.Create(new QuartzNotificationOptions()),
+            Scheduler = await CreateSchedulerAsync(),
+            Serializer = new JsonNotificationSerializer(),
+        };
+
+        var req = new QuartzMessage("request");
+        Assert.Equal(7, await mediator.Request<QuartzMessage, int>(req, TestContext.Current.CancellationToken));
+        Assert.Equal(7, await mediator.Request<QuartzMessage, int>("k", req, TestContext.Current.CancellationToken));
+
+        var streamOne = await mediator.RequestStream<QuartzMessage, int>(req, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+        var streamTwo = await mediator.RequestStream<QuartzMessage, int>("k", req, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Equal([1, 2], streamOne);
+        Assert.Equal([1, 2], streamTwo);
+
+        await mediator.Send(req, TestContext.Current.CancellationToken);
+        await mediator.Send("k", req, TestContext.Current.CancellationToken);
+        await mediator.Send((IEnumerable<QuartzMessage>)[req], TestContext.Current.CancellationToken);
+        await mediator.Send("k", (IEnumerable<QuartzMessage>)[req], TestContext.Current.CancellationToken);
+
+        inner.VerifyAll();
     }
 
     [Fact]
@@ -455,5 +701,14 @@ public sealed class QuartzCoverageTests
             where TMessage : notnull => "{}";
 
         public object? Deserialize(string data, Type messageType) => null;
+    }
+
+    private static async IAsyncEnumerable<int> YieldIntegers(params int[] values)
+    {
+        foreach (var value in values)
+        {
+            await Task.Yield();
+            yield return value;
+        }
     }
 }

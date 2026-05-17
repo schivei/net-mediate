@@ -11,6 +11,8 @@ public sealed class TelemetryBehaviorTests
     private sealed record NotificationMessage;
     private sealed record RequestMessage;
     private sealed record Response(string Value);
+    private sealed record StreamMessage;
+    private sealed record StreamResponse(string Value);
 
     [Fact]
     public async Task TelemetryCommandBehavior_StartsAndStopsActivity()
@@ -109,6 +111,39 @@ public sealed class TelemetryBehaviorTests
     }
 
     [Fact]
+    public async Task TelemetryStreamBehavior_EmitsResponsesAndRecordsActivity()
+    {
+        using var listener = CreateListener(out var stoppedActivities);
+        var behavior = new TestTelemetryStreamBehavior<StreamMessage, StreamResponse>(
+            new LambdaStreamHandler<StreamMessage, StreamResponse>((_, _) => Yield("one", "two"))
+        );
+
+        var responses = await behavior
+            .Handle(new StreamMessage(), TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(["one", "two"], responses.Select(response => response.Value).ToArray());
+        Assert.Equal("NetMediate.Request", Assert.Single(stoppedActivities).OperationName);
+    }
+
+    [Fact]
+    public async Task TelemetryStreamBehavior_RethrowsAndSetsErrorStatus()
+    {
+        using var listener = CreateListener(out var stoppedActivities);
+        var behavior = new TestTelemetryStreamBehavior<StreamMessage, StreamResponse>(
+            new LambdaStreamHandler<StreamMessage, StreamResponse>((_, _) => ThrowingStream())
+        );
+
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
+            await foreach (var _ in behavior.Handle(new StreamMessage(), TestContext.Current.CancellationToken))
+            { }
+        });
+
+        Assert.Equal(ActivityStatusCode.Error, Assert.Single(stoppedActivities).Status);
+    }
+
+    [Fact]
     public void StartActivity_WithParentActivity_CreatesLinkedActivityAndTags()
     {
         using var listener = CreateListener(out var stoppedActivities);
@@ -124,6 +159,55 @@ public sealed class TelemetryBehaviorTests
         }
 
         Assert.Single(stoppedActivities);
+    }
+
+    [Fact]
+    public void StartActivity_WhenSamplingDisablesCreation_ReturnsNull()
+    {
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == NetMediateDiagnostics.ActivitySourceName,
+            Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.None,
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        var activity = NetMediateDiagnostics.StartActivity<CommandMessage>("Send");
+        Assert.Null(activity);
+    }
+
+    [Fact]
+    public async Task TelemetryBehaviors_WhenNoActivityIsCreated_StillRethrowExceptions()
+    {
+        var commandBehavior = new TestTelemetryCommandBehavior<CommandMessage>(
+            new LambdaCommandHandler<CommandMessage>((_, _) =>
+                Task.FromException(new InvalidOperationException("boom-command")))
+        );
+        var notificationBehavior = new TestTelemetryNotificationBehavior<NotificationMessage>(
+            new LambdaNotificationHandler<NotificationMessage>((_, _) =>
+                Task.FromException(new InvalidOperationException("boom-notification")))
+        );
+        var requestBehavior = new TestTelemetryRequestBehavior<RequestMessage, Response>(
+            new LambdaRequestHandler<RequestMessage, Response>((_, _) =>
+                Task.FromException<Response>(new InvalidOperationException("boom-request")))
+        );
+        var streamBehavior = new TestTelemetryStreamBehavior<StreamMessage, StreamResponse>(
+            new LambdaStreamHandler<StreamMessage, StreamResponse>((_, _) => ThrowingStream())
+        );
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            commandBehavior.Handle(new CommandMessage(), TestContext.Current.CancellationToken)
+        );
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            notificationBehavior.Handle(new NotificationMessage(), TestContext.Current.CancellationToken)
+        );
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            requestBehavior.Handle(new RequestMessage(), TestContext.Current.CancellationToken)
+        );
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
+            await foreach (var _ in streamBehavior.Handle(new StreamMessage(), TestContext.Current.CancellationToken))
+            { }
+        });
     }
 
     [Fact]
@@ -207,6 +291,15 @@ public sealed class TelemetryBehaviorTests
             callback(message, cancellationToken);
     }
 
+    private sealed class LambdaStreamHandler<TMessage, TResponse>(
+        Func<TMessage, CancellationToken, IAsyncEnumerable<TResponse>> callback
+    ) : IStreamHandler<TMessage, TResponse>
+        where TMessage : notnull
+    {
+        public IAsyncEnumerable<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
+            callback(message, cancellationToken);
+    }
+
     private sealed class TestTelemetryCommandBehavior<TMessage>(ICommandHandler<TMessage> handler)
         : TelemetryCommandBehavior<TMessage>(handler)
         where TMessage : notnull;
@@ -219,4 +312,27 @@ public sealed class TelemetryBehaviorTests
         IRequestHandler<TMessage, TResponse> handler
     ) : TelemetryRequestBehavior<TMessage, TResponse>(handler)
         where TMessage : notnull;
+
+    private sealed class TestTelemetryStreamBehavior<TMessage, TResponse>(
+        IStreamHandler<TMessage, TResponse> handler
+    ) : TelemetryStreamBehavior<TMessage, TResponse>(handler)
+        where TMessage : notnull;
+
+    private static async IAsyncEnumerable<StreamResponse> Yield(params string[] values)
+    {
+        foreach (var value in values)
+        {
+            await Task.Yield();
+            yield return new StreamResponse(value);
+        }
+    }
+
+    private static async IAsyncEnumerable<StreamResponse> ThrowingStream()
+    {
+        await Task.Yield();
+        throw new InvalidOperationException("boom");
+#pragma warning disable CS0162
+        yield return new StreamResponse("unreachable");
+#pragma warning restore CS0162
+    }
 }

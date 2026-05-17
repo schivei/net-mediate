@@ -12,11 +12,13 @@ namespace {{AssemblyNamespace}};
     /// Callers that previously expected a dedicated mediator builder should continue configuring DI from the returned service collection.</remarks>
     public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddNetMediate(this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
     {
-        // Application-local GenDI registrations must run before NetMediate's own GenDI registrations.
+{{DependencyChains}}{{LocalRegistrationStart}}        // Application-local GenDI registrations must run before NetMediate's own GenDI registrations.
         {{AssemblyNamespace}}.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
+{{DuplicateCleanupCall}}
 
         // NetMediate's own GenDI registrations must be applied last.
         global::NetMediate.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
         return services;
     }
+{{DuplicateCleanupMembers}}
 }

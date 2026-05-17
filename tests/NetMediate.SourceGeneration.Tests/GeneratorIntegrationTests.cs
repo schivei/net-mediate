@@ -600,6 +600,103 @@ public sealed class GeneratorIntegrationTests
     }
 
     [Fact]
+    public void Generator_WhenReferencedHandlerHasSmallIntegerKey_EmitsTypeCorrectLiteral()
+    {
+        const string referencedSource = """
+            using GenDI;
+            using Microsoft.Extensions.DependencyInjection;
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace Shared
+            {
+                internal static class Keys
+                {
+                    public const sbyte SByteKey = 11;
+                    public const byte ByteKey = 22;
+                    public const short ShortKey = 33;
+                    public const ushort UShortKey = 44;
+                }
+
+                public sealed record SharedCmd1 : ICommand;
+                public sealed record SharedCmd2 : ICommand;
+                public sealed record SharedCmd3 : ICommand;
+                public sealed record SharedCmd4 : ICommand;
+
+                [Injectable(ServiceLifetime.Singleton, Key = Keys.SByteKey)]
+                public sealed class Handler1 : ICommandHandler<SharedCmd1>
+                {
+                    public Task Handle(SharedCmd1 command, CancellationToken cancellationToken = default)
+                        => Task.CompletedTask;
+                }
+
+                [Injectable(ServiceLifetime.Singleton, Key = Keys.ByteKey)]
+                public sealed class Handler2 : ICommandHandler<SharedCmd2>
+                {
+                    public Task Handle(SharedCmd2 command, CancellationToken cancellationToken = default)
+                        => Task.CompletedTask;
+                }
+
+                [Injectable(ServiceLifetime.Singleton, Key = Keys.ShortKey)]
+                public sealed class Handler3 : ICommandHandler<SharedCmd3>
+                {
+                    public Task Handle(SharedCmd3 command, CancellationToken cancellationToken = default)
+                        => Task.CompletedTask;
+                }
+
+                [Injectable(ServiceLifetime.Singleton, Key = Keys.UShortKey)]
+                public sealed class Handler4 : ICommandHandler<SharedCmd4>
+                {
+                    public Task Handle(SharedCmd4 command, CancellationToken cancellationToken = default)
+                        => Task.CompletedTask;
+                }
+            }
+
+            namespace Shared.DependencyInjection
+            {
+                public static class GenDIServiceCollectionExtensions
+                {
+                    public static IServiceCollection AddGenDIServices(this IServiceCollection services)
+                        => services;
+                }
+            }
+            """;
+
+        const string userSource = """
+            using GenDI;
+            using Microsoft.Extensions.DependencyInjection;
+            using NetMediate;
+            using System.Threading;
+            using System.Threading.Tasks;
+
+            namespace MyApp;
+
+            public sealed record LocalCommand : ICommand;
+
+            [Injectable(ServiceLifetime.Singleton)]
+            public sealed class LocalHandler : ICommandHandler<LocalCommand>
+            {
+                public Task Handle(LocalCommand command, CancellationToken cancellationToken = default)
+                    => Task.CompletedTask;
+            }
+            """;
+
+        var sharedReference = CreateMetadataReference("Shared", referencedSource);
+        var files = RunGeneratorAllFiles(
+            assemblyName: "MyApp",
+            userSource: userSource,
+            additionalReferences: [sharedReference]
+        );
+        var diSrc = files["NetMediateGeneratedDI.g.cs"];
+
+        Assert.Contains("(sbyte)11", diSrc);
+        Assert.Contains("(byte)22", diSrc);
+        Assert.Contains("(short)33", diSrc);
+        Assert.Contains("(ushort)44", diSrc);
+    }
+
+    [Fact]
     public void Generator_WhenReferencedHandlerHasNumericKey_EmitsTypeCorrectLiteral()
     {
         var cases = new (string KeyExpr, string ExpectedLiteral)[]

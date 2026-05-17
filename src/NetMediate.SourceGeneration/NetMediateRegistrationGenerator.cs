@@ -1011,7 +1011,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         return true;
     }
 
-    [System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverage]
     private static string FormatSmallIntegerKeyLiteral(object value) =>
         value switch
         {

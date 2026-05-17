@@ -394,7 +394,7 @@ public sealed class QuartzCoverageTests
         var mediator = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
 
         await mediator.Notify(
-            new[] { new QuartzMessage("one"), new QuartzMessage("two") },
+            (IEnumerable<QuartzMessage>)[new QuartzMessage("one"), new QuartzMessage("two")],
             TestContext.Current.CancellationToken
         );
 
@@ -470,8 +470,8 @@ public sealed class QuartzCoverageTests
 
         await mediator.Send(req, TestContext.Current.CancellationToken);
         await mediator.Send("k", req, TestContext.Current.CancellationToken);
-        await mediator.Send(new[] { req }, TestContext.Current.CancellationToken);
-        await mediator.Send("k", new[] { req }, TestContext.Current.CancellationToken);
+        await mediator.Send((IEnumerable<QuartzMessage>)[req], TestContext.Current.CancellationToken);
+        await mediator.Send("k", (IEnumerable<QuartzMessage>)[req], TestContext.Current.CancellationToken);
 
         inner.VerifyAll();
     }

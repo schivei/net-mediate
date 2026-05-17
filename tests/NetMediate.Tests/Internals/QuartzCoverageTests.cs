@@ -255,16 +255,16 @@ public sealed class QuartzCoverageTests
     {
         var scheduler = await CreateSchedulerAsync();
         var services = new ServiceCollection();
+        var unkeyedHandler = new TrackingHandler<QuartzMessage>();
+        var keyedHandler = new TrackingHandler<QuartzMessage>();
         services.AddOptions();
         services.AddLogging();
         services.AddSingleton(scheduler);
         services.AddNetMediateQuartz();
-        services.AddSingleton<INotificationHandler<QuartzMessage>, TrackingHandler<QuartzMessage>>();
+        services.AddSingleton<INotificationHandler<QuartzMessage>>(unkeyedHandler);
+        services.AddKeyedSingleton<INotificationHandler<QuartzMessage>>("keyed", keyedHandler);
 
         using var provider = services.BuildServiceProvider();
-        var handler = Assert.IsType<TrackingHandler<QuartzMessage>>(
-            provider.GetRequiredService<INotificationHandler<QuartzMessage>>()
-        );
 
         await QuartzNotificationJob.DispatchNotification<QuartzMessage>(
             provider,
@@ -273,7 +273,8 @@ public sealed class QuartzCoverageTests
             cancellationToken: TestContext.Current.CancellationToken
         );
 
-        Assert.Equal(1, handler.CallCount);
+        Assert.Equal(1, unkeyedHandler.CallCount);
+        Assert.Equal(0, keyedHandler.CallCount);
     }
 
     [Fact]

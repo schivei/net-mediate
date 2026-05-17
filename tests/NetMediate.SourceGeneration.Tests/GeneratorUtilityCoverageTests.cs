@@ -278,8 +278,8 @@ public sealed partial class GeneratorUtilityCoverageTests
         var constantsType = s_generatorAssembly.GetType("NetMediate.SourceGeneration.Constants")!;
         var randomNameFrom = constantsType.GetMethod("RandomNameFrom", BindingFlags.NonPublic | BindingFlags.Static)!;
 
-        var blankArgs = new object?[] { " ", " ", null };
-        var blankName = (string)randomNameFrom.Invoke(null, blankArgs)!;
+        var whitespaceArgs = new object?[] { " ", " ", null };
+        var blankName = (string)randomNameFrom.Invoke(null, whitespaceArgs)!;
         Assert.StartsWith("_Decorator_", blankName, StringComparison.Ordinal);
 
         var digitArgs = new object?[] { "1My.Type", "TelemetryRequestBehavior", null };

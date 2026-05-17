@@ -132,7 +132,7 @@ jobs:
           "/d:sonar.host.url=${SONAR_HOST_URL}"
           "/d:sonar.token=${SONAR_TOKEN}"
           "/d:sonar.cs.cobertura.reportsPaths=coverage/**/coverage.cobertura.xml"
-          "/d:sonar.coverage.exclusions=.github/**,src/NetMediate.Core/**,src/NetMediate.Diagnostics/**,src/NetMediate.Moq/**"
+          "/d:sonar.coverage.exclusions=.github/**"
           "/d:sonar.issue.ignore.multicriteria=e1"
           "/d:sonar.issue.ignore.multicriteria.e1.ruleKey=csharpsquid:S107"
           "/d:sonar.issue.ignore.multicriteria.e1.resourceKey=**/*.cs"
@@ -225,14 +225,8 @@ jobs:
             sys.exit(1)
 
         # Packages excluded from Sonar coverage tracking (align with sonar.coverage.exclusions).
-        # These are excluded here too so the gate stays consistent with what Sonar reports.
-        EXCLUDED_PREFIXES = (
-            'NetMediate.Core/',
-            'NetMediate.Diagnostics/',
-            # Integration adapters without dedicated test projects — excluded from
-            # both Sonar coverage and this gate; they are tested via their consumers.
-            'NetMediate.Moq/',
-        )
+        # No source project package is excluded.
+        EXCLUDED_PREFIXES = ()
 
         # Merge all reports: for each (filename, lineNumber) take the max hits
         # across all test-project Cobertura files so lines covered by any test

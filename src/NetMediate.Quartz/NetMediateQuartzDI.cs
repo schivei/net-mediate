@@ -72,33 +72,27 @@ public static class NetMediateQuartzDI
 
             if (descriptor.ServiceType == typeof(IMediator))
             {
-                services[i] = new ServiceDescriptor(
-                    typeof(IMediator),
-                    serviceProvider => new QuartzMediator
+                services[i] = WrapWithDecorator<IMediator>(
+                    descriptor,
+                    (serviceProvider, inner) => new QuartzMediator
                     {
-                        Inner = descriptor.ImplementationFactory is not null
-                            ? (IMediator)descriptor.ImplementationFactory(serviceProvider)
-                            : (IMediator)ActivatorUtilities.CreateInstance(serviceProvider, descriptor.ImplementationType!),
+                        Inner = inner,
                         Scheduler = serviceProvider.GetRequiredService<IScheduler>(),
                         Serializer = serviceProvider.GetRequiredService<INotificationSerializer>(),
                         Options = serviceProvider.GetRequiredService<IOptions<QuartzNotificationOptions>>(),
                         Logger = serviceProvider.GetRequiredService<ILogger<QuartzMediator>>(),
-                    },
-                    descriptor.Lifetime
+                    }
                 );
             }
             else if (descriptor.ServiceType == typeof(INotifiable))
             {
-                services[i] = new ServiceDescriptor(
-                    typeof(INotifiable),
-                    serviceProvider => new QuartzNotifier
+                services[i] = WrapWithDecorator<INotifiable>(
+                    descriptor,
+                    (serviceProvider, inner) => new QuartzNotifier
                     {
-                        Inner = descriptor.ImplementationFactory is not null
-                            ? (INotifiable)descriptor.ImplementationFactory(serviceProvider)
-                            : (INotifiable)ActivatorUtilities.CreateInstance(serviceProvider, descriptor.ImplementationType!),
+                        Inner = inner,
                         Logger = serviceProvider.GetRequiredService<ILogger<QuartzNotifier>>(),
-                    },
-                    descriptor.Lifetime
+                    }
                 );
             }
         }
@@ -111,5 +105,69 @@ public static class NetMediateQuartzDI
             services.Remove(d);
 
         return services;
+    }
+
+    private static ServiceDescriptor WrapWithDecorator<TService>(
+        ServiceDescriptor descriptor,
+        Func<IServiceProvider, TService, TService> decorate
+    )
+        where TService : class
+    {
+        if (descriptor.IsKeyedService)
+        {
+            return ServiceDescriptor.DescribeKeyed(
+                typeof(TService),
+                descriptor.ServiceKey,
+                (serviceProvider, key) => decorate(
+                    serviceProvider,
+                    CreateServiceInstance<TService>(descriptor, serviceProvider, key)
+                ),
+                descriptor.Lifetime
+            );
+        }
+
+        return ServiceDescriptor.Describe(
+            typeof(TService),
+            serviceProvider => decorate(
+                serviceProvider,
+                CreateServiceInstance<TService>(descriptor, serviceProvider, null)
+            ),
+            descriptor.Lifetime
+        );
+    }
+
+    private static TService CreateServiceInstance<TService>(
+        ServiceDescriptor descriptor,
+        IServiceProvider serviceProvider,
+        object? serviceKey
+    )
+        where TService : class
+    {
+        if (descriptor.IsKeyedService)
+        {
+            if (descriptor.KeyedImplementationFactory is not null)
+                return (TService)descriptor.KeyedImplementationFactory(serviceProvider, serviceKey);
+
+            if (descriptor.KeyedImplementationInstance is not null)
+                return (TService)descriptor.KeyedImplementationInstance;
+
+            if (descriptor.KeyedImplementationType is not null)
+                return (TService)ActivatorUtilities.CreateInstance(serviceProvider, descriptor.KeyedImplementationType);
+        }
+        else
+        {
+            if (descriptor.ImplementationFactory is not null)
+                return (TService)descriptor.ImplementationFactory(serviceProvider);
+
+            if (descriptor.ImplementationInstance is not null)
+                return (TService)descriptor.ImplementationInstance;
+
+            if (descriptor.ImplementationType is not null)
+                return (TService)ActivatorUtilities.CreateInstance(serviceProvider, descriptor.ImplementationType);
+        }
+
+        throw new InvalidOperationException(
+            $"Service descriptor for '{typeof(TService).FullName}' does not contain an implementation."
+        );
     }
 }

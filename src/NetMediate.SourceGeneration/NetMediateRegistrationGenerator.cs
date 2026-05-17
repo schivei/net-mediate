@@ -996,7 +996,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         literal = keyArgument.Value switch
         {
             string value => QuoteStringLiteral(value),
-            char value => $"'{(value == '\'' ? "\\'" : value.ToString())}'",
+            char value => SymbolDisplay.FormatLiteral(value, quote: true),
             bool value => value ? "true" : "false",
             int value => value.ToString(System.Globalization.CultureInfo.InvariantCulture),
             uint value => $"{value}U",

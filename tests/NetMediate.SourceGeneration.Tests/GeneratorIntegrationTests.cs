@@ -716,6 +716,12 @@ public sealed class GeneratorIntegrationTests
             AssertExternalHandlerCleanupKey(keyExpr, expectedLiteral);
     }
 
+    [Fact]
+    public void Generator_WhenReferencedHandlerHasEscapedCharKey_EmitsEscapedCharLiteral()
+    {
+        AssertExternalHandlerCleanupKey("'\\n'", SymbolDisplay.FormatLiteral('\n', quote: true));
+    }
+
     private void AssertExternalHandlerCleanupKey(string keyExpr, string expectedLiteral)
     {
         var referencedSource = $$"""

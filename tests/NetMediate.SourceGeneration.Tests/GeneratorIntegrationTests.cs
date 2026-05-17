@@ -722,7 +722,7 @@ public sealed class GeneratorIntegrationTests
         AssertExternalHandlerCleanupKey("'\\n'", SymbolDisplay.FormatLiteral('\n', quote: true));
     }
 
-    private void AssertExternalHandlerCleanupKey(string keyExpr, string expectedLiteral)
+    private static void AssertExternalHandlerCleanupKey(string keyExpr, string expectedLiteral)
     {
         var referencedSource = $$"""
             using GenDI;

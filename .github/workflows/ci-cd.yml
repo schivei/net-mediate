@@ -132,7 +132,7 @@ jobs:
           "/d:sonar.host.url=${SONAR_HOST_URL}"
           "/d:sonar.token=${SONAR_TOKEN}"
           "/d:sonar.cs.cobertura.reportsPaths=coverage/**/coverage.cobertura.xml"
-          "/d:sonar.coverage.exclusions=.github/**,src/NetMediate.Core/**,src/NetMediate.Diagnostics/**,src/NetMediate.SourceGeneration/**,src/NetMediate.Moq/**,src/NetMediate.Quartz/**"
+          "/d:sonar.coverage.exclusions=.github/**,src/NetMediate.Core/**,src/NetMediate.Diagnostics/**,src/NetMediate.Moq/**"
           "/d:sonar.issue.ignore.multicriteria=e1"
           "/d:sonar.issue.ignore.multicriteria.e1.ruleKey=csharpsquid:S107"
           "/d:sonar.issue.ignore.multicriteria.e1.resourceKey=**/*.cs"
@@ -229,11 +229,9 @@ jobs:
         EXCLUDED_PREFIXES = (
             'NetMediate.Core/',
             'NetMediate.Diagnostics/',
-            'NetMediate.SourceGeneration/',
             # Integration adapters without dedicated test projects — excluded from
             # both Sonar coverage and this gate; they are tested via their consumers.
             'NetMediate.Moq/',
-            'NetMediate.Quartz/',
         )
 
         # Merge all reports: for each (filename, lineNumber) take the max hits

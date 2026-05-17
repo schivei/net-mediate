@@ -353,6 +353,130 @@ public sealed class QuartzCoverageTests
     }
 
     [Fact]
+    public async Task QuartzMediator_NotifyWithoutKey_DelegatesToKeyedOverload()
+    {
+        var scheduler = await CreateSchedulerAsync();
+        var services = new ServiceCollection();
+
+        services.AddOptions();
+        services.AddLogging();
+        services.AddSingleton(scheduler);
+        services.AddNetMediateQuartz(options => options.GroupName = "notify-no-key-tests");
+
+        using var provider = services.BuildServiceProvider();
+        var mediator = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
+
+        await mediator.Notify(new QuartzMessage("single"), TestContext.Current.CancellationToken);
+
+        var jobKeys = await scheduler.GetJobKeys(
+            GroupMatcher<JobKey>.GroupEquals("notify-no-key-tests"),
+            TestContext.Current.CancellationToken
+        );
+
+        var jobKey = Assert.Single(jobKeys);
+        var job = await scheduler.GetJobDetail(jobKey, TestContext.Current.CancellationToken);
+        Assert.NotNull(job);
+        Assert.False(job.JobDataMap.ContainsKey(QuartzNotificationJob.KeyDataKey));
+    }
+
+    [Fact]
+    public async Task QuartzMediator_NotifyBatchWithoutKey_DelegatesToKeyedOverload()
+    {
+        var scheduler = await CreateSchedulerAsync();
+        var services = new ServiceCollection();
+
+        services.AddOptions();
+        services.AddLogging();
+        services.AddSingleton(scheduler);
+        services.AddNetMediateQuartz(options => options.GroupName = "batch-no-key-tests");
+
+        using var provider = services.BuildServiceProvider();
+        var mediator = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
+
+        await mediator.Notify(
+            new[] { new QuartzMessage("one"), new QuartzMessage("two") },
+            TestContext.Current.CancellationToken
+        );
+
+        var jobKeys = await scheduler.GetJobKeys(
+            GroupMatcher<JobKey>.GroupEquals("batch-no-key-tests"),
+            TestContext.Current.CancellationToken
+        );
+
+        Assert.Equal(2, jobKeys.Count);
+    }
+
+    [Fact]
+    public async Task QuartzMediator_RequestSendAndStreamMembers_ForwardToInnerMediator()
+    {
+        var requestTask = Task.FromResult(7);
+        var streamResult = YieldIntegers(1, 2);
+        var inner = new global::Moq.Mock<IMediator>(global::Moq.MockBehavior.Strict);
+
+        inner.Setup(m => m.Request<QuartzMessage, int>(
+                global::Moq.It.IsAny<QuartzMessage>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(requestTask);
+        inner.Setup(m => m.Request<QuartzMessage, int>(
+                global::Moq.It.IsAny<object?>(),
+                global::Moq.It.IsAny<QuartzMessage>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(requestTask);
+        inner.Setup(m => m.RequestStream<QuartzMessage, int>(
+                global::Moq.It.IsAny<QuartzMessage>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(streamResult);
+        inner.Setup(m => m.RequestStream<QuartzMessage, int>(
+                global::Moq.It.IsAny<object?>(),
+                global::Moq.It.IsAny<QuartzMessage>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(streamResult);
+        inner.Setup(m => m.Send(
+                global::Moq.It.IsAny<QuartzMessage>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        inner.Setup(m => m.Send(
+                global::Moq.It.IsAny<object?>(),
+                global::Moq.It.IsAny<QuartzMessage>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        inner.Setup(m => m.Send(
+                global::Moq.It.IsAny<IEnumerable<QuartzMessage>>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        inner.Setup(m => m.Send(
+                global::Moq.It.IsAny<object?>(),
+                global::Moq.It.IsAny<IEnumerable<QuartzMessage>>(),
+                global::Moq.It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var mediator = new QuartzMediator
+        {
+            Inner = inner.Object,
+            Logger = NullLogger<QuartzMediator>.Instance,
+            Options = Options.Create(new QuartzNotificationOptions()),
+            Scheduler = await CreateSchedulerAsync(),
+            Serializer = new NotificationSerializer(),
+        };
+
+        var req = new QuartzMessage("request");
+        Assert.Equal(7, await mediator.Request<QuartzMessage, int>(req, TestContext.Current.CancellationToken));
+        Assert.Equal(7, await mediator.Request<QuartzMessage, int>("k", req, TestContext.Current.CancellationToken));
+
+        var streamOne = await mediator.RequestStream<QuartzMessage, int>(req, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+        var streamTwo = await mediator.RequestStream<QuartzMessage, int>("k", req, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
+        Assert.Equal([1, 2], streamOne);
+        Assert.Equal([1, 2], streamTwo);
+
+        await mediator.Send(req, TestContext.Current.CancellationToken);
+        await mediator.Send("k", req, TestContext.Current.CancellationToken);
+        await mediator.Send(new[] { req }, TestContext.Current.CancellationToken);
+        await mediator.Send("k", new[] { req }, TestContext.Current.CancellationToken);
+
+        inner.VerifyAll();
+    }
+
+    [Fact]
     public async Task QuartzNotifier_Notify_WhenDebugEnabled_LogsScheduledJob()
     {
         var scheduler = await CreateSchedulerAsync();
@@ -483,5 +607,14 @@ public sealed class QuartzCoverageTests
             where TMessage : notnull => "{}";
 
         public object? Deserialize(string data, Type messageType) => null;
+    }
+
+    private static async IAsyncEnumerable<int> YieldIntegers(params int[] values)
+    {
+        foreach (var value in values)
+        {
+            await Task.Yield();
+            yield return value;
+        }
     }
 }

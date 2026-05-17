@@ -11,6 +11,8 @@ public sealed class TelemetryBehaviorTests
     private sealed record NotificationMessage;
     private sealed record RequestMessage;
     private sealed record Response(string Value);
+    private sealed record StreamMessage;
+    private sealed record StreamResponse(string Value);
 
     [Fact]
     public async Task TelemetryCommandBehavior_StartsAndStopsActivity()
@@ -104,6 +106,39 @@ public sealed class TelemetryBehaviorTests
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             behavior.Handle(new RequestMessage(), TestContext.Current.CancellationToken)
         );
+
+        Assert.Equal(ActivityStatusCode.Error, Assert.Single(stoppedActivities).Status);
+    }
+
+    [Fact]
+    public async Task TelemetryStreamBehavior_EmitsResponsesAndRecordsActivity()
+    {
+        using var listener = CreateListener(out var stoppedActivities);
+        var behavior = new TestTelemetryStreamBehavior<StreamMessage, StreamResponse>(
+            new LambdaStreamHandler<StreamMessage, StreamResponse>((_, _) => Yield("one", "two"))
+        );
+
+        var responses = await behavior
+            .Handle(new StreamMessage(), TestContext.Current.CancellationToken)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(["one", "two"], responses.Select(response => response.Value).ToArray());
+        Assert.Equal("NetMediate.Request", Assert.Single(stoppedActivities).OperationName);
+    }
+
+    [Fact]
+    public async Task TelemetryStreamBehavior_RethrowsAndSetsErrorStatus()
+    {
+        using var listener = CreateListener(out var stoppedActivities);
+        var behavior = new TestTelemetryStreamBehavior<StreamMessage, StreamResponse>(
+            new LambdaStreamHandler<StreamMessage, StreamResponse>((_, _) => ThrowingStream())
+        );
+
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+        {
+            await foreach (var _ in behavior.Handle(new StreamMessage(), TestContext.Current.CancellationToken))
+            { }
+        });
 
         Assert.Equal(ActivityStatusCode.Error, Assert.Single(stoppedActivities).Status);
     }
@@ -207,6 +242,15 @@ public sealed class TelemetryBehaviorTests
             callback(message, cancellationToken);
     }
 
+    private sealed class LambdaStreamHandler<TMessage, TResponse>(
+        Func<TMessage, CancellationToken, IAsyncEnumerable<TResponse>> callback
+    ) : IStreamHandler<TMessage, TResponse>
+        where TMessage : notnull
+    {
+        public IAsyncEnumerable<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
+            callback(message, cancellationToken);
+    }
+
     private sealed class TestTelemetryCommandBehavior<TMessage>(ICommandHandler<TMessage> handler)
         : TelemetryCommandBehavior<TMessage>(handler)
         where TMessage : notnull;
@@ -219,4 +263,27 @@ public sealed class TelemetryBehaviorTests
         IRequestHandler<TMessage, TResponse> handler
     ) : TelemetryRequestBehavior<TMessage, TResponse>(handler)
         where TMessage : notnull;
+
+    private sealed class TestTelemetryStreamBehavior<TMessage, TResponse>(
+        IStreamHandler<TMessage, TResponse> handler
+    ) : TelemetryStreamBehavior<TMessage, TResponse>(handler)
+        where TMessage : notnull;
+
+    private static async IAsyncEnumerable<StreamResponse> Yield(params string[] values)
+    {
+        foreach (var value in values)
+        {
+            await Task.Yield();
+            yield return new StreamResponse(value);
+        }
+    }
+
+    private static async IAsyncEnumerable<StreamResponse> ThrowingStream()
+    {
+        await Task.Yield();
+        throw new InvalidOperationException("boom");
+#pragma warning disable CS0162
+        yield return new StreamResponse("unreachable");
+#pragma warning restore CS0162
+    }
 }

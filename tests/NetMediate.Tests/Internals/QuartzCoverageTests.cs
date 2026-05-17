@@ -262,6 +262,9 @@ public sealed class QuartzCoverageTests
         services.AddSingleton<INotificationHandler<QuartzMessage>, TrackingHandler<QuartzMessage>>();
 
         using var provider = services.BuildServiceProvider();
+        var handler = Assert.IsType<TrackingHandler<QuartzMessage>>(
+            provider.GetRequiredService<INotificationHandler<QuartzMessage>>()
+        );
 
         await QuartzNotificationJob.DispatchNotification<QuartzMessage>(
             provider,
@@ -269,10 +272,12 @@ public sealed class QuartzCoverageTests
             message: new QuartzMessage("unkeyed"),
             cancellationToken: TestContext.Current.CancellationToken
         );
+
+        Assert.Equal(1, handler.CallCount);
     }
 
     [Fact]
-    public void NetMediateQuartzDI_CreateServiceInstance_CoversFactoryInstanceTypeAndInvalidDescriptors()
+    public void NetMediateQuartzDI_CreateServiceInstance_CoversFactoryInstanceAndTypeDescriptors()
     {
         var method = typeof(NetMediateQuartzDI)
             .GetMethod(

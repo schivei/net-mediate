@@ -456,7 +456,7 @@ public sealed class QuartzCoverageTests
             Logger = NullLogger<QuartzMediator>.Instance,
             Options = Options.Create(new QuartzNotificationOptions()),
             Scheduler = await CreateSchedulerAsync(),
-            Serializer = new NotificationSerializer(),
+            Serializer = new JsonNotificationSerializer(),
         };
 
         var req = new QuartzMessage("request");

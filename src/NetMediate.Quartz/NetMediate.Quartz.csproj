@@ -38,6 +38,9 @@
     <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
     <PackageReference Include="Quartz" Version="3.*" />
     <PackageReference Include="Quartz.Extensions.DependencyInjection" Version="3.*" />
+	  <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />
+	  <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
+	  <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.*" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="NetMediate.Tests" />

@@ -32,7 +32,7 @@ namespace NetMediate.Quartz;
 [RequiresUnreferencedCode(
     "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
 )]
-[Injectable<IJob>]
+[Injectable<IJob>(ServiceLifetime.Singleton, RegistrationMultiplicity = RegistrationMultiplicity.Multiple)]
 public sealed class QuartzNotificationJob : IJob
 {
     /// <summary>

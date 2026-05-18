@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -9,6 +10,7 @@ using Quartz.Impl.Matchers;
 using Quartz.Spi;
 using System.Collections.Specialized;
 using System.Reflection;
+using System.Text;
 
 namespace NetMediate.Tests.Internals;
 
@@ -127,10 +129,20 @@ public sealed class QuartzCoverageTests
         var scheduler = await CreateSchedulerAsync();
         var services = new ServiceCollection();
 
+        var json = """
+            { "QuartzNotificationOptions": { "GroupName": "custom-group" } }
+            """;
+
+        using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+
+        var configuration = new ConfigurationManager();
+        configuration.AddJsonStream(jsonStream);
+        services.AddSingleton<IConfiguration>(configuration);
+
         services.AddOptions();
         services.AddLogging();
         services.AddSingleton(scheduler);
-        services.AddNetMediateQuartz(options => options.GroupName = "custom-group");
+        services.AddNetMediateQuartz();
 
         using var provider = services.BuildServiceProvider();
 
@@ -148,6 +160,8 @@ public sealed class QuartzCoverageTests
         var innerMediator = global::Moq.Mock.Of<IMediator>();
         var innerNotifiable = new CapturingNotifiable();
         var services = new ServiceCollection();
+        var configuration = new ConfigurationManager();
+        services.AddSingleton<IConfiguration>(configuration);
 
         services.AddOptions();
         services.AddLogging();
@@ -175,10 +189,20 @@ public sealed class QuartzCoverageTests
         var scheduler = await CreateSchedulerAsync();
         var services = new ServiceCollection();
 
+        var json = """
+            { "QuartzNotificationOptions": { "GroupName": "coverage-tests" } }
+            """;
+
+        using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+
+        var configuration = new ConfigurationManager();
+        configuration.AddJsonStream(jsonStream);
+        services.AddSingleton<IConfiguration>(configuration);
+
         services.AddOptions();
         services.AddLogging();
         services.AddSingleton(scheduler);
-        services.AddNetMediateQuartz(options => options.GroupName = "coverage-tests");
+        services.AddNetMediateQuartz();
 
         using var provider = services.BuildServiceProvider();
 
@@ -394,10 +418,20 @@ public sealed class QuartzCoverageTests
         var scheduler = await CreateSchedulerAsync();
         var services = new ServiceCollection();
 
+        var json = """
+            { "QuartzNotificationOptions": { "GroupName": "batch-tests" } }
+            """;
+
+        using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+
+        var configuration = new ConfigurationManager();
+        configuration.AddJsonStream(jsonStream);
+        services.AddSingleton<IConfiguration>(configuration);
+
         services.AddOptions();
         services.AddLogging();
         services.AddSingleton(scheduler);
-        services.AddNetMediateQuartz(options => options.GroupName = "batch-tests");
+        services.AddNetMediateQuartz();
 
         using var provider = services.BuildServiceProvider();
         var notifier = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
@@ -422,10 +456,20 @@ public sealed class QuartzCoverageTests
         var scheduler = await CreateSchedulerAsync();
         var services = new ServiceCollection();
 
+        var json = """
+            { "QuartzNotificationOptions": { "GroupName": "empty-batch-tests" } }
+            """;
+
+        using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+
+        var configuration = new ConfigurationManager();
+        configuration.AddJsonStream(jsonStream);
+        services.AddSingleton<IConfiguration>(configuration);
+
         services.AddOptions();
         services.AddLogging();
         services.AddSingleton(scheduler);
-        services.AddNetMediateQuartz(options => options.GroupName = "empty-batch-tests");
+        services.AddNetMediateQuartz();
 
         using var provider = services.BuildServiceProvider();
         var notifier = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
@@ -452,10 +496,20 @@ public sealed class QuartzCoverageTests
         var scheduler = await CreateSchedulerAsync();
         var services = new ServiceCollection();
 
+        var json = """
+            { "QuartzNotificationOptions": { "GroupName": "notify-no-key-tests" } }
+            """;
+
+        using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+
+        var configuration = new ConfigurationManager();
+        configuration.AddJsonStream(jsonStream);
+        services.AddSingleton<IConfiguration>(configuration);
+
         services.AddOptions();
         services.AddLogging();
         services.AddSingleton(scheduler);
-        services.AddNetMediateQuartz(options => options.GroupName = "notify-no-key-tests");
+        services.AddNetMediateQuartz();
 
         using var provider = services.BuildServiceProvider();
         var mediator = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
@@ -479,10 +533,20 @@ public sealed class QuartzCoverageTests
         var scheduler = await CreateSchedulerAsync();
         var services = new ServiceCollection();
 
+        var json = """
+            { "QuartzNotificationOptions": { "GroupName": "batch-no-key-tests" } }
+            """;
+
+        using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+
+        var configuration = new ConfigurationManager();
+        configuration.AddJsonStream(jsonStream);
+        services.AddSingleton<IConfiguration>(configuration);
+
         services.AddOptions();
         services.AddLogging();
         services.AddSingleton(scheduler);
-        services.AddNetMediateQuartz(options => options.GroupName = "batch-no-key-tests");
+        services.AddNetMediateQuartz();
 
         using var provider = services.BuildServiceProvider();
         var mediator = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
@@ -576,6 +640,17 @@ public sealed class QuartzCoverageTests
         var scheduler = await CreateSchedulerAsync();
         var loggerProvider = new CapturingLoggerProvider();
         var services = new ServiceCollection();
+
+        var json = """
+            { "QuartzNotificationOptions": { "GroupName": "log-tests" } }
+            """;
+
+        using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+
+        var configuration = new ConfigurationManager();
+        configuration.AddJsonStream(jsonStream);
+        services.AddSingleton<IConfiguration>(configuration);
+
         services.AddOptions();
         services.AddLogging(builder =>
         {
@@ -583,7 +658,7 @@ public sealed class QuartzCoverageTests
             builder.AddProvider(loggerProvider);
         });
         services.AddSingleton(scheduler);
-        services.AddNetMediateQuartz(options => options.GroupName = "log-tests");
+        services.AddNetMediateQuartz();
 
         using var provider = services.BuildServiceProvider();
         var notifier = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());

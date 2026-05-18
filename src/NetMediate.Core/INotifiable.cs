@@ -12,7 +12,7 @@ namespace NetMediate;
 /// token.
 /// If you must implement your own, uses [<c>DecoratorFor&lt;INotifiable&gt;</c>] to intercept and do your own implementation.
 /// </remarks>
-[ServiceInjection(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
+[ServiceInjection(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None, RegistrationMultiplicity = RegistrationMultiplicity.Single)]
 public interface INotifiable
 {
     /// <summary>

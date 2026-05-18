@@ -10,6 +10,19 @@ sidebar_position: 5
 
 ## Quick start
 
+Configure Options in `appsettings.json`:
+
+```json
+{
+    "QuartzNotificationOptions": {
+        "GroupName": "MyApp",
+        "MisfireRetryCount": 3
+    }
+}
+```
+
+Startup configuration:
+
 ```csharp
 using NetMediate.Quartz;
 using Quartz;
@@ -25,10 +38,7 @@ builder.Services.AddQuartz(q =>
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
 // 2. Register NetMediate Quartz extensions
-builder.Services.AddNetMediateQuartz(opts =>
-{
-    opts.GroupName = "MyApp";
-});
+builder.Services.AddNetMediateQuartz();
 
 // 3. Register NetMediate itself after Quartz extensions
 builder.Services.AddNetMediate();

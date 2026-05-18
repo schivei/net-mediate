@@ -1,4 +1,3 @@
-using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Benchmarks;

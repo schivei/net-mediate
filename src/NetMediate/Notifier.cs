@@ -1,10 +1,9 @@
-using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 
 namespace NetMediate;
 
 /// <inheritdoc/>
-[Injectable<INotifiable>(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None, Order = int.MinValue)]
+[Injectable<INotifiable>(Order = int.MinValue)]
 [Browsable(false)]
 [EditorBrowsable(EditorBrowsableState.Never)]
 public sealed class Notifier : INotifiable

@@ -6,7 +6,7 @@ using System.Diagnostics;
 namespace NetMediate;
 
 /// <inheritdoc/>
-[Injectable<IMediator>(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
+[Injectable<IMediator>]
 [Browsable(false)]
 [EditorBrowsable(EditorBrowsableState.Never)]
 public sealed class Mediator : IMediator

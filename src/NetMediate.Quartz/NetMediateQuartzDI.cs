@@ -35,7 +35,6 @@ public static class NetMediateQuartzDI
     /// </para>
     /// </remarks>
     /// <param name="services">The <see cref="IServiceCollection"/> to add NetMediate Quartz services to.</param>
-    /// <param name="configureOptions">Optional callback to configure <see cref="QuartzNotificationOptions"/>.</param>
     /// <returns>The <see cref="IServiceCollection"/> for chaining.</returns>
     [RequiresDynamicCode(
         "QuartzNotificationJob uses MakeGenericMethod for per-type notification dispatch and is not compatible with NativeAOT."
@@ -44,13 +43,11 @@ public static class NetMediateQuartzDI
         "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
     )]
     public static IServiceCollection AddNetMediateQuartz(
-        this IServiceCollection services,
-        Action<QuartzNotificationOptions>? configureOptions = null
+        this IServiceCollection services
     )
     {
-        services.AddOptions<QuartzNotificationOptions>();
-        if (configureOptions is not null)
-            services.Configure(configureOptions);
+        services.AddOptions<QuartzNotificationOptions>()
+            .BindConfiguration(nameof(QuartzNotificationOptions));
 
         // Capture any IScheduler descriptors already registered by the caller so we can restore them
         // after GenDI runs. GenDI 26.5.13+ scans transitive assemblies and auto-registers

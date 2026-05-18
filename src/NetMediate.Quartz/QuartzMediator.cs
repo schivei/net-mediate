@@ -12,6 +12,7 @@ namespace NetMediate.Quartz;
 [RequiresUnreferencedCode(
     "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
 )]
+[DecoratorFor<IMediator>]
 public sealed class QuartzMediator : IMediator
 {
     /// <summary>

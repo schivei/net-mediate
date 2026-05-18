@@ -21,6 +21,19 @@ dotnet add package Quartz.Extensions.Hosting
 
 ## Quick start
 
+Configure Options in `appsettings.json`:
+
+```json
+{
+    "QuartzNotificationOptions": {
+        "GroupName": "MyApp",
+        "MisfireRetryCount": 3
+    }
+}
+```
+
+Startup configuration:
+
 ```csharp
 using NetMediate.Quartz;
 using Quartz;
@@ -37,10 +50,7 @@ builder.Services.AddQuartz(q =>
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
 // 2. Register NetMediate Quartz extensions
-builder.Services.AddNetMediateQuartz(opts =>
-{
-    opts.GroupName = "MyApp";
-});
+builder.Services.AddNetMediateQuartz();
 
 // 3. Register the generated NetMediate services after Quartz extensions
 builder.Services.AddNetMediate();
@@ -53,19 +63,20 @@ await host.RunAsync();
 
 ## Configuration
 
-`AddNetMediateQuartz` accepts an optional `QuartzNotificationOptions` callback:
+`AddNetMediateQuartz` accepts an optional `QuartzNotificationOptions` via appsettings:
 
 | Property | Default | Description |
 |---|---|---|
 | `GroupName` | `"NetMediate"` | Quartz group name for all notification jobs. |
 | `MisfireRetryCount` | `1` | How many times Quartz will retry a misfired job. |
 
-```csharp
-builder.Services.AddNetMediateQuartz(opts =>
+```json
 {
-    opts.GroupName = "Notifications";
-    opts.MisfireRetryCount = 3;
-});
+    "QuartzNotificationOptions": {
+        "GroupName": "Notifications",
+        "MisfireRetryCount": 3
+    }
+}
 ```
 
 ## Customizing serialization

@@ -1,11 +1,11 @@
-using GenDI;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.Quartz;
 
 /// <summary>
 /// Defines how notification messages are serialized and deserialized for storage in the Quartz job data map.
 /// </summary>
-[ServiceInjection]
+[ServiceInjection(ServiceLifetime.Singleton, RegistrationMultiplicity = RegistrationMultiplicity.Single)]
 public interface INotificationSerializer
 {
     /// <summary>

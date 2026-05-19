@@ -242,26 +242,6 @@ public sealed class ResilienceBehaviorTests
         Assert.Equal(5, response.Value);
     }
 
-    [Fact(Skip = "Not implemented")]
-    public async Task CircuitBreakerCommandBehavior_CompletesOnSuccess()
-    {
-        var called = false;
-        var behavior = new CircuitBreakerCommandBehavior<CircuitCommandMessage>(
-            new LambdaCommandHandler<CircuitCommandMessage>((_, _) =>
-            {
-                called = true;
-                return Task.CompletedTask;
-            }),
-            Options.Create(new CircuitBreakerBehaviorOptions
-            {
-                Disabled = false
-            })
-        );
-
-        await behavior.Handle(new CircuitCommandMessage(), TestContext.Current.CancellationToken);
-        Assert.True(called);
-    }
-
     [Fact]
     public async Task CircuitBreakerCommandBehavior_WhenThresholdReached_OpensCircuit()
     {

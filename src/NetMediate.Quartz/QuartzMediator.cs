@@ -103,6 +103,9 @@ internal sealed class QuartzMediator : IMediator
     /// <inheritdoc/>
     public Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
     {
+        if (!messages.Any())
+            return Task.CompletedTask;
+
         foreach (var m in messages)
             _ = Notify(key, m, cancellationToken);
 

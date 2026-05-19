@@ -161,6 +161,9 @@ internal sealed class Mediator : IMediator
     )
         where TMessage : notnull
     {
+        if (!messages.Any())
+            return Task.CompletedTask;
+
         foreach (var m in messages)
             Notify(key, m, cancellationToken);
 
@@ -214,6 +217,9 @@ internal sealed class Mediator : IMediator
     )
         where TMessage : notnull
     {
+        if (!messages.Any())
+            return;
+
         foreach (var sender in messages)
         {
             await Send(key, sender, cancellationToken).ConfigureAwait(false);

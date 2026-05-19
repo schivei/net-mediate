@@ -3,6 +3,8 @@ using NetMediate.DependencyInjection;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 
+[assembly: GenDICoveration(false)]
+
 namespace NetMediate;
 
 /// <summary>

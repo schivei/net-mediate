@@ -1,7 +1,9 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 
-[assembly: GenDI.GenDICoveration(false)]
+[assembly: ExcludeFromCodeCoverage]
+[assembly: GenDICoveration(false)]
 
 namespace NetMediate.Diagnostics.Tests;
 

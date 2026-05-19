@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Options;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
-[assembly: GenDI.GenDICoveration(false)]
+[assembly: ExcludeFromCodeCoverage]
+[assembly: GenDICoveration(false)]
 
 namespace NetMediate.Resilience.Tests;
 

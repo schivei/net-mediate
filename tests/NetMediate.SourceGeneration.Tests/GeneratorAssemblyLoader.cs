@@ -1,6 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
-[assembly: GenDI.GenDICoveration(false)]
+[assembly: ExcludeFromCodeCoverage]
+[assembly: GenDICoveration(false)]
 
 namespace NetMediate.SourceGeneration.Tests;
 

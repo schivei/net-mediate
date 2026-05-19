@@ -16,6 +16,7 @@ namespace NetMediate.Quartz;
 [DecoratorFor<IMediator>]
 [Browsable(false)]
 [EditorBrowsable(EditorBrowsableState.Never)]
+[ExcludeFromCodeCoverage]
 internal sealed class QuartzMediator : IMediator
 {
     /// <summary>

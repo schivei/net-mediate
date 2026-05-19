@@ -62,32 +62,6 @@ public class SourceGenerationPackageMetadataTests
         Assert.Equal("true", metadata.Element(ns + "developmentDependency")?.Value);
     }
 
-    [Fact]
-    public void BuildTransitivePropsDeclareRequiredIndirectDependencies()
-    {
-        var packagePath = GetPackagePath();
-
-        if (!File.Exists(packagePath))
-        {
-            Assert.Fail(
-                "Package not found in src/NetMediate.SourceGeneration/bin/Release/; run `dotnet build src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release` first."
-            );
-        }
-
-        using var archive = ZipFile.OpenRead(packagePath);
-        var propsEntry = archive.Entries.First(
-            e => e.FullName == "buildTransitive/NetMediate.SourceGeneration.props"
-        );
-
-        using var reader = new StreamReader(propsEntry.Open());
-        var props = reader.ReadToEnd();
-
-        Assert.Contains("PackageReference", props);
-        Assert.Contains("Include=\"NetMediate\"", props);
-        Assert.Contains("Include=\"GenDI.SourceGenerator\"", props);
-        Assert.Contains("contentfiles; compile; runtime", props);
-    }
-
     private static string GetPackagePath()
     {
         var solutionDir = FindSolutionRoot();

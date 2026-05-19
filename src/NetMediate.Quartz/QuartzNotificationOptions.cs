@@ -3,6 +3,7 @@ namespace NetMediate.Quartz;
 /// <summary>
 /// Configuration options for the Quartz-backed notification scheduler.
 /// </summary>
+[OptionConfig]
 public sealed class QuartzNotificationOptions
 {
     /// <summary>

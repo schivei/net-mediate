@@ -4,11 +4,26 @@ sidebar_position: 5
 
 # Quartz
 
+> In Development
+
 > **GenDI pattern:** The examples below assume `NetMediate.SourceGeneration` in the startup project. Prefer `[Injectable]` + `[Inject]` for serializers, notifiers, and supporting services.
 
 `NetMediate.Quartz` is an optional package that decorates `IMediator` notification publishing with Quartz-backed persistence.
 
 ## Quick start
+
+Configure Options in `appsettings.json`:
+
+```json
+{
+    "QuartzNotificationOptions": {
+        "GroupName": "MyApp",
+        "MisfireRetryCount": 3
+    }
+}
+```
+
+Startup configuration:
 
 ```csharp
 using NetMediate.Quartz;
@@ -25,10 +40,7 @@ builder.Services.AddQuartz(q =>
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
 // 2. Register NetMediate Quartz extensions
-builder.Services.AddNetMediateQuartz(opts =>
-{
-    opts.GroupName = "MyApp";
-});
+builder.Services.AddNetMediateQuartz();
 
 // 3. Register NetMediate itself after Quartz extensions
 builder.Services.AddNetMediate();

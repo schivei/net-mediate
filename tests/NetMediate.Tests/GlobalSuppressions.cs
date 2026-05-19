@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-[assembly: GenDI.GenDICoveration(false)]
+[assembly: GenDICoveration(false)]
+[assembly: ExcludeFromCodeCoverage]
 
 [assembly: SuppressMessage(
     "CodeQuality",

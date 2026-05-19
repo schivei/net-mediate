@@ -1,46 +1,56 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <Import Project="..\..\pack.props" />
-  <PropertyGroup>
-    <AssemblyName>NetMediate.Quartz</AssemblyName>
-    <Title>NetMediate.Quartz</Title>
-    <Description>Quartz.NET-backed persistent notification scheduler for NetMediate. Enables crash recovery and cluster-distributed notification execution.</Description>
-    <PackageTags>Mediator;NetMediate;Resilience;Quartz;Persistent;Cluster;Notifications</PackageTags>
-    <!-- XML Documentation Generation -->
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-    <WarningsNotAsErrors>CS1591</WarningsNotAsErrors>
-    <GenerateDocumentationFileInReleaseBuild>true</GenerateDocumentationFileInReleaseBuild>
+	<Import Project="..\..\pack.props" />
+	<PropertyGroup>
+		<AssemblyName>NetMediate.Quartz</AssemblyName>
+		<Title>NetMediate.Quartz</Title>
+		<Description>Quartz.NET-backed persistent notification scheduler for NetMediate. Enables crash recovery and cluster-distributed notification execution.</Description>
+		<PackageTags>Mediator;NetMediate;Resilience;Quartz;Persistent;Cluster;Notifications</PackageTags>
+		<!-- XML Documentation Generation -->
+		<GenerateDocumentationFile>true</GenerateDocumentationFile>
+		<DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<WarningsAsErrors />
+		<WarningsNotAsErrors>CS1591</WarningsNotAsErrors>
+		<GenerateDocumentationFileInReleaseBuild>true</GenerateDocumentationFileInReleaseBuild>
 
-    <IsAotCompatible>false</IsAotCompatible>
-    <IsTrimmable>false</IsTrimmable>
-    <EnableTrimAnalyzer>false</EnableTrimAnalyzer>
-    <EnableSingleFileAnalyzer>false</EnableSingleFileAnalyzer>
-    <EnableAotAnalyzer>false</EnableAotAnalyzer>
-    <VerifyReferenceAotCompatibility>false</VerifyReferenceAotCompatibility>
-    <PublishTrimmed>false</PublishTrimmed>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsNotAsErrors>CS1591</WarningsNotAsErrors>
-  </PropertyGroup>
-  <ItemGroup>
-    <None Include="..\..\assets\logo.png" Pack="true" PackagePath="\" />
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
-    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
-  </ItemGroup>
-  <ItemGroup>
-	  <PackageReference Include="GenDI.SourceGenerator" Version="2026.5.17.848">
-		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		  <PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
-	  </PackageReference>
-    <ProjectReference Include="..\NetMediate\NetMediate.csproj" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
-    <PackageReference Include="Quartz" Version="3.*" />
-    <PackageReference Include="Quartz.Extensions.DependencyInjection" Version="3.*" />
-  </ItemGroup>
-  <ItemGroup>
-    <InternalsVisibleTo Include="NetMediate.Tests" />
-  </ItemGroup>
+		<IsAotCompatible>false</IsAotCompatible>
+		<IsTrimmable>false</IsTrimmable>
+		<EnableTrimAnalyzer>false</EnableTrimAnalyzer>
+		<EnableSingleFileAnalyzer>false</EnableSingleFileAnalyzer>
+		<EnableAotAnalyzer>false</EnableAotAnalyzer>
+		<VerifyReferenceAotCompatibility>false</VerifyReferenceAotCompatibility>
+		<PublishTrimmed>false</PublishTrimmed>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+		<TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+		<WarningsNotAsErrors>CS1591</WarningsNotAsErrors>
+	</PropertyGroup>
+	<ItemGroup>
+		<None Include="..\..\assets\logo.png" Pack="true" PackagePath="\" />
+		<None Include="..\..\README.md" Pack="true" PackagePath="\" />
+		<None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="GenDI.SourceGenerator" Version="2026.5.19.1218">
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
+		</PackageReference>
+		<ProjectReference Include="..\NetMediate\NetMediate.csproj" />
+		<ProjectReference Include="..\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj">
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
+			<OutputItemType>Analyzer</OutputItemType>
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+		</ProjectReference>
+		<PackageReference Include="Quartz" Version="3.*" />
+		<PackageReference Include="Quartz.Extensions.DependencyInjection" Version="3.*" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.*" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.*" />
+		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.*" />
+	</ItemGroup>
+	<ItemGroup>
+		<InternalsVisibleTo Include="NetMediate.Tests">
+			<AllInternalsVisible>true</AllInternalsVisible>
+		</InternalsVisibleTo>
+	</ItemGroup>
 </Project>

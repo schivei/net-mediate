@@ -20,7 +20,8 @@
 		<EmbeddedResource Include="NetMediateFrameworkBehavior.template" />
 		<EmbeddedResource Include="NetMediateGeneratedDI.template" />
 		<EmbeddedResource Include="NetMediateTypedExtensions.template" />
-		<None Include="buildTransitive\NetMediate.SourceGeneration.props" Pack="true" PackagePath="buildTransitive" />
+		<None Include="buildTransitive\NetMediate.SourceGeneration.props" Pack="true" PackagePath="buildTransitive/NetMediate.SourceGeneration.props" />
+		<None Include="buildTransitive\NetMediate.SourceGeneration.targets" Pack="true" PackagePath="buildTransitive/NetMediate.SourceGeneration.targets" />
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.*" PrivateAssets="all" />

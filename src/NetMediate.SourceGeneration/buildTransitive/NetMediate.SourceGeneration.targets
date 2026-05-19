@@ -3,7 +3,7 @@
 		<ItemGroup>
 			<PackageReference Update="NetMediate.SourceGeneration">
 				<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-				<PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
+				<PrivateAssets>all</PrivateAssets>
 			</PackageReference>
 
 			<PackageReference Update="GenDI.SourceGenerator">

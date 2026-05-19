@@ -1,4 +1,3 @@
-using GenDI;
 using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
@@ -14,7 +13,7 @@ namespace NetMediate.Quartz;
     "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
 )]
 [Injectable]
-public sealed class JsonNotificationSerializer : INotificationSerializer
+internal sealed class JsonNotificationSerializer : INotificationSerializer
 {
     private static readonly JsonSerializerOptions s_options = new(JsonSerializerDefaults.Web);
 

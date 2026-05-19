@@ -2,14 +2,15 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate;
 
 /// <inheritdoc/>
-[Injectable<IMediator>(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
+[Injectable(ServiceLifetime.Singleton, Order = int.MinValue)]
 [Browsable(false)]
 [EditorBrowsable(EditorBrowsableState.Never)]
-public sealed class Mediator : IMediator
+internal sealed class Mediator : IMediator
 {
     /// <summary>
     /// Gets the service provider for resolving dependencies.
@@ -154,6 +155,7 @@ public sealed class Mediator : IMediator
         Notify(null, messages, cancellationToken);
 
     /// <inheritdoc/>
+    [ExcludeFromCodeCoverage]
     public Task Notify<TMessage>(
         object? key,
         IEnumerable<TMessage> messages,
@@ -161,6 +163,9 @@ public sealed class Mediator : IMediator
     )
         where TMessage : notnull
     {
+        if (!messages.Any())
+            return Task.CompletedTask;
+
         foreach (var m in messages)
             Notify(key, m, cancellationToken);
 
@@ -207,6 +212,7 @@ public sealed class Mediator : IMediator
         Send(null, messages, cancellationToken);
 
     /// <inheritdoc/>
+    [ExcludeFromCodeCoverage]
     public async Task Send<TMessage>(
         object? key,
         IEnumerable<TMessage> messages,
@@ -214,6 +220,9 @@ public sealed class Mediator : IMediator
     )
         where TMessage : notnull
     {
+        if (!messages.Any())
+            return;
+
         foreach (var sender in messages)
         {
             await Send(key, sender, cancellationToken).ConfigureAwait(false);

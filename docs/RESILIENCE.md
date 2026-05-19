@@ -1,5 +1,7 @@
 # NetMediate.Resilience
 
+> In Development
+
 Adds retry, timeout and circuit-breaker decorators to your NetMediate message pipeline.
 
 ## Installation

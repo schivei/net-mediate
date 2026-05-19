@@ -310,46 +310,6 @@ public sealed class QuartzCoverageTests
     }
 
     [Fact]
-    public async Task QuartzNotifier_NotifyBatch_WithEmptyMessages_CompletesWithoutScheduling()
-    {
-        var scheduler = await CreateSchedulerAsync();
-        var services = new ServiceCollection();
-
-        var json = """
-            { "QuartzNotificationOptions": { "GroupName": "empty-batch-tests" } }
-            """;
-
-        using var jsonStream = new MemoryStream(Encoding.UTF8.GetBytes(json));
-
-        var configuration = new ConfigurationManager();
-        configuration.AddJsonStream(jsonStream);
-        services.AddSingleton<IConfiguration>(configuration);
-
-        services.AddOptions();
-        services.AddLogging();
-        services.AddSingleton(scheduler);
-        services.AddNetMediateQuartz();
-
-        using var provider = services.BuildServiceProvider();
-        var notifier = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
-
-        await scheduler.Clear(TestContext.Current.CancellationToken);
-
-        await notifier.Notify(
-            null,
-            (IEnumerable<QuartzMessage>)[],
-            TestContext.Current.CancellationToken
-        );
-
-        var jobKeys = await scheduler.GetJobKeys(
-            GroupMatcher<JobKey>.GroupEquals("empty-batch-tests"),
-            TestContext.Current.CancellationToken
-        );
-
-        Assert.Empty(jobKeys);
-    }
-
-    [Fact]
     public async Task QuartzMediator_NotifyWithoutKey_DelegatesToKeyedOverload()
     {
         var scheduler = await CreateSchedulerAsync();

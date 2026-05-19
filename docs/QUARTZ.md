@@ -1,5 +1,7 @@
 # NetMediate.Quartz
 
+> In Development
+
 > **GenDI pattern:** The examples below assume `NetMediate.SourceGeneration` in the startup project. Prefer `[Injectable]` + `[Inject]` for serializers, notifiers, and supporting services.
 
 `NetMediate.Quartz` is an optional package that decorates `IMediator` notification publishing with Quartz-backed persistence.

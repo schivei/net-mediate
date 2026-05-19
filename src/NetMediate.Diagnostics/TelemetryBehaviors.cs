@@ -125,7 +125,7 @@ public abstract class TelemetryStreamBehavior<TMessage, TResponse>(IStreamHandle
         List<TResponse> responses = [];
         try
         {
-            await foreach(var item in handler.Handle(message, cancellationToken).ConfigureAwait(false))
+            await foreach (var item in handler.Handle(message, cancellationToken).ConfigureAwait(false))
             {
                 responses.Add(item);
             }

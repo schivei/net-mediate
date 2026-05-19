@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Options;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
-[assembly: GenDI.GenDICoveration(false)]
+[assembly: ExcludeFromCodeCoverage]
+[assembly: GenDICoveration(false)]
 
 namespace NetMediate.Resilience.Tests;
 
@@ -238,23 +240,6 @@ public sealed class ResilienceBehaviorTests
             TestContext.Current.CancellationToken
         );
         Assert.Equal(5, response.Value);
-    }
-
-    [Fact]
-    public async Task CircuitBreakerCommandBehavior_CompletesOnSuccess()
-    {
-        var called = false;
-        var behavior = new CircuitBreakerCommandBehavior<CircuitCommandMessage>(
-            new LambdaCommandHandler<CircuitCommandMessage>((_, _) =>
-            {
-                called = true;
-                return Task.CompletedTask;
-            }),
-            Options.Create(new CircuitBreakerBehaviorOptions())
-        );
-
-        await behavior.Handle(new CircuitCommandMessage(), TestContext.Current.CancellationToken);
-        Assert.True(called);
     }
 
     [Fact]

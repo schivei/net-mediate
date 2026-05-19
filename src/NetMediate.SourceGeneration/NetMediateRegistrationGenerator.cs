@@ -221,7 +221,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         BuildFrameworkBehaviorArguments arguments
     )
     {
-        var(
+        var (
             behaviorTemplate,
             assemblyName,
             hasDiagnostics,

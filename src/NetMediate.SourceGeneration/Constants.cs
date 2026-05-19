@@ -104,7 +104,7 @@ internal static class Constants
         registration.Template.Replace(AssemblyNamespaceToken, registration.AssemblyName)
                 .Replace(ImplementationTypeToken, registration.InterfaceName)
                 .Replace(OrderToken, order.ToString(CultureInfo.InvariantCulture))
-                .Replace(RandomNameToken,  RandomNameFrom(registration.InterfaceName, behaviorName, out randomName))
+                .Replace(RandomNameToken, RandomNameFrom(registration.InterfaceName, behaviorName, out randomName))
                 .Replace(BehaviorAbstractionToken, behaviorAbstration);
 
     private static string GetTelemetryCommandClass(BehaviorRegistration registration, out string randomName) =>

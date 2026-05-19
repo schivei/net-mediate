@@ -1,5 +1,5 @@
-using System.Collections.Concurrent;
 using NetMediate.Tests.Messages;
+using System.Collections.Concurrent;
 
 namespace NetMediate.Tests.Internals;
 

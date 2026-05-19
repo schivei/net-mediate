@@ -21,15 +21,6 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  # calculate version, build/test all projects, and run SonarCloud analysis; on main branch also run benchmarks and post results to PR comment
-  # <VersionYear>$([System.DateTime]::UtcNow.Year)</VersionYear>
-  # <VersionMajor>$([System.DateTime]::UtcNow.Month)</VersionMajor>
-  # <VersionMinor>$([System.DateTime]::UtcNow.Day)</VersionMinor>
-  # <VersionPatch>$([System.DateTime]::UtcNow.Subtract($([System.DateTime]::UtcNow.Date)).TotalMinutes.ToString("F0"))</VersionPatch>
-  # <Stable>$(VersionYear).$(VersionMajor).$(VersionMinor)</Stable>
-  # <Version>$(Stable).$(VersionPatch)$(Suffix)</Version>
-  # the Version must be propagated to all projects for the source-generation integration tests to work, so we run the version-bump workflow on every PR and main commit, but only publish packages from main commits (the version-bump workflow creates a separate commit with the new version after the PR is merged, so the merge commit itself is not published and does not trigger a release)
-
   version-calculation:
     name: Version Calculation
     runs-on: ubuntu-latest

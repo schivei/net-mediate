@@ -1,5 +1,8 @@
 using Microsoft.Extensions.Options;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+
+[assembly: ExcludeFromCodeCoverage]
 
 namespace NetMediate.Resilience;
 

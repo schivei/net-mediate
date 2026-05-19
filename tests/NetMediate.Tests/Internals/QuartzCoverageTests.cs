@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Moq;
 using NetMediate.Quartz;
 using Quartz;
 using Quartz.Impl;
@@ -146,41 +147,11 @@ public sealed class QuartzCoverageTests
 
         using var provider = services.BuildServiceProvider();
 
-        var notifiable = provider.GetRequiredService<INotifiable>();
+        var mediator = provider.GetRequiredService<IMediator>();
         var options = provider.GetRequiredService<IOptions<QuartzNotificationOptions>>();
 
-        Assert.IsType<QuartzNotifier>(notifiable);
+        Assert.IsType<QuartzMediator>(mediator);
         Assert.Equal("custom-group", options.Value.GroupName);
-    }
-
-    [Fact]
-    public async Task AddNetMediateQuartz_PreservesKeyedServiceKeyAndImplementationInstance()
-    {
-        var scheduler = await CreateSchedulerAsync();
-        var innerMediator = global::Moq.Mock.Of<IMediator>();
-        var innerNotifiable = new CapturingNotifiable();
-        var services = new ServiceCollection();
-        var configuration = new ConfigurationManager();
-        services.AddSingleton<IConfiguration>(configuration);
-
-        services.AddOptions();
-        services.AddLogging();
-        services.AddSingleton(scheduler);
-        services.AddKeyedSingleton<IMediator>("mediator-key", innerMediator);
-        services.AddKeyedSingleton<INotifiable>("notifier-key", innerNotifiable);
-        services.AddNetMediateQuartz();
-
-        using var provider = services.BuildServiceProvider();
-
-        var mediator = Assert.IsType<QuartzMediator>(
-            provider.GetRequiredKeyedService<IMediator>("mediator-key")
-        );
-        var notifiable = Assert.IsType<QuartzNotifier>(
-            provider.GetRequiredKeyedService<INotifiable>("notifier-key")
-        );
-
-        Assert.Same(innerMediator, mediator.Inner);
-        Assert.Same(innerNotifiable, notifiable.Inner);
     }
 
     [Fact]
@@ -357,36 +328,6 @@ public sealed class QuartzCoverageTests
     }
 
     [Fact]
-    public async Task QuartzNotifier_DispatchNotifications_WithNoHandlers_Completes()
-    {
-        var scheduler = await CreateSchedulerAsync();
-        var loggerProvider = new CapturingLoggerProvider();
-        var services = new ServiceCollection();
-        services.AddOptions();
-        services.AddLogging(builder =>
-        {
-            builder.SetMinimumLevel(LogLevel.Debug);
-            builder.AddProvider(loggerProvider);
-        });
-        services.AddSingleton(scheduler);
-        services.AddNetMediateQuartz();
-
-        using var provider = services.BuildServiceProvider();
-        var notifier = Assert.IsType<QuartzNotifier>(provider.GetRequiredService<INotifiable>());
-
-        await notifier.DispatchNotifications<object>(
-            null,
-            new object(),
-            [],
-            TestContext.Current.CancellationToken
-        );
-
-        var entry = Assert.Single(loggerProvider.Entries);
-        Assert.Equal(LogLevel.Debug, entry.LogLevel);
-        Assert.Contains("no handlers registered", entry.Message);
-    }
-
-    [Fact]
     public async Task QuartzNotifier_DispatchNotifications_WithHandlers_InvokesEachHandler()
     {
         var scheduler = await CreateSchedulerAsync();
@@ -397,16 +338,11 @@ public sealed class QuartzCoverageTests
         services.AddNetMediateQuartz();
 
         using var provider = services.BuildServiceProvider();
-        var notifier = Assert.IsType<QuartzNotifier>(provider.GetRequiredService<INotifiable>());
+        var mediator = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
         var first = new TrackingHandler<QuartzMessage>();
         var second = new TrackingHandler<QuartzMessage>();
 
-        await notifier.DispatchNotifications(
-            null,
-            new QuartzMessage("handled"),
-            [first, second],
-            TestContext.Current.CancellationToken
-        );
+        await mediator.Notify(new QuartzMessage("handled"), TestContext.Current.CancellationToken);
 
         Assert.Equal(1, first.CallCount);
         Assert.Equal(1, second.CallCount);
@@ -569,53 +505,62 @@ public sealed class QuartzCoverageTests
     {
         var requestTask = Task.FromResult(7);
         var streamResult = YieldIntegers(1, 2);
-        var inner = new global::Moq.Mock<IMediator>(global::Moq.MockBehavior.Strict);
 
-        inner.Setup(m => m.Request<QuartzMessage, int>(
-                global::Moq.It.IsAny<QuartzMessage>(),
-                global::Moq.It.IsAny<CancellationToken>()))
-            .Returns(requestTask);
-        inner.Setup(m => m.Request<QuartzMessage, int>(
-                global::Moq.It.IsAny<object?>(),
-                global::Moq.It.IsAny<QuartzMessage>(),
-                global::Moq.It.IsAny<CancellationToken>()))
-            .Returns(requestTask);
-        inner.Setup(m => m.RequestStream<QuartzMessage, int>(
-                global::Moq.It.IsAny<QuartzMessage>(),
-                global::Moq.It.IsAny<CancellationToken>()))
-            .Returns(streamResult);
-        inner.Setup(m => m.RequestStream<QuartzMessage, int>(
-                global::Moq.It.IsAny<object?>(),
-                global::Moq.It.IsAny<QuartzMessage>(),
-                global::Moq.It.IsAny<CancellationToken>()))
-            .Returns(streamResult);
-        inner.Setup(m => m.Send(
-                global::Moq.It.IsAny<QuartzMessage>(),
-                global::Moq.It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        inner.Setup(m => m.Send(
-                global::Moq.It.IsAny<object?>(),
-                global::Moq.It.IsAny<QuartzMessage>(),
-                global::Moq.It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        inner.Setup(m => m.Send(
-                global::Moq.It.IsAny<IEnumerable<QuartzMessage>>(),
-                global::Moq.It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        inner.Setup(m => m.Send(
-                global::Moq.It.IsAny<object?>(),
-                global::Moq.It.IsAny<IEnumerable<QuartzMessage>>(),
-                global::Moq.It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(new ConfigurationManager());
+        Quartz.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
+        DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
 
-        var mediator = new QuartzMediator
-        {
-            Inner = inner.Object,
+        var inner = new Mock<QuartzMediator>(() => new QuartzMediator {
             Logger = NullLogger<QuartzMediator>.Instance,
             Options = Options.Create(new QuartzNotificationOptions()),
-            Scheduler = await CreateSchedulerAsync(),
+            Scheduler = new Mock<IScheduler>().Object,
             Serializer = new JsonNotificationSerializer(),
-        };
+            Inner = new Mediator
+            {
+                ServiceProvider = services.BuildServiceProvider(),
+                Notifier = new TestNotifiable()
+            }
+        }, MockBehavior.Strict);
+
+        inner.Setup(m => m.Request<QuartzMessage, int>(
+                It.IsAny<QuartzMessage>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(requestTask);
+        inner.Setup(m => m.Request<QuartzMessage, int>(
+                It.IsAny<object?>(),
+                It.IsAny<QuartzMessage>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(requestTask);
+        inner.Setup(m => m.RequestStream<QuartzMessage, int>(
+                It.IsAny<QuartzMessage>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(streamResult);
+        inner.Setup(m => m.RequestStream<QuartzMessage, int>(
+                It.IsAny<object?>(),
+                It.IsAny<QuartzMessage>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(streamResult);
+        inner.Setup(m => m.Send(
+                It.IsAny<QuartzMessage>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        inner.Setup(m => m.Send(
+                It.IsAny<object?>(),
+                It.IsAny<QuartzMessage>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        inner.Setup(m => m.Send(
+                It.IsAny<IEnumerable<QuartzMessage>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        inner.Setup(m => m.Send(
+                It.IsAny<object?>(),
+                It.IsAny<IEnumerable<QuartzMessage>>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var mediator = inner.Object;
 
         var req = new QuartzMessage("request");
         Assert.Equal(7, await mediator.Request<QuartzMessage, int>(req, TestContext.Current.CancellationToken));
@@ -764,7 +709,7 @@ public sealed class QuartzCoverageTests
 
     private static IJobExecutionContext CreateJobContext(IJobDetail jobDetail)
     {
-        var context = new global::Moq.Mock<IJobExecutionContext>();
+        var context = new Mock<IJobExecutionContext>();
         context.SetupGet(x => x.JobDetail).Returns(jobDetail);
         context.SetupGet(x => x.CancellationToken).Returns(TestContext.Current.CancellationToken);
         return context.Object;

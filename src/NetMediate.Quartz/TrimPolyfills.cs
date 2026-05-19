@@ -10,6 +10,7 @@ namespace System.Diagnostics.CodeAnalysis;
     AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Class,
     Inherited = false
 )]
+[ExcludeFromCodeCoverage]
 internal sealed class RequiresDynamicCodeAttribute(string message) : Attribute
 {
     /// <summary>Gets the message that describes the usage.</summary>
@@ -27,6 +28,7 @@ internal sealed class RequiresDynamicCodeAttribute(string message) : Attribute
     AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Class,
     Inherited = false
 )]
+[ExcludeFromCodeCoverage]
 internal sealed class RequiresUnreferencedCodeAttribute(string message) : Attribute
 {
     /// <summary>Gets the message that describes the usage.</summary>

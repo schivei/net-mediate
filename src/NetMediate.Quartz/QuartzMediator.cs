@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Quartz;
+using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.Quartz;
@@ -13,10 +14,12 @@ namespace NetMediate.Quartz;
     "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
 )]
 [DecoratorFor<IMediator>]
-public sealed class QuartzMediator : IMediator
+[Browsable(false)]
+[EditorBrowsable(EditorBrowsableState.Never)]
+internal sealed class QuartzMediator : IMediator
 {
     /// <summary>
-    /// Gets the underlying mediator instance.
+    /// Gets the inner mediator instance to which notifications will be delegated after being scheduled.
     /// </summary>
     [Inject] public required IMediator Inner { get; init; }
     /// <summary>
@@ -37,12 +40,7 @@ public sealed class QuartzMediator : IMediator
     [Inject] public required ILogger<QuartzMediator> Logger { get; init; }
 
     /// <inheritdoc/>
-    public Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
-        Notify(null, message, cancellationToken);
-
-    /// <inheritdoc/>
-    [ExcludeFromCodeCoverage]
-    public async Task Notify<TMessage>(object? key, TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull
+    public async Task Notify<TMessage>(object? key, TMessage message, CancellationToken cancellationToken = default)
     {
 
         var json = Serializer.Serialize(message);
@@ -95,18 +93,20 @@ public sealed class QuartzMediator : IMediator
     }
 
     /// <inheritdoc/>
+    public Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
+        Notify(null, message, cancellationToken);
+
+    /// <inheritdoc/>
     public Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull =>
         Notify(null, messages, cancellationToken);
 
     /// <inheritdoc/>
-    public async Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
+    public Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
     {
-        var tasks = new List<Task>();
-        foreach (var message in messages)
-            tasks.Add(Notify(key, message, cancellationToken));
+        foreach (var m in messages)
+            _ = Notify(key, m, cancellationToken);
 
-        await Task.WhenAll(tasks).ConfigureAwait(false);
-
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc/>

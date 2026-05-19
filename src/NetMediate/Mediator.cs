@@ -6,10 +6,10 @@ using System.Diagnostics;
 namespace NetMediate;
 
 /// <inheritdoc/>
-[Injectable<IMediator>]
+[Injectable(ServiceLifetime.Singleton, Order = int.MinValue)]
 [Browsable(false)]
 [EditorBrowsable(EditorBrowsableState.Never)]
-public sealed class Mediator : IMediator
+internal sealed class Mediator : IMediator
 {
     /// <summary>
     /// Gets the service provider for resolving dependencies.

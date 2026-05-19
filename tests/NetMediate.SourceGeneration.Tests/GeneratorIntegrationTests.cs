@@ -366,7 +366,7 @@ public sealed class GeneratorIntegrationTests
             diSrc
         );
         Assert.Contains(
-            "global::NetMediate.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);",
+            "services.RegisterNetMediate();",
             diSrc
         );
         Assert.DoesNotContain("RegisterCommandHandler", diSrc);
@@ -402,7 +402,7 @@ public sealed class GeneratorIntegrationTests
             diSrc
         );
         Assert.Contains(
-            "global::NetMediate.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);",
+            "services.RegisterNetMediate();",
             diSrc
         );
         Assert.DoesNotContain("RegisterRequestHandler", diSrc);
@@ -438,7 +438,7 @@ public sealed class GeneratorIntegrationTests
             diSrc
         );
         Assert.Contains(
-            "global::NetMediate.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);",
+            "services.RegisterNetMediate();",
             diSrc
         );
         Assert.DoesNotContain("RegisterNotificationHandler", diSrc);

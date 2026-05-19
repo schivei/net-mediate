@@ -1,12 +1,13 @@
+using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
 
 namespace NetMediate;
 
 /// <inheritdoc/>
-[Injectable<INotifiable>(Order = int.MinValue)]
+[Injectable(ServiceLifetime.Singleton, Order = int.MinValue)]
 [Browsable(false)]
 [EditorBrowsable(EditorBrowsableState.Never)]
-public sealed class Notifier : INotifiable
+internal sealed class Notifier : INotifiable
 {
     /// <summary>
     /// Gets the service provider for resolving dependencies.

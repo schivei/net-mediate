@@ -1,12 +1,11 @@
 #pragma warning disable xUnit1004
 
-using System.Collections.Immutable;
-using System.Reflection;
-using System.Text.Json;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using System.Collections.Immutable;
+using System.Reflection;
+using System.Text.Json;
 
 namespace NetMediate.SourceGeneration.Tests;
 

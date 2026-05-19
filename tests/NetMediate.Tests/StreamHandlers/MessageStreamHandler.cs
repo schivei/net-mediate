@@ -1,5 +1,5 @@
-﻿using System.Runtime.CompilerServices;
-using NetMediate.Tests.Messages;
+﻿using NetMediate.Tests.Messages;
+using System.Runtime.CompilerServices;
 
 namespace NetMediate.Tests.StreamHandlers;
 

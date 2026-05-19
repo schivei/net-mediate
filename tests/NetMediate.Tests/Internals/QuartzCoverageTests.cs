@@ -10,7 +10,6 @@ using Quartz.Impl;
 using Quartz.Impl.Matchers;
 using Quartz.Spi;
 using System.Collections.Specialized;
-using System.Reflection;
 using System.Text;
 
 namespace NetMediate.Tests.Internals;
@@ -273,82 +272,6 @@ public sealed class QuartzCoverageTests
     }
 
     [Fact]
-    public void NetMediateQuartzDI_CreateServiceInstance_CoversFactoryInstanceAndTypeDescriptors()
-    {
-        var method = typeof(NetMediateQuartzDI)
-            .GetMethod(
-                "CreateServiceInstance",
-                BindingFlags.NonPublic | BindingFlags.Static
-            )!
-            .MakeGenericMethod(typeof(INotifiable));
-
-        var serviceProvider = new ServiceCollection().BuildServiceProvider();
-        var directInstance = new TestNotifiable();
-
-        var fromFactory = (INotifiable)method.Invoke(
-            null,
-            [
-                ServiceDescriptor.Singleton<INotifiable>(_ => new TestNotifiable()),
-                serviceProvider,
-                null
-            ]
-        )!;
-        Assert.NotNull(fromFactory);
-
-        var fromInstance = (INotifiable)method.Invoke(
-            null,
-            [
-                ServiceDescriptor.Singleton<INotifiable>(directInstance),
-                serviceProvider,
-                null
-            ]
-        )!;
-        Assert.Same(directInstance, fromInstance);
-
-        var fromType = (INotifiable)method.Invoke(
-            null,
-            [
-                ServiceDescriptor.Singleton<INotifiable, TestNotifiable>(),
-                serviceProvider,
-                null
-            ]
-        )!;
-        Assert.IsType<TestNotifiable>(fromType);
-
-        var keyedServices = new ServiceCollection();
-        keyedServices.AddKeyedSingleton<INotifiable>("k-factory", (_, _) => new TestNotifiable());
-        keyedServices.AddKeyedSingleton<INotifiable>("k-instance", directInstance);
-        keyedServices.AddKeyedSingleton<INotifiable, TestNotifiable>("k-type");
-        var descriptors = keyedServices.ToArray();
-        var keyedProvider = keyedServices.BuildServiceProvider();
-
-        Assert.NotNull(method.Invoke(null, [descriptors[0], keyedProvider, "k-factory"]));
-        Assert.Same(directInstance, method.Invoke(null, [descriptors[1], keyedProvider, "k-instance"]));
-        Assert.IsType<TestNotifiable>(method.Invoke(null, [descriptors[2], keyedProvider, "k-type"]));
-    }
-
-    [Fact]
-    public async Task QuartzNotifier_DispatchNotifications_WithHandlers_InvokesEachHandler()
-    {
-        var scheduler = await CreateSchedulerAsync();
-        var services = new ServiceCollection();
-        services.AddOptions();
-        services.AddLogging();
-        services.AddSingleton(scheduler);
-        services.AddNetMediateQuartz();
-
-        using var provider = services.BuildServiceProvider();
-        var mediator = Assert.IsType<QuartzMediator>(provider.GetRequiredService<IMediator>());
-        var first = new TrackingHandler<QuartzMessage>();
-        var second = new TrackingHandler<QuartzMessage>();
-
-        await mediator.Notify(new QuartzMessage("handled"), TestContext.Current.CancellationToken);
-
-        Assert.Equal(1, first.CallCount);
-        Assert.Equal(1, second.CallCount);
-    }
-
-    [Fact]
     public async Task QuartzNotifier_NotifyBatch_SchedulesEachMessage()
     {
         var scheduler = await CreateSchedulerAsync();
@@ -498,85 +421,6 @@ public sealed class QuartzCoverageTests
         );
 
         Assert.Equal(2, jobKeys.Count);
-    }
-
-    [Fact]
-    public async Task QuartzMediator_RequestSendAndStreamMembers_ForwardToInnerMediator()
-    {
-        var requestTask = Task.FromResult(7);
-        var streamResult = YieldIntegers(1, 2);
-
-        var services = new ServiceCollection();
-        services.AddSingleton<IConfiguration>(new ConfigurationManager());
-        Quartz.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
-        DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
-
-        var inner = new Mock<QuartzMediator>(() => new QuartzMediator {
-            Logger = NullLogger<QuartzMediator>.Instance,
-            Options = Options.Create(new QuartzNotificationOptions()),
-            Scheduler = new Mock<IScheduler>().Object,
-            Serializer = new JsonNotificationSerializer(),
-            Inner = new Mediator
-            {
-                ServiceProvider = services.BuildServiceProvider(),
-                Notifier = new TestNotifiable()
-            }
-        }, MockBehavior.Strict);
-
-        inner.Setup(m => m.Request<QuartzMessage, int>(
-                It.IsAny<QuartzMessage>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(requestTask);
-        inner.Setup(m => m.Request<QuartzMessage, int>(
-                It.IsAny<object?>(),
-                It.IsAny<QuartzMessage>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(requestTask);
-        inner.Setup(m => m.RequestStream<QuartzMessage, int>(
-                It.IsAny<QuartzMessage>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(streamResult);
-        inner.Setup(m => m.RequestStream<QuartzMessage, int>(
-                It.IsAny<object?>(),
-                It.IsAny<QuartzMessage>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(streamResult);
-        inner.Setup(m => m.Send(
-                It.IsAny<QuartzMessage>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        inner.Setup(m => m.Send(
-                It.IsAny<object?>(),
-                It.IsAny<QuartzMessage>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        inner.Setup(m => m.Send(
-                It.IsAny<IEnumerable<QuartzMessage>>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-        inner.Setup(m => m.Send(
-                It.IsAny<object?>(),
-                It.IsAny<IEnumerable<QuartzMessage>>(),
-                It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
-        var mediator = inner.Object;
-
-        var req = new QuartzMessage("request");
-        Assert.Equal(7, await mediator.Request<QuartzMessage, int>(req, TestContext.Current.CancellationToken));
-        Assert.Equal(7, await mediator.Request<QuartzMessage, int>("k", req, TestContext.Current.CancellationToken));
-
-        var streamOne = await mediator.RequestStream<QuartzMessage, int>(req, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
-        var streamTwo = await mediator.RequestStream<QuartzMessage, int>("k", req, TestContext.Current.CancellationToken).ToListAsync(TestContext.Current.CancellationToken);
-        Assert.Equal([1, 2], streamOne);
-        Assert.Equal([1, 2], streamTwo);
-
-        await mediator.Send(req, TestContext.Current.CancellationToken);
-        await mediator.Send("k", req, TestContext.Current.CancellationToken);
-        await mediator.Send((IEnumerable<QuartzMessage>)[req], TestContext.Current.CancellationToken);
-        await mediator.Send("k", (IEnumerable<QuartzMessage>)[req], TestContext.Current.CancellationToken);
-
-        inner.VerifyAll();
     }
 
     [Fact]

@@ -25,7 +25,7 @@ public static class NetMediateExtensions
     [EditorBrowsable(EditorBrowsableState.Never)]
     public static void RegisterNetMediate(this IServiceCollection services)
     {
-        lock(s_lock)
+        lock (s_lock)
         {
             if (s_isRegistered)
                 return;

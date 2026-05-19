@@ -1,6 +1,6 @@
-using System.Runtime.CompilerServices;
-using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace NetMediate.Tests.Internals;
 
@@ -16,7 +16,7 @@ public sealed class MediatorAndNotifierCoverageTests
     public async Task Mediator_Notify_DelegatesSingleAndBatchMessages()
     {
         var notifier = new SpyNotifiable();
-        var mediator = new Mediator{ ServiceProvider = new ServiceCollection().BuildServiceProvider(), Notifier = notifier };
+        var mediator = new Mediator { ServiceProvider = new ServiceCollection().BuildServiceProvider(), Notifier = notifier };
 
         await mediator.Notify(new NotificationMessage("one"), TestContext.Current.CancellationToken);
 
@@ -77,7 +77,7 @@ public sealed class MediatorAndNotifierCoverageTests
             services.AddSingleton<ICommandHandler<CommandMessage>>(handler);
         });
 
-        var mediator = new Mediator{ ServiceProvider = provider, Notifier = new SpyNotifiable() };
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = new SpyNotifiable() };
 
         await mediator.Send(
             [new CommandMessage(1), new CommandMessage(2)],
@@ -98,7 +98,7 @@ public sealed class MediatorAndNotifierCoverageTests
         var keyedHandler = Assert.IsType<RecordingCommandHandler>(
             provider.GetRequiredKeyedService<ICommandHandler<CommandMessage>>("key-send")
         );
-        var mediator = new Mediator{ ServiceProvider = provider, Notifier = new SpyNotifiable() };
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = new SpyNotifiable() };
 
         await mediator.Send("key-send", new CommandMessage(33), TestContext.Current.CancellationToken);
 
@@ -114,7 +114,7 @@ public sealed class MediatorAndNotifierCoverageTests
             services.AddSingleton<ICommandHandler<CommandMessage>, ThrowingCommandHandler>();
         });
 
-        var mediator = new Mediator{ ServiceProvider = provider, Notifier = new SpyNotifiable() };
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = new SpyNotifiable() };
         var exception = await Assert.ThrowsAsync<MediatorException>(() =>
             mediator.Send(new CommandMessage(1), TestContext.Current.CancellationToken)
         );
@@ -134,7 +134,7 @@ public sealed class MediatorAndNotifierCoverageTests
         });
 
         using var activity = new Activity("send").Start();
-        var mediator = new Mediator{ ServiceProvider = provider, Notifier = new SpyNotifiable() };
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = new SpyNotifiable() };
 
         var exception = await Assert.ThrowsAsync<MediatorException>(() =>
             mediator.Send(new CommandMessage(10), TestContext.Current.CancellationToken)
@@ -152,7 +152,7 @@ public sealed class MediatorAndNotifierCoverageTests
             services.AddSingleton<ICommandHandler<CommandMessage>, ThrowingMediatorExceptionCommandHandler>();
         });
 
-        var mediator = new Mediator{ ServiceProvider = provider, Notifier = new SpyNotifiable() };
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = new SpyNotifiable() };
 
         var exception = await Assert.ThrowsAsync<MediatorException>(() =>
             mediator.Send(new CommandMessage(1), TestContext.Current.CancellationToken)
@@ -169,7 +169,7 @@ public sealed class MediatorAndNotifierCoverageTests
             services.AddSingleton<IRequestHandler<RequestMessage, Response>, RecordingRequestHandler>();
         });
 
-        var mediator = new Mediator{ ServiceProvider = provider, Notifier = new SpyNotifiable() };
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = new SpyNotifiable() };
         var response = await mediator.Request<RequestMessage, Response>(
             new RequestMessage(7),
             TestContext.Current.CancellationToken
@@ -188,7 +188,7 @@ public sealed class MediatorAndNotifierCoverageTests
             );
         });
 
-        var mediator = new Mediator{ ServiceProvider = provider, Notifier = new SpyNotifiable() };
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = new SpyNotifiable() };
         var response = await mediator.Request<RequestMessage, Response>(
             "key-request",
             new RequestMessage(13),
@@ -205,7 +205,7 @@ public sealed class MediatorAndNotifierCoverageTests
         {
         });
 
-        var mediator = new Mediator{ ServiceProvider = provider, Notifier = new SpyNotifiable() };
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = new SpyNotifiable() };
 
         var exception = await Assert.ThrowsAsync<MediatorException>(() =>
             mediator.Request<RequestMessage, Response>(
@@ -229,7 +229,7 @@ public sealed class MediatorAndNotifierCoverageTests
         });
 
         using var activity = new Activity("request").Start();
-        var mediator = new Mediator{ ServiceProvider = provider, Notifier = new SpyNotifiable() };
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = new SpyNotifiable() };
 
         var exception = await Assert.ThrowsAsync<MediatorException>(() =>
             mediator.Request<RequestMessage, Response>(
@@ -254,7 +254,7 @@ public sealed class MediatorAndNotifierCoverageTests
             );
         });
 
-        var mediator = new Mediator{ ServiceProvider = provider, Notifier = new SpyNotifiable() };
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = new SpyNotifiable() };
         var items = await ToList(
             mediator.RequestStream<StreamMessage, int>(
                 new StreamMessage(3),
@@ -275,7 +275,7 @@ public sealed class MediatorAndNotifierCoverageTests
             );
         });
 
-        var mediator = new Mediator{ ServiceProvider = provider, Notifier = new SpyNotifiable() };
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = new SpyNotifiable() };
         var items = await ToList(
             mediator.RequestStream<StreamMessage, int>(
                 new StreamMessage(3),
@@ -294,7 +294,7 @@ public sealed class MediatorAndNotifierCoverageTests
             services.AddKeyedSingleton<IStreamHandler<StreamMessage, int>, KeyedStreamHandler>("key-stream");
         });
 
-        var mediator = new Mediator{ ServiceProvider = provider, Notifier = new SpyNotifiable() };
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = new SpyNotifiable() };
         var items = await ToList(
             mediator.RequestStream<StreamMessage, int>(
                 "key-stream",
@@ -311,7 +311,7 @@ public sealed class MediatorAndNotifierCoverageTests
     {
         using var provider = BuildProvider(_ => { });
 
-        var mediator = new Mediator{ ServiceProvider = provider, Notifier = new SpyNotifiable() };
+        var mediator = new Mediator { ServiceProvider = provider, Notifier = new SpyNotifiable() };
         var items = await ToList(
             mediator.RequestStream<StreamMessage, int>(
                 new StreamMessage(3),
@@ -325,7 +325,7 @@ public sealed class MediatorAndNotifierCoverageTests
     [Fact]
     public async Task Notifier_DispatchNotifications_InvokesAllHandlers()
     {
-        var notifier = new Notifier{ ServiceProvider = new ServiceCollection().BuildServiceProvider() };
+        var notifier = new Notifier { ServiceProvider = new ServiceCollection().BuildServiceProvider() };
         var first = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var second = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -359,7 +359,7 @@ public sealed class MediatorAndNotifierCoverageTests
         // handler returns Task.FromException (already faulted, !IsCompletedSuccessfully),
         // triggering the ContinueWith observe that prevents an UnobservedTaskException.
         // The exception is intentionally swallowed — DispatchNotifications must not throw.
-        var notifier = new Notifier{ ServiceProvider = new ServiceCollection().BuildServiceProvider() };
+        var notifier = new Notifier { ServiceProvider = new ServiceCollection().BuildServiceProvider() };
 
         var exception = await Record.ExceptionAsync(() =>
             notifier.DispatchNotifications(
@@ -379,7 +379,7 @@ public sealed class MediatorAndNotifierCoverageTests
     [Fact]
     public async Task Notifier_DispatchNotifications_IncompleteFaultingHandler_ExceptionSwallowed()
     {
-        var notifier = new Notifier{ ServiceProvider = new ServiceCollection().BuildServiceProvider() };
+        var notifier = new Notifier { ServiceProvider = new ServiceCollection().BuildServiceProvider() };
         var handlerTaskSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         var exception = await Record.ExceptionAsync(() =>
@@ -402,7 +402,7 @@ public sealed class MediatorAndNotifierCoverageTests
     [Fact]
     public async Task Notifier_DispatchNotifications_SyncFaultingHandler_ContinuesDispatch()
     {
-        var notifier = new Notifier{ ServiceProvider = new ServiceCollection().BuildServiceProvider() };
+        var notifier = new Notifier { ServiceProvider = new ServiceCollection().BuildServiceProvider() };
         var invoked = false;
 
         var exception = await Record.ExceptionAsync(() =>
@@ -451,7 +451,7 @@ public sealed class MediatorAndNotifierCoverageTests
             );
         });
 
-        var notifier = new Notifier{ ServiceProvider = provider };
+        var notifier = new Notifier { ServiceProvider = provider };
         var mediator = new Mediator { ServiceProvider = provider, Notifier = notifier };
 
         await mediator.Notify(null, new NotificationMessage("one"), TestContext.Current.CancellationToken);
@@ -490,7 +490,7 @@ public sealed class MediatorAndNotifierCoverageTests
             );
         });
 
-        var notifier = new Notifier{ ServiceProvider = provider };
+        var notifier = new Notifier { ServiceProvider = provider };
         var mediator = new Mediator { ServiceProvider = provider, Notifier = notifier };
         await mediator.Notify(
             "key-notify",
@@ -569,7 +569,7 @@ public sealed class MediatorAndNotifierCoverageTests
     public async Task Notifier_DispatchNotifications_WithEmptyHandlers_ReturnsImmediately()
     {
         // Notifier.cs line 16: handlers.Length == 0 → return Task.CompletedTask
-        var notifier = new Notifier{ ServiceProvider = new ServiceCollection().BuildServiceProvider() };
+        var notifier = new Notifier { ServiceProvider = new ServiceCollection().BuildServiceProvider() };
 
         // The handlers array is empty → should complete without throwing
         var ex = await Record.ExceptionAsync(() =>
@@ -586,7 +586,7 @@ public sealed class MediatorAndNotifierCoverageTests
     public async Task Notifier_Notify_WhenNoPipelineRegistered_CompletesWithoutError()
     {
         // Notifier.cs line 33: pipeline is null → return Task.CompletedTask
-        var notifier = new Notifier{ ServiceProvider = new ServiceCollection().BuildServiceProvider() };
+        var notifier = new Notifier { ServiceProvider = new ServiceCollection().BuildServiceProvider() };
         var mediator = new Mediator { ServiceProvider = notifier.ServiceProvider, Notifier = notifier };
 
         // The pipeline executor is not registered → should complete without throwing

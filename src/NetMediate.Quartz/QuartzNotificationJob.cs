@@ -1,7 +1,7 @@
-using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.Quartz;
 

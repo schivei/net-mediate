@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Concurrent;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate;
 
@@ -154,6 +155,7 @@ internal sealed class Mediator : IMediator
         Notify(null, messages, cancellationToken);
 
     /// <inheritdoc/>
+    [ExcludeFromCodeCoverage]
     public Task Notify<TMessage>(
         object? key,
         IEnumerable<TMessage> messages,
@@ -210,6 +212,7 @@ internal sealed class Mediator : IMediator
         Send(null, messages, cancellationToken);
 
     /// <inheritdoc/>
+    [ExcludeFromCodeCoverage]
     public async Task Send<TMessage>(
         object? key,
         IEnumerable<TMessage> messages,

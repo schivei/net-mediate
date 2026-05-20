@@ -16,7 +16,7 @@ public interface IMediator
     /// <param name="message">The message instance to be delivered to all handlers. Cannot be null.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the notification operation.</param>
     /// <returns>A task that represents the asynchronous notification operation.</returns>
-    Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+    ValueTask Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default)
         where TMessage : notnull;
 
     /// <summary>
@@ -28,7 +28,7 @@ public interface IMediator
     /// <param name="message">The message instance to send to subscribers. Cannot be null.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the notification operation.</param>
     /// <returns>A task that represents the asynchronous notification operation.</returns>
-    Task Notify<TMessage>(
+    ValueTask Notify<TMessage>(
         object? key,
         TMessage message,
         CancellationToken cancellationToken = default
@@ -42,7 +42,7 @@ public interface IMediator
     /// <param name="messages">The collection of messages to be sent to recipients. Cannot be null.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the notification operation.</param>
     /// <returns>A task that represents the asynchronous notification operation.</returns>
-    Task Notify<TMessage>(
+    ValueTask Notify<TMessage>(
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
     )
@@ -57,7 +57,7 @@ public interface IMediator
     /// <param name="messages">The collection of messages to deliver to subscribers. Cannot be null and must not contain null elements.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the notification operation.</param>
     /// <returns>A task that represents the asynchronous notification operation.</returns>
-    Task Notify<TMessage>(
+    ValueTask Notify<TMessage>(
         object? key,
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
@@ -74,7 +74,7 @@ public interface IMediator
     /// <param name="message">The message instance to send. Cannot be null.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the send operation.</param>
     /// <returns>A task that represents the asynchronous send operation.</returns>
-    Task Send<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+    ValueTask Send<TMessage>(TMessage message, CancellationToken cancellationToken = default)
         where TMessage : notnull;
 
     /// <summary>
@@ -85,7 +85,7 @@ public interface IMediator
     /// <param name="message">The message to send. Cannot be null.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the send operation.</param>
     /// <returns>A task that represents the asynchronous send operation.</returns>
-    Task Send<TMessage>(
+    ValueTask Send<TMessage>(
         object? key,
         TMessage message,
         CancellationToken cancellationToken = default
@@ -99,7 +99,7 @@ public interface IMediator
     /// <param name="messages">The collection of messages to be sent. Cannot be null.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the send operation.</param>
     /// <returns>A task that represents the asynchronous send operation.</returns>
-    Task Send<TMessage>(
+    ValueTask Send<TMessage>(
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
     )
@@ -115,7 +115,7 @@ public interface IMediator
     /// <param name="messages">The collection of messages to send. Cannot contain null elements.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the send operation.</param>
     /// <returns>A task that represents the asynchronous send operation.</returns>
-    Task Send<TMessage>(
+    ValueTask Send<TMessage>(
         object? key,
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
@@ -130,7 +130,7 @@ public interface IMediator
     /// <param name="message">The request message to send. Cannot be null.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the request operation.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the response to the request message.</returns>
-    Task<TResponse> Request<TMessage, TResponse>(
+    ValueTask<TResponse> Request<TMessage, TResponse>(
         TMessage message,
         CancellationToken cancellationToken = default
     )
@@ -145,7 +145,7 @@ public interface IMediator
     /// <param name="message">The request message to send. Cannot be null.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the request operation.</param>
     /// <returns>A task that represents the asynchronous operation. The task result contains the response to the request message.</returns>
-    Task<TResponse> Request<TMessage, TResponse>(
+    ValueTask<TResponse> Request<TMessage, TResponse>(
         object? key,
         TMessage message,
         CancellationToken cancellationToken = default

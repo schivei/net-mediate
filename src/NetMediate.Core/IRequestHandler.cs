@@ -12,5 +12,5 @@ namespace NetMediate;
 /// <typeparam name="TMessage">The type of the request message to handle. Must not be null.</typeparam>
 /// <typeparam name="TResponse">The type of the response returned by the handler.</typeparam>
 [ServiceInjection(ServiceLifetime.Scoped, ThreadIsolation = ThreadIsolationPolicy.Transient, RegistrationMultiplicity = RegistrationMultiplicity.Single)]
-public interface IRequestHandler<in TMessage, TResponse> : IHandler<TMessage, Task<TResponse>>
+public interface IRequestHandler<in TMessage, TResponse> : IHandler<TMessage, ValueTask<TResponse>>
     where TMessage : notnull;

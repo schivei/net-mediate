@@ -3,31 +3,31 @@ using Microsoft.Extensions.DependencyInjection;
 namespace NetMediate.Benchmarks;
 
 /// <summary>Benchmark command message.</summary>
-public sealed record BenchCommand : ICommand;
+public sealed record BenchCommand;
 
 /// <summary>No-op command handler used in benchmarks.</summary>
 [Injectable(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
 public sealed class BenchCommandHandler : ICommandHandler<BenchCommand>
 {
     /// <inheritdoc/>
-    public Task Handle(BenchCommand message, CancellationToken cancellationToken = default) =>
-        Task.CompletedTask;
+    public ValueTask Handle(BenchCommand message, CancellationToken cancellationToken = default) =>
+        ValueTask.CompletedTask;
 }
 
 /// <summary>Benchmark notification message.</summary>
-public sealed record BenchNotification : INotification;
+public sealed record BenchNotification(int Value);
 
 /// <summary>No-op notification handler used in benchmarks.</summary>
 [Injectable(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
 public sealed class BenchNotificationHandler : INotificationHandler<BenchNotification>
 {
     /// <inheritdoc/>
-    public Task Handle(BenchNotification message, CancellationToken cancellationToken = default) =>
-        Task.CompletedTask;
+    public ValueTask Handle(BenchNotification message, CancellationToken cancellationToken = default) =>
+        ValueTask.CompletedTask;
 }
 
 /// <summary>Benchmark request message.</summary>
-public sealed record BenchRequest : IRequest<BenchResponse>;
+public sealed record BenchRequest(int Value);
 
 /// <summary>Benchmark request response.</summary>
 public sealed record BenchResponse(int Value);
@@ -36,10 +36,10 @@ public sealed record BenchResponse(int Value);
 [Injectable(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
 public sealed class BenchRequestHandler : IRequestHandler<BenchRequest, BenchResponse>
 {
-    private static readonly Task<BenchResponse> s_response = Task.FromResult(new BenchResponse(42));
+    private static readonly ValueTask<BenchResponse> s_response = new(new BenchResponse(42));
 
     /// <inheritdoc/>
-    public Task<BenchResponse> Handle(
+    public ValueTask<BenchResponse> Handle(
         BenchRequest message,
         CancellationToken cancellationToken = default
     ) => s_response;
@@ -47,7 +47,7 @@ public sealed class BenchRequestHandler : IRequestHandler<BenchRequest, BenchRes
 
 /// <summary>Benchmark stream message.</summary>
 [Injectable(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None)]
-public sealed record BenchStreamRequest : IStream<BenchStreamItem>;
+public sealed record BenchStreamRequest;
 
 /// <summary>Benchmark stream item.</summary>
 public sealed record BenchStreamItem(int Index);

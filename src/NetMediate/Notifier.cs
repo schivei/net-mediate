@@ -9,13 +9,14 @@ namespace NetMediate;
 [EditorBrowsable(EditorBrowsableState.Never)]
 internal sealed class Notifier : INotifiable
 {
-    /// <summary>
-    /// Gets the service provider for resolving dependencies.
-    /// </summary>
-    [Inject] public required IServiceProvider ServiceProvider { get; init; }
+    private readonly record struct HandlerState<TMessage>(
+        INotificationHandler<TMessage> Handler,
+        TMessage Message,
+        CancellationToken CancellationToken
+    );
 
     /// <inheritdoc/>
-    public Task DispatchNotifications<TMessage>(
+    public async ValueTask DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
         INotificationHandler<TMessage>[] handlers,
@@ -24,41 +25,15 @@ internal sealed class Notifier : INotifiable
         where TMessage : notnull
     {
         if (handlers.Length == 0)
-            return Task.CompletedTask;
+            return;
 
-        foreach (var h in handlers)
+        foreach (var handler in handlers)
         {
-            try
-            {
-                var t = h.Handle(message, cancellationToken);
-                if (t.IsFaulted)
-                {
-                    Observe(t.Exception);
-                    continue;
-                }
-
-                if (!t.IsCompletedSuccessfully)
-                {
-                    _ = t.ContinueWith(
-                        static task => Observe(task.Exception!),
-                        CancellationToken.None,
-                        TaskContinuationOptions.OnlyOnFaulted
-                            | TaskContinuationOptions.ExecuteSynchronously,
-                        TaskScheduler.Default
-                    );
-                }
-            }
-            catch (Exception ex)
-            {
-                Observe(ex);
-            }
+            ThreadPool.QueueUserWorkItem(
+                async static state => await state.Handler.Handle(state.Message, state.CancellationToken).ConfigureAwait(false),
+                new HandlerState<TMessage>(handler, message, cancellationToken),
+                preferLocal: false
+            );
         }
-
-        return Task.CompletedTask;
-    }
-
-    private static void Observe(Exception? exception)
-    {
-        GC.KeepAlive(exception);
     }
 }

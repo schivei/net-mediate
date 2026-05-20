@@ -75,7 +75,7 @@ internal sealed class Mediator : IMediator
             ? GetStreamHandlers<TMessage, TResponse>()
             : [.. ServiceProvider.GetKeyedServices<IStreamHandler<TMessage, TResponse>>(key)];
 
-    private static async Task DispatchCommandHandlersAsync<TMessage>(
+    private static async ValueTask DispatchCommandHandlersAsync<TMessage>(
         ICommandHandler<TMessage>[] handlers,
         TMessage message,
         CancellationToken cancellationToken
@@ -129,11 +129,11 @@ internal sealed class Mediator : IMediator
     }
 
     /// <inheritdoc/>
-    public Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) =>
+    public ValueTask Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) =>
         Notify(null, message, cancellationToken);
 
     /// <inheritdoc/>
-    public Task Notify<TMessage>(
+    public async ValueTask Notify<TMessage>(
         object? key,
         TMessage message,
         CancellationToken cancellationToken = default
@@ -141,13 +141,11 @@ internal sealed class Mediator : IMediator
     {
         INotificationHandler<TMessage>[] handlers = ResolveNotifyHandlers<TMessage>(key);
 
-        _ = Notifier.DispatchNotifications(key, message, handlers, cancellationToken);
-
-        return Task.CompletedTask;
+        await Notifier.DispatchNotifications(key, message, handlers, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task Notify<TMessage>(
+    public ValueTask Notify<TMessage>(
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
     )
@@ -156,7 +154,7 @@ internal sealed class Mediator : IMediator
 
     /// <inheritdoc/>
     [ExcludeFromCodeCoverage]
-    public Task Notify<TMessage>(
+    public async ValueTask Notify<TMessage>(
         object? key,
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
@@ -164,21 +162,19 @@ internal sealed class Mediator : IMediator
         where TMessage : notnull
     {
         if (!messages.Any())
-            return Task.CompletedTask;
+            return;
 
         foreach (var m in messages)
-            Notify(key, m, cancellationToken);
-
-        return Task.CompletedTask;
+            await Notify(key, m, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task Send<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+    public ValueTask Send<TMessage>(TMessage message, CancellationToken cancellationToken = default)
         where TMessage : notnull =>
         Send(null, message, cancellationToken);
 
     /// <inheritdoc/>
-    public async Task Send<TMessage>(
+    public async ValueTask Send<TMessage>(
         object? key,
         TMessage message,
         CancellationToken cancellationToken = default
@@ -204,7 +200,7 @@ internal sealed class Mediator : IMediator
     }
 
     /// <inheritdoc/>
-    public Task Send<TMessage>(
+    public ValueTask Send<TMessage>(
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
     )
@@ -213,7 +209,7 @@ internal sealed class Mediator : IMediator
 
     /// <inheritdoc/>
     [ExcludeFromCodeCoverage]
-    public async Task Send<TMessage>(
+    public async ValueTask Send<TMessage>(
         object? key,
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
@@ -230,7 +226,7 @@ internal sealed class Mediator : IMediator
     }
 
     /// <inheritdoc/>
-    public Task<TResponse> Request<TMessage, TResponse>(
+    public ValueTask<TResponse> Request<TMessage, TResponse>(
         TMessage message,
         CancellationToken cancellationToken = default
     )
@@ -238,7 +234,7 @@ internal sealed class Mediator : IMediator
         Request<TMessage, TResponse>(null, message, cancellationToken);
 
     /// <inheritdoc/>
-    public async Task<TResponse> Request<TMessage, TResponse>(
+    public async ValueTask<TResponse> Request<TMessage, TResponse>(
         object? key,
         TMessage message,
         CancellationToken cancellationToken = default

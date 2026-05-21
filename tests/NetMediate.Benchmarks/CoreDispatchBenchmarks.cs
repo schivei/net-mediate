@@ -1,5 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.Benchmarks;
 
@@ -19,14 +20,15 @@ namespace NetMediate.Benchmarks;
 /// </code>
 /// </remarks>
 [MemoryDiagnoser]
+[ExcludeFromCodeCoverage]
 public class CoreDispatchBenchmarks
 {
     private IMediator _mediator = null!;
     private ServiceProvider _provider = null!;
 
     private static readonly BenchCommand s_command = new();
-    private static readonly BenchNotification s_notification = new();
-    private static readonly BenchRequest s_request = new();
+    private static readonly BenchNotification s_notification = new(1);
+    private static readonly BenchRequest s_request = new(1);
     private static readonly BenchStreamRequest s_streamRequest = new();
 
     /// <summary>Sets up the DI container and resolves the mediator once before all iterations.</summary>
@@ -40,13 +42,15 @@ public class CoreDispatchBenchmarks
         _provider = services.BuildServiceProvider();
         _mediator = _provider.GetRequiredService<IMediator>();
 
-        _mediator.Send(s_command).GetAwaiter().GetResult();
-        _mediator.Notify(s_notification).GetAwaiter().GetResult();
-        _mediator.RequestBenchRequestAsync(s_request).GetAwaiter().GetResult();
-        DrainStream(_mediator.StreamBenchStreamRequestAsync(s_streamRequest))
-            .GetAwaiter()
-            .GetResult();
+        Warmup(() => _mediator.SendBenchCommandAsync(s_command)).GetAwaiter().GetResult();
+        Warmup(() => _mediator.RequestBenchRequestAsync(s_request)).GetAwaiter().GetResult();
+        _mediator.NotifyBenchNotificationAsync(s_notification);
+        DrainStream(_mediator.StreamBenchStreamRequestAsync(s_streamRequest)).GetAwaiter().GetResult();
     }
+
+    private static async Task Warmup(Func<ValueTask> factory) => await factory().ConfigureAwait(false);
+
+    private static async Task Warmup<T>(Func<ValueTask<T>> factory) => await factory().ConfigureAwait(false);
 
     /// <summary>Tears down the DI container after all iterations.</summary>
     [GlobalCleanup]
@@ -59,15 +63,15 @@ public class CoreDispatchBenchmarks
     public async Task Command()
     {
         for (int i = 0; i < OpsPerInvoke; i++)
-            await _mediator.Send(s_command);
+            await _mediator.SendBenchCommandAsync(s_command);
     }
 
     /// <summary>Measures the per-call overhead of <see cref="IMediator.Notify{TMessage}"/>.</summary>
     [Benchmark(Description = "Notification  Notify", OperationsPerInvoke = OpsPerInvoke)]
-    public async Task Notification()
+    public void Notification()
     {
         for (int i = 0; i < OpsPerInvoke; i++)
-            await _mediator.Notify(s_notification);
+            _mediator.NotifyBenchNotificationAsync(s_notification);
     }
 
     /// <summary>Measures the per-call overhead of <see cref="IMediator.Request{TMessage,TResponse}"/>.</summary>
@@ -96,8 +100,9 @@ public class CoreDispatchBenchmarks
 
     private static async Task DrainStream(IAsyncEnumerable<BenchStreamItem> stream)
     {
-#pragma warning disable S108
-        await foreach (var _ in stream) { }
-#pragma warning restore S108
+        await foreach (var _ in stream)
+        {
+            // No-op: just drain the stream to measure the full cost of streaming dispatch.
+        }
     }
 }

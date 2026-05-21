@@ -6,8 +6,12 @@ internal sealed class SimpleValidatableNotifyHandler
     : BaseHandler,
         INotificationHandler<SimpleValidatableMessage>
 {
-    public async Task Handle(
+    public ValueTask Handle(
         SimpleValidatableMessage message,
         CancellationToken cancellationToken = default
-    ) => await Task.Run(() => Marks(message), cancellationToken);
+    )
+    {
+        Marks(message);
+        return ValueTask.CompletedTask;
+    }
 }

@@ -6,8 +6,12 @@ internal sealed class MessageNotificationHandler
     : BaseHandler,
         INotificationHandler<MessageNotification>
 {
-    public async Task Handle(
+    public ValueTask Handle(
         MessageNotification notification,
         CancellationToken cancellationToken = default
-    ) => await Task.Run(() => Marks(notification), cancellationToken);
+    )
+    {
+        Marks(notification);
+        return ValueTask.CompletedTask;
+    }
 }

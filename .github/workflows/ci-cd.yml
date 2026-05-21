@@ -168,38 +168,25 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx
 
-    - name: Build NetMediate
-      run: dotnet build src/NetMediate/NetMediate.csproj --configuration Release --no-restore /p:Version=${VERSION}
+    - name: Build projects (per-project)
+      run: |
+        set -euo pipefail
+        echo "Building projects individually to shorten CI logs"
+        # Build all source and test projects individually so logs are scoped per project
+        for proj in $(find src tests -name '*.csproj' -print); do
+          echo "---- Building: $proj"
+          dotnet build "$proj" --configuration Release /p:Version=${VERSION}
+        done
 
-    - name: Build NetMediate.Core
-      run: dotnet build src/NetMediate.Core/NetMediate.Core.csproj --configuration Release --no-restore /p:Version=${VERSION}
-
-    - name: Build NetMediate.Diagnostics
-      run: dotnet build src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release /p:Version=${VERSION}
-
-    - name: Build NetMediate.Moq
-      run: dotnet build src/NetMediate.Moq/NetMediate.Moq.csproj --configuration Release /p:Version=${VERSION}
-
-    - name: Build NetMediate.Resilience
-      run: dotnet build src/NetMediate.Resilience/NetMediate.Resilience.csproj --configuration Release /p:Version=${VERSION}
-      
-    - name: Build NetMediate.SourceGeneration
-      run: dotnet build src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release /p:Version=${VERSION}
-      
-    - name: Build NetMediate.Quartz
-      run: dotnet build src/NetMediate.Quartz/NetMediate.Quartz.csproj --configuration Release /p:Version=${VERSION}
-      
-    - name: Test
-      run: dotnet test tests/NetMediate.Tests/NetMediate.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage  /p:Version=${VERSION}
-
-    - name: Test Resilience
-      run: dotnet test tests/NetMediate.Resilience.Tests/NetMediate.Resilience.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage  /p:Version=${VERSION}
-
-    - name: Test Diagnostics
-      run: dotnet test tests/NetMediate.Diagnostics.Tests/NetMediate.Diagnostics.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage  /p:Version=${VERSION}
-
-    - name: Test SourceGeneration (package-reference integration)
-      run: dotnet test tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage  /p:Version=${VERSION}
+    - name: Test projects (per-project)
+      run: |
+        set -euo pipefail
+        echo "Running tests per project to keep output scoped"
+        # Run tests per test project; use --no-build since projects were built above
+        for testproj in $(find tests -type f -name '*Tests.csproj' -print); do
+          echo "---- Testing: $testproj"
+          dotnet test "$testproj" --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage /p:Version=${VERSION}
+        done
 
     - name: Enforce 100% line and branch coverage for source packages
       run: |
@@ -324,6 +311,8 @@ jobs:
       run: |
         # ── Run current-branch benchmark ─────────────────────────────────────────
         cd tests/NetMediate.Benchmarks
+        # Ensure NuGet packages and project assets are restored on the runner
+        dotnet restore --configfile ../../NuGet.Config || dotnet restore || true
         dotnet run --configuration Release -- --job Short --filter '*' \
           2>&1 | grep -v "Failed to set up high priority (Permission denied)" \
           | tee "$RUNNER_TEMP/bench-console.txt" || true

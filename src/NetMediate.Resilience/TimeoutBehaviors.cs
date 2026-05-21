@@ -7,12 +7,12 @@ internal static class TimeoutBehaviorRunner
 {
     private static readonly object CompletedResult = new();
 
-    public static Task<TResponse> ExecuteAsync<TMessage, TResponse>(
+    public static ValueTask<TResponse> ExecuteAsync<TMessage, TResponse>(
         TimeSpan timeout,
         bool disabled,
         string operationName,
         TMessage message,
-        Func<TMessage, CancellationToken, Task<TResponse>> next,
+        Func<TMessage, CancellationToken, ValueTask<TResponse>> next,
         CancellationToken cancellationToken
     )
         where TMessage : notnull =>
@@ -26,12 +26,12 @@ internal static class TimeoutBehaviorRunner
             cancellationToken
         );
 
-    public static async Task ExecuteAsync<TMessage>(
+    public static async ValueTask ExecuteAsync<TMessage>(
         TimeSpan timeout,
         bool disabled,
         string operationName,
         TMessage message,
-        Func<TMessage, CancellationToken, Task> next,
+        Func<TMessage, CancellationToken, ValueTask> next,
         CancellationToken cancellationToken
     )
         where TMessage : notnull
@@ -68,11 +68,11 @@ internal static class TimeoutBehaviorRunner
             cancellationToken
         );
 
-    private static async Task<TResult> ExecuteCoreAsync<TState, TResult>(
+    private static async ValueTask<TResult> ExecuteCoreAsync<TState, TResult>(
         TimeSpan timeout,
         bool disabled,
         string operationName,
-        Func<TState, CancellationToken, Task<TResult>> operation,
+        Func<TState, CancellationToken, ValueTask<TResult>> operation,
         TState state,
         CancellationToken cancellationToken
     )
@@ -160,7 +160,7 @@ public abstract class TimeoutRequestBehavior<TMessage, TResponse>(
     where TMessage : notnull
 {
     /// <inheritdoc/>
-    public Task<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
+    public ValueTask<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
         TimeoutBehaviorRunner.ExecuteAsync(
             optionsAccessor.Value.RequestTimeout,
             optionsAccessor.Value.Disabled,
@@ -188,7 +188,7 @@ public abstract class TimeoutNotificationBehavior<TMessage>(
     where TMessage : notnull
 {
     /// <inheritdoc/>
-    public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+    public ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
         TimeoutBehaviorRunner.ExecuteAsync(
             optionsAccessor.Value.NotificationTimeout,
             optionsAccessor.Value.Disabled,
@@ -215,7 +215,7 @@ public abstract class TimeoutCommandBehavior<TMessage>(
     where TMessage : notnull
 {
     /// <inheritdoc/>
-    public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+    public ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
         TimeoutBehaviorRunner.ExecuteAsync(
             optionsAccessor.Value.CommandTimeout,
             optionsAccessor.Value.Disabled,

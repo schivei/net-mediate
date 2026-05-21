@@ -500,7 +500,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     private static string GenerateTypedExtensionBlock(TypedExtEntry e, string methodName)
     {
         const string ind = "    ";
-        const string task = $"{GlobalNamespace}System.Threading.Tasks.Task";
+        const string task = $"{GlobalNamespace}System.Threading.Tasks.ValueTask";
         const string ct = $"{GlobalNamespace}System.Threading.CancellationToken";
 
         var sb = new StringBuilder();
@@ -509,9 +509,61 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
         switch (e.Verb)
         {
-            case "Send":
             case "Notify":
-                var mediatorMethod = e.Verb + $"<{e.MessageFqn}>";
+                var notifyMediatorMethod = $"Notify<{e.MessageFqn}>";
+                var notifyMediatorMethodBatch = $"Notifies<{e.MessageFqn}>";
+                var notifyBatchMethod = methodName.Replace("Async", "BatchAsync");
+
+                // key-less overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Dispatches a <see cref=\"{e.MessageFqn}\"/> message via the mediator.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static void {methodName}(this {GlobalNamespace}NetMediate.IMediator mediator, {e.MessageFqn} message)"
+                );
+                sb.AppendLine($"{ind}{ind}=> mediator.{notifyMediatorMethod}(message);");
+                sb.AppendLine();
+
+                // keyed overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Dispatches a <see cref=\"{e.MessageFqn}\"/> message via the mediator with an explicit routing key.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static void {methodName}(this {GlobalNamespace}NetMediate.IMediator mediator, object? key, {e.MessageFqn} message)"
+                );
+                sb.AppendLine(
+                    $"{ind}{ind}=> mediator.{notifyMediatorMethod}(key, message);"
+                );
+                sb.AppendLine();
+
+                // batch overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Dispatches a batch of <see cref=\"{e.MessageFqn}\"/> messages via the mediator.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static void {notifyBatchMethod}(this {GlobalNamespace}NetMediate.IMediator mediator, {batchType} messages)"
+                );
+                sb.AppendLine(
+                    $"{ind}{ind}=> mediator.{notifyMediatorMethodBatch}(messages);"
+                );
+                sb.AppendLine();
+
+                // keyed batch overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Dispatches a batch of <see cref=\"{e.MessageFqn}\"/> messages via the mediator with an explicit routing key.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static void {notifyBatchMethod}(this {GlobalNamespace}NetMediate.IMediator mediator, object? key, {batchType} messages)"
+                );
+                sb.AppendLine(
+                    $"{ind}{ind}=> mediator.{notifyMediatorMethodBatch}(key, messages);"
+                );
+                break;
+
+            case "Send":
+                var commandMediatorMethod = $"Send<{e.MessageFqn}>";
+                var commandMediatorMethodBatch = $"Sends<{e.MessageFqn}>";
+                var commandBatchMethod = methodName.Replace("Async", "BatchAsync");
 
                 // key-less overload
                 sb.AppendLine(
@@ -520,7 +572,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 sb.AppendLine(
                     $"{ind}public static {task} {methodName}(this {GlobalNamespace}NetMediate.IMediator mediator, {e.MessageFqn} message, {ct} cancellationToken = default)"
                 );
-                sb.AppendLine($"{ind}{ind}=> mediator.{mediatorMethod}(message, cancellationToken);");
+                sb.AppendLine($"{ind}{ind}=> mediator.{commandMediatorMethod}(message, cancellationToken);");
                 sb.AppendLine();
 
                 // keyed overload
@@ -531,7 +583,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     $"{ind}public static {task} {methodName}(this {GlobalNamespace}NetMediate.IMediator mediator, object? key, {e.MessageFqn} message, {ct} cancellationToken = default)"
                 );
                 sb.AppendLine(
-                    $"{ind}{ind}=> mediator.{mediatorMethod}(key, message, cancellationToken);"
+                    $"{ind}{ind}=> mediator.{commandMediatorMethod}(key, message, cancellationToken);"
                 );
                 sb.AppendLine();
 
@@ -540,10 +592,10 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     $"{ind}/// <summary>Dispatches a batch of <see cref=\"{e.MessageFqn}\"/> messages via the mediator.</summary>"
                 );
                 sb.AppendLine(
-                    $"{ind}public static {task} {methodName}(this {GlobalNamespace}NetMediate.IMediator mediator, {batchType} messages, {ct} cancellationToken = default)"
+                    $"{ind}public static {task} {commandBatchMethod}(this {GlobalNamespace}NetMediate.IMediator mediator, {batchType} messages, {ct} cancellationToken = default)"
                 );
                 sb.AppendLine(
-                    $"{ind}{ind}=> mediator.{mediatorMethod}(messages, cancellationToken);"
+                    $"{ind}{ind}=> mediator.{commandMediatorMethodBatch}(messages, cancellationToken);"
                 );
                 sb.AppendLine();
 
@@ -552,10 +604,10 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                     $"{ind}/// <summary>Dispatches a batch of <see cref=\"{e.MessageFqn}\"/> messages via the mediator with an explicit routing key.</summary>"
                 );
                 sb.AppendLine(
-                    $"{ind}public static {task} {methodName}(this {GlobalNamespace}NetMediate.IMediator mediator, object? key, {batchType} messages, {ct} cancellationToken = default)"
+                    $"{ind}public static {task} {commandBatchMethod}(this {GlobalNamespace}NetMediate.IMediator mediator, object? key, {batchType} messages, {ct} cancellationToken = default)"
                 );
                 sb.AppendLine(
-                    $"{ind}{ind}=> mediator.{mediatorMethod}(key, messages, cancellationToken);"
+                    $"{ind}{ind}=> mediator.{commandMediatorMethodBatch}(key, messages, cancellationToken);"
                 );
                 break;
 

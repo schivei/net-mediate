@@ -4,10 +4,10 @@ namespace NetMediate.Tests.RequestHandlers;
 
 internal sealed class MessageRequestHandler : BaseHandler, IRequestHandler<MessageRequest, int>
 {
-    public async Task<int> Handle(
+    public ValueTask<int> Handle(
         MessageRequest query,
         CancellationToken cancellationToken = default
-    ) => await Task.Run(() => Returns(query), cancellationToken);
+    ) => ValueTask.FromResult(Returns(query));
 
     private static int Returns(MessageRequest query)
     {

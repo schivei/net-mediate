@@ -23,9 +23,9 @@ The table below is updated automatically by CI on every PR benchmark run. System
 | CPU | AMD EPYC 9V74 2.60GHz, 1 CPU, 4 logical and 2 physical cores |
 | .NET SDK | 10.0.300 |
 | Runtime | .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3 |
-| Last CI run | 2026-05-19 22:11 UTC |
+| Last CI run | 2026-05-21 20:07 UTC |
 | Branch | `chore/quartz` |
-| Commit | `586d6f4` |
+| Commit | `2b76bda` |
 <!-- ci-environment-end -->
 
 ---
@@ -44,10 +44,10 @@ The `vs timing` column compares dispatch time against stored target-branch value
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 47.78 ns | ±0.427 ns | 0 | 0 | 0 | - | ✅ -48 B | ~20.9M msg/s | ✅ improved (-47.2%) |
-| Notification `Notify` | 31.33 ns | ±0.296 ns | 0 | 0 | 0 | - | ✅ -288 B | ~31.9M msg/s | ✅ improved (-75.7%) |
-| Request `Request` | 71.06 ns | ±1.651 ns | 0.0043 | 0 | 0 | 72 B | ✅ -40 B | ~14.1M msg/s | ✅ improved (-21.0%) |
-| Stream `RequestStream` | 142.46 ns | ±4.825 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.0M msg/s | ✅ improved (-27.3%) |
+| Command `Send` | 49.36 ns | ±0.533 ns | 0 | 0 | 0 | - | ✅ -48 B | ~20.3M msg/s | ✅ improved (-45.5%) |
+| Notification `Notify` | 181.53 ns | ±39.459 ns | 0.0095 | 0 | 0 | 160 B | ✅ -128 B | ~5.5M msg/s | ⚠️ degraded (+40.9%) |
+| Request `Request` | 64.54 ns | ±0.520 ns | 0 | 0 | 0 | - | ✅ -112 B | ~15.5M msg/s | ✅ improved (-28.2%) |
+| Stream `RequestStream` | 141.00 ns | ±4.422 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.1M msg/s | ✅ improved (-28.1%) |
 <!-- ci-throughput-end -->
 
 > ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.
@@ -228,7 +228,7 @@ Thresholds are deliberately lenient to remain green on any CI hardware. The Benc
 
 ## Latest CI Benchmark Run
 
-Run: 2026-05-19 22:11 UTC | Branch: `chore/quartz` | Commit: `586d6f4`
+Run: 2026-05-21 20:07 UTC | Branch: `chore/quartz` | Commit: `2b76bda`
 
 ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).
 
@@ -245,10 +245,10 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 47.78 ns | ±0.427 ns | 0 | 0 | 0 | - | ✅ -48 B | ~20.9M msg/s | ✅ improved (-47.2%) |
-| Notification `Notify` | 31.33 ns | ±0.296 ns | 0 | 0 | 0 | - | ✅ -288 B | ~31.9M msg/s | ✅ improved (-75.7%) |
-| Request `Request` | 71.06 ns | ±1.651 ns | 0.0043 | 0 | 0 | 72 B | ✅ -40 B | ~14.1M msg/s | ✅ improved (-21.0%) |
-| Stream `RequestStream` | 142.46 ns | ±4.825 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.0M msg/s | ✅ improved (-27.3%) |
+| Command `Send` | 49.36 ns | ±0.533 ns | 0 | 0 | 0 | - | ✅ -48 B | ~20.3M msg/s | ✅ improved (-45.5%) |
+| Notification `Notify` | 181.53 ns | ±39.459 ns | 0.0095 | 0 | 0 | 160 B | ✅ -128 B | ~5.5M msg/s | ⚠️ degraded (+40.9%) |
+| Request `Request` | 64.54 ns | ±0.520 ns | 0 | 0 | 0 | - | ✅ -112 B | ~15.5M msg/s | ✅ improved (-28.2%) |
+| Stream `RequestStream` | 141.00 ns | ±4.422 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.1M msg/s | ✅ improved (-28.1%) |
 
 ### Comparison vs baseline (`main`, median of ≤3 runs)
 
@@ -257,7 +257,7 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 
 | Benchmark | Baseline (`main`, median of ≤3 runs) | Current | Δ timing | Alloc Δ |
 |---|---|---|---|---|
-| Command `Send` | 90.55 ns | 47.78 ns | ✅ -47.2% | ✅ -48 B |
-| Notification `Notify` | 128.85 ns | 31.33 ns | ✅ -75.7% | ✅ -288 B |
-| Request `Request` | 89.91 ns | 71.06 ns | ✅ -21.0% | ✅ -40 B |
-| Stream `RequestStream` | 196.07 ns | 142.46 ns | ✅ -27.3% | ✅ -88 B |
+| Command `Send` | 90.55 ns | 49.36 ns | ✅ -45.5% | ✅ -48 B |
+| Notification `Notify` | 128.85 ns | 181.53 ns | ⚠️ +40.9% | ✅ -128 B |
+| Request `Request` | 89.91 ns | 64.54 ns | ✅ -28.2% | ✅ -112 B |
+| Stream `RequestStream` | 196.07 ns | 141.00 ns | ✅ -28.1% | ✅ -88 B |

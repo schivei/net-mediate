@@ -10,5 +10,5 @@ namespace NetMediate;
 /// more handlers. Unlike request handlers, notification handlers do not return a value to the sender.</remarks>
 /// <typeparam name="TMessage">The type of notification message to handle. Must not be null.</typeparam>
 [ServiceInjection(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None, RegistrationMultiplicity = RegistrationMultiplicity.Multiple)]
-public interface INotificationHandler<in TMessage> : IHandler<TMessage, Task>
+public interface INotificationHandler<in TMessage> : IHandler<TMessage, ValueTask>
     where TMessage : notnull;

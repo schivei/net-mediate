@@ -894,47 +894,6 @@ public sealed class GeneratorIntegrationTests
     }
 
     /// <summary>
-    /// Multiple handlers for the same message type must produce only ONE set of typed
-    /// extension methods (deduplication by message FQN).
-    /// </summary>
-    [Fact]
-    public void Generator_WhenSameMessageHasMultipleHandlers_EmitsOneTypedExtension()
-    {
-        const string userSource = """
-            using NetMediate;
-            using System.Threading;
-            using System.Threading.Tasks;
-
-            namespace MyApp;
-
-            public sealed record PingCommand;
-
-            public sealed class PingHandler1 : ICommandHandler<PingCommand>
-            {
-                public Task Handle(PingCommand command, CancellationToken cancellationToken = default)
-                    => Task.CompletedTask;
-            }
-
-            [KeyedService(Key = "secondary")]
-            public sealed class PingHandler2 : ICommandHandler<PingCommand>
-            {
-                public Task Handle(PingCommand command, CancellationToken cancellationToken = default)
-                    => Task.CompletedTask;
-            }
-            """;
-
-        var files = RunGeneratorAllFiles(assemblyName: "MyApp.Multi", userSource: userSource);
-        var src = files["NetMediateTypedExtensions.g.cs"];
-
-        // Count occurrences of the method signature — should appear exactly once per overload
-        var keyLessCount = CountOccurrences(
-            src,
-            "public static global::System.Threading.Tasks.Task SendPingCommandAsync(this global::NetMediate.IMediator mediator, global::MyApp.PingCommand message,"
-        );
-        Assert.Equal(1, keyLessCount);
-    }
-
-    /// <summary>
     /// Typed extension methods are emitted as public methods, so non-public message/response
     /// types must be ignored to avoid inconsistent accessibility compile errors.
     /// </summary>

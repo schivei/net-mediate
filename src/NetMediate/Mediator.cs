@@ -128,10 +128,6 @@ internal sealed class Mediator : IMediator
         return stream;
     }
 
-    /// <inheritdoc/>
-    public void Notify<TMessage>(TMessage message) where TMessage : notnull =>
-        Notify(null, message);
-
     [ExcludeFromCodeCoverage]
     private static void ByPass(Task _)
     {
@@ -151,6 +147,10 @@ internal sealed class Mediator : IMediator
             .ContinueWith(ByPass, TaskContinuationOptions.OnlyOnFaulted)
             .ConfigureAwait(false);
     }
+
+    /// <inheritdoc/>
+    public void Notify<TMessage>(TMessage message) where TMessage : notnull =>
+        Notify(null, message);
 
     /// <inheritdoc/>
     public void Notifies<TMessage>(

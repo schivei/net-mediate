@@ -1,4 +1,3 @@
-using Microsoft.VisualBasic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
@@ -213,7 +212,9 @@ public sealed class TelemetryBehaviorTests
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
             await foreach (var _ in streamBehavior.Handle(new StreamMessage(), TestContext.Current.CancellationToken))
-            { }
+            {
+                // no-op
+            }
         });
     }
 

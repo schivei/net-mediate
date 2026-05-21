@@ -161,7 +161,7 @@ public abstract class TelemetryStreamBehavior<TMessage, TResponse> : IStreamHand
         }
         catch (Exception ex)
         {
-            activity.SetStatus(ActivityStatusCode.Error, ex.Message);
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             state.Writer.Complete(ex);
             return;
         }

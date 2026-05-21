@@ -168,11 +168,25 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore net-mediate.slnx
 
-    - name: Build
-      run: dotnet build net-mediate.slnx --configuration Release /p:Version=${VERSION}
+    - name: Build projects (per-project)
+      run: |
+        set -euo pipefail
+        echo "Building projects individually to shorten CI logs"
+        # Build all source and test projects individually so logs are scoped per project
+        for proj in $(find src tests -name '*.csproj' -print); do
+          echo "---- Building: $proj"
+          dotnet build "$proj" --configuration Release /p:Version=${VERSION}
+        done
 
-    - name: Test
-      run: dotnet test net-mediate.slnx --configuration Release --verbosity detailed --collect:"XPlat Code Coverage" --results-directory ./coverage  /p:Version=${VERSION}
+    - name: Test projects (per-project)
+      run: |
+        set -euo pipefail
+        echo "Running tests per project to keep output scoped"
+        # Run tests per test project; use --no-build since projects were built above
+        for testproj in $(find tests -type f -name '*Tests.csproj' -print); do
+          echo "---- Testing: $testproj"
+          dotnet test "$testproj" --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage /p:Version=${VERSION}
+        done
 
     - name: Enforce 100% line and branch coverage for source packages
       run: |

@@ -169,7 +169,7 @@ jobs:
       run: dotnet restore net-mediate.slnx
 
     - name: Build
-      run: dotnet build net-mediate.slnx --configuration Release --no-restore /p:Version=${VERSION}
+      run: dotnet build net-mediate.slnx --configuration Release /p:Version=${VERSION}
 
     - name: Test
       run: dotnet test net-mediate.slnx --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage  /p:Version=${VERSION}

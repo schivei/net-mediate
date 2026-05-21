@@ -7,10 +7,10 @@ internal static class RetryBehaviorRunner
 {
     private static readonly object CompletedResult = new();
 
-    public static Task<TResponse> ExecuteAsync<TMessage, TResponse>(
+    public static ValueTask<TResponse> ExecuteAsync<TMessage, TResponse>(
         IOptions<RetryBehaviorOptions> optionsAccessor,
         TMessage message,
-        Func<TMessage, CancellationToken, Task<TResponse>> next,
+        Func<TMessage, CancellationToken, ValueTask<TResponse>> next,
         CancellationToken cancellationToken
     )
         where TMessage : notnull =>
@@ -35,10 +35,10 @@ internal static class RetryBehaviorRunner
             cancellationToken
         );
 
-    public static async Task ExecuteAsync<TMessage>(
+    public static async ValueTask ExecuteAsync<TMessage>(
         IOptions<RetryBehaviorOptions> optionsAccessor,
         TMessage message,
-        Func<TMessage, CancellationToken, Task> next,
+        Func<TMessage, CancellationToken, ValueTask> next,
         CancellationToken cancellationToken
     ) where TMessage : notnull
     {
@@ -55,9 +55,9 @@ internal static class RetryBehaviorRunner
             .ConfigureAwait(false);
     }
 
-    private static async Task<TResult> ExecuteCoreAsync<TMessage, TResult>(
+    private static async ValueTask<TResult> ExecuteCoreAsync<TMessage, TResult>(
         RetryBehaviorOptions options,
-        Func<TMessage, CancellationToken, Task<TResult>> operation,
+        Func<TMessage, CancellationToken, ValueTask<TResult>> operation,
         TMessage message,
         CancellationToken cancellationToken
     )
@@ -137,7 +137,7 @@ internal static class RetryBehaviorRunner
         }
     }
 
-    private static async Task<List<TResult>?> TryCollectWithRetryAsync<TMessage, TResult>(
+    private static async ValueTask<List<TResult>?> TryCollectWithRetryAsync<TMessage, TResult>(
         Func<TMessage, CancellationToken, IAsyncEnumerable<TResult>> operation,
         TMessage message,
         TimeSpan delay,
@@ -207,7 +207,7 @@ public abstract class RetryRequestBehavior<TMessage, TResponse>(
 ) : IRequestHandler<TMessage, TResponse> where TMessage : notnull
 {
     /// <inheritdoc/>
-    public Task<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
+    public ValueTask<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
         RetryBehaviorRunner.ExecuteAsync(optionsAccessor, message, handler.Handle, cancellationToken);
 }
 
@@ -227,7 +227,7 @@ public abstract class RetryNotificationBehavior<TMessage>(
     where TMessage : notnull
 {
     /// <inheritdoc/>
-    public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+    public ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
         RetryBehaviorRunner.ExecuteAsync(optionsAccessor, message, handler.Handle, cancellationToken);
 }
 
@@ -246,6 +246,6 @@ public abstract class RetryCommandBehavior<TMessage>(
     where TMessage : notnull
 {
     /// <inheritdoc/>
-    public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+    public ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
         RetryBehaviorRunner.ExecuteAsync(optionsAccessor, message, handler.Handle, cancellationToken);
 }

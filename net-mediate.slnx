@@ -90,4 +90,10 @@
     <Project Path="tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj" Id="5e7f8a9b-c0d1-4e2f-a3b4-c5d6e7f8a9b0" />
     <Project Path="tests/NetMediate.Tests/NetMediate.Tests.csproj" Id="7c9982c0-0795-4743-988d-be05f7cd797b" />
   </Folder>
+  <Folder Name="/tests/Quartz/">
+    <Project Path="tests/Quartz/NetMediate.Quartz.AutoIdentifier.Tests/NetMediate.Quartz.AutoIdentifier.Tests.csproj" Id="aed424f1-9b5a-4e54-8038-6e39f2892860" />
+    <Project Path="tests/Quartz/NetMediate.Quartz.GuidIdentifier.Tests/NetMediate.Quartz.GuidIdentifier.Tests.csproj" Id="95786f21-7544-43c1-9969-a3926fe3308a" />
+    <Project Path="tests/Quartz/NetMediate.Quartz.HashIdentifier.Tests/NetMediate.Quartz.HashIdentifier.Tests.csproj" Id="eefa7339-66aa-44ec-9c94-611d7d6e7ce3" />
+    <Project Path="tests/Quartz/NetMediate.Quartz.MessageIdentifier.Tests/NetMediate.Quartz.MessageIdentifier.Tests.csproj" Id="3458494a-8823-4a47-b86c-4550ac0ace1c" />
+  </Folder>
 </Solution>

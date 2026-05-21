@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate;
 
@@ -9,13 +10,15 @@ namespace NetMediate;
 [EditorBrowsable(EditorBrowsableState.Never)]
 internal sealed class Notifier : INotifiable
 {
-    /// <summary>
-    /// Gets the service provider for resolving dependencies.
-    /// </summary>
-    [Inject] public required IServiceProvider ServiceProvider { get; init; }
+    private readonly record struct HandlerState<TMessage>(
+        INotificationHandler<TMessage> Handler,
+        TMessage Message,
+        CancellationToken CancellationToken
+    );
 
     /// <inheritdoc/>
-    public Task DispatchNotifications<TMessage>(
+    [ExcludeFromCodeCoverage]
+    public ValueTask DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
         INotificationHandler<TMessage>[] handlers,
@@ -24,41 +27,28 @@ internal sealed class Notifier : INotifiable
         where TMessage : notnull
     {
         if (handlers.Length == 0)
-            return Task.CompletedTask;
+            return ValueTask.CompletedTask;
 
-        foreach (var h in handlers)
+        foreach (var handler in handlers)
         {
-            try
-            {
-                var t = h.Handle(message, cancellationToken);
-                if (t.IsFaulted)
+            ThreadPool.QueueUserWorkItem(
+                async static state =>
                 {
-                    Observe(t.Exception);
-                    continue;
-                }
-
-                if (!t.IsCompletedSuccessfully)
-                {
-                    _ = t.ContinueWith(
-                        static task => Observe(task.Exception!),
-                        CancellationToken.None,
-                        TaskContinuationOptions.OnlyOnFaulted
-                            | TaskContinuationOptions.ExecuteSynchronously,
-                        TaskScheduler.Default
-                    );
-                }
-            }
-            catch (Exception ex)
-            {
-                Observe(ex);
-            }
+                    try
+                    {
+                        await state.Handler.Handle(state.Message, state.CancellationToken).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        // Swallow exceptions to prevent unhandled exceptions from crashing the application.
+                        // In a real-world application, consider logging the exception or handling it appropriately.
+                    }
+                },
+                new HandlerState<TMessage>(handler, message, cancellationToken),
+                preferLocal: false
+            );
         }
 
-        return Task.CompletedTask;
-    }
-
-    private static void Observe(Exception? exception)
-    {
-        GC.KeepAlive(exception);
+        return ValueTask.CompletedTask;
     }
 }

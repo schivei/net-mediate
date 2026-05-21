@@ -1,13 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
-using System.Diagnostics.CodeAnalysis;
+
+[assembly: GenDICoveration(false)]
 
 namespace NetMediate.Quartz;
 
 /// <summary>
 /// Dependency injection extensions for the NetMediate Quartz integration.
 /// </summary>
-[ExcludeFromCodeCoverage]
 public static class NetMediateQuartzDI
 {
     /// <summary>
@@ -20,7 +20,7 @@ public static class NetMediateQuartzDI
     /// </para>
     /// <para>
     /// This method configures NetMediate to use Quartz as the notification transport for
-    /// <see cref="IMediator.Notify{TMessage}(TMessage, CancellationToken)"/> overloads. Notifications are
+    /// <see cref="IMediator.Notify{TMessage}(TMessage)"/> overloads. Notifications are
     /// serialized and stored in the Quartz job store, enabling crash recovery and cluster-distributed execution.
     /// </para>
     /// <para>
@@ -30,7 +30,7 @@ public static class NetMediateQuartzDI
     /// Quartz setup. For persistent job stores, configure an <c>AdoJobStore</c> in your Quartz options.
     /// </para>
     /// <para>
-    /// <see cref="QuartzNotificationJob"/> is registered as a Quartz job and resolved through the
+    /// <see cref="QuartzNotificationJob{TMessage}"/> is registered as a Quartz job and resolved through the
     /// Microsoft DI container via <c>MicrosoftDependencyInjectionJobFactory</c>.
     /// </para>
     /// </remarks>

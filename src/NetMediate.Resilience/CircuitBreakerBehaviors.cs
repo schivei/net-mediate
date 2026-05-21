@@ -20,11 +20,11 @@ namespace NetMediate.Resilience;
 public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     IRequestHandler<TMessage, TResponse> handler,
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
-) : ACircuitBreakerBehavior<TMessage, Task<TResponse>>("Circuit open for request.", optionsAccessor), IRequestHandler<TMessage, TResponse>
+) : ACircuitBreakerBehavior<TMessage, ValueTask<TResponse>>("Circuit open for request.", optionsAccessor), IRequestHandler<TMessage, TResponse>
     where TMessage : notnull
 {
     /// <inheritdoc />
-    public override Task<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
+    public override ValueTask<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
         ExecuteRequestAsync(message, handler.Handle, cancellationToken);
 }
 
@@ -39,11 +39,11 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 public sealed class CircuitBreakerNotificationBehavior<TMessage>(
     INotificationHandler<TMessage> handler,
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
-) : ACircuitBreakerBehavior<TMessage, Task>("Circuit open for notification.", optionsAccessor), INotificationHandler<TMessage>
+) : ACircuitBreakerBehavior<TMessage, ValueTask>("Circuit open for notification.", optionsAccessor), INotificationHandler<TMessage>
     where TMessage : notnull
 {
     /// <inheritdoc />
-    public override Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+    public override ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
         ExecuteAsync(message, handler.Handle, cancellationToken);
 }
 
@@ -60,11 +60,11 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(
 public sealed class CircuitBreakerCommandBehavior<TMessage>(
     ICommandHandler<TMessage> handler,
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
-) : ACircuitBreakerBehavior<TMessage, Task>("Circuit open for command.", optionsAccessor), ICommandHandler<TMessage>
+) : ACircuitBreakerBehavior<TMessage, ValueTask>("Circuit open for command.", optionsAccessor), ICommandHandler<TMessage>
     where TMessage : notnull
 {
     /// <inheritdoc />
-    public override Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+    public override ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
         ExecuteAsync(message, handler.Handle, cancellationToken);
 }
 
@@ -130,9 +130,9 @@ public abstract class ACircuitBreakerBehavior<TMessage, TResult>(
     /// <returns>A task that represents the asynchronous operation. The task result contains the response produced by the request
     /// delegate.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the circuit is open and requests are not allowed to proceed.</exception>
-    protected async Task<TResponse> ExecuteRequestAsync<TResponse>(
+    protected async ValueTask<TResponse> ExecuteRequestAsync<TResponse>(
         TMessage message,
-        Func<TMessage, CancellationToken, Task<TResponse>> next,
+        Func<TMessage, CancellationToken, ValueTask<TResponse>> next,
         CancellationToken cancellationToken
     )
     {
@@ -219,9 +219,9 @@ public abstract class ACircuitBreakerBehavior<TMessage, TResult>(
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the asynchronous operation.</param>
     /// <returns>A task that represents the asynchronous execution of the pipeline step.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the circuit is open and the pipeline step cannot be executed.</exception>
-    protected async Task ExecuteAsync(
+    protected async ValueTask ExecuteAsync(
         TMessage message,
-        Func<TMessage, CancellationToken, Task> next,
+        Func<TMessage, CancellationToken, ValueTask> next,
         CancellationToken cancellationToken
     )
     {

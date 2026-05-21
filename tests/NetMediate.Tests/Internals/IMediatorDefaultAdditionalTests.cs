@@ -10,59 +10,55 @@ public sealed class IMediatorDefaultAdditionalTests
         public int SingleNotifyCalls;
         public readonly ConcurrentBag<object?> Notified = [];
 
-        public async Task Notify<TMessage>(
-            TMessage message,
-            CancellationToken cancellationToken = default
+        public void Notify<TMessage>(
+            TMessage message
         )
             where TMessage : notnull
         {
             SingleNotifyCalls++;
             Notified.Add(message);
-            await Task.CompletedTask;
         }
 
-        public Task Notify<TMessage>(
+        public void Notify<TMessage>(
+            object? key,
+            TMessage message
+        ) where TMessage : notnull => Notify(message);
+
+        public ValueTask Send<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+            where TMessage : notnull => ValueTask.CompletedTask;
+
+        public ValueTask Send<TMessage>(
             object? key,
             TMessage message,
             CancellationToken cancellationToken = default
         )
-            where TMessage : notnull => Notify(message, cancellationToken);
+            where TMessage : notnull => ValueTask.CompletedTask;
 
-        public Task Send<TMessage>(TMessage message, CancellationToken cancellationToken = default)
-            where TMessage : notnull => Task.CompletedTask;
+        public ValueTask Sends<TMessage>(
+            IEnumerable<TMessage> messages,
+            CancellationToken cancellationToken = default
+        )
+            where TMessage : notnull => ValueTask.CompletedTask;
 
-        public Task Send<TMessage>(
+        public ValueTask Sends<TMessage>(
+            object? key,
+            IEnumerable<TMessage> messages,
+            CancellationToken cancellationToken = default
+        )
+            where TMessage : notnull => ValueTask.CompletedTask;
+
+        public ValueTask<TResponse> Request<TMessage, TResponse>(
+            TMessage message,
+            CancellationToken cancellationToken = default
+        )
+            where TMessage : notnull => ValueTask.FromResult(default(TResponse)!);
+
+        public ValueTask<TResponse> Request<TMessage, TResponse>(
             object? key,
             TMessage message,
             CancellationToken cancellationToken = default
         )
-            where TMessage : notnull => Task.CompletedTask;
-
-        public Task Send<TMessage>(
-            IEnumerable<TMessage> commands,
-            CancellationToken cancellationToken = default
-        )
-            where TMessage : notnull => Task.CompletedTask;
-
-        public Task Send<TMessage>(
-            object? key,
-            IEnumerable<TMessage> commands,
-            CancellationToken cancellationToken = default
-        )
-            where TMessage : notnull => Task.CompletedTask;
-
-        public Task<TResponse> Request<TMessage, TResponse>(
-            TMessage message,
-            CancellationToken cancellationToken = default
-        )
-            where TMessage : notnull => Task.FromResult(default(TResponse)!);
-
-        public Task<TResponse> Request<TMessage, TResponse>(
-            object? key,
-            TMessage message,
-            CancellationToken cancellationToken = default
-        )
-            where TMessage : notnull => Task.FromResult(default(TResponse)!);
+            where TMessage : notnull => ValueTask.FromResult(default(TResponse)!);
 
         public IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(
             TMessage message,
@@ -86,44 +82,29 @@ public sealed class IMediatorDefaultAdditionalTests
             where TMessage : notnull =>
             RequestStream<TMessage, TResponse>(message, cancellationToken);
 
-        public async Task Notify<TMessage>(
-            IEnumerable<TMessage> messages,
-            CancellationToken cancellationToken = default
+        public void Notifies<TMessage>(
+            IEnumerable<TMessage> messages
         )
-            where TMessage : notnull =>
-            await Task.WhenAll(messages.Select(m => Notify(m, cancellationToken)));
+            where TMessage : notnull
+        {
+            foreach (var message in messages)
+                Notify(message);
+        }
 
-        public async Task Notify<TMessage>(
+        public void Notifies<TMessage>(
             object? key,
-            IEnumerable<TMessage> messages,
-            CancellationToken cancellationToken = default
+            IEnumerable<TMessage> messages
         )
-            where TMessage : notnull =>
-            await Task.WhenAll(messages.Select(m => Notify(key, m, cancellationToken)));
+            where TMessage : notnull => Notify(messages);
     }
 
     [Fact]
-    public async Task Notify_Single_Interfaced_WithoutOnError_Forwards()
+    public void Notify_Single_Interfaced_WithoutOnError_Forwards()
     {
         var msg = new MessageNotification(1);
         var m = new TestMediator();
-        await m.Notify(msg, TestContext.Current.CancellationToken);
+        m.Notify(msg);
         Assert.Equal(1, m.SingleNotifyCalls);
         Assert.Contains(msg, m.Notified);
-    }
-
-    [Fact]
-    public async Task Notify_NotificationEnumerable_Forwards()
-    {
-        var m = new TestMediator();
-        MessageNotification[] notifications = [new(1), new(2)];
-
-        await m.Notify(
-            (IEnumerable<MessageNotification>)notifications,
-            TestContext.Current.CancellationToken
-        );
-
-        Assert.Equal(2, m.SingleNotifyCalls);
-        Assert.Equal(2, m.Notified.OfType<MessageNotification>().Count());
     }
 }

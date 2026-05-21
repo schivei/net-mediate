@@ -1,4 +1,5 @@
 using Quartz;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.Quartz;
 
@@ -6,6 +7,7 @@ namespace NetMediate.Quartz;
 /// Configuration options for the Quartz-backed notification scheduler.
 /// </summary>
 [OptionConfig]
+[ExcludeFromCodeCoverage]
 public sealed class QuartzNotificationOptions
 {
     /// <summary>
@@ -27,6 +29,7 @@ public sealed class QuartzNotificationOptions
     /// appropriate generation algorithm, or set a specific value to control identifier format and uniqueness.</remarks>
     public QuartzNotificationIdGeneration IdGenerationStrategy { get; set; } = QuartzNotificationIdGeneration.Auto;
 
+    [ExcludeFromCodeCoverage]
     internal JobKey GenerateId<TMessage>(TMessage message, INotificationSerializer serializer) where TMessage : notnull
     {
         var id = IdGenerationStrategy switch
@@ -45,6 +48,7 @@ public sealed class QuartzNotificationOptions
         return new(id, GroupName);
     }
 
+    [ExcludeFromCodeCoverage]
     private static string GenerateAutoId<TMessage>(TMessage message, INotificationSerializer serializer) where TMessage : notnull
     {
         if (message is IQuartzMessage qtMsg && !string.IsNullOrWhiteSpace(qtMsg.Identifier))
@@ -53,6 +57,7 @@ public sealed class QuartzNotificationOptions
         return GenerateMessageHashId(message, serializer);
     }
 
+    [ExcludeFromCodeCoverage]
     private static string GenerateMessageHashId<TMessage>(TMessage message, INotificationSerializer serializer) where TMessage : notnull
     {
         var json = serializer.Serialize(message);

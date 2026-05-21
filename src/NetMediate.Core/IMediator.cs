@@ -14,9 +14,7 @@ public interface IMediator
     /// </summary>
     /// <typeparam name="TMessage">The type of the message to notify handlers about. Must not be null.</typeparam>
     /// <param name="message">The message instance to be delivered to all handlers. Cannot be null.</param>
-    /// <param name="cancellationToken">A cancellation token that can be used to cancel the notification operation.</param>
-    /// <returns>A task that represents the asynchronous notification operation.</returns>
-    ValueTask Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default)
+    void Notify<TMessage>(TMessage message)
         where TMessage : notnull;
 
     /// <summary>
@@ -26,27 +24,19 @@ public interface IMediator
     /// <param name="key">An optional key used to scope the notification to a specific group of subscribers. If null, the notification is
     /// sent to all subscribers of the message type.</param>
     /// <param name="message">The message instance to send to subscribers. Cannot be null.</param>
-    /// <param name="cancellationToken">A cancellation token that can be used to cancel the notification operation.</param>
-    /// <returns>A task that represents the asynchronous notification operation.</returns>
-    ValueTask Notify<TMessage>(
+    void Notify<TMessage>(
         object? key,
-        TMessage message,
-        CancellationToken cancellationToken = default
-    )
-        where TMessage : notnull;
+        TMessage message
+    ) where TMessage : notnull;
 
     /// <summary>
     /// Asynchronously notifies recipients of a collection of messages.
     /// </summary>
     /// <typeparam name="TMessage">The type of messages to notify. Must not be null.</typeparam>
     /// <param name="messages">The collection of messages to be sent to recipients. Cannot be null.</param>
-    /// <param name="cancellationToken">A cancellation token that can be used to cancel the notification operation.</param>
-    /// <returns>A task that represents the asynchronous notification operation.</returns>
-    ValueTask Notify<TMessage>(
-        IEnumerable<TMessage> messages,
-        CancellationToken cancellationToken = default
-    )
-        where TMessage : notnull;
+    void Notifies<TMessage>(
+        IEnumerable<TMessage> messages
+    ) where TMessage : notnull;
 
     /// <summary>
     /// Notifies subscribers with a collection of messages, optionally scoped by a key.
@@ -55,14 +45,10 @@ public interface IMediator
     /// <param name="key">An optional key used to scope the notification. If specified, only subscribers associated with this key will
     /// receive the messages. Can be null to broadcast to all subscribers.</param>
     /// <param name="messages">The collection of messages to deliver to subscribers. Cannot be null and must not contain null elements.</param>
-    /// <param name="cancellationToken">A cancellation token that can be used to cancel the notification operation.</param>
-    /// <returns>A task that represents the asynchronous notification operation.</returns>
-    ValueTask Notify<TMessage>(
+    void Notifies<TMessage>(
         object? key,
-        IEnumerable<TMessage> messages,
-        CancellationToken cancellationToken = default
-    )
-        where TMessage : notnull;
+        IEnumerable<TMessage> messages
+    ) where TMessage : notnull;
 
     /// <summary>
     /// Sends the specified message asynchronously using the configured transport or pipeline.
@@ -99,7 +85,7 @@ public interface IMediator
     /// <param name="messages">The collection of messages to be sent. Cannot be null.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the send operation.</param>
     /// <returns>A task that represents the asynchronous send operation.</returns>
-    ValueTask Send<TMessage>(
+    ValueTask Sends<TMessage>(
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
     )
@@ -115,7 +101,7 @@ public interface IMediator
     /// <param name="messages">The collection of messages to send. Cannot contain null elements.</param>
     /// <param name="cancellationToken">A cancellation token that can be used to cancel the send operation.</param>
     /// <returns>A task that represents the asynchronous send operation.</returns>
-    ValueTask Send<TMessage>(
+    ValueTask Sends<TMessage>(
         object? key,
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default

@@ -27,7 +27,7 @@ public sealed class TelemetryBehaviorTests
             Handler = new LambdaCommandHandler<CommandMessage>((_, _) =>
             {
                 called = true;
-                return Task.CompletedTask;
+                return ValueTask.CompletedTask;
             })
         };
 
@@ -47,11 +47,11 @@ public sealed class TelemetryBehaviorTests
         var behavior = new TestTelemetryCommandBehavior<CommandMessage>
         {
             Handler = new LambdaCommandHandler<CommandMessage>((_, _) =>
-                Task.FromException(new InvalidOperationException("boom")))
+                ValueTask.FromException(new InvalidOperationException("boom")))
         };
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(new CommandMessage(), TestContext.Current.CancellationToken)
+            behavior.Handle(new CommandMessage(), TestContext.Current.CancellationToken).AsTask()
         );
 
         Assert.Equal(ActivityStatusCode.Error, Assert.Single(stoppedActivities).Status);
@@ -63,7 +63,7 @@ public sealed class TelemetryBehaviorTests
         using var listener = CreateListener(out var stoppedActivities);
         var behavior = new TestTelemetryNotificationBehavior<NotificationMessage>
         {
-            Handler = new LambdaNotificationHandler<NotificationMessage>((_, _) => Task.CompletedTask)
+            Handler = new LambdaNotificationHandler<NotificationMessage>((_, _) => ValueTask.CompletedTask)
         };
 
         await behavior.Handle(new NotificationMessage(), TestContext.Current.CancellationToken);
@@ -77,11 +77,11 @@ public sealed class TelemetryBehaviorTests
         var behavior = new TestTelemetryNotificationBehavior<NotificationMessage>
         {
             Handler = new LambdaNotificationHandler<NotificationMessage>((_, _) =>
-                Task.FromException(new InvalidOperationException("boom")))
+                ValueTask.FromException(new InvalidOperationException("boom")))
         };
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(new NotificationMessage(), TestContext.Current.CancellationToken)
+            behavior.Handle(new NotificationMessage(), TestContext.Current.CancellationToken).AsTask()
         );
 
         Assert.Equal(ActivityStatusCode.Error, Assert.Single(stoppedActivities).Status);
@@ -93,7 +93,7 @@ public sealed class TelemetryBehaviorTests
         using var listener = CreateListener(out var stoppedActivities);
         var behavior = new TestTelemetryRequestBehavior<RequestMessage, Response>
         {
-            Handler = new LambdaRequestHandler<RequestMessage, Response>((_, _) => Task.FromResult(new Response("ok")))
+            Handler = new LambdaRequestHandler<RequestMessage, Response>((_, _) => ValueTask.FromResult(new Response("ok")))
         };
 
         var response = await behavior.Handle(new RequestMessage(), TestContext.Current.CancellationToken);
@@ -109,11 +109,11 @@ public sealed class TelemetryBehaviorTests
         var behavior = new TestTelemetryRequestBehavior<RequestMessage, Response>
         {
             Handler = new LambdaRequestHandler<RequestMessage, Response>((_, _) =>
-                Task.FromException<Response>(new InvalidOperationException("boom")))
+                ValueTask.FromException<Response>(new InvalidOperationException("boom")))
         };
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(new RequestMessage(), TestContext.Current.CancellationToken)
+            behavior.Handle(new RequestMessage(), TestContext.Current.CancellationToken).AsTask()
         );
 
         Assert.Equal(ActivityStatusCode.Error, Assert.Single(stoppedActivities).Status);
@@ -187,28 +187,28 @@ public sealed class TelemetryBehaviorTests
     {
         var commandBehavior = new TestTelemetryCommandBehavior<CommandMessage> {
             Handler = new LambdaCommandHandler<CommandMessage>((_, _) =>
-                Task.FromException(new InvalidOperationException("boom-command")))
+                ValueTask.FromException(new InvalidOperationException("boom-command")))
         };
         var notificationBehavior = new TestTelemetryNotificationBehavior<NotificationMessage> {
             Handler = new LambdaNotificationHandler<NotificationMessage>((_, _) =>
-                Task.FromException(new InvalidOperationException("boom-notification")))
+                ValueTask.FromException(new InvalidOperationException("boom-notification")))
         };
         var requestBehavior = new TestTelemetryRequestBehavior<RequestMessage, Response> {
             Handler = new LambdaRequestHandler<RequestMessage, Response>((_, _) =>
-                Task.FromException<Response>(new InvalidOperationException("boom-request")))
+                ValueTask.FromException<Response>(new InvalidOperationException("boom-request")))
         };
         var streamBehavior = new TestTelemetryStreamBehavior<StreamMessage, StreamResponse> {
             Handler = new LambdaStreamHandler<StreamMessage, StreamResponse>((_, _) => ThrowingStream())
         };
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            commandBehavior.Handle(new CommandMessage(), TestContext.Current.CancellationToken)
+            commandBehavior.Handle(new CommandMessage(), TestContext.Current.CancellationToken).AsTask()
         );
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            notificationBehavior.Handle(new NotificationMessage(), TestContext.Current.CancellationToken)
+            notificationBehavior.Handle(new NotificationMessage(), TestContext.Current.CancellationToken).AsTask()
         );
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            requestBehavior.Handle(new RequestMessage(), TestContext.Current.CancellationToken)
+            requestBehavior.Handle(new RequestMessage(), TestContext.Current.CancellationToken).AsTask()
         );
         await Assert.ThrowsAsync<InvalidOperationException>(async () =>
         {
@@ -272,29 +272,29 @@ public sealed class TelemetryBehaviorTests
     }
 
     private sealed class LambdaCommandHandler<TMessage>(
-        Func<TMessage, CancellationToken, Task> callback
+        Func<TMessage, CancellationToken, ValueTask> callback
     ) : ICommandHandler<TMessage>
         where TMessage : notnull
     {
-        public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+        public ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
             callback(message, cancellationToken);
     }
 
     private sealed class LambdaNotificationHandler<TMessage>(
-        Func<TMessage, CancellationToken, Task> callback
+        Func<TMessage, CancellationToken, ValueTask> callback
     ) : INotificationHandler<TMessage>
         where TMessage : notnull
     {
-        public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+        public ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
             callback(message, cancellationToken);
     }
 
     private sealed class LambdaRequestHandler<TMessage, TResponse>(
-        Func<TMessage, CancellationToken, Task<TResponse>> callback
+        Func<TMessage, CancellationToken, ValueTask<TResponse>> callback
     ) : IRequestHandler<TMessage, TResponse>
         where TMessage : notnull
     {
-        public Task<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
+        public ValueTask<TResponse> Handle(TMessage message, CancellationToken cancellationToken = default) =>
             callback(message, cancellationToken);
     }
 

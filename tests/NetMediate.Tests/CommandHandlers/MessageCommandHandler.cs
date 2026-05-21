@@ -4,8 +4,12 @@ namespace NetMediate.Tests.CommandHandlers;
 
 internal sealed class MessageCommandHandler : BaseHandler, ICommandHandler<MessageCommand>
 {
-    public async Task Handle(
+    public ValueTask Handle(
         MessageCommand command,
         CancellationToken cancellationToken = default
-    ) => await Task.Run(() => Marks(command), cancellationToken);
+    )
+    {
+        Marks(command);
+        return ValueTask.CompletedTask;
+    }
 }

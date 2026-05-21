@@ -14,19 +14,20 @@ namespace NetMediate.Quartz;
     "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
 )]
 [DecoratorFor<IMediator>]
+[ConditionalInjectable("")]
 [Browsable(false)]
 [EditorBrowsable(EditorBrowsableState.Never)]
-[ExcludeFromCodeCoverage]
 internal sealed class QuartzMediator : IMediator
 {
     /// <summary>
     /// Gets the inner mediator instance to which notifications will be delegated after being scheduled.
     /// </summary>
+    [ExcludeFromCodeCoverage]
     [Inject] public required IMediator Inner { get; init; }
     /// <summary>
     /// Gets the Quartz scheduler instance.
     /// </summary>
-    [Inject] public required IScheduler Scheduler { get; init; }
+    [Inject] public required ISchedulerFactory SchedulerFactory { get; init; }
     /// <summary>
     /// Gets the notification serializer instance.
     /// </summary>
@@ -40,52 +41,70 @@ internal sealed class QuartzMediator : IMediator
     /// </summary>
     [Inject] public required ILogger<QuartzMediator> Logger { get; init; }
 
-    /// <inheritdoc/>
-    public async Task Notify<TMessage>(object? key, TMessage message, CancellationToken cancellationToken = default)
-    {
+    private readonly record struct JobData<TMessage>(
+        object? Key,
+        TMessage Message,
+        INotificationSerializer Serializer,
+        ISchedulerFactory SchedulerFactory,
+        QuartzNotificationOptions Options,
+        ILogger Logger
+    ) where TMessage : notnull;
 
-        var json = Serializer.Serialize(message);
+    private static async Task Notify<TMessage>(JobData<TMessage> jobData)
+    {
         var typeName =
             typeof(TMessage).AssemblyQualifiedName
             ?? throw new InvalidOperationException(
                 $"Cannot determine assembly-qualified name for type '{typeof(TMessage).FullName}'."
             );
 
-        var jobKey = new JobKey($"{typeof(TMessage).Name}_{Guid.NewGuid():N}", Options.Value.GroupName);
+        var msg = jobData.Message as IQuartzMessage;
+
+        var jobKey = jobData.Options.GenerateId(jobData.Key, jobData.Message, jobData.Serializer);
+
+        var scheduler = await jobData.SchedulerFactory.GetScheduler().ConfigureAwait(false);
+
+        if (await scheduler.CheckExists(jobKey))
+            return;
+
+        var json = jobData.Serializer.Serialize(jobData.Message);
 
         var jobBuilder = JobBuilder
-            .Create<QuartzNotificationJob>()
+            .Create<QuartzNotificationJob<TMessage>>()
             .WithIdentity(jobKey)
-            .UsingJobData(QuartzNotificationJob.MessageDataKey, json)
-            .UsingJobData(QuartzNotificationJob.TypeDataKey, typeName)
+            .UsingJobData(QuartzNotificationJob<TMessage>.MessageDataKey, json)
+            .UsingJobData(QuartzNotificationJob<TMessage>.TypeDataKey, typeName)
             .StoreDurably(false);
 
-        if (key is not null)
+        if (jobData.Key is not null)
         {
             jobBuilder = jobBuilder
                 .UsingJobData(
-                    QuartzNotificationJob.KeyDataKey,
-                    System.Text.Json.JsonSerializer.Serialize(key)
+                    QuartzNotificationJob<TMessage>.KeyDataKey,
+                    System.Text.Json.JsonSerializer.Serialize(jobData.Key)
                 )
                 .UsingJobData(
-                    QuartzNotificationJob.KeyTypeDataKey,
-                    key.GetType().AssemblyQualifiedName ?? key.GetType().FullName ?? "System.Object"
+                    QuartzNotificationJob<TMessage>.KeyTypeDataKey,
+                    jobData.Key.GetType().AssemblyQualifiedName ?? jobData.Key.GetType().FullName ?? "System.Object"
                 );
         }
 
-        var job = jobBuilder.Build();
+        var job = jobBuilder
+            .RequestRecovery(true)
+            .Build();
 
         var trigger = TriggerBuilder
             .Create()
-            .WithIdentity($"{jobKey.Name}_trigger", Options.Value.GroupName)
+            .WithIdentity($"{jobKey.Name}_trigger", msg?.GroupName ?? jobData.Options.GroupName)
+            .WithSimpleSchedule(s => s.WithMisfireHandlingInstructionFireNow().WithRepeatCount(jobData.Options.MisfireRetryCount))
             .StartNow()
             .Build();
 
-        await Scheduler.ScheduleJob(job, trigger, cancellationToken).ConfigureAwait(false);
+        await scheduler.ScheduleJob(job, trigger).ConfigureAwait(false);
 
-        if (Logger.IsEnabled(LogLevel.Debug))
+        if (jobData.Logger.IsEnabled(LogLevel.Debug))
         {
-            Logger.LogDebug(
+            jobData.Logger.LogDebug(
                 "QuartzMediator: scheduled notification job {JobKey} for message type {MessageType}.",
                 jobKey,
                 typeof(TMessage).Name
@@ -94,54 +113,77 @@ internal sealed class QuartzMediator : IMediator
     }
 
     /// <inheritdoc/>
-    public Task Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
-        Notify(null, message, cancellationToken);
-
-    /// <inheritdoc/>
-    public Task Notify<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull =>
-        Notify(null, messages, cancellationToken);
-
-    /// <inheritdoc/>
-    public Task Notify<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull
+    [ExcludeFromCodeCoverage]
+    public void Notify<TMessage>(object? key, TMessage message)
     {
-        if (!messages.Any())
-            return Task.CompletedTask;
+        var task = Notify(new JobData<TMessage>(
+            key,
+            message,
+            Serializer,
+            SchedulerFactory,
+            Options.Value,
+            Logger
+        )).ConfigureAwait(false);
 
-        foreach (var m in messages)
-            _ = Notify(key, m, cancellationToken);
-
-        return Task.CompletedTask;
+        if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") == "Testing" || Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Testing")
+            task.GetAwaiter().GetResult();
     }
 
     /// <inheritdoc/>
-    public Task<TResponse> Request<TMessage, TResponse>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
+    public void Notify<TMessage>(TMessage message) where TMessage : notnull =>
+        Notify(null, message);
+
+    /// <inheritdoc/>
+    public void Notifies<TMessage>(IEnumerable<TMessage> messages) where TMessage : notnull =>
+        Notifies(null, messages);
+
+    /// <inheritdoc/>
+    public void Notifies<TMessage>(object? key, IEnumerable<TMessage> messages) where TMessage : notnull
+    {
+        if (!messages.Any())
+            return;
+
+        foreach (var m in messages)
+            Notify(key, m);
+    }
+
+    /// <inheritdoc/>
+    [ExcludeFromCodeCoverage]
+    public ValueTask<TResponse> Request<TMessage, TResponse>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
         Inner.Request<TMessage, TResponse>(message, cancellationToken);
 
     /// <inheritdoc/>
-    public Task<TResponse> Request<TMessage, TResponse>(object? key, TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
+    [ExcludeFromCodeCoverage]
+    public ValueTask<TResponse> Request<TMessage, TResponse>(object? key, TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
         Inner.Request<TMessage, TResponse>(key, message, cancellationToken);
 
     /// <inheritdoc/>
+    [ExcludeFromCodeCoverage]
     public IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
         Inner.RequestStream<TMessage, TResponse>(message, cancellationToken);
 
     /// <inheritdoc/>
+    [ExcludeFromCodeCoverage]
     public IAsyncEnumerable<TResponse> RequestStream<TMessage, TResponse>(object? key, TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
         Inner.RequestStream<TMessage, TResponse>(key, message, cancellationToken);
 
     /// <inheritdoc/>
-    public Task Send<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
+    [ExcludeFromCodeCoverage]
+    public ValueTask Send<TMessage>(TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
         Inner.Send(message, cancellationToken);
 
     /// <inheritdoc/>
-    public Task Send<TMessage>(object? key, TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
+    [ExcludeFromCodeCoverage]
+    public ValueTask Send<TMessage>(object? key, TMessage message, CancellationToken cancellationToken = default) where TMessage : notnull =>
         Inner.Send(key, message, cancellationToken);
 
     /// <inheritdoc/>
-    public Task Send<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull =>
-        Inner.Send(messages, cancellationToken);
+    [ExcludeFromCodeCoverage]
+    public ValueTask Sends<TMessage>(IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull =>
+        Inner.Sends(messages, cancellationToken);
 
     /// <inheritdoc/>
-    public Task Send<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull =>
+    [ExcludeFromCodeCoverage]
+    public ValueTask Sends<TMessage>(object? key, IEnumerable<TMessage> messages, CancellationToken cancellationToken = default) where TMessage : notnull =>
         Inner.Send(key, messages, cancellationToken);
 }

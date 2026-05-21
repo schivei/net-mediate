@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
+using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.Quartz;
@@ -32,8 +34,7 @@ namespace NetMediate.Quartz;
 [RequiresUnreferencedCode(
     "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
 )]
-[Injectable<IJob>(ServiceLifetime.Singleton, RegistrationMultiplicity = RegistrationMultiplicity.Multiple)]
-internal sealed class QuartzNotificationJob : IJob
+internal sealed class QuartzNotificationJob<TMessage> : IJob where TMessage : notnull
 {
     /// <summary>
     /// Gets the service provider used to resolve the inner dispatch services.
@@ -51,7 +52,7 @@ internal sealed class QuartzNotificationJob : IJob
     /// Gets the logger used by this job.
     /// </summary>
     [Inject]
-    public required ILogger<QuartzNotificationJob> Logger { get; init; }
+    public required ILogger<QuartzNotificationJob<TMessage>> Logger { get; init; }
 
     /// <summary>Key used to store the serialized message in the <see cref="JobDataMap"/>.</summary>
     public const string MessageDataKey = "netmediate_message";
@@ -65,10 +66,7 @@ internal sealed class QuartzNotificationJob : IJob
     /// <summary>Key used to store the routing key CLR assembly-qualified type name in the <see cref="JobDataMap"/>.</summary>
     public const string KeyTypeDataKey = "netmediate_key_type";
 
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<
-        Type,
-        Func<IServiceProvider, object?, object, CancellationToken, Task>
-    > s_dispatcherCache = new();
+    private static readonly ConcurrentDictionary<ValueTuple<Type, object?>, Lazy<ImmutableArray<INotificationHandler<TMessage>>>> s_ntfCache = new();
 
     /// <inheritdoc />
     public async Task Execute(IJobExecutionContext context)
@@ -98,12 +96,13 @@ internal sealed class QuartzNotificationJob : IJob
         }
 
         var message = Serializer.Deserialize(json, messageType);
-        if (message is null)
+        if (message is not TMessage msg)
         {
             Logger.LogWarning(
                 "QuartzNotificationJob: deserialized message is null for job {JobKey}.",
                 context.JobDetail.Key
             );
+
             return;
         }
 
@@ -117,56 +116,16 @@ internal sealed class QuartzNotificationJob : IJob
                 routingKey = System.Text.Json.JsonSerializer.Deserialize(keyJson, keyType);
         }
 
-        var dispatcher = s_dispatcherCache.GetOrAdd(messageType, BuildDispatcher);
+        var handlers = ResolveNotifyHandlers(routingKey);
 
-        await dispatcher(ServiceProvider, routingKey, message, context.CancellationToken)
-            .ConfigureAwait(false);
+        var notifier = ServiceProvider.GetRequiredService<INotifiable>();
+
+        await notifier.DispatchNotifications(routingKey, msg, [.. handlers], context.CancellationToken).ConfigureAwait(false);
     }
 
-    [ExcludeFromCodeCoverage]
-    private static Func<IServiceProvider, object?, object, CancellationToken, Task> BuildDispatcher(
-        Type messageType
-    )
-    {
-        var method = typeof(QuartzNotificationJob).GetMethod(
-            nameof(DispatchNotification),
-            [
-                typeof(IServiceProvider),
-                typeof(object),
-                typeof(object),
-                typeof(CancellationToken)
-            ]
-        )
-            ?? throw new MissingMethodException(
-                typeof(QuartzNotificationJob).FullName,
-                nameof(DispatchNotification)
-            );
-
-        method = method
-            .MakeGenericMethod(messageType);
-
-        return (serviceProvider, key, message, cancellationToken) =>
-            (Task)method.Invoke(null, [serviceProvider, key, message, cancellationToken])!;
-    }
-
-    private static Task DispatchNotification<TMessage>(
-        IServiceProvider serviceProvider,
-        object? key,
-        object message,
-        CancellationToken cancellationToken
-    )
-        where TMessage : notnull
-    {
-        var notifiable = serviceProvider.GetRequiredService<INotifiable>();
-        INotificationHandler<TMessage>[] handlers = key is null
-            ? [.. serviceProvider.GetServices<INotificationHandler<TMessage>>()]
-            : [.. serviceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)];
-
-        return notifiable.DispatchNotifications(
-            key,
-            (TMessage)message,
-            handlers,
-            cancellationToken
-        );
-    }
+    private ImmutableArray<INotificationHandler<TMessage>> ResolveNotifyHandlers(object? key) =>
+        s_ntfCache.GetOrAdd(
+            (typeof(TMessage), key),
+            _ => new Lazy<ImmutableArray<INotificationHandler<TMessage>>>(() => key is null ? [.. ServiceProvider.GetServices<INotificationHandler<TMessage>>()] : [.. ServiceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)])
+        ).Value;
 }

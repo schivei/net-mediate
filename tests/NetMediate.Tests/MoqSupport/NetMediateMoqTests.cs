@@ -81,14 +81,14 @@ public class NetMediateMoqTests
             (_, _) =>
             {
                 h1Called = true;
-                return Task.CompletedTask;
+                return ValueTask.CompletedTask;
             }
         );
         var h2 = new LambdaNotificationHandler<NotifierTestMessage>(
             (_, _) =>
             {
                 h2Called = true;
-                return Task.CompletedTask;
+                return ValueTask.CompletedTask;
             }
         );
 
@@ -114,7 +114,7 @@ public class NetMediateMoqTests
                 new NotifierTestMessage(),
                 [],
                 TestContext.Current.CancellationToken
-            )
+            ).AsTask()
         );
 
         Assert.Null(exception);
@@ -129,7 +129,7 @@ public class NetMediateMoqTests
             new LambdaNotificationHandler<NotifierTestMessage>((_, _) =>
             {
                 handled.TrySetResult();
-                return Task.CompletedTask;
+                return ValueTask.CompletedTask;
             })
         );
 
@@ -137,7 +137,7 @@ public class NetMediateMoqTests
         var notifier = new NotifierMock();
         var mediator = new Mediator { ServiceProvider = provider, Notifier = notifier };
 
-        await mediator.Notify(null, new NotifierTestMessage(), TestContext.Current.CancellationToken);
+        mediator.Notify(null, new NotifierTestMessage());
 
         await handled.Task.WaitAsync(TestContext.Current.CancellationToken);
         Assert.True(handled.Task.IsCompletedSuccessfully);
@@ -155,7 +155,7 @@ public class NetMediateMoqTests
                 if (Interlocked.Increment(ref callCount) == 2)
                     allHandled.TrySetResult();
 
-                return Task.CompletedTask;
+                return ValueTask.CompletedTask;
             })
         );
 
@@ -164,10 +164,9 @@ public class NetMediateMoqTests
 
         var mediator = new Mediator { ServiceProvider = provider, Notifier = notifier };
 
-        await mediator.Notify(
+        mediator.Notify(
             null,
-            [new NotifierTestMessage(), new NotifierTestMessage()],
-            TestContext.Current.CancellationToken
+            [new NotifierTestMessage(), new NotifierTestMessage()]
         );
 
         await allHandled.Task.WaitAsync(TestContext.Current.CancellationToken);
@@ -209,11 +208,11 @@ public class NetMediateMoqTests
     }
 
     internal sealed class LambdaNotificationHandler<TMessage>(
-        Func<TMessage, CancellationToken, Task> fn
+        Func<TMessage, CancellationToken, ValueTask> fn
     ) : INotificationHandler<TMessage>
         where TMessage : notnull
     {
-        public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
+        public ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
             fn(message, cancellationToken);
     }
 }

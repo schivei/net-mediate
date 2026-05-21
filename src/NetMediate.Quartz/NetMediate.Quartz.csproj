@@ -49,7 +49,7 @@
 		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.*" />
 	</ItemGroup>
 	<ItemGroup>
-		<InternalsVisibleTo Include="NetMediate.Tests">
+		<InternalsVisibleTo Include="NetMediate.Quartz.Tests">
 			<AllInternalsVisible>true</AllInternalsVisible>
 		</InternalsVisibleTo>
 	</ItemGroup>

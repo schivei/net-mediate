@@ -129,35 +129,32 @@ internal sealed class Mediator : IMediator
     }
 
     /// <inheritdoc/>
-    public ValueTask Notify<TMessage>(TMessage message, CancellationToken cancellationToken = default) =>
-        Notify(null, message, cancellationToken);
+    public void Notify<TMessage>(TMessage message) =>
+        Notify(null, message);
 
     /// <inheritdoc/>
-    public async ValueTask Notify<TMessage>(
+    public void Notify<TMessage>(
         object? key,
-        TMessage message,
-        CancellationToken cancellationToken = default
+        TMessage message
     )
     {
         INotificationHandler<TMessage>[] handlers = ResolveNotifyHandlers<TMessage>(key);
 
-        await Notifier.DispatchNotifications(key, message, handlers, cancellationToken);
+        Notifier.DispatchNotifications(key, message, handlers).AsTask()
+            .ContinueWith(_ => { }, TaskContinuationOptions.OnlyOnFaulted)
+            .ConfigureAwait(false);
     }
 
     /// <inheritdoc/>
-    public ValueTask Notify<TMessage>(
-        IEnumerable<TMessage> messages,
-        CancellationToken cancellationToken = default
-    )
-        where TMessage : notnull =>
-        Notify(null, messages, cancellationToken);
+    public void Notifies<TMessage>(
+        IEnumerable<TMessage> messages
+    ) where TMessage : notnull =>
+        Notifies(null, messages);
 
     /// <inheritdoc/>
-    [ExcludeFromCodeCoverage]
-    public async ValueTask Notify<TMessage>(
+    public void Notifies<TMessage>(
         object? key,
-        IEnumerable<TMessage> messages,
-        CancellationToken cancellationToken = default
+        IEnumerable<TMessage> messages
     )
         where TMessage : notnull
     {
@@ -165,7 +162,7 @@ internal sealed class Mediator : IMediator
             return;
 
         foreach (var m in messages)
-            await Notify(key, m, cancellationToken);
+            Notify(key, m);
     }
 
     /// <inheritdoc/>
@@ -200,16 +197,16 @@ internal sealed class Mediator : IMediator
     }
 
     /// <inheritdoc/>
-    public ValueTask Send<TMessage>(
+    public ValueTask Sends<TMessage>(
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default
     )
         where TMessage : notnull =>
-        Send(null, messages, cancellationToken);
+        Sends(null, messages, cancellationToken);
 
     /// <inheritdoc/>
     [ExcludeFromCodeCoverage]
-    public async ValueTask Send<TMessage>(
+    public async ValueTask Sends<TMessage>(
         object? key,
         IEnumerable<TMessage> messages,
         CancellationToken cancellationToken = default

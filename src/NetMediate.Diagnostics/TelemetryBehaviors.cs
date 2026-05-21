@@ -100,7 +100,7 @@ public abstract class TelemetryRequestBehavior<TMessage, TResponse> : IRequestHa
     [Inject] public required IRequestHandler<TMessage, TResponse> Handler { get; init; }
 
     /// <inheritdoc />
-    public async Task<TResponse> Handle(
+    public async ValueTask<TResponse> Handle(
         TMessage message,
         CancellationToken cancellationToken = default
     )
@@ -147,7 +147,7 @@ public abstract class TelemetryStreamBehavior<TMessage, TResponse> : IStreamHand
 
     internal readonly record struct StreamState(IAsyncEnumerable<TResponse> Messages, ChannelWriter<TResponse> Writer, CancellationToken CancellationToken);
 
-    private static async Task ProcessMessageStream(StreamState state)
+    private static async ValueTask ProcessMessageStream(StreamState state)
     {
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Request");
 
@@ -181,11 +181,19 @@ public abstract class TelemetryStreamBehavior<TMessage, TResponse> : IStreamHand
             cancellationToken)
         );
 
-        while (await _responseChannel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+        try
         {
-            yield return await _responseChannel.Reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+            while (await _responseChannel.Reader.WaitToReadAsync(cancellationToken).ConfigureAwait(false))
+            {
+                while (_responseChannel.Reader.TryRead(out var item))
+                {
+                    yield return item;
+                }
+            }
         }
-
-        await process.ConfigureAwait(false);
+        finally
+        {
+            await process.ConfigureAwait(false);
+        }
     }
 }

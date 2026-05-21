@@ -297,6 +297,8 @@ jobs:
       run: |
         # ── Run current-branch benchmark ─────────────────────────────────────────
         cd tests/NetMediate.Benchmarks
+        # Ensure NuGet packages and project assets are restored on the runner
+        dotnet restore --configfile ../../NuGet.Config || dotnet restore || true
         dotnet run --configuration Release -- --job Short --filter '*' \
           2>&1 | grep -v "Failed to set up high priority (Permission denied)" \
           | tee "$RUNNER_TEMP/bench-console.txt" || true

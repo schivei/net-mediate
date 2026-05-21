@@ -18,7 +18,7 @@ internal sealed class Notifier : INotifiable
 
     /// <inheritdoc/>
     [ExcludeFromCodeCoverage]
-    public async ValueTask DispatchNotifications<TMessage>(
+    public ValueTask DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
         INotificationHandler<TMessage>[] handlers,
@@ -27,22 +27,17 @@ internal sealed class Notifier : INotifiable
         where TMessage : notnull
     {
         if (handlers.Length == 0)
-            return;
+            return ValueTask.CompletedTask;
 
         foreach (var handler in handlers)
         {
-            if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") == "Testing" || Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Testing")
-            {
-                await handler.Handle(message, cancellationToken).ConfigureAwait(false);
-
-                continue;
-            }
-
             ThreadPool.QueueUserWorkItem(
                 async static state => await state.Handler.Handle(state.Message, state.CancellationToken).ConfigureAwait(false),
                 new HandlerState<TMessage>(handler, message, cancellationToken),
                 preferLocal: false
             );
         }
+
+        return ValueTask.CompletedTask;
     }
 }

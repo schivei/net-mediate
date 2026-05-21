@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Quartz;
@@ -47,20 +48,17 @@ internal sealed class QuartzMediator : IMediator
         INotificationSerializer Serializer,
         ISchedulerFactory SchedulerFactory,
         QuartzNotificationOptions Options,
-        ILogger Logger
+        ILogger Logger,
+        JobKey JobKey
     ) where TMessage : notnull;
 
     private static async Task Notify<TMessage>(JobData<TMessage> jobData)
     {
-        var typeName =
-            typeof(TMessage).AssemblyQualifiedName
-            ?? throw new InvalidOperationException(
-                $"Cannot determine assembly-qualified name for type '{typeof(TMessage).FullName}'."
-            );
+        var typeName = typeof(TMessage).AssemblyQualifiedName!;
 
         var msg = jobData.Message as IQuartzMessage;
 
-        var jobKey = jobData.Options.GenerateId(jobData.Key, jobData.Message, jobData.Serializer);
+        var jobKey = jobData.JobKey;
 
         var scheduler = await jobData.SchedulerFactory.GetScheduler().ConfigureAwait(false);
 
@@ -76,9 +74,27 @@ internal sealed class QuartzMediator : IMediator
             .UsingJobData(QuartzNotificationJob<TMessage>.TypeDataKey, typeName)
             .StoreDurably(false);
 
+        jobBuilder = MakeBuilder(jobData, jobBuilder);
+
+        var job = jobBuilder
+            .RequestRecovery(true)
+            .Build();
+
+        var trigger = BuildTrigger(jobData, jobKey, msg)
+            .StartNow()
+            .Build();
+
+        await scheduler.ScheduleJob(job, trigger).ConfigureAwait(false);
+
+        Log(jobData.Logger, jobKey, typeof(TMessage));
+    }
+
+    [ExcludeFromCodeCoverage]
+    private static JobBuilder MakeBuilder<TMessage>(JobData<TMessage> jobData, JobBuilder jobBuilder)
+    {
         if (jobData.Key is not null)
         {
-            jobBuilder = jobBuilder
+            return jobBuilder
                 .UsingJobData(
                     QuartzNotificationJob<TMessage>.KeyDataKey,
                     System.Text.Json.JsonSerializer.Serialize(jobData.Key)
@@ -89,44 +105,50 @@ internal sealed class QuartzMediator : IMediator
                 );
         }
 
-        var job = jobBuilder
-            .RequestRecovery(true)
-            .Build();
+        return jobBuilder;
+    }
 
-        var trigger = TriggerBuilder
-            .Create()
-            .WithIdentity($"{jobKey.Name}_trigger", msg?.GroupName ?? jobData.Options.GroupName)
-            .WithSimpleSchedule(s => s.WithMisfireHandlingInstructionFireNow().WithRepeatCount(jobData.Options.MisfireRetryCount))
-            .StartNow()
-            .Build();
-
-        await scheduler.ScheduleJob(job, trigger).ConfigureAwait(false);
-
-        if (jobData.Logger.IsEnabled(LogLevel.Debug))
+    [ExcludeFromCodeCoverage]
+    private static void Log(ILogger logger, JobKey jobKey, Type messageType)
+    {
+        if (logger.IsEnabled(LogLevel.Debug))
         {
-            jobData.Logger.LogDebug(
+            logger.LogDebug(
                 "QuartzMediator: scheduled notification job {JobKey} for message type {MessageType}.",
                 jobKey,
-                typeof(TMessage).Name
+                messageType.Name
             );
         }
     }
 
+    private static TriggerBuilder BuildTrigger<TMessage>(JobData<TMessage> jobData, JobKey jobKey, IQuartzMessage? message) where TMessage : notnull
+    {
+        var triggerBuilder = TriggerBuilder
+            .Create()
+            .WithIdentity($"{jobKey.Name}_trigger", message?.GroupName ?? jobData.Options.GroupName)
+            .WithSimpleSchedule(s => s
+                .WithInterval(TimeSpan.FromSeconds(1))
+                .WithMisfireHandlingInstructionFireNow()
+                .WithRepeatCount(jobData.Options.MisfireRetryCount)
+            );
+
+        return triggerBuilder;
+    }
+
     /// <inheritdoc/>
-    [ExcludeFromCodeCoverage]
     public void Notify<TMessage>(object? key, TMessage message)
     {
-        var task = Notify(new JobData<TMessage>(
+        var jobKey = Options.Value.GenerateId(message, Serializer);
+
+        _ = Notify(new JobData<TMessage>(
             key,
             message,
             Serializer,
             SchedulerFactory,
             Options.Value,
-            Logger
+            Logger,
+            jobKey
         )).ConfigureAwait(false);
-
-        if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") == "Testing" || Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Testing")
-            task.GetAwaiter().GetResult();
     }
 
     /// <inheritdoc/>

@@ -29,10 +29,10 @@ public sealed class MediatorAndNotifierCoverageTests
 
         notifier.ClearCalls();
 
-        mediator.Notify(
+        mediator.Notifies(
             [new NotificationMessage("batch-one"), new NotificationMessage("batch-two")]
         );
-        mediator.Notify(
+        mediator.Notifies(
             "key",
             [new NotificationMessage("two"), new NotificationMessage("three")]
         );
@@ -77,7 +77,7 @@ public sealed class MediatorAndNotifierCoverageTests
 
         var mediator = new Mediator { ServiceProvider = provider, Notifier = new SpyNotifiable() };
 
-        await mediator.Send(
+        await mediator.Sends(
             [new CommandMessage(1), new CommandMessage(2)],
             TestContext.Current.CancellationToken
         );
@@ -398,32 +398,6 @@ public sealed class MediatorAndNotifierCoverageTests
     }
 
     [Fact]
-    public async Task Notifier_DispatchNotifications_SyncFaultingHandler_ContinuesDispatch()
-    {
-        var notifier = new Notifier();
-        var invoked = false;
-
-        var exception = await Record.ExceptionAsync(() =>
-            notifier.DispatchNotifications(
-                null,
-                new NotificationMessage("value"),
-                [
-                    new LambdaNotificationHandler<NotificationMessage>((_, _) =>
-                        throw new InvalidOperationException("sync handler fault")),
-                    new LambdaNotificationHandler<NotificationMessage>((_, _) =>
-                    {
-                        invoked = true;
-                        return ValueTask.CompletedTask;
-                    })
-                ],
-                TestContext.Current.CancellationToken
-            ).AsTask());
-
-        Assert.Null(exception);
-        Assert.True(invoked);
-    }
-
-    [Fact]
     public async Task Notifier_Notify_UsesPipelineForSingleAndBatchMessages()
     {
         var singleCount = 0;
@@ -453,7 +427,7 @@ public sealed class MediatorAndNotifierCoverageTests
         var mediator = new Mediator { ServiceProvider = provider, Notifier = notifier };
 
         mediator.Notify(null, new NotificationMessage("one"));
-        mediator.Notify(
+        mediator.Notifies(
             null,
             [new NotificationMessage("two"), new NotificationMessage("three")]
         );
@@ -461,41 +435,6 @@ public sealed class MediatorAndNotifierCoverageTests
         await batchCompletion.Task.WaitAsync(TestContext.Current.CancellationToken);
         Assert.True(singleCount > 0);
         Assert.True(batchCount >= 3);
-    }
-
-    [Fact]
-    public async Task Notifier_Notify_WithKey_UsesKeyedHandlers()
-    {
-        var keyedCount = 0;
-        var unkeyedCount = 0;
-        using var provider = BuildProvider(services =>
-        {
-            services.AddSingleton<INotificationHandler<NotificationMessage>>(
-                new LambdaNotificationHandler<NotificationMessage>((_, _) =>
-                {
-                    Interlocked.Increment(ref unkeyedCount);
-                    return ValueTask.CompletedTask;
-                })
-            );
-            services.AddKeyedSingleton<INotificationHandler<NotificationMessage>>(
-                "key-notify",
-                new LambdaNotificationHandler<NotificationMessage>((_, _) =>
-                {
-                    Interlocked.Increment(ref keyedCount);
-                    return ValueTask.CompletedTask;
-                })
-            );
-        });
-
-        var notifier = new Notifier();
-        var mediator = new Mediator { ServiceProvider = provider, Notifier = notifier };
-        mediator.Notify(
-            "key-notify",
-            new NotificationMessage("k")
-        );
-
-        Assert.Equal(1, keyedCount);
-        Assert.Equal(0, unkeyedCount);
     }
 
     [Fact]

@@ -34,26 +34,12 @@ namespace NetMediate.Quartz;
 [RequiresUnreferencedCode(
     "QuartzNotificationJob uses reflection to resolve message types by name and dispatch notifications."
 )]
-internal sealed class QuartzNotificationJob<TMessage> : IJob where TMessage : notnull
+internal sealed class QuartzNotificationJob<TMessage>(
+    IServiceProvider serviceProvider,
+    INotificationSerializer serializer,
+    INotifiable notifier
+) : IJob where TMessage : notnull
 {
-    /// <summary>
-    /// Gets the service provider used to resolve the inner dispatch services.
-    /// </summary>
-    [Inject]
-    public required IServiceProvider ServiceProvider { get; init; }
-
-    /// <summary>
-    /// Gets the serializer used to deserialize persisted notification payloads.
-    /// </summary>
-    [Inject]
-    public required INotificationSerializer Serializer { get; init; }
-
-    /// <summary>
-    /// Gets the logger used by this job.
-    /// </summary>
-    [Inject]
-    public required ILogger<QuartzNotificationJob<TMessage>> Logger { get; init; }
-
     /// <summary>Key used to store the serialized message in the <see cref="JobDataMap"/>.</summary>
     public const string MessageDataKey = "netmediate_message";
 
@@ -74,41 +60,13 @@ internal sealed class QuartzNotificationJob<TMessage> : IJob where TMessage : no
         var data = context.JobDetail.JobDataMap;
         var json = data.GetString(MessageDataKey);
         var typeName = data.GetString(TypeDataKey);
-
-        if (string.IsNullOrEmpty(json) || string.IsNullOrEmpty(typeName))
-        {
-            Logger.LogWarning(
-                "QuartzNotificationJob: missing message data in job {JobKey}.",
-                context.JobDetail.Key
-            );
-            return;
-        }
-
         var messageType = Type.GetType(typeName);
-        if (messageType is null)
-        {
-            Logger.LogError(
-                "QuartzNotificationJob: cannot resolve type '{TypeName}' for job {JobKey}.",
-                typeName,
-                context.JobDetail.Key
-            );
-            return;
-        }
 
-        var message = Serializer.Deserialize(json, messageType);
-        if (message is not TMessage msg)
-        {
-            Logger.LogWarning(
-                "QuartzNotificationJob: deserialized message is null for job {JobKey}.",
-                context.JobDetail.Key
-            );
+        var message = (TMessage)serializer.Deserialize(json, messageType);
 
-            return;
-        }
-
+        var keyJson = data.TryGetString(KeyDataKey, out var valueKey) ? valueKey : null;
+        var keyTypeName = data.TryGetString(KeyTypeDataKey, out var typeKey) ? typeKey : null;
         object? routingKey = null;
-        var keyJson = data.GetString(KeyDataKey);
-        var keyTypeName = data.GetString(KeyTypeDataKey);
         if (!string.IsNullOrEmpty(keyJson) && !string.IsNullOrEmpty(keyTypeName))
         {
             var keyType = Type.GetType(keyTypeName);
@@ -118,14 +76,12 @@ internal sealed class QuartzNotificationJob<TMessage> : IJob where TMessage : no
 
         var handlers = ResolveNotifyHandlers(routingKey);
 
-        var notifier = ServiceProvider.GetRequiredService<INotifiable>();
-
-        await notifier.DispatchNotifications(routingKey, msg, [.. handlers], context.CancellationToken).ConfigureAwait(false);
+        await notifier.DispatchNotifications(routingKey, message, [.. handlers], context.CancellationToken).ConfigureAwait(false);
     }
 
     private ImmutableArray<INotificationHandler<TMessage>> ResolveNotifyHandlers(object? key) =>
         s_ntfCache.GetOrAdd(
             (typeof(TMessage), key),
-            _ => new Lazy<ImmutableArray<INotificationHandler<TMessage>>>(() => key is null ? [.. ServiceProvider.GetServices<INotificationHandler<TMessage>>()] : [.. ServiceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)])
+            _ => new Lazy<ImmutableArray<INotificationHandler<TMessage>>>(() => key is null ? [.. serviceProvider.GetServices<INotificationHandler<TMessage>>()] : [.. serviceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)])
         ).Value;
 }

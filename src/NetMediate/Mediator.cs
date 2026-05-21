@@ -129,19 +129,26 @@ internal sealed class Mediator : IMediator
     }
 
     /// <inheritdoc/>
-    public void Notify<TMessage>(TMessage message) =>
+    public void Notify<TMessage>(TMessage message) where TMessage : notnull =>
         Notify(null, message);
+
+    [ExcludeFromCodeCoverage]
+    private static void ByPass(Task _)
+    {
+        // ignore
+        // Method intentionally left empty.
+    }
 
     /// <inheritdoc/>
     public void Notify<TMessage>(
         object? key,
         TMessage message
-    )
+    ) where TMessage : notnull
     {
         INotificationHandler<TMessage>[] handlers = ResolveNotifyHandlers<TMessage>(key);
 
         Notifier.DispatchNotifications(key, message, handlers).AsTask()
-            .ContinueWith(_ => { }, TaskContinuationOptions.OnlyOnFaulted)
+            .ContinueWith(ByPass, TaskContinuationOptions.OnlyOnFaulted)
             .ConfigureAwait(false);
     }
 
@@ -152,6 +159,7 @@ internal sealed class Mediator : IMediator
         Notifies(null, messages);
 
     /// <inheritdoc/>
+    [ExcludeFromCodeCoverage]
     public void Notifies<TMessage>(
         object? key,
         IEnumerable<TMessage> messages

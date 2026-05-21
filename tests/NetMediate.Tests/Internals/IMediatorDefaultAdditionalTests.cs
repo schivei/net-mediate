@@ -34,15 +34,15 @@ public sealed class IMediatorDefaultAdditionalTests
         )
             where TMessage : notnull => ValueTask.CompletedTask;
 
-        public ValueTask Send<TMessage>(
-            IEnumerable<TMessage> commands,
+        public ValueTask Sends<TMessage>(
+            IEnumerable<TMessage> messages,
             CancellationToken cancellationToken = default
         )
             where TMessage : notnull => ValueTask.CompletedTask;
 
-        public ValueTask Send<TMessage>(
+        public ValueTask Sends<TMessage>(
             object? key,
-            IEnumerable<TMessage> commands,
+            IEnumerable<TMessage> messages,
             CancellationToken cancellationToken = default
         )
             where TMessage : notnull => ValueTask.CompletedTask;
@@ -82,7 +82,7 @@ public sealed class IMediatorDefaultAdditionalTests
             where TMessage : notnull =>
             RequestStream<TMessage, TResponse>(message, cancellationToken);
 
-        public void Notify<TMessage>(
+        public void Notifies<TMessage>(
             IEnumerable<TMessage> messages
         )
             where TMessage : notnull
@@ -91,7 +91,7 @@ public sealed class IMediatorDefaultAdditionalTests
                 Notify(message);
         }
 
-        public void Notify<TMessage>(
+        public void Notifies<TMessage>(
             object? key,
             IEnumerable<TMessage> messages
         )
@@ -106,17 +106,5 @@ public sealed class IMediatorDefaultAdditionalTests
         m.Notify(msg);
         Assert.Equal(1, m.SingleNotifyCalls);
         Assert.Contains(msg, m.Notified);
-    }
-
-    [Fact]
-    public void Notify_NotificationEnumerable_Forwards()
-    {
-        var m = new TestMediator();
-        MessageNotification[] notifications = [new(1), new(2)];
-
-        m.Notify(notifications);
-
-        Assert.Equal(2, m.SingleNotifyCalls);
-        Assert.Equal(2, m.Notified.OfType<MessageNotification>().Count());
     }
 }

@@ -27,18 +27,14 @@ public sealed class QuartzNotificationOptions
     /// appropriate generation algorithm, or set a specific value to control identifier format and uniqueness.</remarks>
     public QuartzNotificationIdGeneration IdGenerationStrategy { get; set; } = QuartzNotificationIdGeneration.Auto;
 
-    internal JobKey GenerateId<TMessage>(object? routingKey, TMessage message, INotificationSerializer serializer) where TMessage : notnull
+    internal JobKey GenerateId<TMessage>(TMessage message, INotificationSerializer serializer) where TMessage : notnull
     {
         var id = IdGenerationStrategy switch
         {
-            QuartzNotificationIdGeneration.Auto => GenerateAutoId(routingKey, message, serializer),
             QuartzNotificationIdGeneration.MessageHash => GenerateMessageHashId(message, serializer),
             QuartzNotificationIdGeneration.Guid => Guid.NewGuid().ToString(),
-            QuartzNotificationIdGeneration.MessageIdentifier when message is IQuartzMessage qtMsg => qtMsg.Identifier,
-            QuartzNotificationIdGeneration.MessageIdentifier => throw new InvalidOperationException($"IdGenerationStrategy is set to MessageIdentifier but message does not implement IQuartzMessage."),
-            QuartzNotificationIdGeneration.RoutingKey when !string.IsNullOrWhiteSpace(routingKey?.ToString()) => routingKey.ToString(),
-            QuartzNotificationIdGeneration.RoutingKey => throw new InvalidOperationException($"IdGenerationStrategy is set to RoutingKey but routingKey is null or empty."),
-            _ => throw new InvalidOperationException($"Unsupported IdGenerationStrategy: {IdGenerationStrategy}")
+            QuartzNotificationIdGeneration.MessageIdentifier when message is IQuartzMessage qtMsg && !string.IsNullOrWhiteSpace(qtMsg.Identifier) => qtMsg.Identifier,
+            _ => GenerateAutoId(message, serializer)
         };
 
         id = $"{typeof(TMessage).Name}_{id}";
@@ -49,14 +45,10 @@ public sealed class QuartzNotificationOptions
         return new(id, GroupName);
     }
 
-    private static string GenerateAutoId<TMessage>(object? routingKey, TMessage message, INotificationSerializer serializer) where TMessage : notnull
+    private static string GenerateAutoId<TMessage>(TMessage message, INotificationSerializer serializer) where TMessage : notnull
     {
         if (message is IQuartzMessage qtMsg && !string.IsNullOrWhiteSpace(qtMsg.Identifier))
             return qtMsg.Identifier;
-
-        var hasRoutingKey = !string.IsNullOrWhiteSpace(routingKey?.ToString());
-        if (hasRoutingKey)
-            return routingKey.ToString()!;
 
         return GenerateMessageHashId(message, serializer);
     }
@@ -101,11 +93,5 @@ public enum QuartzNotificationIdGeneration
     /// </summary>
     /// <remarks>Used in message headers and serialization to indicate the message type; values must be unique
     /// within the message namespace.</remarks>
-    MessageIdentifier = 3,
-
-    /// <summary>
-    /// Key used to route messages to the appropriate destination.
-    /// </summary>
-    /// <remarks>Used as the routing key in message headers to select the target queue or topic.</remarks>
-    RoutingKey = 4,
+    MessageIdentifier = 3
 }

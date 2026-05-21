@@ -1,13 +1,13 @@
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
-using System.Diagnostics.CodeAnalysis;
+
+[assembly: GenDICoveration(false)]
 
 namespace NetMediate.Quartz;
 
 /// <summary>
 /// Dependency injection extensions for the NetMediate Quartz integration.
 /// </summary>
-[ExcludeFromCodeCoverage]
 public static class NetMediateQuartzDI
 {
     /// <summary>

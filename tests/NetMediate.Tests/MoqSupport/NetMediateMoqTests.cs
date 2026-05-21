@@ -164,7 +164,7 @@ public class NetMediateMoqTests
 
         var mediator = new Mediator { ServiceProvider = provider, Notifier = notifier };
 
-        mediator.Notify(
+        mediator.Notifies(
             null,
             [new NotifierTestMessage(), new NotifierTestMessage()]
         );

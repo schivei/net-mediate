@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 
 namespace NetMediate;
@@ -6,6 +7,7 @@ namespace NetMediate;
 /// <summary>
 /// Provides diagnostic primitives (traces and metrics) emitted by NetMediate.
 /// </summary>
+[ExcludeFromCodeCoverage]
 public static class NetMediateDiagnostics
 {
     /// <summary>Gets the ActivitySource name used by NetMediate traces.</summary>

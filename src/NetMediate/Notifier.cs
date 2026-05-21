@@ -32,7 +32,18 @@ internal sealed class Notifier : INotifiable
         foreach (var handler in handlers)
         {
             ThreadPool.QueueUserWorkItem(
-                async static state => await state.Handler.Handle(state.Message, state.CancellationToken).ConfigureAwait(false),
+                async static state =>
+                {
+                    try
+                    {
+                        await state.Handler.Handle(state.Message, state.CancellationToken).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                        // Swallow exceptions to prevent unhandled exceptions from crashing the application.
+                        // In a real-world application, consider logging the exception or handling it appropriately.
+                    }
+                },
                 new HandlerState<TMessage>(handler, message, cancellationToken),
                 preferLocal: false
             );

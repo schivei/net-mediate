@@ -1,5 +1,6 @@
 using BenchmarkDotNet.Attributes;
 using Microsoft.Extensions.DependencyInjection;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.Benchmarks;
 
@@ -19,6 +20,7 @@ namespace NetMediate.Benchmarks;
 /// </code>
 /// </remarks>
 [MemoryDiagnoser]
+[ExcludeFromCodeCoverage]
 public class CoreDispatchBenchmarks
 {
     private IMediator _mediator = null!;

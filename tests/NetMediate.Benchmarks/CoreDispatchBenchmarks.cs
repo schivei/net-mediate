@@ -40,13 +40,15 @@ public class CoreDispatchBenchmarks
         _provider = services.BuildServiceProvider();
         _mediator = _provider.GetRequiredService<IMediator>();
 
-        _mediator.Send(s_command).GetAwaiter().GetResult();
-        _mediator.Notify(s_notification);
-        _mediator.RequestBenchRequestAsync(s_request).GetAwaiter().GetResult();
-        DrainStream(_mediator.StreamBenchStreamRequestAsync(s_streamRequest))
-            .GetAwaiter()
-            .GetResult();
+        Warmup(() => _mediator.SendBenchCommandAsync(s_command)).GetAwaiter().GetResult();
+        Warmup(() => _mediator.RequestBenchRequestAsync(s_request)).GetAwaiter().GetResult();
+        _mediator.NotifyBenchNotificationAsync(s_notification);
+        DrainStream(_mediator.StreamBenchStreamRequestAsync(s_streamRequest)).GetAwaiter().GetResult();
     }
+
+    private static async Task Warmup(Func<ValueTask> factory) => await factory().ConfigureAwait(false);
+
+    private static async Task Warmup<T>(Func<ValueTask<T>> factory) => await factory().ConfigureAwait(false);
 
     /// <summary>Tears down the DI container after all iterations.</summary>
     [GlobalCleanup]
@@ -59,7 +61,7 @@ public class CoreDispatchBenchmarks
     public async Task Command()
     {
         for (int i = 0; i < OpsPerInvoke; i++)
-            await _mediator.Send(s_command);
+            await _mediator.SendBenchCommandAsync(s_command);
     }
 
     /// <summary>Measures the per-call overhead of <see cref="IMediator.Notify{TMessage}"/>.</summary>
@@ -67,7 +69,7 @@ public class CoreDispatchBenchmarks
     public void Notification()
     {
         for (int i = 0; i < OpsPerInvoke; i++)
-            _mediator.Notify(s_notification);
+            _mediator.NotifyBenchNotificationAsync(s_notification);
     }
 
     /// <summary>Measures the per-call overhead of <see cref="IMediator.Request{TMessage,TResponse}"/>.</summary>
@@ -96,8 +98,9 @@ public class CoreDispatchBenchmarks
 
     private static async Task DrainStream(IAsyncEnumerable<BenchStreamItem> stream)
     {
-#pragma warning disable S108
-        await foreach (var _ in stream) { }
-#pragma warning restore S108
+        await foreach (var _ in stream)
+        {
+            // No-op: just drain the stream to measure the full cost of streaming dispatch.
+        }
     }
 }

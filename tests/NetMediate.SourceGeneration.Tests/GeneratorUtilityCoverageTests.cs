@@ -299,66 +299,6 @@ public sealed partial class GeneratorUtilityCoverageTests
         Assert.Equal("value", parameterName);
     }
 
-    [Fact]
-    public void EnumerateReferencedAssemblies_FiltersPackAndCurrentAssemblyNames()
-    {
-        var compilation = CSharpCompilation.Create(
-            "MyApp",
-            syntaxTrees: [CSharpSyntaxTree.ParseText("namespace MyApp; public sealed class Marker;")],
-            references:
-            [
-                CreateMetadataReference("NetMediate", "namespace NetMediate; public sealed class RefType;"),
-                CreateMetadataReference("MyApp", "namespace MyApp; public sealed class RefType;"),
-                CreateMetadataReference("External", "namespace External; public sealed class RefType;"),
-                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-            ],
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-        );
-
-        var generatorType = s_generatorAssembly.GetType("NetMediate.SourceGeneration.NetMediateRegistrationGenerator")!;
-        var method = generatorType.GetMethod(
-            "EnumerateReferencedAssemblies",
-            BindingFlags.NonPublic | BindingFlags.Static
-        )!;
-
-        var referencedAssemblies = ((System.Collections.IEnumerable)method.Invoke(null, [compilation])!)
-            .Cast<IAssemblySymbol>()
-            .Select(symbol => symbol.Name)
-            .ToArray();
-
-        Assert.Contains("External", referencedAssemblies);
-        Assert.DoesNotContain("MyApp", referencedAssemblies);
-        Assert.DoesNotContain("NetMediate", referencedAssemblies);
-    }
-
-    [Fact]
-    public void EnumerateReferencedAssemblies_WhenCompilationAssemblyNameIsNull_UsesEmptyCurrentAssemblyName()
-    {
-        var compilation = CSharpCompilation.Create(
-            assemblyName: null,
-            syntaxTrees: [CSharpSyntaxTree.ParseText("namespace Sample; public sealed class Marker;")],
-            references:
-            [
-                CreateMetadataReference("External", "namespace External; public sealed class RefType;"),
-                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-            ],
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-        );
-
-        var generatorType = s_generatorAssembly.GetType("NetMediate.SourceGeneration.NetMediateRegistrationGenerator")!;
-        var method = generatorType.GetMethod(
-            "EnumerateReferencedAssemblies",
-            BindingFlags.NonPublic | BindingFlags.Static
-        )!;
-
-        var referencedAssemblies = ((System.Collections.IEnumerable)method.Invoke(null, [compilation])!)
-            .Cast<IAssemblySymbol>()
-            .Select(symbol => symbol.Name)
-            .ToArray();
-
-        Assert.Contains("External", referencedAssemblies);
-    }
-
     private static CSharpCompilation CreateCompilation() =>
         CSharpCompilation.Create(
             "GeneratorUtilityCoverageTests",
@@ -369,23 +309,6 @@ public sealed partial class GeneratorUtilityCoverageTests
                 MetadataReference.CreateFromFile(typeof(IIncrementalGenerator).Assembly.Location),
             ]
         );
-
-    private static PortableExecutableReference CreateMetadataReference(string assemblyName, string source)
-    {
-        var compilation = CSharpCompilation.Create(
-            assemblyName,
-            syntaxTrees: [CSharpSyntaxTree.ParseText(source)],
-            references: [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)],
-            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-        );
-
-        using var stream = new MemoryStream();
-        var emitResult = compilation.Emit(stream);
-        Assert.Empty(emitResult.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
-
-        stream.Position = 0;
-        return MetadataReference.CreateFromImage(stream.ToArray());
-    }
 
     [GeneratedRegex("^[_A-Za-z][_A-Za-z0-9]*$")]
     private static partial Regex ValidIdentifierRegex();

@@ -14,11 +14,7 @@ namespace {{AssemblyNamespace}};
     {
         services.RegisterNetMediate();
 
-{{DependencyChains}}{{LocalRegistrationStart}}        // Application-local GenDI registrations must run before NetMediate's own GenDI registrations.
-{{DuplicateCleanupCall}}
-
         {{AssemblyNamespace}}.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
         return services;
     }
-{{DuplicateCleanupMembers}}
 }

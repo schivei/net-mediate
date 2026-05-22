@@ -9,6 +9,6 @@ namespace NetMediate;
 /// <remarks>Implement this interface to provide custom logic for handling command messages. The handler executes
 /// the command and returns a <see cref="Task"/> representing the asynchronous operation.</remarks>
 /// <typeparam name="TMessage">The type of command message to handle. Must not be null.</typeparam>
-[ServiceInjection(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.Transient, RegistrationMultiplicity = RegistrationMultiplicity.Multiple)]
+[ServiceInjection(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None, RegistrationMultiplicity = RegistrationMultiplicity.Multiple)]
 public interface ICommandHandler<in TMessage> : IHandler<TMessage, ValueTask>
     where TMessage : notnull;

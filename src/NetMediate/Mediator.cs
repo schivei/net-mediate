@@ -128,13 +128,6 @@ internal sealed class Mediator : IMediator
         return stream;
     }
 
-    [ExcludeFromCodeCoverage]
-    private static void ByPass(Task _)
-    {
-        // ignore
-        // Method intentionally left empty.
-    }
-
     /// <inheritdoc/>
     public void Notify<TMessage>(
         object? key,
@@ -143,8 +136,7 @@ internal sealed class Mediator : IMediator
     {
         INotificationHandler<TMessage>[] handlers = ResolveNotifyHandlers<TMessage>(key);
 
-        Notifier.DispatchNotifications(key, message, handlers).AsTask()
-            .ContinueWith(ByPass, TaskContinuationOptions.OnlyOnFaulted)
+        _ = Task.Run(async () => await Notifier.DispatchNotifications(key, message, handlers))
             .ConfigureAwait(false);
     }
 

@@ -1,7 +1,8 @@
 namespace NetMediate.SourceGeneration;
 
 internal readonly record struct BehaviorRegistration(
-    string Template,
+    string ResilienceTemplate,
+    string DiagnosticTemplate,
     string AssemblyName,
     string InterfaceName,
     string MessageFqn,

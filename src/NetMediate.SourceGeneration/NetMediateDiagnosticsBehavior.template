@@ -1,0 +1,4 @@
+
+/// <summary>Generated framework behavior that wraps <see cref="{{ImplementationTypeSummary}}"/>.</summary>
+[DecoratorFor<{{ImplementationType}}>]
+{{Coverage}}internal sealed partial class {{RandomName}}({{ImplementationType}} handler) : {{BehaviorAbstraction}}(handler);

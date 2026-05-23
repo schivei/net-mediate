@@ -20,17 +20,27 @@ internal static class Constants
     public const string CommandName = "Command";
     public const string NotificationName = "Notification";
     public const string ImplementationTypeToken = "{{ImplementationType}}";
+    public const string ImplementationTypeSummaryToken = "{{ImplementationTypeSummary}}";
     public const string OrderToken = "{{Order}}";
     public const string RandomNameToken = "{{RandomName}}";
     public const string BehaviorNameToken = "{{BehaviorName}}";
     public const string BehaviorAbstractionToken = "{{BehaviorAbstraction}}";
+    public const string BehaviorsDeclarationToken = "{{Behaviors}}";
+    public const string OptionsTypeToken = "{{OptionsType}}";
+    public const string AddNetMediateResilienceDIToken = "{{AddNetMediateResilienceDI}}";
 
     public static readonly string TemplateResourceName =
         $"{typeof(Constants).Namespace}.NetMediateGeneratedDI.template";
     public static readonly string TypedExtensionsTemplateResourceName =
         $"{typeof(Constants).Namespace}.NetMediateTypedExtensions.template";
-    public static readonly string TemplateBehaviorResourceName =
-        $"{typeof(Constants).Namespace}.NetMediateFrameworkBehavior.template";
+    public static readonly string TemplateDiagnosticBehaviorResourceName =
+        $"{typeof(Constants).Namespace}.NetMediateDiagnosticsBehavior.template";
+    public static readonly string TemplateResilienceBehaviorResourceName =
+        $"{typeof(Constants).Namespace}.NetMediateResilienceBehavior.template";
+
+    public const string CircuitBreakerOptionsClassName = "CircuitBreakerBehaviorOptions";
+    public const string RetryOptionsClassName = "RetryBehaviorOptions";
+    public const string TimeoutOptionsClassName = "TimeoutBehaviorOptions";
 
     public const string TelemetryCommandBehaviorClassName = "TelemetryCommandBehavior";
     public const string CircuitBreakerCommandBehaviorClassName = "CircuitBreakerCommandBehavior";
@@ -60,7 +70,8 @@ internal static class Constants
     {
         var raw = interfaceName + behaviorName;
         var safe = ToSafeIdentifier(raw);
-        name = $"{safe}_{ComputeStableHash(raw)}";
+        name = $"Behavior_{ComputeStableHash(safe)}";
+
         return name;
     }
 
@@ -96,156 +107,165 @@ internal static class Constants
         }
     }
 
-    private static string GetBehaviorConcretClass(BehaviorRegistration registration, int order, string behaviorName, string behaviorAbstration, out string randomName) =>
-        registration.Template.Replace(AssemblyNamespaceToken, registration.AssemblyName)
+    private static string GetResilienceBehaviorConcretClass(BehaviorRegistration registration, int order, string behaviorName, string behaviorAbstration, out string randomName) =>
+        registration.ResilienceTemplate.Replace(AssemblyNamespaceToken, registration.AssemblyName)
                 .Replace(ImplementationTypeToken, registration.InterfaceName)
+                .Replace(ImplementationTypeSummaryToken, registration.InterfaceName.Replace('<', '{').Replace('>', '}'))
+                .Replace(OrderToken, order.ToString(CultureInfo.InvariantCulture))
+                .Replace(RandomNameToken, RandomNameFrom(registration.InterfaceName, behaviorName, out randomName))
+                .Replace(BehaviorAbstractionToken, behaviorAbstration);
+
+    private static string GetDiagnosticBehaviorConcretClass(BehaviorRegistration registration, int order, string behaviorName, string behaviorAbstration, out string randomName) =>
+        registration.DiagnosticTemplate.Replace(AssemblyNamespaceToken, registration.AssemblyName)
+                .Replace(ImplementationTypeToken, registration.InterfaceName)
+                .Replace(ImplementationTypeSummaryToken, registration.InterfaceName.Replace('<', '{').Replace('>', '}'))
                 .Replace(OrderToken, order.ToString(CultureInfo.InvariantCulture))
                 .Replace(RandomNameToken, RandomNameFrom(registration.InterfaceName, behaviorName, out randomName))
                 .Replace(BehaviorAbstractionToken, behaviorAbstration);
 
     private static string GetTelemetryCommandClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetDiagnosticBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
             TelemetryBehaviorOrder,
             TelemetryCommandBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{TelemetryCommandBehaviorClassName}<{registration.MessageFqn}>",
+            $"{GlobalNamespace}{PackName}.Diagnostics.{TelemetryCommandBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
         );
 
     private static string GetTelemetryNotificationClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetDiagnosticBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
             TelemetryBehaviorOrder,
             TelemetryNotificationBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{TelemetryNotificationBehaviorClassName}<{registration.MessageFqn}>",
+            $"{GlobalNamespace}{PackName}.Diagnostics.{TelemetryNotificationBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
         );
 
     private static string GetTelemetryRequestClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetDiagnosticBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
             TelemetryBehaviorOrder,
             TelemetryRequestBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{TelemetryRequestBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
+            $"{GlobalNamespace}{PackName}.Diagnostics.{TelemetryRequestBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
         );
 
     private static string GetTelemetryStreamClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetDiagnosticBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
             TelemetryBehaviorOrder,
             TelemetryStreamBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{TelemetryStreamBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
+            $"{GlobalNamespace}{PackName}.Diagnostics.{TelemetryStreamBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
         );
 
     private static string GetCircuitBreakerCommandClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetResilienceBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
             CircuitBreakerBehaviorOrder,
             CircuitBreakerCommandBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{CircuitBreakerCommandBehaviorClassName}<{registration.MessageFqn}>",
+            $"{GlobalNamespace}{PackName}.Resilience.{CircuitBreakerCommandBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
-        );
+        ).Replace(OptionsTypeToken, CircuitBreakerCommandBehaviorClassName);
 
     private static string GetCircuitBreakerNotificationClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetResilienceBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
             CircuitBreakerBehaviorOrder,
             CircuitBreakerNotificationBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{CircuitBreakerNotificationBehaviorClassName}<{registration.MessageFqn}>",
+            $"{GlobalNamespace}{PackName}.Resilience.{CircuitBreakerNotificationBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
-        );
+        ).Replace(OptionsTypeToken, CircuitBreakerCommandBehaviorClassName);
 
     private static string GetCircuitBreakerRequestClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetResilienceBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
             CircuitBreakerBehaviorOrder,
             CircuitBreakerRequestBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{CircuitBreakerRequestBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
+            $"{GlobalNamespace}{PackName}.Resilience.{CircuitBreakerRequestBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
-        );
+        ).Replace(OptionsTypeToken, CircuitBreakerCommandBehaviorClassName);
 
     private static string GetCircuitBreakerStreamClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetResilienceBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
             CircuitBreakerBehaviorOrder,
             CircuitBreakerStreamBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{CircuitBreakerStreamBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
+            $"{GlobalNamespace}{PackName}.Resilience.{CircuitBreakerStreamBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
-        );
+        ).Replace(OptionsTypeToken, CircuitBreakerCommandBehaviorClassName);
 
     private static string GetRetryCommandClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetResilienceBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
             RetryBehaviorOrder,
             RetryCommandBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{RetryCommandBehaviorClassName}<{registration.MessageFqn}>",
+            $"{GlobalNamespace}{PackName}.Resilience.{RetryCommandBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
-        );
+        ).Replace(OptionsTypeToken, RetryOptionsClassName);
 
     private static string GetRetryNotificationClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetResilienceBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
             RetryBehaviorOrder,
             RetryNotificationBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{RetryNotificationBehaviorClassName}<{registration.MessageFqn}>",
+            $"{GlobalNamespace}{PackName}.Resilience.{RetryNotificationBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
-        );
+        ).Replace(OptionsTypeToken, RetryOptionsClassName);
 
     private static string GetRetryRequestClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetResilienceBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
             RetryBehaviorOrder,
             RetryRequestBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{RetryRequestBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
+            $"{GlobalNamespace}{PackName}.Resilience.{RetryRequestBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
-        );
+        ).Replace(OptionsTypeToken, RetryOptionsClassName);
 
     private static string GetRetryStreamClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetResilienceBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
             RetryBehaviorOrder,
             RetryStreamBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{RetryStreamBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
+            $"{GlobalNamespace}{PackName}.Resilience.{RetryStreamBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
-        );
+        ).Replace(OptionsTypeToken, RetryOptionsClassName);
 
     private static string GetTimeoutCommandClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetResilienceBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
             TimeoutBehaviorOrder,
             TimeoutCommandBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{TimeoutCommandBehaviorClassName}<{registration.MessageFqn}>",
+            $"{GlobalNamespace}{PackName}.Resilience.{TimeoutCommandBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
-        );
+        ).Replace(OptionsTypeToken, TimeoutOptionsClassName);
 
     private static string GetTimeoutNotificationClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetResilienceBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}>" },
             TimeoutBehaviorOrder,
             TimeoutNotificationBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{TimeoutNotificationBehaviorClassName}<{registration.MessageFqn}>",
+            $"{GlobalNamespace}{PackName}.Resilience.{TimeoutNotificationBehaviorClassName}<{registration.MessageFqn}>",
             out randomName
-        );
+        ).Replace(OptionsTypeToken, TimeoutOptionsClassName);
 
     private static string GetTimeoutRequestClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetResilienceBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
             TimeoutBehaviorOrder,
             TimeoutRequestBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{TimeoutRequestBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
+            $"{GlobalNamespace}{PackName}.Resilience.{TimeoutRequestBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
-        );
+        ).Replace(OptionsTypeToken, TimeoutOptionsClassName);
 
     private static string GetTimeoutStreamClass(BehaviorRegistration registration, out string randomName) =>
-        GetBehaviorConcretClass(
+        GetResilienceBehaviorConcretClass(
             registration with { InterfaceName = $"{GlobalNamespace}{PackName}.{registration.InterfaceName}<{registration.MessageFqn}, {registration.ResponseFqn}>" },
             TimeoutBehaviorOrder,
             TimeoutStreamBehaviorClassName,
-            $"{GlobalNamespace}{PackName}.{TimeoutStreamBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
+            $"{GlobalNamespace}{PackName}.Resilience.{TimeoutStreamBehaviorClassName}<{registration.MessageFqn}, {registration.ResponseFqn}>",
             out randomName
-        );
+        ).Replace(OptionsTypeToken, TimeoutOptionsClassName);
 
     public static IEnumerable<(string classDefinition, string className)> GetBehaviorClasses(this BehaviorRegistration registration)
     {

@@ -3,7 +3,8 @@ using Microsoft.CodeAnalysis;
 namespace NetMediate.SourceGeneration;
 
 internal readonly record struct BuildFrameworkBehaviorArguments(
-    string BehaviorTemplate,
+    string ResilienceBehaviorTemplate,
+    string DiagnosticBehaviorTemplate,
     string AssemblyName,
     bool HasDiagnostics,
     bool HasResilience,
@@ -11,7 +12,8 @@ internal readonly record struct BuildFrameworkBehaviorArguments(
 )
 {
     public static implicit operator (
-        string behaviorTemplate,
+        string resilienceBehaviorTemplate,
+        string diagnosticBehaviorTemplate,
         string assemblyName,
         bool hasDiagnostics,
         bool hasResilience,
@@ -19,7 +21,8 @@ internal readonly record struct BuildFrameworkBehaviorArguments(
     )(BuildFrameworkBehaviorArguments args)
     {
         return (
-            args.BehaviorTemplate,
+            args.ResilienceBehaviorTemplate,
+            args.DiagnosticBehaviorTemplate,
             args.AssemblyName,
             args.HasDiagnostics,
             args.HasResilience,
@@ -29,7 +32,8 @@ internal readonly record struct BuildFrameworkBehaviorArguments(
 
     public static implicit operator BuildFrameworkBehaviorArguments(
         (
-            string behaviorTemplate,
+            string resilienceBehaviorTemplate,
+            string diagnosticBehaviorTemplate,
             string assemblyName,
             bool hasDiagnostics,
             bool hasResilience,
@@ -38,7 +42,8 @@ internal readonly record struct BuildFrameworkBehaviorArguments(
     )
     {
         return new(
-            arguments.behaviorTemplate,
+            arguments.resilienceBehaviorTemplate,
+            arguments.diagnosticBehaviorTemplate,
             arguments.assemblyName,
             arguments.hasDiagnostics,
             arguments.hasResilience,

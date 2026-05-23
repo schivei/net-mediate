@@ -3,6 +3,10 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
+using NetMediate.Diagnostics;
+using NetMediate.Moq;
+using NetMediate.Quartz;
+using NetMediate.Resilience;
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Text.Json;
@@ -233,7 +237,14 @@ public sealed class GeneratorIntegrationTests
         }
 
         if (includeNetMediateDll)
+        {
             refs.Add(MetadataReference.CreateFromFile(typeof(IMediator).Assembly.Location));
+            refs.Add(MetadataReference.CreateFromFile(typeof(ICommandHandler<>).Assembly.Location));
+            refs.Add(MetadataReference.CreateFromFile(typeof(IQuartzMessage).Assembly.Location));
+            refs.Add(MetadataReference.CreateFromFile(typeof(TelemetryCommandBehavior<>).Assembly.Location));
+            refs.Add(MetadataReference.CreateFromFile(typeof(NotifierMock).Assembly.Location));
+            refs.Add(MetadataReference.CreateFromFile(typeof(CircuitBreakerCommandBehavior<>).Assembly.Location));
+        }
 
         if (additionalReferences is not null)
             refs.AddRange(additionalReferences);
@@ -273,7 +284,7 @@ public sealed class GeneratorIntegrationTests
         );
 
         Assert.Contains("class NetMediateGeneratedDI", generatedSource);
-        Assert.DoesNotContain("AddNetMediate(", generatedSource);
+        Assert.DoesNotContain("AddGenDIServices(", generatedSource);
         Assert.Contains("// No handlers found — no registrations to generate.", generatedSource);
     }
 

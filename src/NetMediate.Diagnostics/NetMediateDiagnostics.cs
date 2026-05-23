@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
 
-namespace NetMediate;
+namespace NetMediate.Diagnostics;
 
 /// <summary>
 /// Provides diagnostic primitives (traces and metrics) emitted by NetMediate.

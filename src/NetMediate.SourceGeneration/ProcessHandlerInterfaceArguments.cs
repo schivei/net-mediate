@@ -4,7 +4,8 @@ using System.Collections.Immutable;
 namespace NetMediate.SourceGeneration;
 
 internal readonly record struct ProcessHandlerInterfaceArguments(
-    string BehaviorTemplate,
+    string ResilienceBehaviorTemplate,
+    string DiagnosticBehaviorTemplate,
     string AssemblyName,
     string InterfaceName,
     int Arity,
@@ -14,7 +15,8 @@ internal readonly record struct ProcessHandlerInterfaceArguments(
 )
 {
     public static implicit operator (
-        string behaviorTemplate,
+        string resilienceBehaviorTemplate,
+        string diagnosticBehaviorTemplate,
         string assemblyName,
         string interfaceName,
         int arity,
@@ -24,7 +26,8 @@ internal readonly record struct ProcessHandlerInterfaceArguments(
     )(ProcessHandlerInterfaceArguments args)
     {
         return (
-            args.BehaviorTemplate,
+            args.ResilienceBehaviorTemplate,
+            args.DiagnosticBehaviorTemplate,
             args.AssemblyName,
             args.InterfaceName,
             args.Arity,
@@ -36,7 +39,8 @@ internal readonly record struct ProcessHandlerInterfaceArguments(
 
     public static implicit operator ProcessHandlerInterfaceArguments(
         (
-            string behaviorTemplate,
+            string resilienceBehaviorTemplate,
+            string diagnosticBehaviorTemplate,
             string assemblyName,
             string interfaceName,
             int arity,
@@ -47,7 +51,8 @@ internal readonly record struct ProcessHandlerInterfaceArguments(
     )
     {
         return new(
-            arguments.behaviorTemplate,
+            arguments.resilienceBehaviorTemplate,
+            arguments.diagnosticBehaviorTemplate,
             arguments.assemblyName,
             arguments.interfaceName,
             arguments.arity,

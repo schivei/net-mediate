@@ -2,7 +2,7 @@
 
 public class NotifierMock : INotifiable
 {
-    public async ValueTask DispatchNotifications<TMessage>(
+    public async Task DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
         INotificationHandler<TMessage>[] handlers,

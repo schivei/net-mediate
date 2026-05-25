@@ -81,14 +81,14 @@ public class NetMediateMoqTests
             (_, _) =>
             {
                 h1Called = true;
-                return ValueTask.CompletedTask;
+                return Task.CompletedTask;
             }
         );
         var h2 = new LambdaNotificationHandler<NotifierTestMessage>(
             (_, _) =>
             {
                 h2Called = true;
-                return ValueTask.CompletedTask;
+                return Task.CompletedTask;
             }
         );
 
@@ -114,7 +114,7 @@ public class NetMediateMoqTests
                 new NotifierTestMessage(),
                 [],
                 TestContext.Current.CancellationToken
-            ).AsTask()
+            )
         );
 
         Assert.Null(exception);
@@ -129,7 +129,7 @@ public class NetMediateMoqTests
             new LambdaNotificationHandler<NotifierTestMessage>((_, _) =>
             {
                 handled.TrySetResult();
-                return ValueTask.CompletedTask;
+                return Task.CompletedTask;
             })
         );
 
@@ -155,7 +155,7 @@ public class NetMediateMoqTests
                 if (Interlocked.Increment(ref callCount) == 2)
                     allHandled.TrySetResult();
 
-                return ValueTask.CompletedTask;
+                return Task.CompletedTask;
             })
         );
 
@@ -208,11 +208,11 @@ public class NetMediateMoqTests
     }
 
     internal sealed class LambdaNotificationHandler<TMessage>(
-        Func<TMessage, CancellationToken, ValueTask> fn
+        Func<TMessage, CancellationToken, Task> fn
     ) : INotificationHandler<TMessage>
         where TMessage : notnull
     {
-        public ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
+        public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
             fn(message, cancellationToken);
     }
 }

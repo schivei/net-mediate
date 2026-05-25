@@ -3,6 +3,7 @@
 /// <summary>
 /// Configures retry behavior options.
 /// </summary>
+[OptionConfig]
 public sealed class RetryBehaviorOptions
 {
     /// <summary>
@@ -24,6 +25,7 @@ public sealed class RetryBehaviorOptions
 /// <summary>
 /// Configures timeout behavior options.
 /// </summary>
+[OptionConfig]
 public sealed class TimeoutBehaviorOptions
 {
     /// <summary>
@@ -55,6 +57,7 @@ public sealed class TimeoutBehaviorOptions
 /// <summary>
 /// Configures circuit-breaker behavior options.
 /// </summary>
+[OptionConfig]
 public sealed class CircuitBreakerBehaviorOptions
 {
     /// <summary>

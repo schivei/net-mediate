@@ -1,3 +1,4 @@
+using NetMediate.Diagnostics;
 using System.Diagnostics.Metrics;
 
 namespace NetMediate.Tests.Internals;

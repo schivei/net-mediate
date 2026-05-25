@@ -46,7 +46,7 @@ public abstract class TelemetryStreamBehavior<TMessage, TResponse>(IStreamHandle
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<TResponse> Handle(
+    public virtual async IAsyncEnumerable<TResponse> Handle(
         TMessage message,
         [EnumeratorCancellation] CancellationToken cancellationToken = default
     )

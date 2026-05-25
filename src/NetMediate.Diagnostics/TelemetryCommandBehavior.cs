@@ -17,7 +17,7 @@ public abstract class TelemetryCommandBehavior<TMessage>(ICommandHandler<TMessag
     where TMessage : notnull
 {
     /// <inheritdoc />
-    public async ValueTask Handle(TMessage message, CancellationToken cancellationToken = default)
+    public virtual async ValueTask Handle(TMessage message, CancellationToken cancellationToken = default)
     {
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Send");
         try

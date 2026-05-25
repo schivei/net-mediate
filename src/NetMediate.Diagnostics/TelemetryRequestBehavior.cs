@@ -17,7 +17,7 @@ public abstract class TelemetryRequestBehavior<TMessage, TResponse>(IRequestHand
     where TMessage : notnull
 {
     /// <inheritdoc />
-    public async ValueTask<TResponse> Handle(
+    public virtual async ValueTask<TResponse> Handle(
         TMessage message,
         CancellationToken cancellationToken = default
     )

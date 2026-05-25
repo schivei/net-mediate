@@ -26,7 +26,7 @@ internal sealed class Notifier : INotifiable
         var tasks = handlers.Select(handler =>
              Task.Run(async () => await handler.Handle(message, cancellationToken).ConfigureAwait(false), cancellationToken)
              .ContinueWith(ByPass, cancellationToken)
-            );
+            ).AsParallel();
 
         _ = Task.WhenAll(tasks);
 

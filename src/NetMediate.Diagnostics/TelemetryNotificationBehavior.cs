@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.Diagnostics;
 
@@ -11,6 +12,7 @@ namespace NetMediate.Diagnostics;
 /// applications.</remarks>
 /// <typeparam name="TMessage">The type of notification message to handle. Must not be null.</typeparam>
 /// <param name="handler">The underlying notification handler that processes the notification message.</param>
+[ExcludeFromCodeCoverage]
 public abstract class TelemetryNotificationBehavior<TMessage>(INotificationHandler<TMessage> handler) : INotificationHandler<TMessage>
     where TMessage : notnull
 {

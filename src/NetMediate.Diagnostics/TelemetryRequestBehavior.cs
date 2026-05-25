@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.Diagnostics;
 
@@ -11,6 +12,7 @@ namespace NetMediate.Diagnostics;
 /// <typeparam name="TMessage">The type of the request message to handle. Must not be null.</typeparam>
 /// <typeparam name="TResponse">The type of the response returned by the handler.</typeparam>
 /// <param name="handler">The underlying request handler that processes the request message.</param>
+[ExcludeFromCodeCoverage]
 public abstract class TelemetryRequestBehavior<TMessage, TResponse>(IRequestHandler<TMessage, TResponse> handler) : IRequestHandler<TMessage, TResponse>
     where TMessage : notnull
 {

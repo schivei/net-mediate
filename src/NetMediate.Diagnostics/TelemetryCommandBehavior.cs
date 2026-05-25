@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate.Diagnostics;
 
@@ -11,6 +12,7 @@ namespace NetMediate.Diagnostics;
 /// logic.</remarks>
 /// <typeparam name="TMessage">The type of the command message to handle. Must not be null.</typeparam>
 /// <param name="handler">The underlying command handler that processes the command message.</param>
+[ExcludeFromCodeCoverage]
 public abstract class TelemetryCommandBehavior<TMessage>(ICommandHandler<TMessage> handler) : ICommandHandler<TMessage>
     where TMessage : notnull
 {

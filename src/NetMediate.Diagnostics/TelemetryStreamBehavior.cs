@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
 
@@ -14,6 +15,7 @@ namespace NetMediate.Diagnostics;
 /// <typeparam name="TMessage">The type of the message received by the stream handler. Must not be null.</typeparam>
 /// <typeparam name="TResponse">The type of the response produced by the stream handler.</typeparam>
 /// <param name="handler">The underlying stream handler that processes the streamed message.</param>
+[ExcludeFromCodeCoverage]
 public abstract class TelemetryStreamBehavior<TMessage, TResponse>(IStreamHandler<TMessage, TResponse> handler) : IStreamHandler<TMessage, TResponse>
     where TMessage : notnull
 {

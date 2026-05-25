@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate;
 
@@ -11,8 +10,7 @@ namespace NetMediate;
 internal sealed class Notifier : INotifiable
 {
     /// <inheritdoc/>
-    [ExcludeFromCodeCoverage]
-    public async ValueTask DispatchNotifications<TMessage>(
+    public ValueTask DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
         INotificationHandler<TMessage>[] handlers,
@@ -21,18 +19,22 @@ internal sealed class Notifier : INotifiable
         where TMessage : notnull
     {
         if (handlers.Length == 0)
-            return;
+            return ValueTask.CompletedTask;
 
         foreach (var handler in handlers)
         {
-            try
-            {
-                await handler.Handle(message, cancellationToken).ConfigureAwait(false);
-            }
-            catch
-            {
-                // ignore
-            }
+            _ = handler.Handle(message, cancellationToken).AsTask()
+                .ContinueWith(
+                    static task =>
+                    {
+                        // ignore
+                    },
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default
+                );
         }
+
+        return ValueTask.CompletedTask;
     }
 }

@@ -12,7 +12,7 @@ internal sealed class Notifier : INotifiable
 {
     /// <inheritdoc/>
     [ExcludeFromCodeCoverage]
-    public ValueTask DispatchNotifications<TMessage>(
+    public async ValueTask DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
         INotificationHandler<TMessage>[] handlers,
@@ -21,21 +21,18 @@ internal sealed class Notifier : INotifiable
         where TMessage : notnull
     {
         if (handlers.Length == 0)
-            return ValueTask.CompletedTask;
+            return;
 
-        var tasks = handlers.Select(handler =>
-             Task.Run(async () => await handler.Handle(message, cancellationToken).ConfigureAwait(false), cancellationToken)
-             .ContinueWith(ByPass, cancellationToken)
-            ).AsParallel();
-
-        _ = Task.WhenAll(tasks);
-
-        return ValueTask.CompletedTask;
-    }
-
-    [ExcludeFromCodeCoverage]
-    private static void ByPass(Task _)
-    {
-        // no-op
+        foreach (var handler in handlers)
+        {
+            try
+            {
+                await handler.Handle(message, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                // ignore
+            }
+        }
     }
 }

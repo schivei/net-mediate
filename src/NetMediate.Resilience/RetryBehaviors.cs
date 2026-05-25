@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Options;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace NetMediate.Resilience;
 
+[ExcludeFromCodeCoverage]
 internal static class RetryBehaviorRunner
 {
     private static readonly object CompletedResult = new();

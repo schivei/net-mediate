@@ -8,6 +8,3 @@ using System.Diagnostics.CodeAnalysis;
 BenchmarkSwitcher
     .FromAssembly(typeof(CoreDispatchBenchmarks).Assembly)
     .Run(args, DefaultConfig.Instance);
-
-[ExcludeFromCodeCoverage]
-public static partial class Program;

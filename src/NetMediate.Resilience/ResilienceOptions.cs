@@ -1,9 +1,12 @@
-﻿namespace NetMediate.Resilience;
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace NetMediate.Resilience;
 
 /// <summary>
 /// Configures retry behavior options.
 /// </summary>
 [OptionConfig]
+[ExcludeFromCodeCoverage]
 public sealed class RetryBehaviorOptions
 {
     /// <summary>
@@ -26,6 +29,7 @@ public sealed class RetryBehaviorOptions
 /// Configures timeout behavior options.
 /// </summary>
 [OptionConfig]
+[ExcludeFromCodeCoverage]
 public sealed class TimeoutBehaviorOptions
 {
     /// <summary>
@@ -58,6 +62,7 @@ public sealed class TimeoutBehaviorOptions
 /// Configures circuit-breaker behavior options.
 /// </summary>
 [OptionConfig]
+[ExcludeFromCodeCoverage]
 public sealed class CircuitBreakerBehaviorOptions
 {
     /// <summary>

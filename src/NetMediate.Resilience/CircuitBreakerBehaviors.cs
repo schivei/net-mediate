@@ -17,6 +17,7 @@ namespace NetMediate.Resilience;
 /// <typeparam name="TResponse">The type of the response returned by the handler.</typeparam>
 /// <param name="handler">The underlying request handler to be decorated with circuit breaker behavior.</param>
 /// <param name="optionsAccessor">The options accessor used to configure circuit breaker behavior.</param>
+[ExcludeFromCodeCoverage]
 public abstract class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     IRequestHandler<TMessage, TResponse> handler,
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
@@ -36,6 +37,7 @@ public abstract class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 /// <typeparam name="TMessage">The type of the notification message to handle. Must not be null.</typeparam>
 /// <param name="handler">The underlying notification handler to which the circuit breaker behavior is applied.</param>
 /// <param name="optionsAccessor">The options accessor used to configure circuit breaker behavior.</param>
+[ExcludeFromCodeCoverage]
 public abstract class CircuitBreakerNotificationBehavior<TMessage>(
     INotificationHandler<TMessage> handler,
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
@@ -57,6 +59,7 @@ public abstract class CircuitBreakerNotificationBehavior<TMessage>(
 /// <typeparam name="TMessage">The type of the command message to handle. Must not be null.</typeparam>
 /// <param name="handler">The command handler to wrap with circuit breaker behavior.</param>
 /// <param name="optionsAccessor">The options accessor that provides configuration for the circuit breaker behavior.</param>
+[ExcludeFromCodeCoverage]
 public abstract class CircuitBreakerCommandBehavior<TMessage>(
     ICommandHandler<TMessage> handler,
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
@@ -79,6 +82,7 @@ public abstract class CircuitBreakerCommandBehavior<TMessage>(
 /// <typeparam name="TResponse">The type of the response elements produced by the stream handler.</typeparam>
 /// <param name="handler">The underlying stream handler to which requests are delegated when the circuit is closed.</param>
 /// <param name="optionsAccessor">The options accessor that provides configuration settings for the circuit breaker behavior.</param>
+[ExcludeFromCodeCoverage]
 public abstract class CircuitBreakerStreamBehavior<TMessage, TResponse>(
     IStreamHandler<TMessage, TResponse> handler,
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
@@ -102,6 +106,7 @@ public abstract class CircuitBreakerStreamBehavior<TMessage, TResponse>(
 /// <typeparam name="TResult">The type of the result returned by the handler.</typeparam>
 /// <param name="circuitOpenMessage">The message to include in exceptions thrown when the circuit is open.</param>
 /// <param name="optionsAccessor">The options accessor that provides configuration settings for the circuit breaker behavior.</param>
+[ExcludeFromCodeCoverage]
 public abstract class ACircuitBreakerBehavior<TMessage, TResult>(
     string circuitOpenMessage,
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor

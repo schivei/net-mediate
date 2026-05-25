@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Options;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace NetMediate.Resilience;
 
+[ExcludeFromCodeCoverage]
 internal static class TimeoutBehaviorRunner
 {
     private static readonly object CompletedResult = new();
@@ -178,6 +180,7 @@ internal static class TimeoutBehaviorRunner
 /// <typeparam name="TResponse">The type of the response returned by the handler.</typeparam>
 /// <param name="handler">The underlying request handler that processes the message.</param>
 /// <param name="optionsAccessor">The options accessor that provides timeout configuration for request processing.</param>
+[ExcludeFromCodeCoverage]
 public abstract class TimeoutRequestBehavior<TMessage, TResponse>(
     IRequestHandler<TMessage, TResponse> handler,
     IOptions<TimeoutBehaviorOptions> optionsAccessor
@@ -206,6 +209,7 @@ public abstract class TimeoutRequestBehavior<TMessage, TResponse>(
 /// <typeparam name="TMessage">The type of notification message to handle. Must not be null.</typeparam>
 /// <param name="handler">The underlying notification handler that processes the message.</param>
 /// <param name="optionsAccessor">The options accessor that provides timeout configuration for the notification handler.</param>
+[ExcludeFromCodeCoverage]
 public abstract class TimeoutNotificationBehavior<TMessage>(
     INotificationHandler<TMessage> handler,
     IOptions<TimeoutBehaviorOptions> optionsAccessor
@@ -233,6 +237,7 @@ public abstract class TimeoutNotificationBehavior<TMessage>(
 /// <typeparam name="TMessage">The type of the command message to be handled. Must not be null.</typeparam>
 /// <param name="handler">The underlying command handler that processes the command message.</param>
 /// <param name="optionsAccessor">The options accessor that supplies timeout configuration for command execution.</param>
+[ExcludeFromCodeCoverage]
 public abstract class TimeoutCommandBehavior<TMessage>(
     ICommandHandler<TMessage> handler,
     IOptions<TimeoutBehaviorOptions> optionsAccessor
@@ -251,6 +256,7 @@ public abstract class TimeoutCommandBehavior<TMessage>(
         );
 }
 
+[ExcludeFromCodeCoverage]
 public abstract class TimeoutStreamBehavior<TMessage, TResponse>(
     IStreamHandler<TMessage, TResponse> handler,
     IOptions<TimeoutBehaviorOptions> optionsAccessor

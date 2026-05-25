@@ -27,8 +27,8 @@ public sealed record BenchNotification(int Value);
 public sealed class BenchNotificationHandler : INotificationHandler<BenchNotification>
 {
     /// <inheritdoc/>
-    public ValueTask Handle(BenchNotification message, CancellationToken cancellationToken = default) =>
-        ValueTask.CompletedTask;
+    public Task Handle(BenchNotification message, CancellationToken cancellationToken = default) =>
+        Task.CompletedTask;
 }
 
 /// <summary>Benchmark request message.</summary>

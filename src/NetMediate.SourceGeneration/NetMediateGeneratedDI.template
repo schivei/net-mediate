@@ -13,7 +13,8 @@ namespace {{AssemblyNamespace}};
     public static global::Microsoft.Extensions.DependencyInjection.IServiceCollection AddNetMediate(this global::Microsoft.Extensions.DependencyInjection.IServiceCollection services)
     {
         services.RegisterNetMediate();
-
+        
+        {{AddNetMediateResilienceDI}}
         {{AssemblyNamespace}}.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
         return services;
     }

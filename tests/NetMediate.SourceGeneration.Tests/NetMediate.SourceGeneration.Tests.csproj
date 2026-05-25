@@ -21,8 +21,16 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+	  <PackageReference Include="GenDI.SourceGenerator" Version="2026.5.19.1218">
+		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+		  <PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
+	  </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\src\NetMediate.Diagnostics\NetMediate.Diagnostics.csproj" />
+    <ProjectReference Include="..\..\src\NetMediate.Moq\NetMediate.Moq.csproj" />
+    <ProjectReference Include="..\..\src\NetMediate.Quartz\NetMediate.Quartz.csproj" />
+    <ProjectReference Include="..\..\src\NetMediate.Resilience\NetMediate.Resilience.csproj" />
     <ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
     <!-- Analyzer-only reference so the test project exercises the current local generator without restoring a stale package copy. -->
     <ProjectReference Include="..\..\src\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
@@ -32,17 +40,12 @@
     <LocalSourceGeneratorPdb>..\..\src\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.pdb</LocalSourceGeneratorPdb>
   </PropertyGroup>
   <Target Name="CopyLocalSourceGeneratorArtifacts" AfterTargets="Build">
-    <Warning
-      Text="Expected local source generator assembly at '$(LocalSourceGeneratorDll)' so tests can load the instrumented analyzer build."
-      Condition="!Exists('$(LocalSourceGeneratorDll)')" />
+    <Warning Text="Expected local source generator assembly at '$(LocalSourceGeneratorDll)' so tests can load the instrumented analyzer build." Condition="!Exists('$(LocalSourceGeneratorDll)')" />
     <ItemGroup>
       <LocalSourceGeneratorArtifacts Include="$(LocalSourceGeneratorDll)" Condition="Exists('$(LocalSourceGeneratorDll)')" />
       <LocalSourceGeneratorArtifacts Include="$(LocalSourceGeneratorPdb)" Condition="Exists('$(LocalSourceGeneratorPdb)')" />
     </ItemGroup>
-    <Copy
-      SourceFiles="@(LocalSourceGeneratorArtifacts)"
-      DestinationFolder="$(OutDir)"
-      SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(LocalSourceGeneratorArtifacts)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
   </Target>
   <ItemGroup>
     <Using Include="Xunit" />

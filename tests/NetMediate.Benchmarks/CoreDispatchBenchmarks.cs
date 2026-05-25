@@ -44,7 +44,7 @@ public class CoreDispatchBenchmarks
 
         Warmup(() => _mediator.SendBenchCommandAsync(s_command)).GetAwaiter().GetResult();
         Warmup(() => _mediator.RequestBenchRequestAsync(s_request)).GetAwaiter().GetResult();
-        _mediator.NotifyBenchNotificationAsync(s_notification);
+        _mediator.NotifyBenchNotification(s_notification);
         DrainStream(_mediator.StreamBenchStreamRequestAsync(s_streamRequest)).GetAwaiter().GetResult();
     }
 
@@ -71,7 +71,7 @@ public class CoreDispatchBenchmarks
     public void Notification()
     {
         for (int i = 0; i < OpsPerInvoke; i++)
-            _mediator.NotifyBenchNotificationAsync(s_notification);
+            _mediator.NotifyBenchNotification(s_notification);
     }
 
     /// <summary>Measures the per-call overhead of <see cref="IMediator.Request{TMessage,TResponse}"/>.</summary>

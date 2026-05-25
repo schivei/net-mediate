@@ -136,8 +136,7 @@ internal sealed class Mediator : IMediator
     {
         INotificationHandler<TMessage>[] handlers = ResolveNotifyHandlers<TMessage>(key);
 
-        _ = Task.Run(async () => await Notifier.DispatchNotifications(key, message, handlers))
-            .ConfigureAwait(false);
+        _ = Notifier.DispatchNotifications(key, message, handlers);
     }
 
     /// <inheritdoc/>

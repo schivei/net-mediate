@@ -116,7 +116,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         var source = BuildSource(
             assemblyName,
             coverage
-        ).Replace(AddNetMediateResilienceDIToken, hasResilience ? "services.AddResilience();" : string.Empty);
+        ).Replace(AddNetMediateResilienceDIToken, hasResilience ? "global::NetMediate.Resilience.ServiceCollectionsExtensions.AddResilience(services);" : string.Empty);
 
         sourceProductionContext.AddSource("NetMediateGeneratedDI.g.cs", source);
 

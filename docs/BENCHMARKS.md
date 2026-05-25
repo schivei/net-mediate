@@ -19,9 +19,9 @@ The table below is updated automatically by CI on every PR benchmark run. System
 | CPU | AMD EPYC 9V74 2.60GHz, 1 CPU, 4 logical and 2 physical cores |
 | .NET SDK | 10.0.300 |
 | Runtime | .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3 |
-| Last CI run | 2026-05-21 20:07 UTC |
-| Branch | `chore/quartz` |
-| Commit | `2b76bda` |
+| Last CI run | 2026-05-25 15:12 UTC |
+| Branch | `chore/resilience` |
+| Commit | `2848759` |
 <!-- ci-environment-end -->
 
 ---
@@ -40,10 +40,10 @@ The `vs timing` column compares dispatch time against stored target-branch value
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 49.36 ns | ±0.533 ns | 0 | 0 | 0 | - | ✅ -48 B | ~20.3M msg/s | ✅ improved (-45.5%) |
-| Notification `Notify` | 181.53 ns | ±39.459 ns | 0.0095 | 0 | 0 | 160 B | ✅ -128 B | ~5.5M msg/s | ⚠️ degraded (+40.9%) |
-| Request `Request` | 64.54 ns | ±0.520 ns | 0 | 0 | 0 | - | ✅ -112 B | ~15.5M msg/s | ✅ improved (-28.2%) |
-| Stream `RequestStream` | 141.00 ns | ±4.422 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.1M msg/s | ✅ improved (-28.1%) |
+| Command `Send` | 51.35 ns | ±1.622 ns | 0 | 0 | 0 | - | ✅ -48 B | ~19.5M msg/s | ✅ improved (-43.3%) |
+| Notification `Notify` | 260.91 ns | ±149.898 ns | 0.0215 | 0.0039 | 0 | 368 B | ⚠️ +80 B | ~3.8M msg/s | ⚠️ degraded (+102.5%) |
+| Request `Request` | 64.20 ns | ±1.205 ns | 0 | 0 | 0 | - | ✅ -112 B | ~15.6M msg/s | ✅ improved (-28.6%) |
+| Stream `RequestStream` | 143.39 ns | ±2.406 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.0M msg/s | ✅ improved (-26.9%) |
 <!-- ci-throughput-end -->
 
 > ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.
@@ -224,7 +224,7 @@ Thresholds are deliberately lenient to remain green on any CI hardware. The Benc
 
 ## Latest CI Benchmark Run
 
-Run: 2026-05-21 20:07 UTC | Branch: `chore/quartz` | Commit: `2b76bda`
+Run: 2026-05-25 15:12 UTC | Branch: `chore/resilience` | Commit: `2848759`
 
 ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).
 
@@ -241,10 +241,10 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 49.36 ns | ±0.533 ns | 0 | 0 | 0 | - | ✅ -48 B | ~20.3M msg/s | ✅ improved (-45.5%) |
-| Notification `Notify` | 181.53 ns | ±39.459 ns | 0.0095 | 0 | 0 | 160 B | ✅ -128 B | ~5.5M msg/s | ⚠️ degraded (+40.9%) |
-| Request `Request` | 64.54 ns | ±0.520 ns | 0 | 0 | 0 | - | ✅ -112 B | ~15.5M msg/s | ✅ improved (-28.2%) |
-| Stream `RequestStream` | 141.00 ns | ±4.422 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.1M msg/s | ✅ improved (-28.1%) |
+| Command `Send` | 51.35 ns | ±1.622 ns | 0 | 0 | 0 | - | ✅ -48 B | ~19.5M msg/s | ✅ improved (-43.3%) |
+| Notification `Notify` | 260.91 ns | ±149.898 ns | 0.0215 | 0.0039 | 0 | 368 B | ⚠️ +80 B | ~3.8M msg/s | ⚠️ degraded (+102.5%) |
+| Request `Request` | 64.20 ns | ±1.205 ns | 0 | 0 | 0 | - | ✅ -112 B | ~15.6M msg/s | ✅ improved (-28.6%) |
+| Stream `RequestStream` | 143.39 ns | ±2.406 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.0M msg/s | ✅ improved (-26.9%) |
 
 ### Comparison vs baseline (`main`, median of ≤3 runs)
 
@@ -253,7 +253,7 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 
 | Benchmark | Baseline (`main`, median of ≤3 runs) | Current | Δ timing | Alloc Δ |
 |---|---|---|---|---|
-| Command `Send` | 90.55 ns | 49.36 ns | ✅ -45.5% | ✅ -48 B |
-| Notification `Notify` | 128.85 ns | 181.53 ns | ⚠️ +40.9% | ✅ -128 B |
-| Request `Request` | 89.91 ns | 64.54 ns | ✅ -28.2% | ✅ -112 B |
-| Stream `RequestStream` | 196.07 ns | 141.00 ns | ✅ -28.1% | ✅ -88 B |
+| Command `Send` | 90.55 ns | 51.35 ns | ✅ -43.3% | ✅ -48 B |
+| Notification `Notify` | 128.85 ns | 260.91 ns | ⚠️ +102.5% | ⚠️ +80 B |
+| Request `Request` | 89.91 ns | 64.20 ns | ✅ -28.6% | ✅ -112 B |
+| Stream `RequestStream` | 196.07 ns | 143.39 ns | ✅ -26.9% | ✅ -88 B |

@@ -51,6 +51,31 @@ internal static class TimeoutBehaviorRunner
             .ConfigureAwait(false);
     }
 
+    public static async Task ExecuteAsync<TMessage>(
+        TimeSpan timeout,
+        bool disabled,
+        string operationName,
+        TMessage message,
+        Func<TMessage, CancellationToken, Task> next,
+        CancellationToken cancellationToken
+    )
+        where TMessage : notnull
+    {
+        _ = await ExecuteCoreAsync(
+                timeout,
+                disabled,
+                operationName,
+                static async (state, ct) =>
+                {
+                    await state.Next(state.Message, ct).ConfigureAwait(false);
+                    return CompletedResult;
+                },
+                (Message: message, Next: next),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
     public static IAsyncEnumerable<TResponse> ExecuteAsync<TMessage, TResponse>(
         TimeSpan timeout,
         bool disabled,
@@ -188,7 +213,7 @@ public abstract class TimeoutNotificationBehavior<TMessage>(
     where TMessage : notnull
 {
     /// <inheritdoc/>
-    public ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
+    public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
         TimeoutBehaviorRunner.ExecuteAsync(
             optionsAccessor.Value.NotificationTimeout,
             optionsAccessor.Value.Disabled,

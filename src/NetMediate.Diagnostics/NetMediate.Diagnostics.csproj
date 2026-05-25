@@ -5,7 +5,6 @@
 		<Title>NetMediate.Diagnostics</Title>
 		<Description>Optional OpenTelemetry traces and metrics pipeline behaviors for NetMediate.</Description>
 		<PackageTags>Mediator;NetMediate;OpenTelemetry;Diagnostics;Tracing;Metrics</PackageTags>
-		<RootNamespace>NetMediate</RootNamespace>
 		<TargetFrameworks>net10.0</TargetFrameworks>
 		<TargetFramework>net10.0</TargetFramework>
 	</PropertyGroup>

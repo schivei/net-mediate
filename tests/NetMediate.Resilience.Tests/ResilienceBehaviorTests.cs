@@ -87,7 +87,7 @@ public sealed class ResilienceBehaviorTests
 
         var mediator = provider.GetRequiredService<IMediator>();
 
-        mediator.NotifyRetryNotificationMessageAsync(new RetryNotificationMessage(method));
+        mediator.NotifyRetryNotificationMessage(new RetryNotificationMessage(method));
 
         sem.Wait(TestContext.Current.CancellationToken);
 

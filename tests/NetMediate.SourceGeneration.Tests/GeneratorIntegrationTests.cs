@@ -1,5 +1,3 @@
-#pragma warning disable xUnit1004
-
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
@@ -218,7 +216,9 @@ public sealed class GeneratorIntegrationTests
                     refs.Add(MetadataReference.CreateFromFile(asm.Location));
                 }
                 catch
-                { }
+                {
+                    // Ignore assemblies that can't be loaded as metadata references (e.g. native or mixed-mode assemblies).
+                }
             }
         }
 
@@ -232,8 +232,14 @@ public sealed class GeneratorIntegrationTests
             {
                 refs.Add(MetadataReference.CreateFromFile(genDiPath));
             }
-            catch (IOException) { }
-            catch (BadImageFormatException) { }
+            catch (IOException)
+            {
+                // Ignore assemblies that can't be loaded as metadata references (e.g. native or mixed-mode assemblies).
+            }
+            catch (BadImageFormatException)
+            {
+                // Ignore assemblies that can't be loaded as metadata references (e.g. native or mixed-mode assemblies).
+            }
         }
 
         if (includeNetMediateDll)
@@ -428,7 +434,7 @@ public sealed class GeneratorIntegrationTests
             diSrc
         );
         Assert.DoesNotContain("RegisterNotificationHandler", diSrc);
-        Assert.Contains("NotifyAlertNotificationAsync", typedExtensionsSrc);
+        Assert.Contains("NotifyAlertNotification", typedExtensionsSrc);
     }
 
     [Fact]
@@ -1027,11 +1033,4 @@ public sealed class GeneratorIntegrationTests
             Assert.DoesNotContain("public static", typedExtensionsSource);
         }
     }
-
-    private static int CountOccurrences(string source, string pattern)
-    {
-        return source.AsSpan().Count(pattern.AsSpan());
-    }
 }
-
-#pragma warning restore xUnit1004

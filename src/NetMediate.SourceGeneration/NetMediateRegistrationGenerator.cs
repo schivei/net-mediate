@@ -50,7 +50,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         (
             ImmutableArray<INamedTypeSymbol> Left,
             (
-                bool hasDiagnostics,
                 bool hasResilience,
                 bool isNetMediateAssembly,
                 string assemblyName,
@@ -63,7 +62,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         var (
             types,
             (
-                hasDiagnostics,
                 hasResilience,
                 isNetMediateAssembly,
                 assemblyName,
@@ -82,7 +80,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             );
         }
 
-        if ((isNetMediateAssembly && !hasDiagnostics && !hasResilience) || types.IsEmpty)
+        if ((isNetMediateAssembly && !hasResilience) || types.IsEmpty)
         {
             // This fallback stub does not flow through the template token replacement path,
             // so the coverage attribute must stay fully qualified here.
@@ -115,28 +113,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             return;
         }
 
-        var resilienceBehaviorTemplate = LoadResilienceBehaviorTemplate().Replace(CoverageToken, coverage);
-        var diagnosticBehaviorTemplate = LoadDiagnosticBehaviorTemplate().Replace(CoverageToken, coverage);
-
-        var frameworkBehaviors = BuildFrameworkBehaviors(
-            types,
-            hasDiagnostics,
-            hasResilience,
-            assemblyName,
-            resilienceBehaviorTemplate,
-            diagnosticBehaviorTemplate
-        );
-
-        var frameworkBehaviorsSource = frameworkBehaviors.Aggregate(new StringBuilder(), static (sb, behavior) =>
-        {
-            sb.AppendLine(behavior.Value);
-            return sb;
-        });
-
         var source = BuildSource(
             assemblyName,
-            coverage,
-            frameworkBehaviorsSource.ToString()
+            coverage
         ).Replace(AddNetMediateResilienceDIToken, hasResilience ? "services.AddResilience();" : string.Empty);
 
         sourceProductionContext.AddSource("NetMediateGeneratedDI.g.cs", source);
@@ -147,7 +126,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     }
 
     private static (
-        bool hasDiagnostics,
         bool hasResilience,
         bool isNetMediateAssembly,
         string assemblyName,
@@ -156,14 +134,12 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     ) Selects(Compilation compilation)
     {
         var names = compilation.ReferencedAssemblyNames.Select(name => name.Name);
-        bool hasDiagnostics = names.Contains("NetMediate.Diagnostics");
         bool hasResilience = names.Contains("NetMediate.Resilience");
         bool isNetMediateAssembly = compilation.AssemblyName?.Replace(GlobalNamespace, "") == PackName;
         bool supportsGlobalUsing =
             compilation is CSharpCompilation { LanguageVersion: >= LanguageVersion.CSharp10 };
 
         return (
-            hasDiagnostics,
             hasResilience,
             isNetMediateAssembly,
             compilation.AssemblyName,
@@ -188,177 +164,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             return null;
 
         return typeSymbol;
-    }
-
-    /// <summary>
-    /// Builds the generated framework behavior classes for the discovered handler types.
-    /// Uses insertion-ordered dictionaries for deduplication so the same behavior is never
-    /// emitted twice even when multiple handlers share the same message type.
-    /// </summary>
-    private static Dictionary<string, string> BuildFrameworkBehaviors(
-        ImmutableArray<INamedTypeSymbol> types,
-        bool hasDiagnostics,
-        bool hasResilience,
-        string assemblyName,
-        string resilienceTemplate,
-        string diagnosticTemplate
-    )
-    {
-        List<(string name, string content)> behaviors = [];
-
-        if (!hasDiagnostics && !hasResilience)
-            return [];
-
-        foreach (var handlerType in types)
-        {
-            behaviors.AddRange(BuildFrameworkBehaviorEntries(
-                (
-                    resilienceTemplate,
-                    diagnosticTemplate,
-                    assemblyName,
-                    hasDiagnostics,
-                    hasResilience,
-                    handlerType
-                )
-            ));
-        }
-
-        return behaviors.Where(behavior => !string.IsNullOrWhiteSpace(behavior.content?.Replace("\n", "").Replace("\r", "").Trim())).GroupBy(behavior => behavior.name)
-            .ToDictionary(group => group.Key, group => group.First().content);
-    }
-
-    private static IEnumerable<(string name, string content)> BuildFrameworkBehaviorEntries(
-        BuildFrameworkBehaviorArguments arguments
-    )
-    {
-        var (
-            resilienceBehaviorTemplate,
-            diagnosticBehaviorTemplate,
-            assemblyName,
-            hasDiagnostics,
-            hasResilience,
-            handlerType
-        ) = arguments;
-
-        List<(string name, string content)> behaviors = [];
-
-        foreach (var @interface in handlerType.AllInterfaces)
-        {
-            var definition = @interface.OriginalDefinition;
-            if (definition.ContainingNamespace.ToDisplayString().Replace(GlobalNamespace, "") != PackName)
-                continue;
-
-            var name = definition.Name;
-            var arity = definition.Arity;
-            var args = @interface.TypeArguments;
-
-            behaviors.AddRange(ProcessHandlerInterface(
-                (
-                    resilienceBehaviorTemplate,
-                    diagnosticBehaviorTemplate,
-                    assemblyName,
-                    name,
-                    arity,
-                    args,
-                    hasDiagnostics,
-                    hasResilience
-                )
-            ));
-        }
-
-        return behaviors;
-    }
-
-    private static IEnumerable<(string name, string content)> ProcessHandlerInterface(ProcessHandlerInterfaceArguments arguments)
-    {
-        if (!TryCreateBehaviorRegistration(arguments, out var registration))
-            return [];
-
-        var behaviors = registration.GetBehaviorClasses();
-
-        return behaviors.Select(behavior => (behavior.className, behavior.classDefinition));
-    }
-
-    private static bool TryCreateBehaviorRegistration(
-        ProcessHandlerInterfaceArguments arguments,
-        out BehaviorRegistration registration
-    )
-    {
-        var (
-            resilienceTemplate,
-            diagnosticTemplate,
-            assemblyName,
-            interfaceName,
-            arity,
-            args,
-            hasDiagnostics,
-            hasResilience
-        ) = arguments;
-
-        registration = default;
-
-        if (arity == 1 && args.Length == 1 && IsAccessible(args[0]))
-        {
-            var msg = args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-            registration = interfaceName switch
-            {
-                CommandHandlerIfce => new BehaviorRegistration(
-                    resilienceTemplate,
-                    diagnosticTemplate,
-                    assemblyName,
-                    CommandHandlerIfce,
-                    msg,
-                    null,
-                    hasDiagnostics,
-                    hasResilience
-                ),
-                NotificationHandlerIfce => new BehaviorRegistration(
-                    resilienceTemplate,
-                    diagnosticTemplate,
-                    assemblyName,
-                    NotificationHandlerIfce,
-                    msg,
-                    null,
-                    hasDiagnostics,
-                    hasResilience
-                ),
-                _ => default
-            };
-
-            return registration.MessageFqn is not null;
-        }
-
-        if (interfaceName == RequestHandlerIfce && arity == 2 && args.Length == 2 && IsAccessible(args[0]) && IsAccessible(args[1]))
-        {
-            registration = new BehaviorRegistration(
-                resilienceTemplate,
-                diagnosticTemplate,
-                assemblyName,
-                RequestHandlerIfce,
-                args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                hasDiagnostics,
-                hasResilience
-            );
-            return true;
-        }
-
-        if (interfaceName == StreamHandlerIfce && arity == 2 && args.Length == 2 && IsAccessible(args[0]) && IsAccessible(args[1]))
-        {
-            registration = new BehaviorRegistration(
-                resilienceTemplate,
-                diagnosticTemplate,
-                assemblyName,
-                StreamHandlerIfce,
-                args[0].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                args[1].ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
-                hasDiagnostics,
-                hasResilience
-            );
-            return true;
-        }
-
-        return false;
     }
 
     // -------------------------------------------------------------------------
@@ -484,7 +289,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         if (entries.Count == 0)
             return [];
 
-        // Detect conflicts: same (verb + simpleName), different FQN.
         var nameToFqn = new Dictionary<string, string>(StringComparer.Ordinal);
         var conflicted = new HashSet<string>(StringComparer.Ordinal);
 
@@ -529,9 +333,10 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         switch (e.Verb)
         {
             case "Notify":
+                methodName = methodName.Replace("Async", string.Empty);
                 var notifyMediatorMethod = $"Notify<{e.MessageFqn}>";
                 var notifyMediatorMethodBatch = $"Notifies<{e.MessageFqn}>";
-                var notifyBatchMethod = methodName.Replace("Async", "BatchAsync");
+                var notifyBatchMethod = methodName + "Batch";
 
                 // key-less overload
                 sb.AppendLine(
@@ -750,36 +555,12 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
 
     private static string BuildSource(
         string assemblyName,
-        string coverage,
-        string behaviors
+        string coverage
     )
     {
         return LoadTemplate()
             .Replace(CoverageToken, coverage)
-            .Replace(AssemblyNamespaceToken, assemblyName)
-            .Replace(BehaviorsDeclarationToken, behaviors);
-    }
-
-    private static string LoadResilienceBehaviorTemplate() =>
-        LoadBehaviorTemplate(TemplateResilienceBehaviorResourceName);
-
-    private static string LoadDiagnosticBehaviorTemplate() =>
-        LoadBehaviorTemplate(TemplateDiagnosticBehaviorResourceName);
-
-    private static string LoadBehaviorTemplate(string templateName)
-    {
-        var stream =
-            typeof(NetMediateRegistrationGenerator).Assembly.GetManifestResourceStream(
-                templateName
-            )
-            ?? throw new InvalidOperationException(
-                $"Embedded template resource '{templateName}' was not found. "
-                    + "Ensure 'NetMediateFrameworkBehavior.template' is included as an EmbeddedResource "
-                    + "in the NetMediate.SourceGeneration project."
-            );
-        using (stream)
-        using (var reader = new StreamReader(stream))
-            return reader.ReadToEnd();
+            .Replace(AssemblyNamespaceToken, assemblyName);
     }
 
     private static string LoadTemplate()

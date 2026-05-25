@@ -1,7 +1,5 @@
 # NetMediate.Quartz
 
-> In Development
-
 > **GenDI pattern:** The examples below assume `NetMediate.SourceGeneration` in the startup project. Prefer `[Injectable]` + `[Inject]` for serializers, notifiers, and supporting services.
 
 `NetMediate.Quartz` is an optional package that decorates `IMediator` notification publishing with Quartz-backed persistence.
@@ -42,26 +40,20 @@ using Quartz;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// 1. Configure Quartz first — AddNetMediateQuartz only registers Quartz decorators/jobs;
+// 1. Configure Quartz first - AddNetMediateQuartz only registers Quartz decorators/jobs;
 // it does not configure Quartz itself.
 builder.Services.AddQuartz(q =>
 {
     q.UseMicrosoftDependencyInjectionJobFactory();
-    // For persistence, configure q.UseJobStore<...>() here.
 });
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
 // 2. Register NetMediate Quartz extensions
-builder.Services.AddNetMediateQuartz();
+builder.Services.AddNetMediateQuartz(); // it's also imports the NetMediate auto-registration source generator.
 
-// 3. Register the generated NetMediate services after Quartz extensions
-builder.Services.AddNetMediate();
-
-var host = builder.Build();
-await host.RunAsync();
 ```
 
-`AddNetMediateQuartz()` does **not** call `AddNetMediate()` for you. Call `AddNetMediateQuartz()` first, then `AddNetMediate()`, so the generated mediator setup can apply the Quartz mediator decorator.
+`AddNetMediateQuartz()` already calls `AddNetMediate()` for you.
 
 ## Configuration
 
@@ -86,10 +78,10 @@ await host.RunAsync();
 By default messages are serialized with `System.Text.Json`. You can replace the serializer after `AddNetMediateQuartz`:
 
 ```csharp
-builder.Services.AddNetMediateQuartz();
-builder.Services.AddNetMediate();
-
+// must be registered before AddNetMediateQuartz, otherwise the default serializer will be used.
 builder.Services.AddSingleton<INotificationSerializer, MyMessagePackSerializer>();
+
+builder.Services.AddNetMediateQuartz();
 ```
 
 ## Persistent job store (recommended for production)

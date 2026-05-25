@@ -92,3 +92,13 @@ builder.Services.Configure<CircuitBreakerBehaviorOptions>(opts =>
     opts.OpenDuration = TimeSpan.FromMinutes(1);
 });
 ```
+
+## Using
+
+You must implment a decorator that inherits from the abstract resilience behavior and apply the `DecoratorFor` attribute to target the desired message type(s). For example:
+
+```csharp
+[DecoratorFor<IRequestHandler<MyMessage, MyResponse>>]
+internal sealed class MyRequestRetryBehavior(IRequestHandler<MyMessage, MyResponse> handler) :
+    RetryRequestBehavior<MyMessage, MyResponse>(handler);
+```

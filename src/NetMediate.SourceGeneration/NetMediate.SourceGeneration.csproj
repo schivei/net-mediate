@@ -17,13 +17,18 @@
 		<None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
 	</ItemGroup>
 	<ItemGroup>
-		<EmbeddedResource Include="NetMediateFrameworkBehavior.template" />
 		<EmbeddedResource Include="NetMediateGeneratedDI.template" />
 		<EmbeddedResource Include="NetMediateTypedExtensions.template" />
 		<None Include="buildTransitive\NetMediate.SourceGeneration.props" Pack="true" PackagePath="buildTransitive/NetMediate.SourceGeneration.props" />
 		<None Include="buildTransitive\NetMediate.SourceGeneration.targets" Pack="true" PackagePath="buildTransitive/NetMediate.SourceGeneration.targets" />
 	</ItemGroup>
 	<ItemGroup>
+		<PackageReference Include="GenDI" Version="2026.5.19.1218" />
+		<PackageReference Include="GenDI.SourceGenerator" Version="2026.5.19.1218">
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+			<PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
+		</PackageReference>
+		
 		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.*" PrivateAssets="all" />
 		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.*" PrivateAssets="all" />
 

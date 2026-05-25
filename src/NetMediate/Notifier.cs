@@ -10,15 +10,9 @@ namespace NetMediate;
 [EditorBrowsable(EditorBrowsableState.Never)]
 internal sealed class Notifier : INotifiable
 {
-    private readonly record struct HandlerState<TMessage>(
-        INotificationHandler<TMessage> Handler,
-        TMessage Message,
-        CancellationToken CancellationToken
-    );
-
     /// <inheritdoc/>
     [ExcludeFromCodeCoverage]
-    public ValueTask DispatchNotifications<TMessage>(
+    public async ValueTask DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
         INotificationHandler<TMessage>[] handlers,
@@ -27,28 +21,18 @@ internal sealed class Notifier : INotifiable
         where TMessage : notnull
     {
         if (handlers.Length == 0)
-            return ValueTask.CompletedTask;
+            return;
 
         foreach (var handler in handlers)
         {
-            ThreadPool.QueueUserWorkItem(
-                async static state =>
-                {
-                    try
-                    {
-                        await state.Handler.Handle(state.Message, state.CancellationToken).ConfigureAwait(false);
-                    }
-                    catch
-                    {
-                        // Swallow exceptions to prevent unhandled exceptions from crashing the application.
-                        // In a real-world application, consider logging the exception or handling it appropriately.
-                    }
-                },
-                new HandlerState<TMessage>(handler, message, cancellationToken),
-                preferLocal: false
-            );
+            try
+            {
+                await handler.Handle(message, cancellationToken).ConfigureAwait(false);
+            }
+            catch
+            {
+                // ignore
+            }
         }
-
-        return ValueTask.CompletedTask;
     }
 }

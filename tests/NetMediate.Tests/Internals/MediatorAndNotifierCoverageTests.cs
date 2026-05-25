@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
+using NetMediate.Tests.DependencyInjection;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using static NetMediate.Tests.Internals.MediatorAndNotifierCoverageTests;
 
 namespace NetMediate.Tests.Internals;
 
@@ -15,19 +17,22 @@ public sealed class MediatorAndNotifierCoverageTests
     [Fact]
     public async Task Mediator_Notify_DelegatesSingleAndBatchMessages()
     {
-        var notifier = new SpyNotifiable();
-        var mediator = new Mediator { ServiceProvider = new ServiceCollection().BuildServiceProvider(), Notifier = notifier };
+        var handler = new RecordingNotificationHandler();
+
+        var notifier = new SpyNotifiable(5);
+
+        using var provider = BuildProvider(services =>
+        {
+            services.AddSingleton<INotificationHandler<NotificationMessage>>(handler);
+        });
+
+        var services = new ServiceCollection()
+            .AddGenDIServices();
+        NetMediate.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
+
+        var mediator = new Mediator { ServiceProvider = services.BuildServiceProvider(), Notifier = notifier };
 
         mediator.Notify(new NotificationMessage("one"));
-
-        var callCount = notifier.CallCount;
-        var (Key, Message) = Assert.Single(notifier.Calls);
-
-        Assert.Equal(1, callCount);
-        Assert.Null(Key);
-        Assert.Equal("one", Assert.IsType<NotificationMessage>(Message).Value);
-
-        notifier.ClearCalls();
 
         mediator.Notifies(
             [new NotificationMessage("batch-one"), new NotificationMessage("batch-two")]
@@ -37,10 +42,12 @@ public sealed class MediatorAndNotifierCoverageTests
             [new NotificationMessage("two"), new NotificationMessage("three")]
         );
 
-        callCount = notifier.CallCount;
-        var calls = notifier.Calls;
+        notifier.Wait();
 
-        Assert.Equal(4, callCount);
+        var callCount = notifier.CallCount;
+        var calls = notifier.Calls.OrderBy(call => call.Key).ThenBy(call => ((NotificationMessage)call.Message).Value);
+
+        Assert.Equal(5, callCount);
         Assert.Collection(
             calls,
             call =>
@@ -55,13 +62,18 @@ public sealed class MediatorAndNotifierCoverageTests
             },
             call =>
             {
-                Assert.Equal("key", call.Key);
-                Assert.Equal("two", Assert.IsType<NotificationMessage>(call.Message).Value);
+                Assert.Null(call.Key);
+                Assert.Equal("one", Assert.IsType<NotificationMessage>(call.Message).Value);
             },
             call =>
             {
                 Assert.Equal("key", call.Key);
                 Assert.Equal("three", Assert.IsType<NotificationMessage>(call.Message).Value);
+            },
+            call =>
+            {
+                Assert.Equal("key", call.Key);
+                Assert.Equal("two", Assert.IsType<NotificationMessage>(call.Message).Value);
             }
         );
     }
@@ -379,22 +391,33 @@ public sealed class MediatorAndNotifierCoverageTests
     {
         var notifier = new Notifier();
         var handlerTaskSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var counter = new CountdownEvent(1);
 
-        var exception = await Record.ExceptionAsync(() =>
+        var exceptionTask = Record.ExceptionAsync(() =>
             notifier.DispatchNotifications(
                 null,
                 new NotificationMessage("value"),
                 [
-                    new LambdaNotificationHandler<NotificationMessage>((_, _) =>
-                        new(handlerTaskSource.Task))
+                    new LambdaNotificationHandler<NotificationMessage>((_, _) => {
+                        try
+                        {
+                            return new(handlerTaskSource.Task);
+                        }
+                        finally{
+                            counter.Signal();
+                        }
+                    })
                 ],
                 TestContext.Current.CancellationToken
-            ).AsTask());
+            ).AsTask()).ConfigureAwait(true);
 
         handlerTaskSource.TrySetException(new InvalidOperationException("late handler fault"));
+
+        counter.Wait(TestContext.Current.CancellationToken);
+
         await Assert.ThrowsAsync<InvalidOperationException>(() => handlerTaskSource.Task);
 
-        Assert.Null(exception);
+        Assert.Null(await exceptionTask);
     }
 
     [Fact]
@@ -403,22 +426,38 @@ public sealed class MediatorAndNotifierCoverageTests
         var singleCount = 0;
         var batchCount = 0;
         var batchCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var countDown = new CountdownEvent(6);
 
         using var provider = BuildProvider(services =>
         {
             services.AddSingleton<INotificationHandler<NotificationMessage>>(
                 new LambdaNotificationHandler<NotificationMessage>((_, _) =>
                 {
-                    if (Interlocked.Increment(ref batchCount) >= 3)
-                        batchCompletion.TrySetResult();
-                    return ValueTask.CompletedTask;
+                    try
+                    {
+                        if (Interlocked.Increment(ref batchCount) >= 3)
+                            batchCompletion.TrySetResult();
+
+                        return ValueTask.CompletedTask;
+                    }
+                    finally
+                    {
+                        countDown.Signal();
+                    }
                 })
             );
             services.AddSingleton<INotificationHandler<NotificationMessage>>(
                 new LambdaNotificationHandler<NotificationMessage>((_, _) =>
                 {
-                    Interlocked.Increment(ref singleCount);
-                    return ValueTask.CompletedTask;
+                    try
+                    {
+                        Interlocked.Increment(ref singleCount);
+                        return ValueTask.CompletedTask;
+                    }
+                    finally
+                    {
+                        countDown.Signal();
+                    }
                 })
             );
         });
@@ -431,6 +470,8 @@ public sealed class MediatorAndNotifierCoverageTests
             null,
             [new NotificationMessage("two"), new NotificationMessage("three")]
         );
+
+        countDown.Wait(TestContext.Current.CancellationToken);
 
         await batchCompletion.Task.WaitAsync(TestContext.Current.CancellationToken);
         Assert.True(singleCount > 0);
@@ -546,12 +587,17 @@ public sealed class MediatorAndNotifierCoverageTests
         return items;
     }
 
-    internal sealed class SpyNotifiable : INotifiable
+    internal sealed class SpyNotifiable(int expectedCallCount = 0) : INotifiable
     {
         private static readonly Lock s_lock = new();
 
         private int _callCount = 0;
         private readonly List<(object? Key, object Message)> _calls = [];
+
+        private readonly CountdownEvent _countdownEvent = new(expectedCallCount);
+
+        public void Wait() =>
+            _countdownEvent.Wait(TestContext.Current.CancellationToken);
 
         public int CallCount
         {
@@ -583,13 +629,20 @@ public sealed class MediatorAndNotifierCoverageTests
         )
             where TMessage : notnull
         {
-            lock (s_lock)
+            try
             {
-                Interlocked.Increment(ref _callCount);
-                _calls.Add((key, message));
-            }
+                lock (s_lock)
+                {
+                    Interlocked.Increment(ref _callCount);
+                    _calls.Add((key, message));
+                }
 
-            return ValueTask.CompletedTask;
+                return ValueTask.CompletedTask;
+            }
+            finally
+            {
+                _countdownEvent.Signal();
+            }
         }
 
         public void ClearCalls()
@@ -598,99 +651,121 @@ public sealed class MediatorAndNotifierCoverageTests
             {
                 Interlocked.Exchange(ref _callCount, 0);
                 _calls.Clear();
+                _countdownEvent.Reset(expectedCallCount);
             }
         }
     }
+}
 
-    internal sealed class RecordingCommandHandler : ICommandHandler<CommandMessage>
+[Injectable]
+internal sealed class RecordingCommandHandler : ICommandHandler<CommandMessage>
+{
+    public List<int> Values { get; } = [];
+
+    public ValueTask Handle(CommandMessage message, CancellationToken cancellationToken = default)
     {
-        public List<int> Values { get; } = [];
-
-        public ValueTask Handle(CommandMessage message, CancellationToken cancellationToken = default)
-        {
-            Values.Add(message.Value);
-            return ValueTask.CompletedTask;
-        }
+        Values.Add(message.Value);
+        return ValueTask.CompletedTask;
     }
+}
 
-    internal sealed class RecordingRequestHandler : IRequestHandler<RequestMessage, Response>
+[Injectable]
+internal sealed class RecordingRequestHandler : IRequestHandler<RequestMessage, Response>
+{
+    public ValueTask<Response> Handle(
+        RequestMessage message,
+        CancellationToken cancellationToken = default
+    ) => ValueTask.FromResult(new Response(message.Value));
+}
+
+internal sealed class RecordingStreamHandler(int multiplier) : IStreamHandler<StreamMessage, int>
+{
+    public async IAsyncEnumerable<int> Handle(
+        StreamMessage message,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
-        public ValueTask<Response> Handle(
-            RequestMessage message,
-            CancellationToken cancellationToken = default
-        ) => ValueTask.FromResult(new Response(message.Value));
+        yield return message.Value * multiplier;
+        yield return (message.Value + 1) * multiplier;
+        await Task.CompletedTask;
     }
+}
 
-    internal sealed class RecordingStreamHandler(int multiplier) : IStreamHandler<StreamMessage, int>
+[Injectable]
+internal sealed class KeyedStreamHandler : IStreamHandler<StreamMessage, int>
+{
+    public async IAsyncEnumerable<int> Handle(
+        StreamMessage message,
+        [EnumeratorCancellation] CancellationToken cancellationToken = default
+    )
     {
-        public async IAsyncEnumerable<int> Handle(
-            StreamMessage message,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default
-        )
-        {
-            yield return message.Value * multiplier;
-            yield return (message.Value + 1) * multiplier;
-            await Task.CompletedTask;
-        }
+        yield return message.Value * 100;
+        yield return (message.Value + 1) * 100;
+        await Task.CompletedTask;
     }
+}
 
-    internal sealed class KeyedStreamHandler : IStreamHandler<StreamMessage, int>
-    {
-        public async IAsyncEnumerable<int> Handle(
-            StreamMessage message,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default
-        )
-        {
-            yield return message.Value * 100;
-            yield return (message.Value + 1) * 100;
-            await Task.CompletedTask;
-        }
-    }
+[Injectable]
+internal sealed class ThrowingCommandHandler : ICommandHandler<CommandMessage>
+{
+    public ValueTask Handle(
+        CommandMessage message,
+        CancellationToken cancellationToken = default
+    ) => throw new InvalidOperationException("boom");
+}
 
-    internal sealed class ThrowingCommandHandler : ICommandHandler<CommandMessage>
-    {
-        public ValueTask Handle(
-            CommandMessage message,
-            CancellationToken cancellationToken = default
-        ) => throw new InvalidOperationException("boom");
-    }
+[Injectable]
+internal sealed class ThrowingMediatorExceptionCommandHandler : ICommandHandler<CommandMessage>
+{
+    public ValueTask Handle(
+        CommandMessage message,
+        CancellationToken cancellationToken = default
+    ) => throw new MediatorException(
+        typeof(CommandMessage),
+        typeof(ICommandHandler<CommandMessage>),
+        "trace-id",
+        new InvalidOperationException("boom")
+    );
+}
 
-    internal sealed class ThrowingMediatorExceptionCommandHandler : ICommandHandler<CommandMessage>
-    {
-        public ValueTask Handle(
-            CommandMessage message,
-            CancellationToken cancellationToken = default
-        ) => throw new MediatorException(
-            typeof(CommandMessage),
-            typeof(ICommandHandler<CommandMessage>),
-            "trace-id",
-            new InvalidOperationException("boom")
-        );
-    }
+[Injectable]
+internal sealed class ThrowingMediatorExceptionRequestHandler : IRequestHandler<RequestMessage, Response>
+{
+    public ValueTask<Response> Handle(RequestMessage message, CancellationToken cancellationToken = default) =>
+        throw new MediatorException(
+        typeof(RequestMessage),
+        typeof(IRequestHandler<RequestMessage, Response>),
+        "trace-id-request",
+        new InvalidOperationException("boom")
+    );
+}
 
-    internal sealed class ThrowingMediatorExceptionRequestHandler : IRequestHandler<RequestMessage, Response>
-    {
-        public ValueTask<Response> Handle(RequestMessage message, CancellationToken cancellationToken = default) =>
-            throw new MediatorException(
-            typeof(RequestMessage),
-            typeof(IRequestHandler<RequestMessage, Response>),
-            "trace-id-request",
-            new InvalidOperationException("boom")
-        );
-    }
+[Injectable]
+internal sealed class ThrowingRequestHandler : IRequestHandler<RequestMessage, Response>
+{
+    public ValueTask<Response> Handle(RequestMessage message, CancellationToken cancellationToken = default) =>
+        throw new InvalidOperationException("boom");
+}
 
-    internal sealed class ThrowingRequestHandler : IRequestHandler<RequestMessage, Response>
+[Injectable]
+internal sealed class RecordingNotificationHandler : INotificationHandler<NotificationMessage>
+{
+    public List<string> Values { get; } = [];
+    public ValueTask Handle(
+        NotificationMessage message,
+        CancellationToken cancellationToken = default
+    )
     {
-        public ValueTask<Response> Handle(RequestMessage message, CancellationToken cancellationToken = default) =>
-            throw new InvalidOperationException("boom");
+        Values.Add(message.Value);
+        return ValueTask.CompletedTask;
     }
+}
 
-    internal sealed class LambdaNotificationHandler<TMessage>(
-        Func<TMessage, CancellationToken, ValueTask> callback
-    ) : INotificationHandler<TMessage>
-        where TMessage : notnull
-    {
-        public ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
-            callback(message, cancellationToken);
-    }
+internal sealed class LambdaNotificationHandler<TMessage>(
+    Func<TMessage, CancellationToken, ValueTask> callback
+) : INotificationHandler<TMessage>
+    where TMessage : notnull
+{
+    public ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
+        callback(message, cancellationToken);
 }

@@ -67,6 +67,43 @@ public static class NetMediateDiagnostics
 
         activity?.SetTag("netmediate.operation", operation);
         activity?.SetTag("netmediate.message_type", typeof(TMessage).Name);
+
+        if (operation == "Request")
+        {
+            activity?.SetTag("netmediate.is_request", true);
+            s_requestCount.Add(
+                0,
+                new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name)
+            );
+        }
+
+        if (operation == "Send")
+        {
+            activity?.SetTag("netmediate.is_send", true);
+            s_sendCount.Add(
+                0,
+                new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name)
+            );
+        }
+
+        if (operation == "Notify")
+        {
+            activity?.SetTag("netmediate.is_notify", true);
+            s_notifyCount.Add(
+                0,
+                new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name)
+            );
+        }
+
+        if (operation == "Stream")
+        {
+            activity?.SetTag("netmediate.is_stream", true);
+            s_streamCount.Add(
+                0,
+                new KeyValuePair<string, object?>(MessageTypeName, typeof(TMessage).Name)
+            );
+        }
+
         return activity;
     }
 

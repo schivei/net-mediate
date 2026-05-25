@@ -14,7 +14,7 @@ public sealed class ResilienceBehaviorTests
 {
     private static IServiceProvider MakeProvider<T>(T options, CountdownEvent? semaphore = null)
     {
-        var services = new ServiceCollection();
+        var services = new TestServiceCollection();
         services.Clear();
         services.AddLogging();
         var configuration = new ConfigurationManager();
@@ -27,6 +27,7 @@ public sealed class ResilienceBehaviorTests
         if (semaphore != null)
             services.AddSingleton(semaphore);
 
+        NetMediate.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
         services.AddNetMediate();
         return services.BuildServiceProvider();
     }

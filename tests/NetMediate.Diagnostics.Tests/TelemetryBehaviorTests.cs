@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
@@ -69,6 +70,10 @@ public sealed class TelemetryBehaviorTests
 
         sem.Wait(TestContext.Current.CancellationToken);
 
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+
+        await Task.Yield();
+
         Assert.Equal("NetMediate.Notify", Assert.Single(stoppedActivities).OperationName);
     }
 
@@ -91,6 +96,10 @@ public sealed class TelemetryBehaviorTests
         mediator.NotifyNotificationMessage(msg);
 
         sem.Wait(TestContext.Current.CancellationToken);
+
+        await Task.Delay(100, TestContext.Current.CancellationToken);
+
+        await Task.Yield();
 
         Assert.Equal(ActivityStatusCode.Error, Assert.Single(stoppedActivities).Status);
     }
@@ -236,20 +245,20 @@ public sealed class TelemetryBehaviorTests
     private static ActivityListener CreateListener(out List<Activity> stoppedActivities)
     {
         var activities = new List<Activity>();
-        stoppedActivities = activities;
         var listener = new ActivityListener
         {
-            ShouldListenTo = source => source.Name == NetMediateDiagnostics.ActivitySourceName,
+            ShouldListenTo = source => source.Name.StartsWith(NetMediateDiagnostics.ActivitySourceName),
             Sample = static (ref _) => ActivitySamplingResult.AllDataAndRecorded,
-            ActivityStopped = activity => activities.Add(activity),
+            ActivityStopped = activity => activities.Add(activity)
         };
         ActivitySource.AddActivityListener(listener);
+        stoppedActivities = activities;
         return listener;
     }
 
     private static IServiceProvider MakeProvider(CountdownEvent? semaphore = null)
     {
-        var services = new ServiceCollection();
+        var services = new TestServiceCollection();
         services.Clear();
         services.AddLogging();
         var configuration = new ConfigurationManager();
@@ -258,8 +267,8 @@ public sealed class TelemetryBehaviorTests
         if (semaphore != null)
             services.AddSingleton(semaphore);
 
+        NetMediate.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
         services.AddNetMediate();
         return services.BuildServiceProvider();
     }
-
 }

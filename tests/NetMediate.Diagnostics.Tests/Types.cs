@@ -1,4 +1,6 @@
-﻿using System.Runtime.CompilerServices;
+﻿using Microsoft.Extensions.DependencyInjection;
+using System.Collections;
+using System.Runtime.CompilerServices;
 
 namespace NetMediate.Diagnostics.Tests;
 
@@ -101,3 +103,109 @@ internal sealed class RequestActivityBehavior(IRequestHandler<RequestMessage, Re
 
 [DecoratorFor<IStreamHandler<StreamMessage, StreamResponse>>]
 internal sealed class StreamActivityBehavior(IStreamHandler<StreamMessage, StreamResponse> handler) : TelemetryStreamBehavior<StreamMessage, StreamResponse>(handler);
+
+internal sealed class TestServiceCollection : IServiceCollection
+{
+    private readonly List<ServiceDescriptor> _descriptors = [];
+
+    private readonly Lock _lock = new();
+
+    public ServiceDescriptor this[int index]
+    {
+        get
+        {
+            lock(_lock)
+            {
+                return _descriptors[index];
+            }
+        }
+        set
+        {
+            lock(_lock)
+            {
+                _descriptors[index] = value;
+            }
+        }
+    }
+
+    public int Count => _descriptors.Count;
+
+    public bool IsReadOnly => false;
+
+    public void Add(ServiceDescriptor item)
+    {
+        lock(_lock)
+        {
+            _descriptors.Add(item);
+        }
+    }
+
+    public void Clear()
+    {
+        lock(_lock)
+        {
+            _descriptors.Clear();
+        }
+    }
+
+    public bool Contains(ServiceDescriptor item)
+    {
+        lock(_lock)
+        {
+            return _descriptors.Contains(item);
+        }
+    }
+
+    public void CopyTo(ServiceDescriptor[] array, int arrayIndex)
+    {
+        lock(_lock)
+        {
+            _descriptors.CopyTo(array, arrayIndex);
+        }
+    }
+
+    public IEnumerator<ServiceDescriptor> GetEnumerator()
+    {
+        lock(_lock)
+        {
+            return _descriptors.GetEnumerator();
+        }
+    }
+
+    public int IndexOf(ServiceDescriptor item)
+    {
+        lock(_lock)
+        {
+            return _descriptors.IndexOf(item);
+        }
+    }
+
+    public void Insert(int index, ServiceDescriptor item)
+    {
+        lock(_lock)
+        {
+            _descriptors.Insert(index, item);
+        }
+    }
+
+    public bool Remove(ServiceDescriptor item)
+    {
+        lock(_lock)
+        {
+            return _descriptors.Remove(item);
+        }
+    }
+
+    public void RemoveAt(int index)
+    {
+        lock(_lock)
+        {
+            _descriptors.RemoveAt(index);
+        }
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
+    }
+}

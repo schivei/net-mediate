@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 namespace NetMediate;
 
@@ -25,10 +26,7 @@ internal sealed class Notifier : INotifiable
         {
             _ = handler.Handle(message, cancellationToken)
                 .ContinueWith(
-                    static task =>
-                    {
-                        // ignore
-                    },
+                    ByPass,
                     CancellationToken.None,
                     TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
                     TaskScheduler.Default
@@ -36,5 +34,11 @@ internal sealed class Notifier : INotifiable
         }
 
         return Task.CompletedTask;
+    }
+
+    [ExcludeFromCodeCoverage]
+    private static void ByPass(Task _)
+    {
+        // ignore
     }
 }

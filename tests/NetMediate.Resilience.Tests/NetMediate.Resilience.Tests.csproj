@@ -12,7 +12,7 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="GenDI.SourceGenerator" Version="2026.5.19.1218">
+		<PackageReference Include="GenDI.SourceGenerator" Version="2026.5.25.1004">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
 		</PackageReference>
@@ -30,10 +30,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
-		<ProjectReference Include="..\..\src\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj"
-						  IncludeAssets="runtime; build; native; contentfiles; analyzers"
-						  PrivateAssets="all" ReferenceOutputAssembly="false"
-						  OutputItemType="Analyzer" />
+		<ProjectReference Include="..\..\src\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj" IncludeAssets="runtime; build; native; contentfiles; analyzers" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="Analyzer" />
 		<ProjectReference Include="..\..\src\NetMediate.Resilience\NetMediate.Resilience.csproj" />
 	</ItemGroup>
 	<ItemGroup>

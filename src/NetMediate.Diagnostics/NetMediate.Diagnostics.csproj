@@ -14,12 +14,12 @@
 		<None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="GenDI" Version="2026.5.19.1218"/>
+		<PackageReference Include="GenDI" Version="2026.5.25.1004" />
 	</ItemGroup>
 	<ItemGroup>
 	  <ProjectReference Include="..\NetMediate.Core\NetMediate.Core.csproj" />
 	</ItemGroup>
 	<ItemGroup>
-		<Using Include="GenDI"/>
+		<Using Include="GenDI" />
 	</ItemGroup>
 </Project>

@@ -14,7 +14,7 @@ public sealed class ResilienceBehaviorTests
 {
     private static IServiceProvider MakeProvider<T>(T options, CountdownEvent? semaphore = null)
     {
-        var services = new TestServiceCollection();
+        var services = new ServiceCollection();
         services.Clear();
         services.AddLogging();
         var configuration = new ConfigurationManager();

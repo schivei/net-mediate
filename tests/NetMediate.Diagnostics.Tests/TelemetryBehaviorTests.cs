@@ -258,7 +258,7 @@ public sealed class TelemetryBehaviorTests
 
     private static IServiceProvider MakeProvider(CountdownEvent? semaphore = null)
     {
-        var services = new TestServiceCollection();
+        var services = new ServiceCollection();
         services.Clear();
         services.AddLogging();
         var configuration = new ConfigurationManager();

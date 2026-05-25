@@ -26,7 +26,11 @@ public sealed class MediatorAndNotifierCoverageTests
             services.AddSingleton<INotificationHandler<NotificationMessage>>(handler);
         });
 
-        var mediator = new Mediator { ServiceProvider = new ServiceCollection().AddGenDIServices().BuildServiceProvider(), Notifier = notifier };
+        var services = new ServiceCollection()
+            .AddGenDIServices();
+        NetMediate.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
+
+        var mediator = new Mediator { ServiceProvider = services.BuildServiceProvider(), Notifier = notifier };
 
         mediator.Notify(new NotificationMessage("one"));
 
@@ -38,17 +42,14 @@ public sealed class MediatorAndNotifierCoverageTests
             [new NotificationMessage("two"), new NotificationMessage("three")]
         );
 
+        notifier.Wait();
+
         var callCount = notifier.CallCount;
-        var calls = notifier.Calls;
+        var calls = notifier.Calls.OrderBy(call => call.Key).ThenBy(call => ((NotificationMessage)call.Message).Value);
 
         Assert.Equal(5, callCount);
         Assert.Collection(
             calls,
-            call =>
-            {
-                Assert.Null(call.Key);
-                Assert.Equal("one", Assert.IsType<NotificationMessage>(call.Message).Value);
-            },
             call =>
             {
                 Assert.Null(call.Key);
@@ -61,13 +62,18 @@ public sealed class MediatorAndNotifierCoverageTests
             },
             call =>
             {
-                Assert.Equal("key", call.Key);
-                Assert.Equal("two", Assert.IsType<NotificationMessage>(call.Message).Value);
+                Assert.Null(call.Key);
+                Assert.Equal("one", Assert.IsType<NotificationMessage>(call.Message).Value);
             },
             call =>
             {
                 Assert.Equal("key", call.Key);
                 Assert.Equal("three", Assert.IsType<NotificationMessage>(call.Message).Value);
+            },
+            call =>
+            {
+                Assert.Equal("key", call.Key);
+                Assert.Equal("two", Assert.IsType<NotificationMessage>(call.Message).Value);
             }
         );
     }
@@ -561,14 +567,15 @@ public sealed class MediatorAndNotifierCoverageTests
 
         private readonly CountdownEvent _countdownEvent = new(expectedCallCount);
 
+        public void Wait() =>
+            _countdownEvent.Wait(TestContext.Current.CancellationToken);
+
         public int CallCount
         {
             get
             {
                 lock (s_lock)
                 {
-                    _countdownEvent.Wait();
-
                     return _callCount;
                 }
             }
@@ -580,8 +587,6 @@ public sealed class MediatorAndNotifierCoverageTests
             {
                 lock (s_lock)
                 {
-                    _countdownEvent.Wait();
-
                     return [.. _calls];
                 }
             }

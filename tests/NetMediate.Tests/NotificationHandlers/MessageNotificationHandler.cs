@@ -6,12 +6,12 @@ internal sealed class MessageNotificationHandler
     : BaseHandler,
         INotificationHandler<MessageNotification>
 {
-    public ValueTask Handle(
+    public Task Handle(
         MessageNotification notification,
         CancellationToken cancellationToken = default
     )
     {
         Marks(notification);
-        return ValueTask.CompletedTask;
+        return Task.CompletedTask;
     }
 }

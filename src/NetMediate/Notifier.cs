@@ -10,7 +10,7 @@ namespace NetMediate;
 internal sealed class Notifier : INotifiable
 {
     /// <inheritdoc/>
-    public ValueTask DispatchNotifications<TMessage>(
+    public Task DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
         INotificationHandler<TMessage>[] handlers,
@@ -19,11 +19,11 @@ internal sealed class Notifier : INotifiable
         where TMessage : notnull
     {
         if (handlers.Length == 0)
-            return ValueTask.CompletedTask;
+            return Task.CompletedTask;
 
         foreach (var handler in handlers)
         {
-            _ = handler.Handle(message, cancellationToken).AsTask()
+            _ = handler.Handle(message, cancellationToken)
                 .ContinueWith(
                     static task =>
                     {
@@ -35,6 +35,6 @@ internal sealed class Notifier : INotifiable
                 );
         }
 
-        return ValueTask.CompletedTask;
+        return Task.CompletedTask;
     }
 }

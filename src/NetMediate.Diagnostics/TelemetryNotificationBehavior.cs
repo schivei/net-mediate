@@ -17,7 +17,7 @@ public abstract class TelemetryNotificationBehavior<TMessage>(INotificationHandl
     where TMessage : notnull
 {
     /// <inheritdoc />
-    public async ValueTask Handle(TMessage message, CancellationToken cancellationToken = default)
+    public async Task Handle(TMessage message, CancellationToken cancellationToken = default)
     {
         using var activity = NetMediateDiagnostics.StartActivity<TMessage>("Notify");
         try

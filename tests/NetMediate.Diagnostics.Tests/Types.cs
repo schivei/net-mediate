@@ -43,15 +43,15 @@ internal sealed class CommandHandler : ICommandHandler<CommandMessage>
 [Injectable]
 internal sealed class NotificationHandler(CountdownEvent countdownEvent) : INotificationHandler<NotificationMessage>
 {
-    public ValueTask Handle(NotificationMessage message, CancellationToken cancellationToken = default)
+    public Task Handle(NotificationMessage message, CancellationToken cancellationToken = default)
     {
         try
         {
             if (message.Exception is not null)
-                return ValueTask.FromException(message.Exception);
+                return Task.FromException(message.Exception);
 
             message.Called = true;
-            return ValueTask.CompletedTask;
+            return Task.CompletedTask;
         }
         finally
         {

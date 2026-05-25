@@ -23,8 +23,8 @@ public interface INotifiable
     /// <param name="message">The notification message instance.</param>
     /// <param name="handlers">The resolved handlers to invoke.</param>
     /// <param name="cancellationToken">A token to observe for cancellation.</param>
-    /// <returns>A <see cref="ValueTask"/> that completes when dispatch finishes.</returns>
-    ValueTask DispatchNotifications<TMessage>(
+    /// <returns>A <see cref="Task"/> that completes when dispatch finishes.</returns>
+    Task DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
         INotificationHandler<TMessage>[] handlers,

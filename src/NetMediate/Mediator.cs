@@ -136,17 +136,7 @@ internal sealed class Mediator : IMediator
     {
         INotificationHandler<TMessage>[] handlers = ResolveNotifyHandlers<TMessage>(key);
 
-        Notifier.DispatchNotifications(key, message, handlers)
-            .AsTask()
-            .ContinueWith(
-                static task =>
-                {
-                    // ignore
-                },
-                CancellationToken.None,
-                TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default
-            );
+        _ = Notifier.DispatchNotifications(key, message, handlers);
     }
 
     /// <inheritdoc/>

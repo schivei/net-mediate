@@ -39,11 +39,11 @@ public abstract class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 public abstract class CircuitBreakerNotificationBehavior<TMessage>(
     INotificationHandler<TMessage> handler,
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
-) : ACircuitBreakerBehavior<TMessage, ValueTask>("Circuit open for notification.", optionsAccessor), INotificationHandler<TMessage>
+) : ACircuitBreakerBehavior<TMessage, Task>("Circuit open for notification.", optionsAccessor), INotificationHandler<TMessage>
     where TMessage : notnull
 {
     /// <inheritdoc />
-    public override ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
+    public override Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
         ExecuteAsync(message, handler.Handle, cancellationToken);
 }
 
@@ -222,6 +222,43 @@ public abstract class ACircuitBreakerBehavior<TMessage, TResult>(
     protected async ValueTask ExecuteAsync(
         TMessage message,
         Func<TMessage, CancellationToken, ValueTask> next,
+        CancellationToken cancellationToken
+    )
+    {
+        if (IsDisabled())
+        {
+            await next(message, cancellationToken).ConfigureAwait(false);
+            RegisterSuccess();
+            return;
+        }
+
+        if (IsCircuitOpen())
+            throw new InvalidOperationException(circuitOpenMessage);
+
+        try
+        {
+            await next(message, cancellationToken).ConfigureAwait(false);
+            RegisterSuccess();
+        }
+        catch
+        {
+            RegisterFailure();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Executes the asynchronous pipeline step for the specified message, invoking the next delegate in the pipeline
+    /// unless the circuit is open or the step is disabled.
+    /// </summary>
+    /// <param name="message">The message to process in the pipeline step.</param>
+    /// <param name="next">A delegate representing the next step in the pipeline to be invoked with the message and cancellation token.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the asynchronous operation.</param>
+    /// <returns>A task that represents the asynchronous execution of the pipeline step.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if the circuit is open and the pipeline step cannot be executed.</exception>
+    protected async Task ExecuteAsync(
+        TMessage message,
+        Func<TMessage, CancellationToken, Task> next,
         CancellationToken cancellationToken
     )
     {

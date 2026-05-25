@@ -346,12 +346,12 @@ public sealed class MediatorAndNotifierCoverageTests
                 new LambdaNotificationHandler<NotificationMessage>((_, _) =>
                 {
                     first.SetResult();
-                    return ValueTask.CompletedTask;
+                    return Task.CompletedTask;
                 }),
                 new LambdaNotificationHandler<NotificationMessage>((_, _) =>
                 {
                     second.SetResult();
-                    return ValueTask.CompletedTask;
+                    return Task.CompletedTask;
                 })
             ],
             TestContext.Current.CancellationToken
@@ -377,10 +377,10 @@ public sealed class MediatorAndNotifierCoverageTests
                 new NotificationMessage("value"),
                 [
                     new LambdaNotificationHandler<NotificationMessage>((_, _) =>
-                        ValueTask.FromException(new InvalidOperationException("handler fault")))
+                        Task.FromException(new InvalidOperationException("handler fault")))
                 ],
                 TestContext.Current.CancellationToken
-            ).AsTask());
+            ));
 
         // Exception must NOT propagate out of DispatchNotifications.
         Assert.Null(exception);
@@ -401,7 +401,7 @@ public sealed class MediatorAndNotifierCoverageTests
                     new LambdaNotificationHandler<NotificationMessage>((_, _) => {
                         try
                         {
-                            return new(handlerTaskSource.Task);
+                            return handlerTaskSource.Task;
                         }
                         finally{
                             counter.Signal();
@@ -409,7 +409,7 @@ public sealed class MediatorAndNotifierCoverageTests
                     })
                 ],
                 TestContext.Current.CancellationToken
-            ).AsTask()).ConfigureAwait(true);
+            )).ConfigureAwait(true);
 
         handlerTaskSource.TrySetException(new InvalidOperationException("late handler fault"));
 
@@ -438,7 +438,7 @@ public sealed class MediatorAndNotifierCoverageTests
                         if (Interlocked.Increment(ref batchCount) >= 3)
                             batchCompletion.TrySetResult();
 
-                        return ValueTask.CompletedTask;
+                        return Task.CompletedTask;
                     }
                     finally
                     {
@@ -452,7 +452,7 @@ public sealed class MediatorAndNotifierCoverageTests
                     try
                     {
                         Interlocked.Increment(ref singleCount);
-                        return ValueTask.CompletedTask;
+                        return Task.CompletedTask;
                     }
                     finally
                     {
@@ -554,7 +554,7 @@ public sealed class MediatorAndNotifierCoverageTests
                 new NotificationMessage("value"),
                 [],
                 TestContext.Current.CancellationToken
-            ).AsTask());
+            ));
         Assert.Null(ex);
     }
 
@@ -621,7 +621,7 @@ public sealed class MediatorAndNotifierCoverageTests
             }
         }
 
-        public ValueTask DispatchNotifications<TMessage>(
+        public Task DispatchNotifications<TMessage>(
             object? key,
             TMessage message,
             INotificationHandler<TMessage>[] handlers,
@@ -637,7 +637,7 @@ public sealed class MediatorAndNotifierCoverageTests
                     _calls.Add((key, message));
                 }
 
-                return ValueTask.CompletedTask;
+                return Task.CompletedTask;
             }
             finally
             {
@@ -751,21 +751,21 @@ internal sealed class ThrowingRequestHandler : IRequestHandler<RequestMessage, R
 internal sealed class RecordingNotificationHandler : INotificationHandler<NotificationMessage>
 {
     public List<string> Values { get; } = [];
-    public ValueTask Handle(
+    public Task Handle(
         NotificationMessage message,
         CancellationToken cancellationToken = default
     )
     {
         Values.Add(message.Value);
-        return ValueTask.CompletedTask;
+        return Task.CompletedTask;
     }
 }
 
 internal sealed class LambdaNotificationHandler<TMessage>(
-    Func<TMessage, CancellationToken, ValueTask> callback
+    Func<TMessage, CancellationToken, Task> callback
 ) : INotificationHandler<TMessage>
     where TMessage : notnull
 {
-    public ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
+    public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
         callback(message, cancellationToken);
 }

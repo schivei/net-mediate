@@ -76,8 +76,8 @@ internal sealed class NotifyRetryNotificationTestRetryNotification(Attemption at
         {
             var attempts = attemption.Attempt(msg.Method);
             return attempts < 3
-                ? ValueTask.FromException(new InvalidOperationException("fail"))
-                : ValueTask.CompletedTask;
+                ? Task.FromException(new InvalidOperationException("fail"))
+                : Task.CompletedTask;
         }
         finally
         {
@@ -113,11 +113,11 @@ internal class LambdaCommandHandler<TMessage>(
 }
 
 internal class LambdaNotificationHandler<TMessage>(
-    Func<TMessage, CancellationToken, ValueTask> callback
+    Func<TMessage, CancellationToken, Task> callback
 ) : INotificationHandler<TMessage>
     where TMessage : notnull
 {
-    public ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
+    public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
         callback(message, cancellationToken);
 }
 

@@ -155,7 +155,7 @@ public sealed class ResilienceBehaviorTests
         );
 
         var exception = await Assert.ThrowsAsync<TimeoutException>(() =>
-            behavior.Handle(new TimeoutNotificationMessage(method), TestContext.Current.CancellationToken).AsTask()
+            behavior.Handle(new TimeoutNotificationMessage(method), TestContext.Current.CancellationToken)
         );
 
         Assert.Contains("Notification exceeded timeout", exception.Message);
@@ -317,12 +317,12 @@ public sealed class ResilienceBehaviorTests
         var method = nameof(CircuitBreakerNotificationBehavior_RethrowsFailures);
         var behavior = new CircuitNotificationCircuitBreakerNotificationBehavior(
             new LambdaNotificationHandler<CircuitNotificationMessage>((_, _) =>
-                ValueTask.FromException(new InvalidOperationException("boom"))),
+                Task.FromException(new InvalidOperationException("boom"))),
             Options.Create(new CircuitBreakerBehaviorOptions())
         );
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            behavior.Handle(new CircuitNotificationMessage(method), TestContext.Current.CancellationToken).AsTask()
+            behavior.Handle(new CircuitNotificationMessage(method), TestContext.Current.CancellationToken)
         );
     }
 
@@ -335,7 +335,7 @@ public sealed class ResilienceBehaviorTests
             new LambdaNotificationHandler<CircuitNotificationMessage>((_, _) =>
             {
                 called = true;
-                return ValueTask.CompletedTask;
+                return Task.CompletedTask;
             }),
             Options.Create(new CircuitBreakerBehaviorOptions())
         );
@@ -354,8 +354,8 @@ public sealed class ResilienceBehaviorTests
             {
                 attempts++;
                 return attempts == 1
-                    ? ValueTask.FromException(new InvalidOperationException("boom"))
-                    : ValueTask.CompletedTask;
+                    ? Task.FromException(new InvalidOperationException("boom"))
+                    : Task.CompletedTask;
             }),
             Options.Create(
                 new CircuitBreakerBehaviorOptions

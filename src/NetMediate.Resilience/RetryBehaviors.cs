@@ -35,6 +35,26 @@ internal static class RetryBehaviorRunner
             cancellationToken
         );
 
+    public static async Task ExecuteAsync<TMessage>(
+        IOptions<RetryBehaviorOptions> optionsAccessor,
+        TMessage message,
+        Func<TMessage, CancellationToken, Task> next,
+        CancellationToken cancellationToken
+    ) where TMessage : notnull
+    {
+        _ = await ExecuteCoreAsync(
+                optionsAccessor.Value,
+                static async (state, ct) =>
+                {
+                    await state.Next(state.Message, ct).ConfigureAwait(false);
+                    return CompletedResult;
+                },
+                (Message: message, Next: next),
+                cancellationToken
+            )
+            .ConfigureAwait(false);
+    }
+
     public static async ValueTask ExecuteAsync<TMessage>(
         IOptions<RetryBehaviorOptions> optionsAccessor,
         TMessage message,
@@ -227,7 +247,7 @@ public abstract class RetryNotificationBehavior<TMessage>(
     where TMessage : notnull
 {
     /// <inheritdoc/>
-    public ValueTask Handle(TMessage message, CancellationToken cancellationToken = default) =>
+    public Task Handle(TMessage message, CancellationToken cancellationToken = default) =>
         RetryBehaviorRunner.ExecuteAsync(optionsAccessor, message, handler.Handle, cancellationToken);
 }
 

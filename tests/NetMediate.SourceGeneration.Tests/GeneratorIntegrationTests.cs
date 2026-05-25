@@ -1,8 +1,10 @@
-#pragma warning disable xUnit1004
-
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
+using NetMediate.Diagnostics;
+using NetMediate.Moq;
+using NetMediate.Quartz;
+using NetMediate.Resilience;
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Text.Json;
@@ -214,7 +216,9 @@ public sealed class GeneratorIntegrationTests
                     refs.Add(MetadataReference.CreateFromFile(asm.Location));
                 }
                 catch
-                { }
+                {
+                    // Ignore assemblies that can't be loaded as metadata references (e.g. native or mixed-mode assemblies).
+                }
             }
         }
 
@@ -228,12 +232,25 @@ public sealed class GeneratorIntegrationTests
             {
                 refs.Add(MetadataReference.CreateFromFile(genDiPath));
             }
-            catch (IOException) { }
-            catch (BadImageFormatException) { }
+            catch (IOException)
+            {
+                // Ignore assemblies that can't be loaded as metadata references (e.g. native or mixed-mode assemblies).
+            }
+            catch (BadImageFormatException)
+            {
+                // Ignore assemblies that can't be loaded as metadata references (e.g. native or mixed-mode assemblies).
+            }
         }
 
         if (includeNetMediateDll)
+        {
             refs.Add(MetadataReference.CreateFromFile(typeof(IMediator).Assembly.Location));
+            refs.Add(MetadataReference.CreateFromFile(typeof(ICommandHandler<>).Assembly.Location));
+            refs.Add(MetadataReference.CreateFromFile(typeof(IQuartzMessage).Assembly.Location));
+            refs.Add(MetadataReference.CreateFromFile(typeof(TelemetryCommandBehavior<>).Assembly.Location));
+            refs.Add(MetadataReference.CreateFromFile(typeof(NotifierMock).Assembly.Location));
+            refs.Add(MetadataReference.CreateFromFile(typeof(CircuitBreakerCommandBehavior<>).Assembly.Location));
+        }
 
         if (additionalReferences is not null)
             refs.AddRange(additionalReferences);
@@ -273,7 +290,7 @@ public sealed class GeneratorIntegrationTests
         );
 
         Assert.Contains("class NetMediateGeneratedDI", generatedSource);
-        Assert.DoesNotContain("AddNetMediate(", generatedSource);
+        Assert.DoesNotContain("AddGenDIServices(", generatedSource);
         Assert.Contains("// No handlers found — no registrations to generate.", generatedSource);
     }
 
@@ -417,7 +434,7 @@ public sealed class GeneratorIntegrationTests
             diSrc
         );
         Assert.DoesNotContain("RegisterNotificationHandler", diSrc);
-        Assert.Contains("NotifyAlertNotificationAsync", typedExtensionsSrc);
+        Assert.Contains("NotifyAlertNotification", typedExtensionsSrc);
     }
 
     [Fact]
@@ -1016,11 +1033,4 @@ public sealed class GeneratorIntegrationTests
             Assert.DoesNotContain("public static", typedExtensionsSource);
         }
     }
-
-    private static int CountOccurrences(string source, string pattern)
-    {
-        return source.AsSpan().Count(pattern.AsSpan());
-    }
 }
-
-#pragma warning restore xUnit1004

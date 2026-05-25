@@ -17,7 +17,7 @@ namespace NetMediate.Resilience;
 /// <typeparam name="TResponse">The type of the response returned by the handler.</typeparam>
 /// <param name="handler">The underlying request handler to be decorated with circuit breaker behavior.</param>
 /// <param name="optionsAccessor">The options accessor used to configure circuit breaker behavior.</param>
-public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
+public abstract class CircuitBreakerRequestBehavior<TMessage, TResponse>(
     IRequestHandler<TMessage, TResponse> handler,
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
 ) : ACircuitBreakerBehavior<TMessage, ValueTask<TResponse>>("Circuit open for request.", optionsAccessor), IRequestHandler<TMessage, TResponse>
@@ -36,7 +36,7 @@ public sealed class CircuitBreakerRequestBehavior<TMessage, TResponse>(
 /// <typeparam name="TMessage">The type of the notification message to handle. Must not be null.</typeparam>
 /// <param name="handler">The underlying notification handler to which the circuit breaker behavior is applied.</param>
 /// <param name="optionsAccessor">The options accessor used to configure circuit breaker behavior.</param>
-public sealed class CircuitBreakerNotificationBehavior<TMessage>(
+public abstract class CircuitBreakerNotificationBehavior<TMessage>(
     INotificationHandler<TMessage> handler,
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
 ) : ACircuitBreakerBehavior<TMessage, ValueTask>("Circuit open for notification.", optionsAccessor), INotificationHandler<TMessage>
@@ -57,7 +57,7 @@ public sealed class CircuitBreakerNotificationBehavior<TMessage>(
 /// <typeparam name="TMessage">The type of the command message to handle. Must not be null.</typeparam>
 /// <param name="handler">The command handler to wrap with circuit breaker behavior.</param>
 /// <param name="optionsAccessor">The options accessor that provides configuration for the circuit breaker behavior.</param>
-public sealed class CircuitBreakerCommandBehavior<TMessage>(
+public abstract class CircuitBreakerCommandBehavior<TMessage>(
     ICommandHandler<TMessage> handler,
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
 ) : ACircuitBreakerBehavior<TMessage, ValueTask>("Circuit open for command.", optionsAccessor), ICommandHandler<TMessage>
@@ -79,7 +79,7 @@ public sealed class CircuitBreakerCommandBehavior<TMessage>(
 /// <typeparam name="TResponse">The type of the response elements produced by the stream handler.</typeparam>
 /// <param name="handler">The underlying stream handler to which requests are delegated when the circuit is closed.</param>
 /// <param name="optionsAccessor">The options accessor that provides configuration settings for the circuit breaker behavior.</param>
-public sealed class CircuitBreakerStreamBehavior<TMessage, TResponse>(
+public abstract class CircuitBreakerStreamBehavior<TMessage, TResponse>(
     IStreamHandler<TMessage, TResponse> handler,
     IOptions<CircuitBreakerBehaviorOptions> optionsAccessor
 ) : ACircuitBreakerBehavior<TMessage, IAsyncEnumerable<TResponse>>("Circuit open for stream.", optionsAccessor), IStreamHandler<TMessage, TResponse>

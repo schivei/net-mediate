@@ -391,22 +391,33 @@ public sealed class MediatorAndNotifierCoverageTests
     {
         var notifier = new Notifier();
         var handlerTaskSource = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var counter = new CountdownEvent(1);
 
-        var exception = await Record.ExceptionAsync(() =>
+        var exceptionTask = Record.ExceptionAsync(() =>
             notifier.DispatchNotifications(
                 null,
                 new NotificationMessage("value"),
                 [
-                    new LambdaNotificationHandler<NotificationMessage>((_, _) =>
-                        new(handlerTaskSource.Task))
+                    new LambdaNotificationHandler<NotificationMessage>((_, _) => {
+                        try
+                        {
+                            return new(handlerTaskSource.Task);
+                        }
+                        finally{
+                            counter.Signal();
+                        }
+                    })
                 ],
                 TestContext.Current.CancellationToken
-            ).AsTask());
+            ).AsTask()).ConfigureAwait(true);
 
         handlerTaskSource.TrySetException(new InvalidOperationException("late handler fault"));
+
+        counter.Wait(TestContext.Current.CancellationToken);
+
         await Assert.ThrowsAsync<InvalidOperationException>(() => handlerTaskSource.Task);
 
-        Assert.Null(exception);
+        Assert.Null(await exceptionTask);
     }
 
     [Fact]
@@ -415,22 +426,38 @@ public sealed class MediatorAndNotifierCoverageTests
         var singleCount = 0;
         var batchCount = 0;
         var batchCompletion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var countDown = new CountdownEvent(6);
 
         using var provider = BuildProvider(services =>
         {
             services.AddSingleton<INotificationHandler<NotificationMessage>>(
                 new LambdaNotificationHandler<NotificationMessage>((_, _) =>
                 {
-                    if (Interlocked.Increment(ref batchCount) >= 3)
-                        batchCompletion.TrySetResult();
-                    return ValueTask.CompletedTask;
+                    try
+                    {
+                        if (Interlocked.Increment(ref batchCount) >= 3)
+                            batchCompletion.TrySetResult();
+
+                        return ValueTask.CompletedTask;
+                    }
+                    finally
+                    {
+                        countDown.Signal();
+                    }
                 })
             );
             services.AddSingleton<INotificationHandler<NotificationMessage>>(
                 new LambdaNotificationHandler<NotificationMessage>((_, _) =>
                 {
-                    Interlocked.Increment(ref singleCount);
-                    return ValueTask.CompletedTask;
+                    try
+                    {
+                        Interlocked.Increment(ref singleCount);
+                        return ValueTask.CompletedTask;
+                    }
+                    finally
+                    {
+                        countDown.Signal();
+                    }
                 })
             );
         });
@@ -443,6 +470,8 @@ public sealed class MediatorAndNotifierCoverageTests
             null,
             [new NotificationMessage("two"), new NotificationMessage("three")]
         );
+
+        countDown.Wait(TestContext.Current.CancellationToken);
 
         await batchCompletion.Task.WaitAsync(TestContext.Current.CancellationToken);
         Assert.True(singleCount > 0);

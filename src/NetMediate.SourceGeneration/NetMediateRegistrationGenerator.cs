@@ -144,7 +144,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             isNetMediateAssembly,
             compilation.AssemblyName,
             supportsGlobalUsing,
-            IsGeneratedCodeCoverageEnabled(compilation) ? CoverageTpl : string.Empty
+            IsGeneratedCodeCoverageEnabled(compilation) ? string.Empty : CoverageTpl
         );
     }
 

@@ -15,11 +15,8 @@
   <Folder Name="/.sln/docs/">
     <File Path="docs/AOT.md" />
     <File Path="docs/BENCHMARKS.md" />
-    <File Path="docs/DIAGNOSTICS.md" />
     <File Path="docs/NETMEDIATE_MOQ_RECIPES.md" />
     <File Path="docs/PERFORMANCE_IMPROVEMENTS.md" />
-    <File Path="docs/QUARTZ.md" />
-    <File Path="docs/RESILIENCE.md" />
     <File Path="docs/SAMPLES.md" />
     <File Path="docs/SOURCE_GENERATION.md" />
     <File Path="docs/VALIDATION_BEHAVIOR_SAMPLE.md" />
@@ -32,9 +29,6 @@
   </Folder>
   <Folder Name="/.sln/website/advanced/">
     <File Path="website/docs/advanced/aot-support.md" />
-    <File Path="website/docs/advanced/diagnostics.md" />
-    <File Path="website/docs/advanced/quartz.md" />
-    <File Path="website/docs/advanced/resilience.md" />
     <File Path="website/docs/advanced/source-generation.md" />
   </Folder>
   <Folder Name="/.sln/website/api/">
@@ -76,24 +70,13 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/NetMediate.Core/NetMediate.Core.csproj" Id="080fa9f8-4840-4188-ae28-602ddc1cc8d9" />
-    <Project Path="src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj" Id="e5f6a7b8-c9d0-4e1f-a2b3-c4d5e6f7a8b9" />
     <Project Path="src/NetMediate.Moq/NetMediate.Moq.csproj" Id="9d54e570-e883-4296-b281-c8d40ed4e8af" />
-    <Project Path="src/NetMediate.Quartz/NetMediate.Quartz.csproj" Id="c2d3e4f5-a6b7-48c9-d0e1-f2a3b4c5d6e7" />
-    <Project Path="src/NetMediate.Resilience/NetMediate.Resilience.csproj" Id="a88213d8-a9ce-4d78-90cc-34a03cd7187a" />
     <Project Path="src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj" Id="40a8f7d3-d0c1-48d3-b96d-51bc74cbf218" />
     <Project Path="src/NetMediate/NetMediate.csproj" Id="232b3170-ace0-4adb-a81d-541c5b872bac" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/NetMediate.Benchmarks/NetMediate.Benchmarks.csproj" />
-    <Project Path="tests/NetMediate.Diagnostics.Tests/NetMediate.Diagnostics.Tests.csproj" Id="f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c" />
-    <Project Path="tests/NetMediate.Resilience.Tests/NetMediate.Resilience.Tests.csproj" Id="a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d" />
     <Project Path="tests/NetMediate.SourceGeneration.Tests/NetMediate.SourceGeneration.Tests.csproj" Id="5e7f8a9b-c0d1-4e2f-a3b4-c5d6e7f8a9b0" />
     <Project Path="tests/NetMediate.Tests/NetMediate.Tests.csproj" Id="7c9982c0-0795-4743-988d-be05f7cd797b" />
-  </Folder>
-  <Folder Name="/tests/Quartz/">
-    <Project Path="tests/Quartz/NetMediate.Quartz.AutoIdentifier.Tests/NetMediate.Quartz.AutoIdentifier.Tests.csproj" Id="aed424f1-9b5a-4e54-8038-6e39f2892860" />
-    <Project Path="tests/Quartz/NetMediate.Quartz.GuidIdentifier.Tests/NetMediate.Quartz.GuidIdentifier.Tests.csproj" Id="95786f21-7544-43c1-9969-a3926fe3308a" />
-    <Project Path="tests/Quartz/NetMediate.Quartz.HashIdentifier.Tests/NetMediate.Quartz.HashIdentifier.Tests.csproj" Id="eefa7339-66aa-44ec-9c94-611d7d6e7ce3" />
-    <Project Path="tests/Quartz/NetMediate.Quartz.MessageIdentifier.Tests/NetMediate.Quartz.MessageIdentifier.Tests.csproj" Id="3458494a-8823-4a47-b86c-4550ac0ace1c" />
   </Folder>
 </Solution>

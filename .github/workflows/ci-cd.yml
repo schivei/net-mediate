@@ -3,7 +3,7 @@ name: CI/CD Pipeline
 on:
   push:
     # 'main' is intentionally excluded here: CI on main is triggered by the
-    # 'workflow_run' event below so it always runs AFTER version-bump has
+    # 'workflow_run' event below, so it always runs AFTER version-bump has
     # committed the new versions.props, ensuring builds use the correct version.
     branches: [ main ]
     tags: [ 'v*' ]
@@ -477,20 +477,11 @@ jobs:
     - name: Pack NetMediate.Core package
       run: dotnet pack src/NetMediate.Core/NetMediate.Core.csproj --configuration Release --output ./packages /p:Version=${VERSION}
 
-    - name: Pack NetMediate.Diagnostics package
-      run: dotnet pack src/NetMediate.Diagnostics/NetMediate.Diagnostics.csproj --configuration Release --output ./packages /p:Version=${VERSION}
-
     - name: Pack NetMediate.Moq package
       run: dotnet pack src/NetMediate.Moq/NetMediate.Moq.csproj --configuration Release --output ./packages /p:Version=${VERSION}
 
-    - name: Pack NetMediate.Resilience package
-      run: dotnet pack src/NetMediate.Resilience/NetMediate.Resilience.csproj --configuration Release --output ./packages /p:Version=${VERSION}
-
     - name: Pack NetMediate.SourceGeneration package
       run: dotnet pack src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release --output ./packages /p:Version=${VERSION}
-      
-    - name: Pack NetMediate.Quartz package
-      run: dotnet pack src/NetMediate.Quartz/NetMediate.Quartz.csproj --configuration Release --output ./packages /p:Version=${VERSION}
       
     - name: Upload package artifacts
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

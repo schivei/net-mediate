@@ -51,7 +51,6 @@ That's it. The generator discovers all concrete (non-abstract, non-generic) clas
 |---|---|
 | `NetMediateGeneratedDI.g.cs` | Emits `AddNetMediate()` and chains application-local and NetMediate `AddGenDIServices()` calls |
 | `NetMediateTypedExtensions.g.cs` | Emits strongly typed `Send*Async`, `Notify*Async`, `Request*Async`, and `Stream*Async` helper methods |
-| `*.g.cs` framework behavior wrappers | Emits concrete decorator wrappers when `NetMediate.Diagnostics` and/or `NetMediate.Resilience` are referenced |
 
 The generated method is decorated with `[ExcludeFromCodeCoverage]` — you do not need to test it directly.
 

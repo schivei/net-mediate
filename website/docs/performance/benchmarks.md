@@ -39,8 +39,6 @@ and unaffected by CPU load, making this the most reliable regression signal.
 The `vs timing` column compares dispatch time against stored target-branch values
 (±10% = no change on shared CI hardware; ✅ = improved, ⚠️ = degraded).
 
-> Improvement plan for current regressions is tracked in [PERFORMANCE_IMPROVEMENTS.md](PERFORMANCE_IMPROVEMENTS.md).
-
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|

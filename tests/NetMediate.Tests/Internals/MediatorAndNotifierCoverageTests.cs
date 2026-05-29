@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate.Tests.DependencyInjection;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using static NetMediate.Tests.Internals.MediatorAndNotifierCoverageTests;
@@ -624,7 +625,7 @@ public sealed class MediatorAndNotifierCoverageTests
         public Task DispatchNotifications<TMessage>(
             object? key,
             TMessage message,
-            INotificationHandler<TMessage>[] handlers,
+            ImmutableArray<INotificationHandler<TMessage>> handlers,
             CancellationToken cancellationToken = default
         )
             where TMessage : notnull

@@ -1,5 +1,6 @@
 ﻿using GenDI;
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections.Immutable;
 
 namespace NetMediate;
 
@@ -27,7 +28,7 @@ public interface INotifiable
     Task DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
-        INotificationHandler<TMessage>[] handlers,
+        ImmutableArray<INotificationHandler<TMessage>> handlers,
         CancellationToken cancellationToken = default
     )
         where TMessage : notnull;

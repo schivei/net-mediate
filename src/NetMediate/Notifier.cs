@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 
@@ -14,7 +15,7 @@ internal sealed class Notifier : INotifiable
     public Task DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
-        INotificationHandler<TMessage>[] handlers,
+        ImmutableArray<INotificationHandler<TMessage>> handlers,
         CancellationToken cancellationToken = default
     )
         where TMessage : notnull
@@ -22,16 +23,14 @@ internal sealed class Notifier : INotifiable
         if (handlers.Length == 0)
             return Task.CompletedTask;
 
-        foreach (var handler in handlers)
-        {
-            _ = handler.Handle(message, cancellationToken)
-                .ContinueWith(
-                    ByPass,
-                    CancellationToken.None,
-                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-                    TaskScheduler.Default
-                );
-        }
+        _ = Task.WhenAll(
+            handlers.Select(handler => handler.Handle(message, cancellationToken))
+        ).ContinueWith(
+            ByPass,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default
+        );
 
         return Task.CompletedTask;
     }

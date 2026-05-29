@@ -47,6 +47,17 @@ public sealed class IMediatorDefaultAdditionalTests
         )
             where TMessage : notnull => ValueTask.CompletedTask;
 
+        public ValueTask ParallelSends<TMessage>(
+            IEnumerable<TMessage> messages,
+            CancellationToken cancellationToken = default) where TMessage : notnull =>
+            ValueTask.CompletedTask;
+
+        public ValueTask ParallelSends<TMessage>(
+            object? key,
+            IEnumerable<TMessage> messages,
+            CancellationToken cancellationToken = default) where TMessage : notnull =>
+            ValueTask.CompletedTask;
+
         public ValueTask<TResponse> Request<TMessage, TResponse>(
             TMessage message,
             CancellationToken cancellationToken = default

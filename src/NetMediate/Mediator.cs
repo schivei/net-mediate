@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -22,61 +23,49 @@ internal sealed class Mediator : IMediator
     /// </summary>
     [Inject] public required INotifiable Notifier { get; init; }
 
-    private readonly ConcurrentDictionary<Type, object> _cmdCache = new();
-    private readonly ConcurrentDictionary<Type, object> _ntfCache = new();
-    private readonly ConcurrentDictionary<(Type, Type), object> _reqCache = new();
-    private readonly ConcurrentDictionary<(Type, Type), object> _streamCache = new();
+    private readonly ConcurrentDictionary<(Type, object?), Lazy<object>> _cmdCache = new();
+    private readonly ConcurrentDictionary<(Type, object?), Lazy<object>> _ntfCache = new();
+    private readonly ConcurrentDictionary<(Type, Type, object?), Lazy<object>> _reqCache = new();
+    private readonly ConcurrentDictionary<(Type, Type, object?), Lazy<object>> _streamCache = new();
 
-    private ICommandHandler<TMessage>[] GetCommandHandlers<TMessage>()
+    private ImmutableArray<ICommandHandler<TMessage>> GetCommandHandlers<TMessage>(object? key)
         where TMessage : notnull =>
-        (ICommandHandler<TMessage>[])_cmdCache.GetOrAdd(
-            typeof(TMessage),
-            _ => ServiceProvider.GetServices<ICommandHandler<TMessage>>().ToArray());
+        (ImmutableArray<ICommandHandler<TMessage>>)(_cmdCache.GetOrAdd(
+            (typeof(TMessage), key),
+            k => new(() => k.Item2 is null ?
+                ServiceProvider.GetServices<ICommandHandler<TMessage>>().ToImmutableArray() :
+                [.. ServiceProvider.GetKeyedServices<ICommandHandler<TMessage>>(k.Item2)]
+            ))).Value;
 
-    private INotificationHandler<TMessage>[] GetNotifyHandlers<TMessage>()
+    private ImmutableArray<INotificationHandler<TMessage>> GetNotifyHandlers<TMessage>(object? key)
         where TMessage : notnull =>
-        (INotificationHandler<TMessage>[])_ntfCache.GetOrAdd(
-            typeof(TMessage),
-            _ => ServiceProvider.GetServices<INotificationHandler<TMessage>>().ToArray());
+        (ImmutableArray<INotificationHandler<TMessage>>)_ntfCache.GetOrAdd(
+            (typeof(TMessage), key),
+            k => new(() => k.Item2 is null ?
+                ServiceProvider.GetServices<INotificationHandler<TMessage>>().ToImmutableArray() :
+                [.. ServiceProvider.GetKeyedServices<INotificationHandler<TMessage>>(k.Item2)]
+            )).Value;
 
-    private IRequestHandler<TMessage, TResponse> GetRequestHandler<TMessage, TResponse>()
+    private IRequestHandler<TMessage, TResponse> GetRequestHandler<TMessage, TResponse>(object? key)
         where TMessage : notnull =>
         (IRequestHandler<TMessage, TResponse>)_reqCache.GetOrAdd(
-            (typeof(TMessage), typeof(TResponse)),
-            _ => ServiceProvider.GetRequiredService<IRequestHandler<TMessage, TResponse>>());
+            (typeof(TMessage), typeof(TResponse), key),
+            k => new(() => k.Item3 is null ?
+                ServiceProvider.GetRequiredService<IRequestHandler<TMessage, TResponse>>() :
+                ServiceProvider.GetRequiredKeyedService<IRequestHandler<TMessage, TResponse>>(k.Item3)
+            )).Value;
 
-    private IStreamHandler<TMessage, TResponse>[] GetStreamHandlers<TMessage, TResponse>()
+    private ImmutableArray<IStreamHandler<TMessage, TResponse>> GetStreamHandlers<TMessage, TResponse>(object? key)
         where TMessage : notnull =>
-        (IStreamHandler<TMessage, TResponse>[])_streamCache.GetOrAdd(
-            (typeof(TMessage), typeof(TResponse)),
-            _ => ServiceProvider.GetServices<IStreamHandler<TMessage, TResponse>>().ToArray());
-
-    private ICommandHandler<TMessage>[] ResolveCommandHandlers<TMessage>(object? key)
-        where TMessage : notnull =>
-        key is null
-            ? GetCommandHandlers<TMessage>()
-            : [.. ServiceProvider.GetKeyedServices<ICommandHandler<TMessage>>(key)];
-
-    private INotificationHandler<TMessage>[] ResolveNotifyHandlers<TMessage>(object? key)
-        where TMessage : notnull =>
-        key is null
-            ? GetNotifyHandlers<TMessage>()
-            : [.. ServiceProvider.GetKeyedServices<INotificationHandler<TMessage>>(key)];
-
-    private IRequestHandler<TMessage, TResponse> ResolveRequestHandler<TMessage, TResponse>(object? key)
-        where TMessage : notnull =>
-        key is null
-            ? GetRequestHandler<TMessage, TResponse>()
-            : ServiceProvider.GetRequiredKeyedService<IRequestHandler<TMessage, TResponse>>(key);
-
-    private IStreamHandler<TMessage, TResponse>[] ResolveStreamHandlers<TMessage, TResponse>(object? key)
-        where TMessage : notnull =>
-        key is null
-            ? GetStreamHandlers<TMessage, TResponse>()
-            : [.. ServiceProvider.GetKeyedServices<IStreamHandler<TMessage, TResponse>>(key)];
+        (ImmutableArray<IStreamHandler<TMessage, TResponse>>)_streamCache.GetOrAdd(
+            (typeof(TMessage), typeof(TResponse), key),
+            k => new(() => k.Item3 is null ? 
+                ServiceProvider.GetServices<IStreamHandler<TMessage, TResponse>>().ToImmutableArray() :
+                [.. ServiceProvider.GetKeyedServices<IStreamHandler<TMessage, TResponse>>(k.Item3)]
+            )).Value;
 
     private static async ValueTask DispatchCommandHandlersAsync<TMessage>(
-        ICommandHandler<TMessage>[] handlers,
+        ImmutableArray<ICommandHandler<TMessage>> handlers,
         TMessage message,
         CancellationToken cancellationToken
     )
@@ -99,7 +88,7 @@ internal sealed class Mediator : IMediator
         );
 
     private static IAsyncEnumerable<TResponse> BuildStreamDispatch<TMessage, TResponse>(
-        IStreamHandler<TMessage, TResponse>[] handlers,
+        ImmutableArray<IStreamHandler<TMessage, TResponse>> handlers,
         TMessage message,
         CancellationToken cancellationToken
     )
@@ -115,7 +104,7 @@ internal sealed class Mediator : IMediator
     }
 
     private static IAsyncEnumerable<TResponse> ConcatStreams<TMessage, TResponse>(
-        IStreamHandler<TMessage, TResponse>[] handlers,
+        ImmutableArray<IStreamHandler<TMessage, TResponse>> handlers,
         TMessage message,
         CancellationToken cancellationToken
     )
@@ -134,7 +123,7 @@ internal sealed class Mediator : IMediator
         TMessage message
     ) where TMessage : notnull
     {
-        INotificationHandler<TMessage>[] handlers = ResolveNotifyHandlers<TMessage>(key);
+        var handlers = GetNotifyHandlers<TMessage>(key);
 
         _ = Notifier.DispatchNotifications(key, message, handlers);
     }
@@ -160,8 +149,7 @@ internal sealed class Mediator : IMediator
         if (!messages.Any())
             return;
 
-        foreach (var m in messages)
-            Notify(key, m);
+        _ = Task.WhenAll(messages.Select(message => Task.Run(() => Notify(key, message))));
     }
 
     /// <inheritdoc/>
@@ -180,16 +168,12 @@ internal sealed class Mediator : IMediator
         try
         {
             await DispatchCommandHandlersAsync(
-                ResolveCommandHandlers<TMessage>(key),
+                GetCommandHandlers<TMessage>(key),
                 message,
                 cancellationToken
             ).ConfigureAwait(false);
         }
-        catch (MediatorException)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not MediatorException)
         {
             throw CreateMediatorException<TMessage>(typeof(ICommandHandler<TMessage>), ex);
         }
@@ -222,6 +206,27 @@ internal sealed class Mediator : IMediator
     }
 
     /// <inheritdoc/>
+    [ExcludeFromCodeCoverage]
+    public ValueTask ParallelSends<TMessage>(
+        IEnumerable<TMessage> messages,
+        CancellationToken cancellationToken = default
+    ) where TMessage : notnull => ParallelSends(null, messages, cancellationToken);
+
+    /// <inheritdoc/>
+    [ExcludeFromCodeCoverage]
+    public async ValueTask ParallelSends<TMessage>(
+        object? key,
+        IEnumerable<TMessage> messages,
+        CancellationToken cancellationToken = default
+    ) where TMessage : notnull
+    {
+        if (!messages.Any())
+            return;
+
+        await Task.WhenAll(messages.Select(async message => await Send(key, message, cancellationToken)));
+    }
+
+    /// <inheritdoc/>
     public ValueTask<TResponse> Request<TMessage, TResponse>(
         TMessage message,
         CancellationToken cancellationToken = default
@@ -239,15 +244,11 @@ internal sealed class Mediator : IMediator
     {
         try
         {
-            var handler = ResolveRequestHandler<TMessage, TResponse>(key);
+            var handler = GetRequestHandler<TMessage, TResponse>(key);
 
             return await handler.Handle(message, cancellationToken).ConfigureAwait(false);
         }
-        catch (MediatorException)
-        {
-            throw;
-        }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not MediatorException)
         {
             throw CreateMediatorException<TMessage>(
                 typeof(IRequestHandler<TMessage, TResponse>),
@@ -276,7 +277,7 @@ internal sealed class Mediator : IMediator
     )
         where TMessage : notnull
         => BuildStreamDispatch(
-            ResolveStreamHandlers<TMessage, TResponse>(key),
+            GetStreamHandlers<TMessage, TResponse>(key),
             message,
             cancellationToken
         );

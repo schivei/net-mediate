@@ -11,12 +11,6 @@ This page is the wiki entry point for the repository documentation set.
 - [Samples](SAMPLES.md)
 - [AOT / NativeAOT and trimming](AOT.md)
 
-## Validation
-
-NetMediate does not include built-in validation. Implement validation as a pipeline behavior:
-
-- [Custom validation behavior sample](VALIDATION_BEHAVIOR_SAMPLE.md)
-
 ## Platform and framework coverage
 
 Runtime packages are multi-targeted for:

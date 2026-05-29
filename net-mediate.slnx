@@ -19,7 +19,6 @@
     <File Path="docs/PERFORMANCE_IMPROVEMENTS.md" />
     <File Path="docs/SAMPLES.md" />
     <File Path="docs/SOURCE_GENERATION.md" />
-    <File Path="docs/VALIDATION_BEHAVIOR_SAMPLE.md" />
     <File Path="docs/WIKI.md" />
     <File Path="docs/WIKI_INSTALLATION_CONFIGURATION_USAGE.md" />
   </Folder>
@@ -32,7 +31,6 @@
     <File Path="website/docs/advanced/source-generation.md" />
   </Folder>
   <Folder Name="/.sln/website/api/">
-    <File Path="website/docs/api/behaviors.md" />
     <File Path="website/docs/api/core-interfaces.md" />
     <File Path="website/docs/api/extensions.md" />
     <File Path="website/docs/api/handlers.md" />
@@ -57,7 +55,6 @@
     <File Path="website/docs/guides/requests.md" />
     <File Path="website/docs/guides/samples.md" />
     <File Path="website/docs/guides/streams.md" />
-    <File Path="website/docs/guides/validation.md" />
   </Folder>
   <Folder Name="/.sln/website/performance/">
     <File Path="website/docs/performance/benchmarks.md" />

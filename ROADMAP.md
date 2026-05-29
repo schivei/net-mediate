@@ -4,7 +4,6 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 
 ## Completed
 
-- [x] Pipeline behaviors/interceptors (pre/post processing) via `IPipelineBehavior<TMessage, TResult>`, `IPipelineBehavior<TMessage>`, `IPipelineRequestBehavior<TMessage, TResponse>`, and `IPipelineStreamBehavior<TMessage, TResponse>`.
 - [x] Source generator support (`NetMediate.SourceGeneration`) — generates a GenDI-first `AddNetMediate()` entrypoint plus typed dispatch extensions and framework behavior wrappers at compile time.
 - [x] Benchmark suite with load and pipeline-variant tests covering commands, requests, notifications, and streams.
 - [x] NativeAOT and trimming compatibility — no `MakeGenericType`, no assembly scanning, no `typeof(TResult)` runtime switches; the compile-time path stays on generated entrypoints, typed dispatch, and closed-type DI resolution.
@@ -12,9 +11,8 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 - [x] `NetMediate.Moq` helper package with fluent async setup extensions and mediator mock registration.
 - [x] Marker-interface-free messaging — any plain class or record can be a message type.
 - [x] `Task`-based handler contracts — all handler `Handle` methods return `Task` or `Task<TResponse>`.
-- [x] Dedicated `NotificationPipelineExecutor<TMessage>` — resolves both `IPipelineBehavior<TMessage, Task>` and `IPipelineBehavior<TMessage>` without a runtime type switch, keeping the notification pipeline AOT-safe.
 - [x] Sample applications (API, Worker, Minimal API) in `docs/SAMPLES.md`.
-- [x] Full documentation suite: installation, configuration, resilience, source generation, AOT, Moq recipes, diagnostics, Quartz, benchmarks.
+- [x] Full documentation suite: installation, configuration, source generation, AOT, Moq recipes, benchmarks.
 
 ## Near term
 
@@ -27,7 +25,6 @@ This roadmap consolidates improvement ideas and new features for the NetMediate 
 - [x] **Synchronous fire-and-forget notifier** — optional `INotifiable` implementation that dispatches notification handlers inline (no `Channel<T>` + `BackgroundService` overhead) for scenarios where latency matters more than isolation.
 - [x] **Pre-compiled behavior chain** — build the behavior delegate chain once at startup per message type and cache it in a static generic field, eliminating the per-call `Reverse`/`Aggregate`/closure allocation.
 - [x] **Single-handler fast path for `Send`** — when exactly one `ICommandHandler<T>` is registered, invoke it directly without the `foreach` loop.
-- [x] **`IPipelineNotificationBehavior<TMessage>` shorthand** — a dedicated interface mirroring `IPipelineRequestBehavior<,>` so notification-specific behaviors have a symmetric registration experience.
 - [x] **Structured error context** — surface handler exceptions through a typed `MediatorException` carrying the originating message type, handler type, and activity trace ID.
 
 ## Long term

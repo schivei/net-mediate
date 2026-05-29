@@ -90,8 +90,6 @@ Use GenDI metadata to control `ServiceLifetime`, `Group`, `Order`, and `Key`. Us
 >
 > Keyed routing is handled by GenDI keyed service registrations; NetMediate only performs keyed dispatch resolution at runtime.
 
-When `NetMediate.Diagnostics` or `NetMediate.Resilience` is referenced, the generator also emits framework behavior wrapper classes that decorate the discovered handlers with the corresponding telemetry and resilience behaviors.
-
 ## AOT / NativeAOT
 
 The source-generator path is fully AOT-safe — no reflection, no `MakeGenericType`, no assembly scanning. See [AOT.md](AOT.md) for the complete compatibility guide.

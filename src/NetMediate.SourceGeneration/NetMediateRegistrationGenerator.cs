@@ -381,7 +381,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             case "Send":
                 var commandMediatorMethod = $"Send<{e.MessageFqn}>";
                 var commandMediatorMethodBatch = $"Sends<{e.MessageFqn}>";
+                var commandMediatorMethodParallel = $"Sends<{e.MessageFqn}>";
                 var commandBatchMethod = methodName.Replace("Async", "BatchAsync");
+                var commandParallelMethod = methodName.Replace("Async", "ParallelAsync");
 
                 // key-less overload
                 sb.AppendLine(
@@ -426,6 +428,29 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 );
                 sb.AppendLine(
                     $"{ind}{ind}=> mediator.{commandMediatorMethodBatch}(key, messages, cancellationToken);"
+                );
+
+                // parallel overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Dispatches a batch of <see cref=\"{e.MessageFqn}\"/> messages in parallel via the mediator.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static {task} {commandParallelMethod}(this {GlobalNamespace}NetMediate.IMediator mediator, {batchType} messages, {ct} cancellationToken = default)"
+                );
+                sb.AppendLine(
+                    $"{ind}{ind}=> mediator.{commandMediatorMethodParallel}(messages, cancellationToken);"
+                );
+                sb.AppendLine();
+
+                // keyed parallel overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Dispatches a batch of <see cref=\"{e.MessageFqn}\"/> messages in parallel via the mediator with an explicit routing key.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static {task} {commandParallelMethod}(this {GlobalNamespace}NetMediate.IMediator mediator, object? key, {batchType} messages, {ct} cancellationToken = default)"
+                );
+                sb.AppendLine(
+                    $"{ind}{ind}=> mediator.{commandMediatorMethodParallel}(key, messages, cancellationToken);"
                 );
                 break;
 

@@ -24,12 +24,15 @@ internal sealed class Notifier : INotifiable
             return Task.CompletedTask;
 
         _ = Task.WhenAll(
-            handlers.Select(handler => handler.Handle(message, cancellationToken))
-        ).ContinueWith(
-            ByPass,
-            CancellationToken.None,
-            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
-            TaskScheduler.Default
+            handlers.Select(handler =>
+                handler.Handle(message, cancellationToken)
+                .ContinueWith(
+                    ByPass,
+                    CancellationToken.None,
+                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default
+                )
+            )
         );
 
         return Task.CompletedTask;

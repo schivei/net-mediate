@@ -28,9 +28,6 @@ const sidebars = {
       ['Advanced Topics', [
         'advanced/source-generation',
         'advanced/aot-support',
-        'advanced/resilience',
-        'advanced/diagnostics',
-        'advanced/quartz',
       ]],
       ['Testing', [
         'testing/moq-recipes',
@@ -43,7 +40,6 @@ const sidebars = {
       ['API Reference', [
         'api/core-interfaces',
         'api/handlers',
-        'api/behaviors',
         'api/extensions',
       ]],
       ['Community', [

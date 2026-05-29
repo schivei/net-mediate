@@ -220,7 +220,6 @@ Thresholds are deliberately lenient to remain green on any CI hardware. The Benc
 
 ## See Also
 
-- [Resilience](../advanced/resilience) — resilience package guide
 - [Native AOT Support](../advanced/aot-support) — AOT/NativeAOT compatibility guide
 - [Source Generation](../advanced/source-generation) — source generator guide
 

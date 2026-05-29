@@ -109,6 +109,36 @@ public interface IMediator
         where TMessage : notnull;
 
     /// <summary>
+    /// Sends a collection of messages asynchronously and paralelized.
+    /// </summary>
+    /// <typeparam name="TMessage">The type of messages to send. Must not be null.</typeparam>
+    /// <param name="messages">The collection of messages to be sent. Cannot be null.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the send operation.</param>
+    /// <returns>A task that represents the asynchronous send operation.</returns>
+    ValueTask ParallelSends<TMessage>(
+        IEnumerable<TMessage> messages,
+        CancellationToken cancellationToken = default
+    )
+        where TMessage : notnull;
+
+    /// <summary>
+    /// Sends a collection of messages asynchronously and paralelized, optionally associating them with a specified key.
+    /// </summary>
+    /// <remarks>The behavior of message delivery and key usage may depend on the implementation. If the
+    /// operation is canceled via the provided token, the returned task will be canceled.</remarks>
+    /// <typeparam name="TMessage">The type of messages to send. Must be a non-nullable type.</typeparam>
+    /// <param name="key">An optional key used to partition or group the messages. May be null if no key is required.</param>
+    /// <param name="messages">The collection of messages to send. Cannot contain null elements.</param>
+    /// <param name="cancellationToken">A cancellation token that can be used to cancel the send operation.</param>
+    /// <returns>A task that represents the asynchronous send operation.</returns>
+    ValueTask ParallelSends<TMessage>(
+        object? key,
+        IEnumerable<TMessage> messages,
+        CancellationToken cancellationToken = default
+    )
+        where TMessage : notnull;
+
+    /// <summary>
     /// Sends a request message and asynchronously returns a response of the specified type.
     /// </summary>
     /// <typeparam name="TMessage">The type of the request message to send. Must not be null.</typeparam>

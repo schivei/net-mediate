@@ -65,8 +65,6 @@ NetMediate is a mediator pattern library for .NET that enables decoupled communi
 - **Requests**: Send a message to a single handler and receive a typed response
 - **Streaming**: Handle requests that return multiple responses over time via `IAsyncEnumerable`
 - **Pipeline Behaviors**: Interceptors with pre/post flow for every message kind
-- **Optional resilience package**: Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience`
-- **OpenTelemetry-ready diagnostics**: Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream
 - **Keyed handler routing**: Register handlers under named keys and dispatch to specific subsets at runtime — **fully NativeAOT + Trimming compatible** via GenDI keyed-service resolution
 - **Streaming fan-out**: Multiple `IStreamHandler` registrations supported — their items are merged sequentially
 - **Cancellation Support**: Full cancellation token support across all operations
@@ -139,27 +137,19 @@ With GenDI the consumer chooses the `ServiceLifetime`, `Group`, `Order`, and `Ke
 ### Optional companion packages
 ```xml
 <PackageReference Include="NetMediate.Moq" Version="x.x.x" />
-<PackageReference Include="NetMediate.Resilience" Version="x.x.x" />
-<PackageReference Include="NetMediate.Quartz" Version="x.x.x" />
 ```
 
 - **NetMediate.Moq**: lightweight Moq helpers for unit and integration tests (`Mocking.Create`, `AddMockSingleton`, async setup extensions).
-- **NetMediate.Resilience**: optional retry, timeout, and circuit-breaker pipeline behaviors for request and notification flows.
-- **NetMediate.Quartz**: persists notifications as Quartz.NET jobs, enabling crash recovery and cluster-distributed notification execution.
 
 ## Companion Guides
 
 - [Full documentation website](https://elton.schivei.nom.br/net-mediate)
 - [NetMediate.Moq recipes](docs/NETMEDIATE_MOQ_RECIPES.md)
 - [API/Worker/Minimal API samples](docs/SAMPLES.md)
-- [Diagnostics (traces + metrics)](docs/DIAGNOSTICS.md)
-- [Resilience package guide](docs/RESILIENCE.md)
 - [Benchmark results](docs/BENCHMARKS.md)
-- [Quartz persistent notifications](docs/QUARTZ.md)
 - [Source generation guide](docs/SOURCE_GENERATION.md)
 - [AOT / NativeAOT and trimming guide](docs/AOT.md)
 - [Wiki index](docs/WIKI.md)
-- [Validation behavior sample](docs/VALIDATION_BEHAVIOR_SAMPLE.md)
 
 ## Quick Start
 
@@ -462,7 +452,6 @@ The `key` is propagated through the entire pipeline — behaviors receive it in 
 ### Pipeline Behaviors / Interceptors
 
 Pipeline composition is now static and based on GenDI decorators.
-`IPipeline*Behavior` and pipeline delegates are obsolete and no longer supported.
 Use `DecoratorForAttribute` on handlers to implement cross-cutting concerns.
 
 ```csharp
@@ -511,8 +500,6 @@ public sealed class LogNotificationDecorator(INotificationHandler<UserCreatedNot
 
 builder.Services.AddNetMediate();
 ```
-
-> **Note on validation**: NetMediate does not include a built-in validation layer. Implement validation as a pipeline behavior. See [docs/VALIDATION_BEHAVIOR_SAMPLE.md](docs/VALIDATION_BEHAVIOR_SAMPLE.md) for an example.
 
 ## Framework Support
 

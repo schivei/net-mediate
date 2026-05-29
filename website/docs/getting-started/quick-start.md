@@ -241,7 +241,6 @@ Now that you have a working example, explore more features:
 - **[Message Types](./message-types.md)** - Learn about Commands, Requests, Notifications, and Streams
 - **[Handlers](./handlers.md)** - Deep dive into handler implementations
 - **[Pipeline Behaviors](../guides/pipeline-behaviors.md)** - Add cross-cutting concerns
-- **[Resilience](../advanced/resilience.md)** - Add retry and timeout behaviors
 - **[Testing](../testing/moq-recipes.md)** - Learn how to test your handlers
 
 ## Troubleshooting

@@ -5,7 +5,6 @@ sidebar_position: 5
 # Pipeline Behaviors
 
 Pipeline composition is now static and based on GenDI decorators.
-Legacy `IPipeline*Behavior` interfaces and pipeline delegates are obsolete and no longer supported.
 Use `DecoratorForAttribute` with handler interfaces.
 
 ## Request Decorator (logging + timing)
@@ -99,5 +98,3 @@ public sealed class NotificationLoggingDecorator(INotificationHandler<UserRegist
     }
 }
 ```
-
-> Legacy `IPipelineBehavior<TMessage, TResult>`, `IPipelineRequestBehavior<,>`, `IPipelineNotificationBehavior<>`, `IPipelineStreamBehavior<,>`, `PipelineBehaviorDelegate<,>` and `HandlerExecutionDelegate<,,>` are obsolete. Use decorators with `DecoratorForAttribute`.

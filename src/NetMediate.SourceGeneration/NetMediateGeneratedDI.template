@@ -14,7 +14,6 @@ namespace {{AssemblyNamespace}};
     {
         services.RegisterNetMediate();
         
-        {{AddNetMediateResilienceDI}}
         {{AssemblyNamespace}}.DependencyInjection.GenDIServiceCollectionExtensions.AddGenDIServices(services);
         return services;
     }

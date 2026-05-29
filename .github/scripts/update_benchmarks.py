@@ -304,12 +304,10 @@ def compare_alloc_str(key: str, new_alloc_str: str) -> str:
 # needs a frontmatter header and website-relative "See Also" links.
 _WEBSITE_FRONTMATTER = '---\nsidebar_position: 1\n---\n\n'
 _DOCS_SEE_ALSO = (
-    '- [RESILIENCE.md](RESILIENCE.md) — resilience package guide\n'
     '- [AOT.md](AOT.md) — AOT/NativeAOT compatibility guide\n'
     '- [SOURCE_GENERATION.md](SOURCE_GENERATION.md) — source generator guide'
 )
 _WEBSITE_SEE_ALSO = (
-    '- [Resilience](../advanced/resilience) — resilience package guide\n'
     '- [Native AOT Support](../advanced/aot-support) — AOT/NativeAOT compatibility guide\n'
     '- [Source Generation](../advanced/source-generation) — source generator guide'
 )

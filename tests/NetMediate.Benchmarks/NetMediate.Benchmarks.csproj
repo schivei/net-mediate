@@ -1,25 +1,28 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <!-- BenchmarkDotNet requires Release for meaningful results -->
-    <Optimize>true</Optimize>
-    <PublishAot Condition="'$(AotBenchmark)' == 'true'">true</PublishAot>
-    <InvariantGlobalization>true</InvariantGlobalization>
-  </PropertyGroup>
-  <ItemGroup>
-	<PackageReference Include="GenDI.SourceGenerator" Version="2026.5.25.1004">
-		<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-		<PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
-	</PackageReference>
-    <PackageReference Include="BenchmarkDotNet" Version="0.*" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*" />
-  </ItemGroup>
-  <ItemGroup>
-	<ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
-	  <ProjectReference Include="../../src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj" PrivateAssets="contentfiles; compile; runtime" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
-  </ItemGroup>
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <!-- BenchmarkDotNet requires Release for meaningful results -->
+        <Optimize>true</Optimize>
+        <PublishAot Condition="'$(AotBenchmark)' == 'true'">true</PublishAot>
+        <InvariantGlobalization>true</InvariantGlobalization>
+    </PropertyGroup>
+    <ItemGroup>
+        <PackageReference Include="GenDI.SourceGenerator" Version="2026.5.25.1004">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="BenchmarkDotNet" Version="0.*"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*"/>
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj"/>
+        <ProjectReference Include="..\..\src\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj"
+                          PrivateAssets="contentfiles; compile; runtime"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false"/>
+    </ItemGroup>
 </Project>

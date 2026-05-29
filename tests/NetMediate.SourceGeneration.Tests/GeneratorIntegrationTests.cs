@@ -1,10 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
-using NetMediate.Diagnostics;
 using NetMediate.Moq;
-using NetMediate.Quartz;
-using NetMediate.Resilience;
 using System.Collections.Immutable;
 using System.Reflection;
 using System.Text.Json;
@@ -209,20 +206,20 @@ public sealed class GeneratorIntegrationTests
 
         foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
         {
-            if (!asm.IsDynamic && !string.IsNullOrEmpty(asm.Location))
+            if (asm.IsDynamic || string.IsNullOrEmpty(asm.Location))
+                continue;
+            
+            try
             {
-                try
-                {
-                    refs.Add(MetadataReference.CreateFromFile(asm.Location));
-                }
-                catch
-                {
-                    // Ignore assemblies that can't be loaded as metadata references (e.g. native or mixed-mode assemblies).
-                }
+                refs.Add(MetadataReference.CreateFromFile(asm.Location));
+            }
+            catch
+            {
+                // Ignore assemblies that can't be loaded as metadata references (e.g., native or mixed-mode assemblies).
             }
         }
 
-        // GenDI.dll may not be eagerly loaded into the AppDomain (no test code uses it directly)
+        // GenDI.dll may not be eagerly loaded into the AppDomain (no test code uses it directly),
         // but it exists in the output directory as a transitive dependency of NetMediate.
         // Add it explicitly so that in-memory compilations can resolve [Injectable(Key=...)] attributes.
         var genDiPath = Path.Combine(AppContext.BaseDirectory, "GenDI.dll");
@@ -246,10 +243,7 @@ public sealed class GeneratorIntegrationTests
         {
             refs.Add(MetadataReference.CreateFromFile(typeof(IMediator).Assembly.Location));
             refs.Add(MetadataReference.CreateFromFile(typeof(ICommandHandler<>).Assembly.Location));
-            refs.Add(MetadataReference.CreateFromFile(typeof(IQuartzMessage).Assembly.Location));
-            refs.Add(MetadataReference.CreateFromFile(typeof(TelemetryCommandBehavior<>).Assembly.Location));
             refs.Add(MetadataReference.CreateFromFile(typeof(NotifierMock).Assembly.Location));
-            refs.Add(MetadataReference.CreateFromFile(typeof(CircuitBreakerCommandBehavior<>).Assembly.Location));
         }
 
         if (additionalReferences is not null)

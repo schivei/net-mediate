@@ -1,11 +1,13 @@
-﻿namespace NetMediate.Moq;
+﻿using System.Collections.Immutable;
+
+namespace NetMediate.Moq;
 
 public class NotifierMock : INotifiable
 {
     public async Task DispatchNotifications<TMessage>(
         object? key,
         TMessage message,
-        INotificationHandler<TMessage>[] handlers,
+        ImmutableArray<INotificationHandler<TMessage>> handlers,
         CancellationToken cancellationToken = default
     )
         where TMessage : notnull

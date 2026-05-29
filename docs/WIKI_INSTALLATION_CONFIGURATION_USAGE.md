@@ -78,9 +78,9 @@ All handler `Handle` methods return `Task` or `Task<TResponse>`:
 
 | Interface | `Handle` return type | Dispatch semantics |
 |---|---|---|
-| `ICommandHandler<TMessage>` | `Task` | All registered handlers, **sequential** in registration order |
-| `IRequestHandler<TMessage, TResponse>` | `Task<TResponse>` | Single handler (first registered) |
-| `INotificationHandler<TMessage>` | `Task` | All handlers started concurrently (fire-and-forget); handler and behavior exceptions logged, do not propagate |
+| `ICommandHandler<TMessage>` | `ValueTask` | All registered handlers, **sequential** in registration order |
+| `IRequestHandler<TMessage, TResponse>` | `ValueTask<TResponse>` | Single handler (first registered) |
+| `INotificationHandler<TMessage>` | `ValueTask` | All handlers started concurrently (fire-and-forget); handler and behavior exceptions logged, do not propagate |
 | `IStreamHandler<TMessage, TResponse>` | `IAsyncEnumerable<TResponse>` | All registered handlers, items merged **sequentially** (handler A items first, then handler B) |
 
 > **Unhandled messages**: `Send` and `Notify` are silent no-ops when no handler is registered. `Request` and `RequestStream` throw `InvalidOperationException`.
@@ -118,39 +118,13 @@ The same `key` parameter is available on all dispatch methods: `Send(key, ...)`,
 ### Configuration
 
 Use static decorators with `DecoratorForAttribute`.
-`IPipeline*Behavior` contracts are obsolete and should not be used in new code.
-
-```csharp
-[DecoratorFor<IRequestHandler<MyRequest, MyResponse>>(Order = 1)]
-public sealed class MyLoggingDecorator(IRequestHandler<MyRequest, MyResponse> inner)
-    : IRequestHandler<MyRequest, MyResponse>
-{
-    public Task<MyResponse> Handle(
-        MyRequest message,
-        CancellationToken cancellationToken = default) =>
-        inner.Handle(message, cancellationToken);
-}
-
-builder.Services.AddNetMediate();
-```
-
-### Behavior interfaces
-
-Legacy behavior interfaces/delegates are obsolete:
-
-- `IPipelineBehavior<TMessage, TResult>`
-- `IPipelineCommandBehavior<TMessage>`
-- `IPipelineRequestBehavior<TMessage, TResponse>`
-- `IPipelineNotificationBehavior<TMessage>`
-- `IPipelineStreamBehavior<TMessage, TResponse>`
-- `PipelineBehaviorDelegate<TMessage, TResult>`
-- `HandlerExecutionDelegate<THandler, TMessage, TResult>`
 
 ### Usage
 
 Decorators execute according to `Order` and compose statically at compile-time:
 
 ```csharp
+[DecoratorFor<IRequestHandler<MyRequest, MyResponse>>]
 public sealed class AuditMyRequestDecorator(IRequestHandler<MyRequest, MyResponse> inner)
     : IRequestHandler<MyRequest, MyResponse>
 {
@@ -166,42 +140,7 @@ public sealed class AuditMyRequestDecorator(IRequestHandler<MyRequest, MyRespons
 }
 ```
 
-> **Validation**: there is no built-in validation in NetMediate. Implement your own validation as a pipeline behavior. See [VALIDATION_BEHAVIOR_SAMPLE.md](VALIDATION_BEHAVIOR_SAMPLE.md) for an example.
-
-## 3) Resilience package (`NetMediate.Resilience`)
-
-### Installation
-
-```bash
-dotnet add package NetMediate.Resilience
-```
-
-### Configuration
-
-```csharp
-// Override defaults before calling AddNetMediate() — all options are independent
-builder.Services.Configure<RetryBehaviorOptions>(opts =>
-{
-    opts.MaxRetryCount = 2;
-    opts.Delay = TimeSpan.Zero;
-});
-
-builder.Services.Configure<TimeoutBehaviorOptions>(opts =>
-{
-    opts.RequestTimeout = TimeSpan.FromSeconds(30);
-    opts.NotificationTimeout = TimeSpan.FromSeconds(30);
-});
-
-builder.Services.Configure<CircuitBreakerBehaviorOptions>(opts =>
-{
-    opts.FailureThreshold = 5;
-    opts.OpenDuration = TimeSpan.FromSeconds(30);
-});
-```
-
-See [RESILIENCE.md](RESILIENCE.md) for full details.
-
-## 4) Source generation (`NetMediate.SourceGeneration`)
+## 3) Source generation (`NetMediate.SourceGeneration`)
 
 ### Installation
 
@@ -222,32 +161,7 @@ builder.Services.AddNetMediate();
 
 The generator discovers all `ICommandHandler<>`, `IRequestHandler<,>`, `INotificationHandler<>`, and `IStreamHandler<,>` implementations in your project and emits strongly-typed closed-type registrations — no reflection, fully AOT-compatible. See [SOURCE_GENERATION.md](SOURCE_GENERATION.md).
 
-## 5) Quartz (`NetMediate.Quartz`)
-
-### Installation
-
-```bash
-dotnet add package NetMediate.Quartz
-```
-
-### Configuration
-
-```csharp
-using NetMediate.Quartz;
-
-builder.Services.AddQuartz(q => q.UseMicrosoftDependencyInjectionJobFactory());
-builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
-builder.Services.AddNetMediateQuartz(opts =>
-{
-    opts.GroupName = "MyApp";
-    opts.MisfireRetryCount = 1;
-});
-builder.Services.AddNetMediate();
-```
-
-See [QUARTZ.md](QUARTZ.md) for full details.
-
-## 6) Moq (`NetMediate.Moq`)
+## 4) Moq (`NetMediate.Moq`)
 
 ### Installation
 

@@ -18,7 +18,7 @@ NetMediate is compatible with NativeAOT and trimming when you stay on the source
 | Path | AOT / Trim compatible | Notes |
 |---|---|---|
 | `AddNetMediate()` | ✅ Yes | Generated at compile time — no reflection |
-| Closed-type pipeline behavior registrations | ✅ Yes | Register `IPipelineCommandBehavior<T>`, `IPipelineNotificationBehavior<T>`, or `IPipelineRequestBehavior<TMessage, TResponse>` directly |
+| Closed-type pipeline behavior registrations | ✅ Yes | Register your handler with `[DecoratorFor<>]` directly |
 | Keyless `Send` / `Notify` / `Request` / `RequestStream` | ✅ Yes | Uses generated closed-type registrations |
 | Keyed dispatch (`Send(key, ...)`, `Request(key, ...)`, etc.) | ✅ Yes | GenDI keyed-service resolution (no reflection in NetMediate runtime path), fully NativeAOT + Trimming compatible |
 
@@ -49,15 +49,15 @@ using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate;
 
-[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
-public sealed class AuditCreateUserBehavior : IPipelineRequestBehavior<CreateUserRequest, UserDto>
+[DecoratorFor]
+public sealed class AuditCreateUserBehavior : IRequestHandler<CreateUserRequest, UserDto>
 {
-    public Task<UserDto> Handle(
-        object? key,
+    [Inject] public required IRequestHandler<CreateUserRequest, UserDto> Next { get; init; }
+
+    public ValueTask<UserDto> Handle(
         CreateUserRequest message,
-        PipelineBehaviorDelegate<CreateUserRequest, Task<UserDto>> next,
         CancellationToken cancellationToken) =>
-        next(key, message, cancellationToken);
+        Next(message, cancellationToken);
 }
 
 builder.Services.AddNetMediate();

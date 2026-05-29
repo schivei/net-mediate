@@ -58,7 +58,7 @@ var dto = await mediator.RequestGetUserRequestAsync(new GetUserRequest("user-1")
 await mediator.NotifyUserCreatedNotificationAsync(new UserCreatedNotification("user-1"), cancellationToken);
 
 // Notification (batch): each message's pipeline dispatched in parallel (Task.WhenAll across messages)
-await mediator.NotifyUserCreatedNotificationAsync(new[] { n1, n2, n3 }, cancellationToken);
+mediator.NotifyUserCreatedNotification(new[] { n1, n2, n3 }, cancellationToken);
 
 // Stream: single handler; yields items asynchronously
 await foreach (var item in mediator.StreamGetEventsQueryAsync(new GetEventsQuery(), cancellationToken))
@@ -80,13 +80,13 @@ The optional `IMessage` marker interface is available if you want to constrain m
 
 ### Handler return types and dispatch semantics
 
-All handler `Handle` methods return `Task` or `Task<TResponse>`:
+All handler `Handle` methods return `ValueTask` or `ValueTask<TResponse>`:
 
 | Interface | `Handle` return type | Dispatch semantics |
 |---|---|---|
-| `ICommandHandler<TMessage>` | `Task` | All registered handlers, **sequential** in registration order |
-| `IRequestHandler<TMessage, TResponse>` | `Task<TResponse>` | Single handler (first registered) |
-| `INotificationHandler<TMessage>` | `Task` | All handlers started in parallel (fire-and-forget via `Task.WhenAll`); handler exceptions discarded |
+| `ICommandHandler<TMessage>` | `ValueTask` | All registered handlers, **sequential** in registration order |
+| `IRequestHandler<TMessage, TResponse>` | `ValueTask<TResponse>` | Single handler (first registered) |
+| `INotificationHandler<TMessage>` | `ValueTask` | All handlers started in parallel (fire-and-forget via `Task.WhenAll`); handler exceptions discarded |
 | `IStreamHandler<TMessage, TResponse>` | `IAsyncEnumerable<TResponse>` | All registered handlers, items merged **sequentially** (handler A items first, then handler B) |
 
 :::note Unhandled messages
@@ -121,16 +121,11 @@ A `null` key flows through the pipeline unchanged. This means `mediator.SendMyCo
 Non-keyed registration and dispatch remain fully NativeAOT-compatible. Keyed registration uses `IKeyedServiceProvider` internally, which is **not NativeAOT-compatible**; use it only when NativeAOT is not required.
 :::
 
-### Optional base class
-
-`ABaseHandler<TMessage, TResult>` is an optional abstract base that implements `IHandler<TMessage, TResult>`. You are not required to use it.
-
 ## Pipeline behaviors
 
 ### Configuration
 
 Use static decorators with `DecoratorForAttribute`.
-`IPipeline*Behavior` contracts are obsolete and should not be used in new code.
 
 ```csharp
 [DecoratorFor<IRequestHandler<MyRequest, MyResponse>>(Order = 1)]
@@ -146,75 +141,6 @@ public sealed class MyLoggingDecorator(IRequestHandler<MyRequest, MyResponse> in
 builder.Services.AddNetMediate();
 ```
 
-### Behavior interfaces
-
-Legacy behavior interfaces/delegates are obsolete:
-
-- `IPipelineBehavior<TMessage, TResult>`
-- `IPipelineCommandBehavior<TMessage>`
-- `IPipelineRequestBehavior<TMessage, TResponse>`
-- `IPipelineNotificationBehavior<TMessage>`
-- `IPipelineStreamBehavior<TMessage, TResponse>`
-- `PipelineBehaviorDelegate<TMessage, TResult>`
-- `HandlerExecutionDelegate<THandler, TMessage, TResult>`
-
-### Usage
-
-Decorators execute according to `Order` and compose statically at compile-time:
-
-```csharp
-public sealed class AuditMyRequestDecorator(IRequestHandler<MyRequest, MyResponse> inner)
-    : IRequestHandler<MyRequest, MyResponse>
-{
-    public async Task<MyResponse> Handle(
-        MyRequest message,
-        CancellationToken cancellationToken = default)
-    {
-        // pre-processing
-        var result = await inner.Handle(message, cancellationToken);
-        // post-processing
-        return result;
-    }
-}
-```
-
-:::tip Validation
-There is no built-in validation in NetMediate. Implement your own validation as a pipeline behavior. See the [Validation guide](../guides/validation) for an example.
-:::
-
-## Resilience package (`NetMediate.Resilience`)
-
-### Installation
-
-```bash
-dotnet add package NetMediate.Resilience
-```
-
-### Configuration
-
-```csharp
-// Override defaults before calling AddNetMediate() — all options are independent
-builder.Services.Configure<RetryBehaviorOptions>(opts =>
-{
-    opts.MaxRetryCount = 2;
-    opts.Delay = TimeSpan.Zero;
-});
-
-builder.Services.Configure<TimeoutBehaviorOptions>(opts =>
-{
-    opts.RequestTimeout = TimeSpan.FromSeconds(30);
-    opts.NotificationTimeout = TimeSpan.FromSeconds(30);
-});
-
-builder.Services.Configure<CircuitBreakerBehaviorOptions>(opts =>
-{
-    opts.FailureThreshold = 5;
-    opts.OpenDuration = TimeSpan.FromSeconds(30);
-});
-```
-
-See the [Resilience guide](../advanced/resilience) for full details.
-
 ## Source generation (`NetMediate.SourceGeneration`)
 
 ### Installation
@@ -228,31 +154,6 @@ builder.Services.AddNetMediate();
 ```
 
 The generator discovers all `ICommandHandler<>`, `IRequestHandler<,>`, `INotificationHandler<>`, and `IStreamHandler<,>` implementations in your project and emits strongly-typed closed-type registrations — no reflection, fully AOT-compatible. See the [Source Generation guide](../advanced/source-generation).
-
-## Quartz (`NetMediate.Quartz`)
-
-### Installation
-
-```bash
-dotnet add package NetMediate.Quartz
-```
-
-### Configuration
-
-```csharp
-using NetMediate.Quartz;
-
-builder.Services.AddQuartz(q => q.UseMicrosoftDependencyInjectionJobFactory());
-builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
-builder.Services.AddNetMediateQuartz(opts =>
-{
-    opts.GroupName = "MyApp";
-    opts.MisfireRetryCount = 1;
-});
-builder.Services.AddNetMediate();
-```
-
-See the [Quartz guide](../advanced/quartz) for full details.
 
 ## Moq (`NetMediate.Moq`)
 

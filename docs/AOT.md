@@ -7,14 +7,14 @@ NetMediate is compatible with NativeAOT and trimming when you stay on the source
 - Use `NetMediate.SourceGeneration` in the startup project.
 - Call `builder.Services.AddNetMediate();`.
 - Register custom pipeline behaviors as **closed types** directly in DI.
-- Concrete non-generic classes that implement **closed generic** contracts can still use `[Injectable]`.
+- Concrete non-generic classes that implement **closed generic** contracts can still use `[DecoratorFor]` and `[DecoratorFor<>]`.
 - Register only generic/open service implementations manually in `builder.Services`.
 - Keyed dispatch uses GenDI keyed-service registrations and NetMediate keyed dispatch APIs.
 
 | Path | AOT / Trim compatible | Notes |
 |---|---|---|
 | `AddNetMediate()` | ✅ Yes | Generated at compile time — no reflection |
-| Closed-type pipeline behavior registrations | ✅ Yes | Register `IPipelineCommandBehavior<T>`, `IPipelineNotificationBehavior<T>`, or `IPipelineRequestBehavior<TMessage, TResponse>` directly |
+| Closed-type pipeline behavior registrations | ✅ Yes | Decorates a handler with [DecoratorFor<>], GenDI solves it |
 | Keyless `Send` / `Notify` / `Request` / `RequestStream` | ✅ Yes | Uses generated closed-type registrations |
 | Keyed dispatch (`Send(key, ...)`, `Request(key, ...)`, etc.) | ✅ Yes | GenDI keyed-service resolution (no reflection in NetMediate runtime path), fully NativeAOT + Trimming compatible |
 
@@ -47,15 +47,15 @@ using GenDI;
 using Microsoft.Extensions.DependencyInjection;
 using NetMediate;
 
-[Injectable(ServiceLifetime.Singleton, Group = 10, Order = 1)]
-public sealed class AuditCreateUserBehavior : IPipelineRequestBehavior<CreateUserRequest, UserDto>
+[DecoratorFor<IRequestHandler<CreateUserRequest, UserDto>>]
+internal sealed class AuditCreateUserBehavior : IRequestHandler<CreateUserRequest, UserDto>
 {
-    public Task<UserDto> Handle(
-        object? key,
+    [Inject] internal requried IRequestHandler<CreateUserRequest, UserDto> Next { get; init; }
+
+    public ValueTask<UserDto> Handle(
         CreateUserRequest message,
-        PipelineBehaviorDelegate<CreateUserRequest, Task<UserDto>> next,
         CancellationToken cancellationToken) =>
-        next(key, message, cancellationToken);
+        Next(message, cancellationToken);
 }
 
 builder.Services.AddNetMediate();

@@ -80,36 +80,12 @@ Add the following to your `.csproj` file:
 
 ## Optional Packages
 
-### Resilience Package
-
-Adds retry, timeout, and circuit breaker behaviors:
-
-```bash
-dotnet add package NetMediate.Resilience
-```
-
 ### Moq Testing Utilities
 
 Provides testing helpers for unit tests:
 
 ```bash
 dotnet add package NetMediate.Moq
-```
-
-### Quartz Integration
-
-For persistent notifications with Quartz.NET:
-
-```bash
-dotnet add package NetMediate.Quartz
-```
-
-### Diagnostics Package
-
-OpenTelemetry integration:
-
-```bash
-dotnet add package NetMediate.Diagnostics
 ```
 
 ## Version Compatibility
@@ -119,9 +95,7 @@ dotnet add package NetMediate.Diagnostics
 | NetMediate.Core | .NET Standard 2.0 | netstandard2.0 |
 | NetMediate | .NET Standard 2.0 | net10.0, netstandard2.0, netstandard2.1 |
 | NetMediate.SourceGeneration | .NET Standard 2.0 | netstandard2.0 (analyzer) |
-| NetMediate.Resilience | .NET Standard 2.0 | net10.0, netstandard2.0, netstandard2.1 |
 | NetMediate.Moq | .NET Standard 2.0 | net10.0, netstandard2.0, netstandard2.1 |
-| NetMediate.Quartz | .NET Standard 2.0 | net10.0, netstandard2.0, netstandard2.1 |
 
 ## Verifying Installation
 

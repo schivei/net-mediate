@@ -6,19 +6,10 @@ This page is the wiki entry point for the repository documentation set.
 
 - [README](../README.md)
 - [Installation, configuration, and usage by resource](WIKI_INSTALLATION_CONFIGURATION_USAGE.md)
-- [Diagnostics](DIAGNOSTICS.md)
-- [Resilience](RESILIENCE.md)
-- [Quartz persistent notifications](QUARTZ.md)
 - [Source generation](SOURCE_GENERATION.md)
 - [NetMediate.Moq recipes](NETMEDIATE_MOQ_RECIPES.md)
 - [Samples](SAMPLES.md)
 - [AOT / NativeAOT and trimming](AOT.md)
-
-## Validation
-
-NetMediate does not include built-in validation. Implement validation as a pipeline behavior:
-
-- [Custom validation behavior sample](VALIDATION_BEHAVIOR_SAMPLE.md)
 
 ## Platform and framework coverage
 

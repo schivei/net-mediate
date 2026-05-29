@@ -134,27 +134,6 @@ const FeatureList = [
             </>
         ),
     },
-    {
-        title: 'Built-in Resilience',
-        emoji: '🛡️',
-        description: (
-            <>
-                Optional resilience package provides retry, timeout, and circuit breaker
-                behaviors out of the box. Make your applications more robust with minimal
-                configuration.
-            </>
-        ),
-    },
-    {
-        title: 'Observability Ready',
-        emoji: '📊',
-        description: (
-            <>
-                Native OpenTelemetry support with ActivitySource and Meter for traces
-                and metrics.
-            </>
-        ),
-    },
 ];
 
 function Feature({ emoji, title, description }) {

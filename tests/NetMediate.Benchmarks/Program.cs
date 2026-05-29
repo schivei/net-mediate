@@ -1,6 +1,7 @@
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Running;
 using System.Diagnostics.CodeAnalysis;
+using NetMediate.Benchmarks;
 
 [assembly: ExcludeFromCodeCoverage]
 [assembly: GenDICoveration(false)]

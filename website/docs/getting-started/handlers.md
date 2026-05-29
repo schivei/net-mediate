@@ -167,10 +167,6 @@ Each handler and behavior interface declares a default `ServiceLifetime` via `[S
 | `INotificationHandler<TMessage>` | `Singleton` | `None` |
 | `IRequestHandler<TMessage, TResponse>` | `Scoped` | `Transient` |
 | `IStreamHandler<TMessage, TResponse>` | `Scoped` | `Scoped` |
-| `IPipelineCommandBehavior<TMessage>` | `Transient` | `Transient` |
-| `IPipelineNotificationBehavior<TMessage>` | `Transient` | `Transient` |
-| `IPipelineRequestBehavior<TMessage, TResponse>` | `Transient` | `Transient` |
-| `IPipelineStreamBehavior<TMessage, TResponse>` | `Transient` | `Transient` |
 
 **ThreadIsolationPolicy** controls how GenDI resolves scoped dependencies for non-transient registrations:
 
@@ -377,5 +373,4 @@ For more testing examples, see the [Testing Guide](../testing/unit-testing.md).
 ## Next Steps
 
 - [Pipeline Behaviors](../guides/pipeline-behaviors.md) - Add cross-cutting concerns
-- [Validation](../guides/validation.md) - Implement validation patterns
 - [Testing](../testing/moq-recipes.md) - Learn testing strategies

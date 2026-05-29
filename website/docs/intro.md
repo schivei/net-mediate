@@ -29,12 +29,6 @@ Handle requests that return multiple responses over time via `IAsyncEnumerable`.
 ### 🔌 **Pipeline Behaviors**
 Interceptors with pre/post flow for every message kind. Implement cross-cutting concerns like logging, validation, and caching.
 
-### 🛡️ **Optional Resilience Package**
-Retry, timeout, and circuit-breaker behaviors in `NetMediate.Resilience` to make your applications more robust.
-
-### 📊 **OpenTelemetry-Ready Diagnostics**
-Built-in `ActivitySource`/`Meter` for Send/Request/Notify/Stream operations with full distributed tracing support.
-
 ### 🔑 **Keyed Handler Routing**
 Register handlers under named keys and dispatch to specific subsets at runtime — **fully NativeAOT + Trimming compatible** via GenDI keyed-service resolution.
 
@@ -72,16 +66,17 @@ The Mediator pattern helps you:
        │
        ├─── Send Command ────►┌──────────────┐      ┌─────────────────┐
        │                      │              │      │  Command        │
-       ├─── Notify ──────────►│   IMediator  ├─────►│  Notification   │
-       │                      │              │      │  Request        │
+       ├─── Notify ──────────►│              ├─────►│  Notification   │
+       │                      │   IMediator  │      │  Request        │
        ├─── Request ─────────►│              │      │  Stream         │
-       │                      └──────────────┘      │  Handlers       │
-       └─── RequestStream ───►                      └─────────────────┘
+       │                      |              |      │  Handlers       │
+       └─── RequestStream ───►└──────────────┘      └─────────────────┘
                                      │
                                      ▼
                               ┌─────────────────┐
                               │  Pipeline       │
                               │  Behaviors      │
+                              | Via Decorators  |
                               └─────────────────┘
 ```
 
@@ -117,9 +112,6 @@ NetMediate consists of several packages:
 - **NetMediate.Core** - Contracts package for shared projects and reusable message definitions
 - **NetMediate** - Runtime mediator implementation consumed indirectly by the generator package or directly when needed
 - **NetMediate.SourceGeneration** - Source generator package for startup projects; injects `NetMediate` + `GenDI.SourceGenerator` through `buildTransitive`
-- **NetMediate.Resilience** - Retry, timeout, and circuit breaker behaviors
-- **NetMediate.Diagnostics** - OpenTelemetry integration
-- **NetMediate.Quartz** - Persistent notifications with Quartz.NET
 - **NetMediate.Moq** - Testing utilities for Moq
 
 ## Community and Support

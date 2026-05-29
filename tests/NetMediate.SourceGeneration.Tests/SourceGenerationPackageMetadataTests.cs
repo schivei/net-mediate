@@ -1,21 +1,15 @@
 using System.IO.Compression;
 using System.Xml.Linq;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace NetMediate.SourceGeneration.Tests;
 
-public class SourceGenerationPackageMetadataTests
+public class SourceGenerationPackageMetadataTests(PackageFixture fixture) : IClassFixture<PackageFixture>
 {
     [Fact]
     public void PackageContainsRequiredFiles()
     {
-        var packagePath = GetPackagePath();
-
-        if (!File.Exists(packagePath))
-        {
-            Assert.Fail(
-                "Package not found in src/NetMediate.SourceGeneration/bin/Release/; run `dotnet build src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release` first."
-            );
-        }
+        var packagePath = fixture.PackagePath;
 
         using var archive = ZipFile.OpenRead(packagePath);
 
@@ -35,14 +29,7 @@ public class SourceGenerationPackageMetadataTests
     [Fact]
     public void NuspecContainsRequiredMetadata()
     {
-        var packagePath = GetPackagePath();
-
-        if (!File.Exists(packagePath))
-        {
-            Assert.Fail(
-                "Package not found in src/NetMediate.SourceGeneration/bin/Release/; run `dotnet build src/NetMediate.SourceGeneration/NetMediate.SourceGeneration.csproj --configuration Release` first."
-            );
-        }
+        var packagePath = fixture.PackagePath;
 
         using var archive = ZipFile.OpenRead(packagePath);
         var nuspecEntry = archive.Entries.First(e => e.FullName.EndsWith(".nuspec"));
@@ -60,42 +47,5 @@ public class SourceGenerationPackageMetadataTests
         Assert.Equal("logo.png", metadata.Element(ns + "icon")?.Value);
         Assert.Equal("README.md", metadata.Element(ns + "readme")?.Value);
         Assert.Equal("true", metadata.Element(ns + "developmentDependency")?.Value);
-    }
-
-    private static string GetPackagePath()
-    {
-        var solutionDir = FindSolutionRoot();
-        var packagesDir = Path.Combine(solutionDir, "src", "NetMediate.SourceGeneration", "bin", "Release");
-
-        if (Directory.Exists(packagesDir))
-        {
-            var packageFiles = Directory.GetFiles(
-                packagesDir,
-                "NetMediate.SourceGeneration.*.nupkg"
-            );
-            if (packageFiles.Length > 0)
-            {
-                return packageFiles[0];
-            }
-        }
-
-        return string.Empty;
-    }
-
-    private static string FindSolutionRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "net-mediate.slnx")))
-            {
-                return directory.FullName;
-            }
-
-            directory = directory.Parent;
-        }
-
-        throw new DirectoryNotFoundException("Could not locate the repository root from the test output directory.");
     }
 }

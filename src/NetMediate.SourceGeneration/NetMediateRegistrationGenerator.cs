@@ -50,7 +50,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         (
             ImmutableArray<INamedTypeSymbol> Left,
             (
-                bool hasResilience,
                 bool isNetMediateAssembly,
                 string assemblyName,
                 bool supportsGlobalUsing,
@@ -62,7 +61,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         var (
             types,
             (
-                hasResilience,
                 isNetMediateAssembly,
                 assemblyName,
                 supportsGlobalUsing,
@@ -80,7 +78,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             );
         }
 
-        if ((isNetMediateAssembly && !hasResilience) || types.IsEmpty)
+        if (isNetMediateAssembly || types.IsEmpty)
         {
             // This fallback stub does not flow through the template token replacement path,
             // so the coverage attribute must stay fully qualified here.
@@ -116,7 +114,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         var source = BuildSource(
             assemblyName,
             coverage
-        ).Replace(AddNetMediateResilienceDIToken, hasResilience ? "global::NetMediate.Resilience.ServiceCollectionsExtensions.AddResilience(services);" : string.Empty);
+        );
 
         sourceProductionContext.AddSource("NetMediateGeneratedDI.g.cs", source);
 
@@ -126,21 +124,17 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     }
 
     private static (
-        bool hasResilience,
         bool isNetMediateAssembly,
         string assemblyName,
         bool supportsGlobalUsing,
         string coverage
     ) Selects(Compilation compilation)
     {
-        var names = compilation.ReferencedAssemblyNames.Select(name => name.Name);
-        bool hasResilience = names.Contains("NetMediate.Resilience");
-        bool isNetMediateAssembly = compilation.AssemblyName?.Replace(GlobalNamespace, "") == PackName;
-        bool supportsGlobalUsing =
+        var isNetMediateAssembly = compilation.AssemblyName?.Replace(GlobalNamespace, "") == PackName;
+        var supportsGlobalUsing =
             compilation is CSharpCompilation { LanguageVersion: >= LanguageVersion.CSharp10 };
 
         return (
-            hasResilience,
             isNetMediateAssembly,
             compilation.AssemblyName,
             supportsGlobalUsing,
@@ -149,14 +143,14 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     }
 
     private static bool Search(SyntaxNode node) =>
-        node is TypeDeclarationSyntax declaration && declaration.BaseList is not null;
+        node is TypeDeclarationSyntax { BaseList: not null };
 
     private static INamedTypeSymbol? Transform(GeneratorSyntaxContext ctx)
     {
         var declaration = (TypeDeclarationSyntax)ctx.Node;
 
         if (
-            ctx.SemanticModel.GetDeclaredSymbol(declaration) is not INamedTypeSymbol typeSymbol
+            ctx.SemanticModel.GetDeclaredSymbol(declaration) is not { } typeSymbol
             || typeSymbol.IsAbstract
             || typeSymbol.IsGenericType
             || !IsAccessible(typeSymbol)
@@ -178,7 +172,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     );
 
     /// <summary>
-    /// Returns the flattened, PascalCase-style identifier for a fully-qualified type name.
+    /// Returns the flattened, PascalCase-style identifier for a fully qualified type name.
     /// <c>global::MyApp.Commands.PingCommand</c> → <c>MyAppCommandsPingCommand</c>.
     /// </summary>
     private static string FlattenFqn(string fqn)
@@ -278,7 +272,7 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
     /// <summary>
     /// Generates the bodies of all typed extension methods for the given entries.
     /// Detects method-name conflicts (same verb + simple message name, different FQN) and
-    /// disambiguates using the flattened fully-qualified type name.
+    /// disambiguates using the flattened fully qualified type name.
     /// </summary>
     private static IEnumerable<string> BuildTypedExtensionMethods(
         ImmutableArray<INamedTypeSymbol> types
@@ -387,7 +381,9 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
             case "Send":
                 var commandMediatorMethod = $"Send<{e.MessageFqn}>";
                 var commandMediatorMethodBatch = $"Sends<{e.MessageFqn}>";
+                var commandMediatorMethodParallel = $"Sends<{e.MessageFqn}>";
                 var commandBatchMethod = methodName.Replace("Async", "BatchAsync");
+                var commandParallelMethod = methodName.Replace("Async", "ParallelAsync");
 
                 // key-less overload
                 sb.AppendLine(
@@ -432,6 +428,29 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
                 );
                 sb.AppendLine(
                     $"{ind}{ind}=> mediator.{commandMediatorMethodBatch}(key, messages, cancellationToken);"
+                );
+
+                // parallel overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Dispatches a batch of <see cref=\"{e.MessageFqn}\"/> messages in parallel via the mediator.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static {task} {commandParallelMethod}(this {GlobalNamespace}NetMediate.IMediator mediator, {batchType} messages, {ct} cancellationToken = default)"
+                );
+                sb.AppendLine(
+                    $"{ind}{ind}=> mediator.{commandMediatorMethodParallel}(messages, cancellationToken);"
+                );
+                sb.AppendLine();
+
+                // keyed parallel overload
+                sb.AppendLine(
+                    $"{ind}/// <summary>Dispatches a batch of <see cref=\"{e.MessageFqn}\"/> messages in parallel via the mediator with an explicit routing key.</summary>"
+                );
+                sb.AppendLine(
+                    $"{ind}public static {task} {commandParallelMethod}(this {GlobalNamespace}NetMediate.IMediator mediator, object? key, {batchType} messages, {ct} cancellationToken = default)"
+                );
+                sb.AppendLine(
+                    $"{ind}{ind}=> mediator.{commandMediatorMethodParallel}(key, messages, cancellationToken);"
                 );
                 break;
 
@@ -522,35 +541,6 @@ public sealed class NetMediateRegistrationGenerator : IIncrementalGenerator
         using (stream)
         using (var reader = new StreamReader(stream))
             return reader.ReadToEnd();
-    }
-
-    private static IEnumerable<INamedTypeSymbol> EnumerateNamedTypes(INamespaceSymbol namespaceSymbol)
-    {
-        foreach (var member in namespaceSymbol.GetMembers())
-        {
-            switch (member)
-            {
-                case INamespaceSymbol childNamespace:
-                    foreach (var nestedType in EnumerateNamedTypes(childNamespace))
-                        yield return nestedType;
-                    break;
-                case INamedTypeSymbol namedType:
-                    foreach (var nestedType in EnumerateNamedTypes(namedType))
-                        yield return nestedType;
-                    yield return namedType;
-                    break;
-            }
-        }
-    }
-
-    private static IEnumerable<INamedTypeSymbol> EnumerateNamedTypes(INamedTypeSymbol typeSymbol)
-    {
-        foreach (var nestedType in typeSymbol.GetTypeMembers())
-        {
-            foreach (var child in EnumerateNamedTypes(nestedType))
-                yield return child;
-            yield return nestedType;
-        }
     }
 
     private static string BuildSource(

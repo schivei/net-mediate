@@ -27,13 +27,16 @@
 	  </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\NetMediate.Diagnostics\NetMediate.Diagnostics.csproj" />
     <ProjectReference Include="..\..\src\NetMediate.Moq\NetMediate.Moq.csproj" />
-    <ProjectReference Include="..\..\src\NetMediate.Quartz\NetMediate.Quartz.csproj" />
-    <ProjectReference Include="..\..\src\NetMediate.Resilience\NetMediate.Resilience.csproj" />
     <ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />
     <!-- Analyzer-only reference so the test project exercises the current local generator without restoring a stale package copy. -->
     <ProjectReference Include="..\..\src\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
+
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.8" />
+    
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
   </ItemGroup>
   <PropertyGroup>
     <LocalSourceGeneratorDll>..\..\src\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll</LocalSourceGeneratorDll>

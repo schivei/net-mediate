@@ -24,6 +24,8 @@
   </Folder>
   <Folder Name="/.sln/website/">
     <File Path="website/docs/intro.md" />
+    <File Path="website/docusaurus.config.js" />
+    <File Path="website/package.json" />
     <File Path="website/src/pages/index.js" />
   </Folder>
   <Folder Name="/.sln/website/advanced/">

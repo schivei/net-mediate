@@ -35,8 +35,6 @@ and unaffected by CPU load, making this the most reliable regression signal.
 The `vs timing` column compares dispatch time against stored target-branch values
 (±10% = no change on shared CI hardware; ✅ = improved, ⚠️ = degraded).
 
-> Improvement plan for current regressions is tracked in [PERFORMANCE_IMPROVEMENTS.md](PERFORMANCE_IMPROVEMENTS.md).
-
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
@@ -216,7 +214,6 @@ Thresholds are deliberately lenient to remain green on any CI hardware. The Benc
 
 ## See Also
 
-- [RESILIENCE.md](RESILIENCE.md) — resilience package guide
 - [AOT.md](AOT.md) — AOT/NativeAOT compatibility guide
 - [SOURCE_GENERATION.md](SOURCE_GENERATION.md) — source generator guide
 

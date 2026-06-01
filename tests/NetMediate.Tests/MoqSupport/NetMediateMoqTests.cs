@@ -135,7 +135,7 @@ public class NetMediateMoqTests
 
         using var provider = services.BuildServiceProvider();
         var notifier = new NotifierMock();
-        var mediator = new Mediator { ServiceProvider = provider, Notifier = notifier };
+        var mediator = new Mediator { Cache = new CachedHandlers { ServiceProvider = provider }, Notifier = notifier };
 
         mediator.Notify(null, new NotifierTestMessage());
 
@@ -162,7 +162,7 @@ public class NetMediateMoqTests
         using var provider = services.BuildServiceProvider();
         var notifier = new NotifierMock();
 
-        var mediator = new Mediator { ServiceProvider = provider, Notifier = notifier };
+        var mediator = new Mediator { Cache = new CachedHandlers { ServiceProvider = provider }, Notifier = notifier };
 
         mediator.Notifies(
             null,

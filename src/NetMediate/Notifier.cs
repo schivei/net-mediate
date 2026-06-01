@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace NetMediate;
 
 /// <inheritdoc/>
-[Injectable(ServiceLifetime.Singleton, Order = int.MinValue)]
+[Injectable(ServiceLifetime.Transient, Order = int.MinValue)]
 [Browsable(false)]
 [EditorBrowsable(EditorBrowsableState.Never)]
 internal sealed class Notifier : INotifiable

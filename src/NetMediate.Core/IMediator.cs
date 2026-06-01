@@ -6,7 +6,7 @@ namespace NetMediate;
 /// <summary>
 /// Defines a mediator for sending messages, notifications, and requests between components.
 /// </summary>
-[ServiceInjection(ServiceLifetime.Singleton, ThreadIsolation = ThreadIsolationPolicy.None, RegistrationEmission = RegistrationEmissionStrategy.TryAdd, RegistrationMultiplicity = RegistrationMultiplicity.Single)]
+[ServiceInjection(ServiceLifetime.Transient, ThreadIsolation = ThreadIsolationPolicy.None, RegistrationEmission = RegistrationEmissionStrategy.TryAdd, RegistrationMultiplicity = RegistrationMultiplicity.Single)]
 public interface IMediator
 {
     /// <summary>

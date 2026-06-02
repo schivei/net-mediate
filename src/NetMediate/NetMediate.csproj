@@ -30,7 +30,7 @@
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>
-	  <PackageReference Include="GenDI.SourceGenerator" Version="2026.5.25.1004">
+	  <PackageReference Include="GenDI.SourceGenerator" Version="2026.6.2.765">
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		  <PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
 	  </PackageReference>

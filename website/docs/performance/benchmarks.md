@@ -20,12 +20,12 @@ The table below is updated automatically by CI on every PR benchmark run. System
 | Key | Value |
 |---|---|
 | OS | Linux Ubuntu 24.04.4 LTS (Noble Numbat) |
-| CPU | AMD EPYC 7763 2.45GHz, 1 CPU, 4 logical and 2 physical cores |
+| CPU | AMD EPYC 7763 2.82GHz, 1 CPU, 4 logical and 2 physical cores |
 | .NET SDK | 10.0.300 |
 | Runtime | .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3 |
-| Last CI run | 2026-06-01 13:25 UTC |
-| Branch | `chore/change-lifetime` |
-| Commit | `e922099` |
+| Last CI run | 2026-06-02 03:13 UTC |
+| Branch | `dependabot/github_actions/main/actions/setup-dotnet-5.3.0` |
+| Commit | `9d528ca` |
 <!-- ci-environment-end -->
 
 ---
@@ -42,10 +42,10 @@ The `vs timing` column compares dispatch time against stored target-branch value
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 64.05 ns | ±1.263 ns | 0 | 0 | 0 | - | ✅ -48 B | ~15.6M msg/s | ✅ improved (-29.3%) |
-| Notification `Notify` | 124.97 ns | ±11.272 ns | 0.0151 | 0 | 0 | 256 B | ✅ -32 B | ~8.0M msg/s | ≈ (-3.0%) |
-| Request `Request` | 72.44 ns | ±2.586 ns | 0 | 0 | 0 | - | ✅ -112 B | ~13.8M msg/s | ✅ improved (-19.4%) |
-| Stream `RequestStream` | 140.56 ns | ±2.372 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.1M msg/s | ✅ improved (-28.3%) |
+| Command `Send` | 65.40 ns | ±0.847 ns | 0 | 0 | 0 | - | ✅ -48 B | ~15.3M msg/s | ✅ improved (-27.8%) |
+| Notification `Notify` | 118.89 ns | ±5.077 ns | 0.0153 | 0 | 0 | 256 B | ✅ -32 B | ~8.4M msg/s | ≈ (-7.7%) |
+| Request `Request` | 74.50 ns | ±2.342 ns | 0 | 0 | 0 | - | ✅ -112 B | ~13.4M msg/s | ✅ improved (-17.1%) |
+| Stream `RequestStream` | 138.07 ns | ±5.509 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.2M msg/s | ✅ improved (-29.6%) |
 <!-- ci-throughput-end -->
 
 > ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.
@@ -225,7 +225,7 @@ Thresholds are deliberately lenient to remain green on any CI hardware. The Benc
 
 ## Latest CI Benchmark Run
 
-Run: 2026-06-01 13:25 UTC | Branch: `chore/change-lifetime` | Commit: `e922099`
+Run: 2026-06-02 03:13 UTC | Branch: `dependabot/github_actions/main/actions/setup-dotnet-5.3.0` | Commit: `9d528ca`
 
 ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).
 
@@ -233,7 +233,7 @@ Run: 2026-06-01 13:25 UTC | Branch: `chore/change-lifetime` | Commit: `e922099`
 
 ```
 Linux Ubuntu 24.04.4 LTS (Noble Numbat)
-AMD EPYC 7763 2.45GHz, 1 CPU, 4 logical and 2 physical cores
+AMD EPYC 7763 2.82GHz, 1 CPU, 4 logical and 2 physical cores
 .NET SDK 10.0.300
 Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 ```
@@ -242,10 +242,10 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 64.05 ns | ±1.263 ns | 0 | 0 | 0 | - | ✅ -48 B | ~15.6M msg/s | ✅ improved (-29.3%) |
-| Notification `Notify` | 124.97 ns | ±11.272 ns | 0.0151 | 0 | 0 | 256 B | ✅ -32 B | ~8.0M msg/s | ≈ (-3.0%) |
-| Request `Request` | 72.44 ns | ±2.586 ns | 0 | 0 | 0 | - | ✅ -112 B | ~13.8M msg/s | ✅ improved (-19.4%) |
-| Stream `RequestStream` | 140.56 ns | ±2.372 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.1M msg/s | ✅ improved (-28.3%) |
+| Command `Send` | 65.40 ns | ±0.847 ns | 0 | 0 | 0 | - | ✅ -48 B | ~15.3M msg/s | ✅ improved (-27.8%) |
+| Notification `Notify` | 118.89 ns | ±5.077 ns | 0.0153 | 0 | 0 | 256 B | ✅ -32 B | ~8.4M msg/s | ≈ (-7.7%) |
+| Request `Request` | 74.50 ns | ±2.342 ns | 0 | 0 | 0 | - | ✅ -112 B | ~13.4M msg/s | ✅ improved (-17.1%) |
+| Stream `RequestStream` | 138.07 ns | ±5.509 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.2M msg/s | ✅ improved (-29.6%) |
 
 ### Comparison vs baseline (`main`, median of ≤3 runs)
 
@@ -254,7 +254,7 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 
 | Benchmark | Baseline (`main`, median of ≤3 runs) | Current | Δ timing | Alloc Δ |
 |---|---|---|---|---|
-| Command `Send` | 90.55 ns | 64.05 ns | ✅ -29.3% | ✅ -48 B |
-| Notification `Notify` | 128.85 ns | 124.97 ns | ≈ -3.0% | ✅ -32 B |
-| Request `Request` | 89.91 ns | 72.44 ns | ✅ -19.4% | ✅ -112 B |
-| Stream `RequestStream` | 196.07 ns | 140.56 ns | ✅ -28.3% | ✅ -88 B |
+| Command `Send` | 90.55 ns | 65.40 ns | ✅ -27.8% | ✅ -48 B |
+| Notification `Notify` | 128.85 ns | 118.89 ns | ≈ -7.7% | ✅ -32 B |
+| Request `Request` | 89.91 ns | 74.50 ns | ✅ -17.1% | ✅ -112 B |
+| Stream `RequestStream` | 196.07 ns | 138.07 ns | ✅ -29.6% | ✅ -88 B |

@@ -19,6 +19,7 @@ The table below is updated automatically by CI on every PR benchmark run. System
 | CPU | AMD EPYC 7763 2.82GHz, 1 CPU, 4 logical and 2 physical cores |
 | .NET SDK | 10.0.300 |
 | Runtime | .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3 |
+=
 | Last CI run | 2026-06-02 03:15 UTC |
 | Branch | `dependabot/nuget/dot-config/main/minor-and-patch-c5eb370c7b` |
 | Commit | `c09fe43` |
@@ -38,6 +39,7 @@ The `vs timing` column compares dispatch time against stored target-branch value
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
+
 | Command `Send` | 71.49 ns | ±1.779 ns | 0 | 0 | 0 | - | ✅ -48 B | ~14.0M msg/s | ✅ improved (-21.0%) |
 | Notification `Notify` | 124.40 ns | ±11.928 ns | 0.0151 | 0 | 0 | 256 B | ✅ -32 B | ~8.0M msg/s | ≈ (-3.5%) |
 | Request `Request` | 71.94 ns | ±4.554 ns | 0 | 0 | 0 | - | ✅ -112 B | ~13.9M msg/s | ✅ improved (-20.0%) |

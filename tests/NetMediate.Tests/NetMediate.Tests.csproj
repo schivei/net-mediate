@@ -12,7 +12,7 @@
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="GenDI.SourceGenerator" Version="2026.6.2.765">
+		<PackageReference Include="GenDI.SourceGenerator" Version="2026.7.3.109">
 			<PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>

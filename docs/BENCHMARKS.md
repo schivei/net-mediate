@@ -19,9 +19,10 @@ The table below is updated automatically by CI on every PR benchmark run. System
 | CPU | AMD EPYC 7763 2.82GHz, 1 CPU, 4 logical and 2 physical cores |
 | .NET SDK | 10.0.300 |
 | Runtime | .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3 |
-| Last CI run | 2026-06-02 03:13 UTC |
-| Branch | `dependabot/github_actions/main/actions/setup-dotnet-5.3.0` |
-| Commit | `9d528ca` |
+=
+| Last CI run | 2026-06-02 03:15 UTC |
+| Branch | `dependabot/nuget/dot-config/main/minor-and-patch-c5eb370c7b` |
+| Commit | `c09fe43` |
 <!-- ci-environment-end -->
 
 ---
@@ -38,10 +39,11 @@ The `vs timing` column compares dispatch time against stored target-branch value
 <!-- ci-throughput-start -->
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 65.40 ns | ±0.847 ns | 0 | 0 | 0 | - | ✅ -48 B | ~15.3M msg/s | ✅ improved (-27.8%) |
-| Notification `Notify` | 118.89 ns | ±5.077 ns | 0.0153 | 0 | 0 | 256 B | ✅ -32 B | ~8.4M msg/s | ≈ (-7.7%) |
-| Request `Request` | 74.50 ns | ±2.342 ns | 0 | 0 | 0 | - | ✅ -112 B | ~13.4M msg/s | ✅ improved (-17.1%) |
-| Stream `RequestStream` | 138.07 ns | ±5.509 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.2M msg/s | ✅ improved (-29.6%) |
+
+| Command `Send` | 71.49 ns | ±1.779 ns | 0 | 0 | 0 | - | ✅ -48 B | ~14.0M msg/s | ✅ improved (-21.0%) |
+| Notification `Notify` | 124.40 ns | ±11.928 ns | 0.0151 | 0 | 0 | 256 B | ✅ -32 B | ~8.0M msg/s | ≈ (-3.5%) |
+| Request `Request` | 71.94 ns | ±4.554 ns | 0 | 0 | 0 | - | ✅ -112 B | ~13.9M msg/s | ✅ improved (-20.0%) |
+| Stream `RequestStream` | 140.76 ns | ±11.415 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.1M msg/s | ✅ improved (-28.2%) |
 <!-- ci-throughput-end -->
 
 > ¹ Stream measures complete stream invocations (3 items each). Higher throughput = better.
@@ -221,7 +223,7 @@ Thresholds are deliberately lenient to remain green on any CI hardware. The Benc
 
 ## Latest CI Benchmark Run
 
-Run: 2026-06-02 03:13 UTC | Branch: `dependabot/github_actions/main/actions/setup-dotnet-5.3.0` | Commit: `9d528ca`
+Run: 2026-06-02 03:15 UTC | Branch: `dependabot/nuget/dot-config/main/minor-and-patch-c5eb370c7b` | Commit: `c09fe43`
 
 ℹ️ Timing baseline loaded from stored target-branch docs (different run — ±10% is noise).
 
@@ -238,10 +240,10 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 
 | Benchmark | Mean | Error | Gen0 | Gen1 | Gen2 | Allocated | Alloc Δ | Throughput | vs timing |
 |---|---|---|---|---|---|---|---|---|---|
-| Command `Send` | 65.40 ns | ±0.847 ns | 0 | 0 | 0 | - | ✅ -48 B | ~15.3M msg/s | ✅ improved (-27.8%) |
-| Notification `Notify` | 118.89 ns | ±5.077 ns | 0.0153 | 0 | 0 | 256 B | ✅ -32 B | ~8.4M msg/s | ≈ (-7.7%) |
-| Request `Request` | 74.50 ns | ±2.342 ns | 0 | 0 | 0 | - | ✅ -112 B | ~13.4M msg/s | ✅ improved (-17.1%) |
-| Stream `RequestStream` | 138.07 ns | ±5.509 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.2M msg/s | ✅ improved (-29.6%) |
+| Command `Send` | 71.49 ns | ±1.779 ns | 0 | 0 | 0 | - | ✅ -48 B | ~14.0M msg/s | ✅ improved (-21.0%) |
+| Notification `Notify` | 124.40 ns | ±11.928 ns | 0.0151 | 0 | 0 | 256 B | ✅ -32 B | ~8.0M msg/s | ≈ (-3.5%) |
+| Request `Request` | 71.94 ns | ±4.554 ns | 0 | 0 | 0 | - | ✅ -112 B | ~13.9M msg/s | ✅ improved (-20.0%) |
+| Stream `RequestStream` | 140.76 ns | ±11.415 ns | 0.0076 | 0 | 0 | 128 B | ✅ -88 B | ~7.1M msg/s | ✅ improved (-28.2%) |
 
 ### Comparison vs baseline (`main`, median of ≤3 runs)
 
@@ -250,7 +252,7 @@ Runtime: .NET 10.0.8 (10.0.8, 10.0.826.23019), X64 RyuJIT x86-64-v3
 
 | Benchmark | Baseline (`main`, median of ≤3 runs) | Current | Δ timing | Alloc Δ |
 |---|---|---|---|---|
-| Command `Send` | 90.55 ns | 65.40 ns | ✅ -27.8% | ✅ -48 B |
-| Notification `Notify` | 128.85 ns | 118.89 ns | ≈ -7.7% | ✅ -32 B |
-| Request `Request` | 89.91 ns | 74.50 ns | ✅ -17.1% | ✅ -112 B |
-| Stream `RequestStream` | 196.07 ns | 138.07 ns | ✅ -29.6% | ✅ -88 B |
+| Command `Send` | 90.55 ns | 71.49 ns | ✅ -21.0% | ✅ -48 B |
+| Notification `Notify` | 128.85 ns | 124.40 ns | ≈ -3.5% | ✅ -32 B |
+| Request `Request` | 89.91 ns | 71.94 ns | ✅ -20.0% | ✅ -112 B |
+| Stream `RequestStream` | 196.07 ns | 140.76 ns | ✅ -28.2% | ✅ -88 B |

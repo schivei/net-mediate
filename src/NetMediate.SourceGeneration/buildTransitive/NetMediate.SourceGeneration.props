@@ -1,7 +1,7 @@
 <Project>
 	<ItemGroup>
 		<PackageReference Include="NetMediate" Version="*" />
-		<PackageReference Include="GenDI.SourceGenerator" Version="2026.6.2.765">
+		<PackageReference Include="GenDI.SourceGenerator" Version="2026.7.3.109">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>contentfiles; compile; runtime</PrivateAssets>
 		</PackageReference>

@@ -23,8 +23,8 @@
 		<None Include="buildTransitive\NetMediate.SourceGeneration.targets" Pack="true" PackagePath="buildTransitive/NetMediate.SourceGeneration.targets" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="GenDI" Version="2026.6.2.765" />
-		<PackageReference Include="GenDI.SourceGenerator" Version="2026.6.2.765">
+		<PackageReference Include="GenDI" Version="2026.7.3.109" />
+		<PackageReference Include="GenDI.SourceGenerator" Version="2026.7.3.109">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
 		</PackageReference>

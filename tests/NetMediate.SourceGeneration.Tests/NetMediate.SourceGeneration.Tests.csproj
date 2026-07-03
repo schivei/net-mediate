@@ -21,7 +21,7 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-	  <PackageReference Include="GenDI.SourceGenerator" Version="2026.6.2.765">
+	  <PackageReference Include="GenDI.SourceGenerator" Version="2026.7.3.109">
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		  <PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
 	  </PackageReference>
@@ -32,11 +32,11 @@
     <!-- Analyzer-only reference so the test project exercises the current local generator without restoring a stale package copy. -->
     <ProjectReference Include="..\..\src\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
 
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.8" />
-    
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
+
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
   </ItemGroup>
   <PropertyGroup>
     <LocalSourceGeneratorDll>..\..\src\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll</LocalSourceGeneratorDll>

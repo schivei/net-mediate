@@ -28,9 +28,9 @@
 		<None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="GenDI" Version="2026.7.3.109" />
+		<PackageReference Include="GenDI" Version="2026.7.13.945" />
 		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.*" />
-		<PackageReference Include="System.Collections.Immutable" Version="10.0.9" />
+		<PackageReference Include="System.Collections.Immutable" Version="10.0.11" />
 	</ItemGroup>
 
 </Project>

@@ -17,14 +17,14 @@
       "rollForward": false
     },
     "dotnet-reportgenerator-globaltool": {
-      "version": "5.5.10",
+      "version": "5.5.11",
       "commands": [
         "reportgenerator"
       ],
       "rollForward": false
     },
     "coverlet.console": {
-      "version": "10.0.1",
+      "version": "10.1.0",
       "commands": [
         "coverlet"
       ],

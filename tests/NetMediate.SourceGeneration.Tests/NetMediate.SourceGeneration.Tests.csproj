@@ -9,19 +9,19 @@
     <NoWarn>CS1591;xUnit1051;$(NoWarn)</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="10.*">
+    <PackageReference Include="coverlet.collector" Version="10.1.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.*" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.*" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.13" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageReference Include="xunit.v3" Version="3.*" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.*">
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-	  <PackageReference Include="GenDI.SourceGenerator" Version="2026.7.3.109">
+	  <PackageReference Include="GenDI.SourceGenerator" Version="2026.10.23.1061">
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		  <PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
 	  </PackageReference>
@@ -32,11 +32,11 @@
     <!-- Analyzer-only reference so the test project exercises the current local generator without restoring a stale package copy. -->
     <ProjectReference Include="..\..\src\NetMediate.SourceGeneration\NetMediate.SourceGeneration.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
 
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
 
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.13" />
 
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.13" />
   </ItemGroup>
   <PropertyGroup>
     <LocalSourceGeneratorDll>..\..\src\NetMediate.SourceGeneration\bin\$(Configuration)\netstandard2.0\NetMediate.SourceGeneration.dll</LocalSourceGeneratorDll>

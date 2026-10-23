@@ -8,19 +8,19 @@
 		<NoWarn>CS1066;CA1859;$(NoWarn)</NoWarn>
 	</PropertyGroup>
 	<ItemGroup>
-		<PackageReference Include="coverlet.collector" Version="10.*">
+		<PackageReference Include="coverlet.collector" Version="10.1.0">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="GenDI.SourceGenerator" Version="2026.7.3.109">
+		<PackageReference Include="GenDI.SourceGenerator" Version="2026.10.23.1061">
 			<PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.*" />
-		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.*" />
-		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.*" />
-		<PackageReference Include="xunit.v3" Version="3.*" />
-		<PackageReference Include="xunit.runner.visualstudio" Version="3.*">
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
+		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.13" />
+		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+		<PackageReference Include="xunit.v3" Version="4.0.2" />
+		<PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>

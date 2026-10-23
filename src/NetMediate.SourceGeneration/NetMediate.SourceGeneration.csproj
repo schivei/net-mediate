@@ -23,14 +23,14 @@
 		<None Include="buildTransitive\NetMediate.SourceGeneration.targets" Pack="true" PackagePath="buildTransitive/NetMediate.SourceGeneration.targets" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="GenDI" Version="2026.7.3.109" />
-		<PackageReference Include="GenDI.SourceGenerator" Version="2026.7.3.109">
+		<PackageReference Include="GenDI" Version="2026.10.23.1061" />
+		<PackageReference Include="GenDI.SourceGenerator" Version="2026.10.23.1061">
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 			<PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
 		</PackageReference>
 		
-		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.*" PrivateAssets="all" />
-		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.*" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="5.9.0" PrivateAssets="all" />
 
 		<None Include="$(OutputPath)$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="true" />
 	</ItemGroup>

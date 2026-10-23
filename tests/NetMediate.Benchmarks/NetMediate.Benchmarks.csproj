@@ -11,12 +11,12 @@
         <InvariantGlobalization>true</InvariantGlobalization>
     </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="GenDI.SourceGenerator" Version="2026.7.3.109">
+        <PackageReference Include="GenDI.SourceGenerator" Version="2026.10.23.1061">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>runtime; compile; contentfiles</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="BenchmarkDotNet" Version="0.*" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.*" />
+        <PackageReference Include="BenchmarkDotNet" Version="0.15.8" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.13" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\..\src\NetMediate\NetMediate.csproj" />

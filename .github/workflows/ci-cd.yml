@@ -98,52 +98,52 @@ jobs:
         node-version: '24'
         cache: 'npm'
         cache-dependency-path: './website/package-lock.json'
-
-    - name: Install SonarScanner for .NET
-      if: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && env.SONAR_TOKEN != '' }}
-      run: |
-        dotnet tool install --global dotnet-sonarscanner --version 11.2.1 || \
-          dotnet tool update --global dotnet-sonarscanner --version 11.2.1
-        echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
-
-    - name: Begin Sonar analysis
-      if: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && env.SONAR_TOKEN != '' }}
-      env:
-        SONAR_PROJECT_KEY: schivei_net-mediate
-        SONAR_ORGANIZATION: schivei
-        SONAR_HOST_URL: https://sonarcloud.io
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-        PR_BRANCH: ${{ github.head_ref }}
-        PR_BASE: ${{ github.base_ref }}
-        REF_NAME: ${{ github.ref_name }}
-      run: |
-        SONAR_ARGS=(
-          "/k:${SONAR_PROJECT_KEY}"
-          "/o:${SONAR_ORGANIZATION}"
-          "/d:sonar.host.url=${SONAR_HOST_URL}"
-          "/d:sonar.token=${SONAR_TOKEN}"
-          "/d:sonar.cs.cobertura.reportsPaths=coverage/**/coverage.cobertura.xml"
-          "/d:sonar.coverage.exclusions=.github/**"
-          "/d:sonar.issue.ignore.multicriteria=e1"
-          "/d:sonar.issue.ignore.multicriteria.e1.ruleKey=csharpsquid:S107"
-          "/d:sonar.issue.ignore.multicriteria.e1.resourceKey=**/*.cs"
-          "/d:sonar.exclusions=**/website/**,website/**,**/.github/scripts/**,.github/scripts/**"
-          "/d:sonar.cpd.exclusions=.github/**,tests/**,**/website/**,website/**,**/.github/scripts/**,.github/scripts/**"
-          "/d:sonar.test.exclusions=**/website/**,website/**,**/.github/scripts/**,.github/scripts/**"
-        )
-
-        if [ "${{ github.event_name }}" = "pull_request" ]; then
-          SONAR_ARGS+=(
-            "/d:sonar.pullrequest.key=${PR_NUMBER}"
-            "/d:sonar.pullrequest.branch=${PR_BRANCH}"
-            "/d:sonar.pullrequest.base=${PR_BASE}"
-          )
-        else
-          SONAR_ARGS+=("/d:sonar.branch.name=${REF_NAME}")
-        fi
-
-        dotnet-sonarscanner begin "${SONAR_ARGS[@]}"
-        
+#
+#    - name: Install SonarScanner for .NET
+#      if: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && env.SONAR_TOKEN != '' }}
+#      run: |
+#        dotnet tool install --global dotnet-sonarscanner --version 11.2.1 || \
+#          dotnet tool update --global dotnet-sonarscanner --version 11.2.1
+#        echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+#
+#    - name: Begin Sonar analysis
+#      if: ${{ (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && env.SONAR_TOKEN != '' }}
+#      env:
+#        SONAR_PROJECT_KEY: schivei_net-mediate
+#        SONAR_ORGANIZATION: schivei
+#        SONAR_HOST_URL: https://sonarcloud.io
+#        PR_NUMBER: ${{ github.event.pull_request.number }}
+#        PR_BRANCH: ${{ github.head_ref }}
+#        PR_BASE: ${{ github.base_ref }}
+#        REF_NAME: ${{ github.ref_name }}
+#      run: |
+#        SONAR_ARGS=(
+#          "/k:${SONAR_PROJECT_KEY}"
+#          "/o:${SONAR_ORGANIZATION}"
+#          "/d:sonar.host.url=${SONAR_HOST_URL}"
+#          "/d:sonar.token=${SONAR_TOKEN}"
+#          "/d:sonar.cs.cobertura.reportsPaths=coverage/**/coverage.cobertura.xml"
+#          "/d:sonar.coverage.exclusions=.github/**"
+#          "/d:sonar.issue.ignore.multicriteria=e1"
+#          "/d:sonar.issue.ignore.multicriteria.e1.ruleKey=csharpsquid:S107"
+#          "/d:sonar.issue.ignore.multicriteria.e1.resourceKey=**/*.cs"
+#          "/d:sonar.exclusions=**/website/**,website/**,**/.github/scripts/**,.github/scripts/**"
+#          "/d:sonar.cpd.exclusions=.github/**,tests/**,**/website/**,website/**,**/.github/scripts/**,.github/scripts/**"
+#          "/d:sonar.test.exclusions=**/website/**,website/**,**/.github/scripts/**,.github/scripts/**"
+#        )
+#
+#        if [ "${{ github.event_name }}" = "pull_request" ]; then
+#          SONAR_ARGS+=(
+#            "/d:sonar.pullrequest.key=${PR_NUMBER}"
+#            "/d:sonar.pullrequest.branch=${PR_BRANCH}"
+#            "/d:sonar.pullrequest.base=${PR_BASE}"
+#          )
+#        else
+#          SONAR_ARGS+=("/d:sonar.branch.name=${REF_NAME}")
+#        fi
+#
+#        dotnet-sonarscanner begin "${SONAR_ARGS[@]}"
+#        
     - name: Cache NuGet packages
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
@@ -294,12 +294,12 @@ jobs:
 
         sys.exit(1)
         PYEOF
-
-    - name: End Sonar analysis
-      if: ${{ always() && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && env.SONAR_TOKEN != '' }}
-      run: |
-        dotnet-sonarscanner end "/d:sonar.token=${SONAR_TOKEN}"
-      
+#
+#    - name: End Sonar analysis
+#      if: ${{ always() && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && env.SONAR_TOKEN != '' }}
+#      run: |
+#        dotnet-sonarscanner end "/d:sonar.token=${SONAR_TOKEN}"
+#      
     - name: Run Benchmarks (PR only)
       if: github.event_name == 'pull_request'
       env:

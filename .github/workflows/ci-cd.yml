@@ -177,267 +177,267 @@ jobs:
           echo "---- Building: $proj"
           dotnet build "$proj" --configuration Release /p:Version=${VERSION}
         done
-
-    - name: Test projects (per-project)
-      run: |
-        set -euo pipefail
-        echo "Running tests per project to keep output scoped"
-        # Run tests per test project; use --no-build since projects were built above
-        for testproj in $(find tests -type f -name '*Tests.csproj' -print); do
-          echo "---- Testing: $testproj"
-          dotnet test "$testproj" --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage /p:Version=${VERSION}
-        done
-
-    - name: Enforce 100% line and branch coverage for source packages
-      run: |
-        python3 << 'PYEOF'
-        import xml.etree.ElementTree as ET, os, sys
-
-        xml_files = [
-            os.path.join(r, f)
-            for r, _, files in os.walk('./coverage')
-            for f in files if f == 'coverage.cobertura.xml'
-        ]
-        if not xml_files:
-            print("No coverage.cobertura.xml found.", file=sys.stderr)
-            sys.exit(1)
-
-        # Packages excluded from Sonar coverage tracking (align with sonar.coverage.exclusions).
-        # No source project package is excluded.
-        EXCLUDED_PREFIXES = ()
-
-        # Merge all reports: for each (filename, lineNumber) take the max hits
-        # across all test-project Cobertura files so lines covered by any test
-        # project count as covered.
-        merged_lines: dict = {}     # (filename, lineNumber) -> max hits
-        merged_branches: dict = {}  # (filename, lineNumber) -> (covered, valid)
-
-        for xml_file in xml_files:
-            root = ET.parse(xml_file).getroot()
-            for cls in root.findall('.//class'):
-                filename = cls.get('filename', '')
-                norm = filename.replace('\\', '/')
-                # Skip generated / obj files
-                if '/obj/' in norm:
-                    continue
-                # Only include NetMediate source packages
-                if not (norm.startswith('NetMediate/') or norm.startswith('NetMediate.')):
-                    continue
-                # Skip packages that Sonar excludes from coverage tracking
-                if norm.startswith(EXCLUDED_PREFIXES):
-                    continue
-                for line in cls.findall('./lines/line'):
-                    hits = int(line.get('hits', 0) or 0)
-                    lnum = int(line.get('number', 0) or 0)
-                    key = (filename, lnum)
-                    merged_lines[key] = max(merged_lines.get(key, 0), hits)
-
-                    if line.get('branch') == 'True':
-                        coverage = line.get('condition-coverage', '')
-                        if '(' in coverage and '/' in coverage:
-                            fraction = coverage.split('(', 1)[1].split(')', 1)[0]
-                            covered, valid = (int(part) for part in fraction.split('/', 1))
-                        else:
-                            covered = 1 if hits > 0 else 0
-                            valid = 1
-
-                        bkey = (filename, lnum)
-                        prev_covered, prev_valid = merged_branches.get(bkey, (0, 0))
-                        merged_branches[bkey] = (
-                            max(prev_covered, covered),
-                            max(prev_valid, valid),
-                        )
-
-        total_lines = len(merged_lines)
-        covered_lines = sum(1 for hits in merged_lines.values() if hits > 0)
-        total_branches = sum(valid for _, valid in merged_branches.values())
-        covered_branches = sum(covered for covered, _ in merged_branches.values())
-
-        if total_lines == 0:
-            print("❌ No trackable source lines found in coverage reports. Verify coverage collection is enabled.", file=sys.stderr)
-            sys.exit(1)
-
-        uncovered_by_file: dict = {}
-        for (filename, lnum), hits in merged_lines.items():
-            if hits == 0:
-                uncovered_by_file.setdefault(filename, []).append(lnum)
-
-        line_pct = 100.0 * covered_lines / total_lines
-        branch_pct = 100.0 * covered_branches / total_branches if total_branches > 0 else 100.0
-
-        if not uncovered_by_file and covered_branches == total_branches:
-            print(
-                f"✅ Source package coverage: lines {line_pct:.1f}% ({covered_lines}/{total_lines}), "
-                f"branches {branch_pct:.1f}% ({covered_branches}/{total_branches}) — gate passed."
-            )
-            sys.exit(0)
-
-        print(
-            f"❌ Source package coverage: lines {line_pct:.1f}% ({covered_lines}/{total_lines}), "
-            f"branches {branch_pct:.1f}% ({covered_branches}/{total_branches}) — 100% required for both.",
-            file=sys.stderr
-        )
-
-        if uncovered_by_file:
-            for f, lines in sorted(uncovered_by_file.items()):
-                print(f"  {f}: uncovered lines {sorted(lines)}", file=sys.stderr)
-
-        uncovered_branches_by_file: dict = {}
-        for (filename, lnum), (covered, valid) in merged_branches.items():
-            if covered < valid:
-                uncovered_branches_by_file.setdefault(filename, []).append((lnum, covered, valid))
-
-        if uncovered_branches_by_file:
-            for f, branches in sorted(uncovered_branches_by_file.items()):
-                detail = ", ".join(f"{lnum}({covered}/{valid})" for lnum, covered, valid in sorted(branches))
-                print(f"  {f}: uncovered branches [{detail}]", file=sys.stderr)
-
-        sys.exit(1)
-        PYEOF
 #
+#    - name: Test projects (per-project)
+#      run: |
+#        set -euo pipefail
+#        echo "Running tests per project to keep output scoped"
+#        # Run tests per test project; use --no-build since projects were built above
+#        for testproj in $(find tests -type f -name '*Tests.csproj' -print); do
+#          echo "---- Testing: $testproj"
+#          dotnet test "$testproj" --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage /p:Version=${VERSION}
+#        done
+#
+#    - name: Enforce 100% line and branch coverage for source packages
+#      run: |
+#        python3 << 'PYEOF'
+#        import xml.etree.ElementTree as ET, os, sys
+#
+#        xml_files = [
+#            os.path.join(r, f)
+#            for r, _, files in os.walk('./coverage')
+#            for f in files if f == 'coverage.cobertura.xml'
+#        ]
+#        if not xml_files:
+#            print("No coverage.cobertura.xml found.", file=sys.stderr)
+#            sys.exit(1)
+#
+#        # Packages excluded from Sonar coverage tracking (align with sonar.coverage.exclusions).
+#        # No source project package is excluded.
+#        EXCLUDED_PREFIXES = ()
+#
+#        # Merge all reports: for each (filename, lineNumber) take the max hits
+#        # across all test-project Cobertura files so lines covered by any test
+#        # project count as covered.
+#        merged_lines: dict = {}     # (filename, lineNumber) -> max hits
+#        merged_branches: dict = {}  # (filename, lineNumber) -> (covered, valid)
+#
+#        for xml_file in xml_files:
+#            root = ET.parse(xml_file).getroot()
+#            for cls in root.findall('.//class'):
+#                filename = cls.get('filename', '')
+#                norm = filename.replace('\\', '/')
+#                # Skip generated / obj files
+#                if '/obj/' in norm:
+#                    continue
+#                # Only include NetMediate source packages
+#                if not (norm.startswith('NetMediate/') or norm.startswith('NetMediate.')):
+#                    continue
+#                # Skip packages that Sonar excludes from coverage tracking
+#                if norm.startswith(EXCLUDED_PREFIXES):
+#                    continue
+#                for line in cls.findall('./lines/line'):
+#                    hits = int(line.get('hits', 0) or 0)
+#                    lnum = int(line.get('number', 0) or 0)
+#                    key = (filename, lnum)
+#                    merged_lines[key] = max(merged_lines.get(key, 0), hits)
+#
+#                    if line.get('branch') == 'True':
+#                        coverage = line.get('condition-coverage', '')
+#                        if '(' in coverage and '/' in coverage:
+#                            fraction = coverage.split('(', 1)[1].split(')', 1)[0]
+#                            covered, valid = (int(part) for part in fraction.split('/', 1))
+#                        else:
+#                            covered = 1 if hits > 0 else 0
+#                            valid = 1
+#
+#                        bkey = (filename, lnum)
+#                        prev_covered, prev_valid = merged_branches.get(bkey, (0, 0))
+#                        merged_branches[bkey] = (
+#                            max(prev_covered, covered),
+#                            max(prev_valid, valid),
+#                        )
+#
+#        total_lines = len(merged_lines)
+#        covered_lines = sum(1 for hits in merged_lines.values() if hits > 0)
+#        total_branches = sum(valid for _, valid in merged_branches.values())
+#        covered_branches = sum(covered for covered, _ in merged_branches.values())
+#
+#        if total_lines == 0:
+#            print("❌ No trackable source lines found in coverage reports. Verify coverage collection is enabled.", file=sys.stderr)
+#            sys.exit(1)
+#
+#        uncovered_by_file: dict = {}
+#        for (filename, lnum), hits in merged_lines.items():
+#            if hits == 0:
+#                uncovered_by_file.setdefault(filename, []).append(lnum)
+#
+#        line_pct = 100.0 * covered_lines / total_lines
+#        branch_pct = 100.0 * covered_branches / total_branches if total_branches > 0 else 100.0
+#
+#        if not uncovered_by_file and covered_branches == total_branches:
+#            print(
+#                f"✅ Source package coverage: lines {line_pct:.1f}% ({covered_lines}/{total_lines}), "
+#                f"branches {branch_pct:.1f}% ({covered_branches}/{total_branches}) — gate passed."
+#            )
+#            sys.exit(0)
+#
+#        print(
+#            f"❌ Source package coverage: lines {line_pct:.1f}% ({covered_lines}/{total_lines}), "
+#            f"branches {branch_pct:.1f}% ({covered_branches}/{total_branches}) — 100% required for both.",
+#            file=sys.stderr
+#        )
+#
+#        if uncovered_by_file:
+#            for f, lines in sorted(uncovered_by_file.items()):
+#                print(f"  {f}: uncovered lines {sorted(lines)}", file=sys.stderr)
+#
+#        uncovered_branches_by_file: dict = {}
+#        for (filename, lnum), (covered, valid) in merged_branches.items():
+#            if covered < valid:
+#                uncovered_branches_by_file.setdefault(filename, []).append((lnum, covered, valid))
+#
+#        if uncovered_branches_by_file:
+#            for f, branches in sorted(uncovered_branches_by_file.items()):
+#                detail = ", ".join(f"{lnum}({covered}/{valid})" for lnum, covered, valid in sorted(branches))
+#                print(f"  {f}: uncovered branches [{detail}]", file=sys.stderr)
+#
+#        sys.exit(1)
+#        PYEOF
+##
 #    - name: End Sonar analysis
 #      if: ${{ always() && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && env.SONAR_TOKEN != '' }}
 #      run: |
 #        dotnet-sonarscanner end "/d:sonar.token=${SONAR_TOKEN}"
 #      
-    - name: Run Benchmarks (PR only)
-      if: github.event_name == 'pull_request'
-      env:
-        BRANCH: ${{ github.head_ref }}
-        BASE_REF: ${{ github.base_ref }}
-        COMMIT_SHA: ${{ github.sha }}
-        BENCH_REPORT: ${{ runner.temp }}/bench-report.md
-        BENCH_BASE: ${{ runner.temp }}/benchmarks-base.md
-      run: |
-        # ── Run current-branch benchmark ─────────────────────────────────────────
-        cd tests/NetMediate.Benchmarks
-        # Ensure NuGet packages and project assets are restored on the runner
-        dotnet restore --configfile ../../NuGet.Config || dotnet restore || true
-        dotnet run --configuration Release -- --job Short --filter '*' \
-          2>&1 | grep -v "Failed to set up high priority (Permission denied)" \
-          | tee "$RUNNER_TEMP/bench-console.txt" || true
-        REPORT=$(find BenchmarkDotNet.Artifacts -name '*-report-github.md' 2>/dev/null | head -1)
-        if [ -n "$REPORT" ]; then
-          cp "$REPORT" "$BENCH_REPORT"
-          cd ../..
-          # Fetch base branch BENCHMARKS.md as baseline
-          git show "origin/$BASE_REF:docs/BENCHMARKS.md" > "$BENCH_BASE" 2>/dev/null \
-            || echo '<!-- netmediate-bench-baseline: {} -->' > "$BENCH_BASE"
-          python3 .github/scripts/update_benchmarks.py
-        fi
-
-    - name: Commit benchmark results
-      if: github.event_name == 'pull_request'
-      uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321 # v10.0.0
-      with:
-        add: 'docs/BENCHMARKS.md website/docs/performance/benchmarks.md'
-        message: 'chore: update BENCHMARKS.md from CI benchmark run [skip ci]'
-        default_author: github_actions
-        push: 'origin HEAD:refs/heads/${{ github.head_ref }}'
+#    - name: Run Benchmarks (PR only)
+#      if: github.event_name == 'pull_request'
+#      env:
+#        BRANCH: ${{ github.head_ref }}
+#        BASE_REF: ${{ github.base_ref }}
+#        COMMIT_SHA: ${{ github.sha }}
+#        BENCH_REPORT: ${{ runner.temp }}/bench-report.md
+#        BENCH_BASE: ${{ runner.temp }}/benchmarks-base.md
+#      run: |
+#        # ── Run current-branch benchmark ─────────────────────────────────────────
+#        cd tests/NetMediate.Benchmarks
+#        # Ensure NuGet packages and project assets are restored on the runner
+#        dotnet restore --configfile ../../NuGet.Config || dotnet restore || true
+#        dotnet run --configuration Release -- --job Short --filter '*' \
+#          2>&1 | grep -v "Failed to set up high priority (Permission denied)" \
+#          | tee "$RUNNER_TEMP/bench-console.txt" || true
+#        REPORT=$(find BenchmarkDotNet.Artifacts -name '*-report-github.md' 2>/dev/null | head -1)
+#        if [ -n "$REPORT" ]; then
+#          cp "$REPORT" "$BENCH_REPORT"
+#          cd ../..
+#          # Fetch base branch BENCHMARKS.md as baseline
+#          git show "origin/$BASE_REF:docs/BENCHMARKS.md" > "$BENCH_BASE" 2>/dev/null \
+#            || echo '<!-- netmediate-bench-baseline: {} -->' > "$BENCH_BASE"
+#          python3 .github/scripts/update_benchmarks.py
+#        fi
+#
+#    - name: Commit benchmark results
+#      if: github.event_name == 'pull_request'
+#      uses: EndBug/add-and-commit@290ea2c423ad77ca9c62ae0f5b224379612c0321 # v10.0.0
+#      with:
+#        add: 'docs/BENCHMARKS.md website/docs/performance/benchmarks.md'
+#        message: 'chore: update BENCHMARKS.md from CI benchmark run [skip ci]'
+#        default_author: github_actions
+#        push: 'origin HEAD:refs/heads/${{ github.head_ref }}'
         
-    - name: Post coverage summary to PR
-      if: github.event_name == 'pull_request'
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-        REPO: ${{ github.repository }}
-        COMMIT_SHA: ${{ github.sha }}
-      run: |
-        python3 << 'PYEOF'
-        import xml.etree.ElementTree as ET, os, subprocess, sys, json
-
-        MARKER = "<!-- netmediate-coverage-report -->"
-
-        xml_files = [
-            os.path.join(r, f)
-            for r, _, files in os.walk('./coverage')
-            for f in files if f == 'coverage.cobertura.xml'
-        ]
-        if not xml_files:
-            print("No coverage.cobertura.xml found, skipping PR comment.")
-            sys.exit(0)
-
-        # Merge coverage by source line/branch across all reports so shared source files
-        # from multiple test projects are not double-counted.
-        merged_lines = {}
-        merged_branches = {}
-
-        for xml_file in xml_files:
-            root = ET.parse(xml_file).getroot()
-            for cls in root.findall('.//class'):
-                filename = cls.get('filename')
-                if not filename or '/obj/' in filename.replace('\\', '/'):
-                    continue
-
-                for line in cls.findall('./lines/line'):
-                    line_number = int(line.get('number', 0) or 0)
-                    hits = int(line.get('hits', 0) or 0)
-                    line_key = (filename, line_number)
-                    merged_lines[line_key] = max(merged_lines.get(line_key, 0), hits)
-
-                    if line.get('branch') == 'True':
-                        coverage = line.get('condition-coverage', '')
-                        if '(' in coverage and '/' in coverage:
-                            fraction = coverage.split('(', 1)[1].split(')', 1)[0]
-                            covered, valid = (int(part) for part in fraction.split('/', 1))
-                        else:
-                            covered = 1 if hits > 0 else 0
-                            valid = 1
-
-                        branch_key = (filename, line_number)
-                        prev_covered, prev_valid = merged_branches.get(branch_key, (0, 0))
-                        merged_branches[branch_key] = (
-                            max(prev_covered, covered),
-                            max(prev_valid, valid),
-                        )
-
-        total_valid = len(merged_lines)
-        total_covered = sum(1 for hits in merged_lines.values() if hits > 0)
-        total_branches_valid = sum(valid for _, valid in merged_branches.values())
-        total_branches_covered = sum(covered for covered, _ in merged_branches.values())
-
-        line_rate   = (total_covered / total_valid   * 100) if total_valid   > 0 else 0.0
-        branch_rate = (total_branches_covered / total_branches_valid * 100) if total_branches_valid > 0 else 0.0
-
-        emoji = '✅' if line_rate >= 80 else '⚠️' if line_rate >= 60 else '❌'
-        sha   = os.environ['COMMIT_SHA'][:7]
-
-        comment = (
-            f"{MARKER}\n\n"
-            f"## {emoji} Code Coverage Report — `{sha}`\n\n"
-            f"| Metric | Coverage |\n"
-            f"|--------|----------|\n"
-            f"| **Lines** | {line_rate:.1f}% ({total_covered}/{total_valid} lines) |\n"
-            f"| **Branches** | {branch_rate:.1f}% |\n\n"
-            f"<sub>Generated by CI from `dotnet test --collect:\"XPlat Code Coverage\"`</sub>"
-        )
-
-        pr   = os.environ['PR_NUMBER']
-        repo = os.environ['REPO']
-
-        # Find an existing coverage comment by the bot with our marker and update it;
-        # fall back to creating a new comment if none exists.
-        list_result = subprocess.run(
-            ['gh', 'api', f'repos/{repo}/issues/{pr}/comments',
-             '--jq', f'[.[] | select(.body | startswith("{MARKER}")) | .id][0]'],
-            capture_output=True, text=True
-        )
-        comment_id = list_result.stdout.strip()
-
-        if comment_id and comment_id != 'null' and comment_id != '':
-            subprocess.run(
-                ['gh', 'api', f'repos/{repo}/issues/comments/{comment_id}',
-                 '-X', 'PATCH', '-f', f'body={comment}'],
-                check=True
-            )
-            print(f"Updated existing coverage comment {comment_id}.")
-        else:
-            subprocess.run(
-                ['gh', 'pr', 'comment', pr, '--repo', repo, '--body', comment],
-                check=True
-            )
-            print("Created new coverage comment.")
-        PYEOF
+#    - name: Post coverage summary to PR
+#      if: github.event_name == 'pull_request'
+#      env:
+#        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        PR_NUMBER: ${{ github.event.pull_request.number }}
+#        REPO: ${{ github.repository }}
+#        COMMIT_SHA: ${{ github.sha }}
+#      run: |
+#        python3 << 'PYEOF'
+#        import xml.etree.ElementTree as ET, os, subprocess, sys, json
+#
+#        MARKER = "<!-- netmediate-coverage-report -->"
+#
+#        xml_files = [
+#            os.path.join(r, f)
+#            for r, _, files in os.walk('./coverage')
+#            for f in files if f == 'coverage.cobertura.xml'
+#        ]
+#        if not xml_files:
+#            print("No coverage.cobertura.xml found, skipping PR comment.")
+#            sys.exit(0)
+#
+#        # Merge coverage by source line/branch across all reports so shared source files
+#        # from multiple test projects are not double-counted.
+#        merged_lines = {}
+#        merged_branches = {}
+#
+#        for xml_file in xml_files:
+#            root = ET.parse(xml_file).getroot()
+#            for cls in root.findall('.//class'):
+#                filename = cls.get('filename')
+#                if not filename or '/obj/' in filename.replace('\\', '/'):
+#                    continue
+#
+#                for line in cls.findall('./lines/line'):
+#                    line_number = int(line.get('number', 0) or 0)
+#                    hits = int(line.get('hits', 0) or 0)
+#                    line_key = (filename, line_number)
+#                    merged_lines[line_key] = max(merged_lines.get(line_key, 0), hits)
+#
+#                    if line.get('branch') == 'True':
+#                        coverage = line.get('condition-coverage', '')
+#                        if '(' in coverage and '/' in coverage:
+#                            fraction = coverage.split('(', 1)[1].split(')', 1)[0]
+#                            covered, valid = (int(part) for part in fraction.split('/', 1))
+#                        else:
+#                            covered = 1 if hits > 0 else 0
+#                            valid = 1
+#
+#                        branch_key = (filename, line_number)
+#                        prev_covered, prev_valid = merged_branches.get(branch_key, (0, 0))
+#                        merged_branches[branch_key] = (
+#                            max(prev_covered, covered),
+#                            max(prev_valid, valid),
+#                        )
+#
+#        total_valid = len(merged_lines)
+#        total_covered = sum(1 for hits in merged_lines.values() if hits > 0)
+#        total_branches_valid = sum(valid for _, valid in merged_branches.values())
+#        total_branches_covered = sum(covered for covered, _ in merged_branches.values())
+#
+#        line_rate   = (total_covered / total_valid   * 100) if total_valid   > 0 else 0.0
+#        branch_rate = (total_branches_covered / total_branches_valid * 100) if total_branches_valid > 0 else 0.0
+#
+#        emoji = '✅' if line_rate >= 80 else '⚠️' if line_rate >= 60 else '❌'
+#        sha   = os.environ['COMMIT_SHA'][:7]
+#
+#        comment = (
+#            f"{MARKER}\n\n"
+#            f"## {emoji} Code Coverage Report — `{sha}`\n\n"
+#            f"| Metric | Coverage |\n"
+#            f"|--------|----------|\n"
+#            f"| **Lines** | {line_rate:.1f}% ({total_covered}/{total_valid} lines) |\n"
+#            f"| **Branches** | {branch_rate:.1f}% |\n\n"
+#            f"<sub>Generated by CI from `dotnet test --collect:\"XPlat Code Coverage\"`</sub>"
+#        )
+#
+#        pr   = os.environ['PR_NUMBER']
+#        repo = os.environ['REPO']
+#
+#        # Find an existing coverage comment by the bot with our marker and update it;
+#        # fall back to creating a new comment if none exists.
+#        list_result = subprocess.run(
+#            ['gh', 'api', f'repos/{repo}/issues/{pr}/comments',
+#             '--jq', f'[.[] | select(.body | startswith("{MARKER}")) | .id][0]'],
+#            capture_output=True, text=True
+#        )
+#        comment_id = list_result.stdout.strip()
+#
+#        if comment_id and comment_id != 'null' and comment_id != '':
+#            subprocess.run(
+#                ['gh', 'api', f'repos/{repo}/issues/comments/{comment_id}',
+#                 '-X', 'PATCH', '-f', f'body={comment}'],
+#                check=True
+#            )
+#            print(f"Updated existing coverage comment {comment_id}.")
+#        else:
+#            subprocess.run(
+#                ['gh', 'pr', 'comment', pr, '--repo', repo, '--body', comment],
+#                check=True
+#            )
+#            print("Created new coverage comment.")
+#        PYEOF
 
   package:
     name: Build and Package

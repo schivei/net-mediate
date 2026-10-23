@@ -5,6 +5,7 @@
     <File Path=".github/workflows/ci-cd.yml" />
     <File Path=".github/workflows/deploy-docs.yml" />
     <File Path=".gitignore" />
+    <File Path="global.json" />
     <File Path="LICENSE" />
     <File Path="pack.props" />
     <File Path="README.md" />

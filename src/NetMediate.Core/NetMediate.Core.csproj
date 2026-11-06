@@ -29,8 +29,8 @@
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="GenDI" Version="2026.10.23.1061" />
-		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.13" />
-		<PackageReference Include="System.Collections.Immutable" Version="10.0.13" />
+		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.14" />
+		<PackageReference Include="System.Collections.Immutable" Version="10.0.14" />
 	</ItemGroup>
 
 </Project>
